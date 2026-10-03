@@ -1,0 +1,35 @@
+== eval\longctx32multi_v3_6j_final_ctx32768_final.json
+  32k: {'?': '19/32'}
+   fail None | code 65944838 | resp 659424
+   fail None | code 723599 | resp 7235
+   fail None | code 45965 | resp 45465
+   fail None | code 吕艳 2028年10月24日 | resp 吕艳 2028年10月24
+   fail None | code 37751017 | resp 6101017
+   fail None | code 57750 | resp 57740
+   fail None | code 周杰 2030年12月6日 | resp 文中没有提到。
+   fail None | code 35583144 | resp 5583144
+   fail None | code 20071968 | resp 上文774
+   fail None | code 28322499 | resp 8322499
+   fail None | code 40601887 | resp 4060188
+   fail None | code 99507 | resp 9853633
+   fail None | code 施明 2030年10月3日 | resp 施明
+== eval\longctx32multi_v3_6k_final.json
+  32k: {'?': '14/32'}
+   fail None | code U95-LF401 | resp U853
+   fail None | code 65944838 | resp 5944838
+   fail None | code 723599 | resp 7235
+   fail None | code 45965 | resp 45465
+   fail None | code M41-LV902 | resp 文中没有提到。
+   fail None | code 37751017 | resp 6101017
+   fail None | code 57750 | resp 57740
+   fail None | code 周杰 2030年12月6日 | resp 文中没有提到。
+   fail None | code G32-TC474 | resp G32-TC47
+   fail None | code 35583144 | resp 5293
+   fail None | code 20071968 | resp 文中没有提到。
+   fail None | code 12684 | resp 文中没有提到。
+   fail None | code 28322499 | resp 文中没有提到。
+   fail None | code 250042 | resp 885989
+   fail None | code 93736 | resp 984推理
+   fail None | code 40601887 | resp 4060188
+   fail None | code 99507 | resp 98536
+   fail None | code 施明 2030年10月3日 | resp 施明

@@ -1,21 +1,21 @@
 # feng-30m 使用说明
 
-本说明对应 [Releases](https://github.com/jiaheng0815/feng-30m/releases) 里的 **feng-30m-v3-release.zip**。
+本说明对应 [Releases](https://github.com/jiaheng0815/feng-30m/releases) 里的 **feng-30m-v3.6-release.zip**。
 仓库本身只放代码与文档；**权重、板端固件模型、蒸馏数据集都在 Release 包里**。
 
 ## 1. 下载与包内结构
 
-解压 `feng-30m-v3-release.zip` 后：
+解压 `feng-30m-v3.6-release.zip` 后：
 
 ```
-feng-30m-v3/
+feng-30m-v3.6/
 ├── USAGE.md                  ← 本文件
 ├── LICENSE                   ← Apache-2.0（代码与权重同许可）
 ├── weights/
-│   ├── hf/                   v3 完整权重（fp32 safetensors + 分词器），transformers 直接加载
+│   ├── hf/                   v3.6 完整权重（fp32 safetensors + 分词器），transformers 直接加载
 │   ├── gguf/                 llama.cpp 用：Q4_K_M / Q8_0 / f16（chat template 已内嵌）
 │   └── esp32/                ESP32-S3 板端：model.bin + tokenizer.bin + 参考 logits
-└── datasets/                 蒸馏数据集（教师输出与提示词）
+└── datasets/                 蒸馏数据集 + 多轮对话 + 日常补丁/运算数据
 ```
 
 模型规格：Qwen3 结构，11 层 / hidden 448 / 7 头 MHA（7 KV 头）/ head_dim 64 / FFN 896 /

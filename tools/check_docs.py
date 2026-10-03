@@ -41,7 +41,7 @@ def _tracked_docs() -> list[Path]:
 DOCS = _tracked_docs()
 
 # 只存在于 Release 压缩包里的路径（合法引用，不在仓库中）
-RELEASE_PREFIXES = ("weights/", "datasets/", "feng-30m-v3/")
+RELEASE_PREFIXES = ("weights/", "datasets/", "feng-30m-v3/", "feng-30m-v3.6/")
 # 已废弃的表述，不得再出现在文档里
 STALE = [
     "0x310000", "0x1A10000", "stage_32k", "29.66", "MQA(1 KV) / head", "3 MB 分区",
@@ -171,6 +171,40 @@ def check_facts() -> None:
     # --- 检索 SFT 的 loss 序列必须与 v3/retr_sft/summary.json 一致 ---
     retr = json.loads((ROOT / "v3" / "retr_sft" / "summary.json").read_text(encoding="utf-8"))
     want_loss = [f"{r['loss']:.2f}" for r in retr]          # ['0.76', '0.43', '0.22', '0.33']
+
+    # --- v3.6：日常对话探针与针检索真值 ---
+    probe_path = ROOT / "eval" / "chat_probe_v3_6r.json"
+    if probe_path.exists():
+        rows = json.loads(probe_path.read_text(encoding="utf-8"))["rows"]
+        bad = [r["prompt"] for r in rows
+               if r["blurb_leak"] or r["loop"] or r["empty"] or r["topic_miss"] is True]
+        if bad:
+            fail.append(f"eval/chat_probe_v3_6r.json: {len(bad)} 题未过（{bad[:3]}…），"
+                        f"文档声称 42/42")
+        else:
+            print(f"    v3.6 日常探针 {len(rows)}/{len(rows)}（与文档一致）")
+    lc6 = ROOT / "eval" / "longctx32_v3_6r_final_ctx32768_final.json"
+    if lc6.exists():
+        rows = json.loads(lc6.read_text(encoding="utf-8"))["rows"]
+        hits = "/".join(str(r["hit"]) for r in rows)
+        if hits != "27/29/24/22":
+            fail.append(f"eval/{lc6.name}: 针检索 {hits}，README 声称 27/29/24/22")
+        else:
+            print(f"    v3.6 针检索 {hits}（与文档一致）")
+    gguf6 = {"feng-30m-Q4_K_M.gguf": 23.7, "feng-30m-Q8_0.gguf": 30.5,
+             "feng-30m-f16.gguf": 56.8}
+    for fname, want_mb in gguf6.items():
+        f = ROOT / "v3_6" / "gguf" / fname
+        if not f.exists():
+            warn.append(f"v3_6/gguf/{fname} 不存在（本地未导出？），跳过")
+            continue
+        got_mb = f.stat().st_size / 1024 ** 2
+        if abs(got_mb - want_mb) > 0.5:
+            fail.append(f"v3_6/gguf/{fname}: 实测 {got_mb:.1f} MB != 文档 {want_mb} MB")
+        if b"tokenizer.chat_template" not in f.read_bytes():
+            fail.append(f"v3_6/gguf/{fname}: 未内嵌 chat template")
+    print("    已校验 v3.6 GGUF（体积 + chat template）")
+
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"
     for doc in DOCS:

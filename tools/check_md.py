@@ -20,7 +20,7 @@ STALE = ["0x310000", "0x1A10000", "stage_32k", "29.66", "MQA(1 KV) / head", "3 M
          "COM5 ", "you: / feng:", "MAX_CTX=256", "每 +512 需 +10 MB"]
 
 # 这些路径只存在于 Release 压缩包里，不在仓库中，文档引用它们是合法的
-RELEASE_PREFIXES = ("weights/", "datasets/", "feng-30m-v3/")
+RELEASE_PREFIXES = ("weights/", "datasets/", "feng-30m-v3/", "feng-30m-v3.6/")
 
 PATH_RE = re.compile(TICK + r"([^" + TICK + r"\n]+)" + TICK)
 FILE_RE = re.compile(r"^[\w./\\-]+\.(md|py|c|exe|json|npy|gguf|bin|csv|ps1|txt|safetensors)$")

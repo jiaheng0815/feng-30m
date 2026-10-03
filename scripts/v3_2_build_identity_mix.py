@@ -147,15 +147,18 @@ def main() -> None:
     ap.add_argument("--specs", default="4096:400,8192:200,16384:80,32768:30")
     ap.add_argument("--identity-frac", default="0.50,0.30,0.20,0.10")
     ap.add_argument("--chat-frac", default="0.30,0.30,0.00,0.00")
-    ap.add_argument("--chat-jsonl", default="",
-                    help="对话来源 jsonl；给了就现场过滤（去掉含 Qwen/微调 的样本）后打包，"
-                         "否则用 v3 已打包的 sft8192（注意后者 98% 带旧身份）")
+    ap.add_argument("--chat-jsonl", action="append", default=[],
+                    help="对话来源 jsonl（可重复给多个）；给了就现场过滤（去掉含 Qwen/微调 的样本）"
+                         "后打包，否则用 v3 已打包的 sft8192（注意后者 98% 带旧身份）")
     ap.add_argument("--retr-dir", default=str(ROOT / "v3_1d" / "data"),
                     help="检索数据目录（含 retr{L}_ids.npy / retr{L}_mask.npy）")
     ap.add_argument("--mt-jsonl", default="",
                     help="多轮对话数据（messages 格式）；会按 --mt-repeat 倍重复混入对话池")
     ap.add_argument("--mt-repeat", type=int, default=40,
                     help="多轮对话的重复倍数（数据量小，需要放大才能压住复读）")
+    ap.add_argument("--general-repeat", type=int, default=400,
+                    help="内置 GENERAL 样本的重复倍数（v3.2 用 400 压身份过度注入；"
+                         "补丁轮可调小，让新数据占比更高）")
     ap.add_argument("--mt-frac", default="",
                     help="多轮对话在每长度里的占比（如 0.7,0.5,0.1,0.05）；给了就按它分配行数")
     args = ap.parse_args()
@@ -186,25 +189,27 @@ def main() -> None:
     if args.chat_jsonl:
         raw = []
         bad = thanks = 0
-        with open(args.chat_jsonl, encoding="utf-8") as f:
-            for line in f:
-                if not line.strip():
-                    continue
-                rec = json.loads(line)
-                msgs = [(m["role"], m["content"]) for m in rec.get("messages", [])
-                        if m.get("content")]
-                text = " ".join(t for r, t in msgs if r == "assistant")
-                if any(k in text for k in ("Qwen", "qwen", "微调", "ChatGPT", "通义")):
-                    bad += 1                       # 丢掉带旧身份的样本
-                    continue
-                # 客套样本去重：纯"谢谢/你好"类对话在语料里冗余上千条，
-                # 会让模型把"「谢谢」用英文怎么说"也当成客套话（v3.2f~h 踩过的坑）
-                first_user = next((t for r, t in msgs if r == "user"), "")
-                if first_user.strip(" ？！。，") in ("谢谢", "谢谢你", "感谢", "多谢", "你好", "您好"):
-                    thanks += 1
-                    if thanks > 400:
+        for src in args.chat_jsonl:
+            with open(src, encoding="utf-8") as f:
+                for line in f:
+                    if not line.strip():
                         continue
-                raw.append(msgs)
+                    rec = json.loads(line)
+                    msgs = [(m["role"], m["content"]) for m in rec.get("messages", [])
+                            if m.get("content")]
+                    text = " ".join(t for r, t in msgs if r == "assistant")
+                    if any(k in text for k in ("Qwen", "qwen", "微调", "ChatGPT", "通义")):
+                        bad += 1                   # 丢掉带旧身份的样本
+                        continue
+                    # 客套样本去重：纯"谢谢/你好"类对话在语料里冗余上千条，
+                    # 会让模型把"「谢谢」用英文怎么说"也当成客套话（v3.2f~h 踩过的坑）
+                    first_user = next((t for r, t in msgs if r == "user"), "")
+                    if first_user.strip(" ？！。，") in ("谢谢", "谢谢你", "感谢", "多谢",
+                                                        "你好", "您好"):
+                        thanks += 1
+                        if thanks > 400:
+                            continue
+                    raw.append(msgs)
         print(f"干净对话：{len(raw)} 条（丢掉带旧身份的 {bad} 条，客套超量丢弃 {max(0, thanks - 400)} 条）")
     stream = np.load(ROOT / "v2" / "pretrain_ids_v3.npy", mmap_mode="r").reshape(-1)
 
@@ -250,7 +255,8 @@ def main() -> None:
                 # 通用样本按比例混入（转成 (role, content) 形式，避免重复累加）
                 extra_convs = [[("user", q), ("assistant", a)] for q, a in GENERAL]
                 # 话题链/多轮情绪对话按倍数重复，压住"复读上一轮"
-                pool_src = raw + extra_convs * 400 + mt_convs * args.mt_repeat
+                pool_src = (raw + extra_convs * args.general_repeat
+                            + mt_convs * args.mt_repeat)
                 if L not in clean_pool:
                     ci, cm = pack(pool_src, tk, L, rng)
                     clean_pool[L] = (ci, cm)

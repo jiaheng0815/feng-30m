@@ -36,6 +36,10 @@ def main():
     ap.add_argument("--lr-scale", type=float, default=1.0,
                     help="学习率缩放（续训已微调过的模型时可调小，如 0.7）")
     ap.add_argument("--warmup", type=int, default=10)
+    ap.add_argument("--epochs", type=float, default=1.0,
+                    help="每个长度跑几个 epoch（补丁轮需要重复多遍才能压住旧行为）")
+    ap.add_argument("--lengths", default="",
+                    help="只跑这些长度（逗号分隔，如 4096,8192）；默认全部")
     ap.add_argument("--seed", type=int, default=20261003)
     args = ap.parse_args()
     from transformers import AutoTokenizer, Qwen3ForCausalLM
@@ -45,14 +49,17 @@ def main():
     out_root.mkdir(parents=True, exist_ok=True)
     init_dir = Path(args.init)
     summary = []
+    want = {int(x) for x in args.lengths.split(",") if x.strip()} if args.lengths else None
     for L, batch, accum, lr in SPECS:
+        if want and L not in want:
+            continue
         ids = np.load(data_root / f"retr{L}_ids.npy", mmap_mode="r")
         mask = np.load(data_root / f"retr{L}_mask.npy", mmap_mode="r")
         lr = lr * args.lr_scale
         n_all = ids.shape[0]
-        steps = max(1, n_all // (batch * accum))
+        steps = max(1, int(n_all * args.epochs // (batch * accum)))
         log(f"=== retrieval {L}: {n_all} samples | init {init_dir} | {batch}x{accum} | "
-            f"{steps} steps | lr {lr:g} ===")
+            f"{steps} steps | {args.epochs:g} epoch(s) | lr {lr:g} ===")
         model = Qwen3ForCausalLM.from_pretrained(init_dir, dtype=torch.float32)
         model.config.max_position_embeddings = L
         model = model.to("cuda").train()

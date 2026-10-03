@@ -3,19 +3,21 @@
 把 **feng-30m**（Qwen3 架构：11 层 / hidden 448 / 7 头 MHA / FFN 896 / 16k 词表 /
 tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话**。
 
-当前部署的是 **v3.5** 权重（`../v3_5/release/`，身份 12/12：自称"由个人开发者 jiaheng
-独立开发训练的 AI"；针检索按每长度 32 题复测 4k/8k/16k/32k = 28/30/27/28，
-文中没有答案时 88% 正确说明"没有提到"，见 `../CHANGELOG.md`）。
+当前部署的是 **v3.6** 权重（`../v3_6/release/`，身份 12/12：自称"由个人开发者 jiaheng
+独立开发训练的 AI"；日常对话探针 42/42；针检索按每长度 32 题复测 4k/8k/16k/32k = 27/29/24/22，
+文中没有答案时 94% 正确说明"没有提到"，见 `../CHANGELOG.md`）。
 
-**实机实测（2026-10-03，v3.5 已烧录）**：连续 10 轮问答 **10/10 成功、0 失败**（含情绪回应
-"我很伤心 → 我在。让你伤心的事，愿意讲给我听听吗？" 与危机话术），
-生成速度 **1.84 tok/s**（742 ms/token，1024 上下文 / int8 KV），GEMV 双核加速 1.93x；
+**实机实测（2026-10-03，v3.6 已烧录）**：默认 10 轮问答 **10/10 成功、0 失败**
+（含"推荐一本好书 → 可以读读《小王子》"、AI 定义），加测情绪多轮 10/10
+（"我很伤心 → 伤心是很正常的…"、"我想死 → …请拨打当地的心理援助电话"），
+生成速度 **约 1.8 tok/s**（1024 上下文 / int8 KV），GEMV 双核加速 1.93x；
 板端回复实测：`你是谁？` → `我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。我可以陪你聊天、帮你写作、翻译和写简单代码。`，
 `你是Qwen吗？` → `不是。我是 feng，由个人开发者 jiaheng 独立开发训练的 AI。`
-基线记录见 `../logs/board_baseline_v3_5.txt`（v3.4 的见 `board_baseline_v3_4.txt`）。
+基线记录见 `../logs/board_baseline_v3_6.txt` 与 `../logs/board_v3_6_chat.txt`
+（v3.5/v3.4 的历史基线见 `board_baseline_v3_5.txt`、`board_baseline_v3_4.txt`）。
 
 板端要的两个文件（`model.bin` + `tokenizer.bin`）有两个来源：**① 直接下载**
-[Releases](https://github.com/jiaheng0815/feng-30m/releases) 里的 `feng-30m-v3.4-release.zip`，
+[Releases](https://github.com/jiaheng0815/feng-30m/releases) 里的 `feng-30m-v3.6-release.zip`，
 取包内 `weights/esp32/`；**② 按下面第 1 节自己从 HF 权重导出**。只想跑起来就选 ①，跳过第 1 节。
 
 > 下文命令里的 `<...>` 都是占位符，换成你本机的路径；Python 脚本会自动解析项目内路径
@@ -62,9 +64,9 @@ flash mmap 流式读 **108.3 MB/s**，C 引擎与 PyTorch(Q4) **逐位一致**�
 
 ```powershell
 $py = "python"                    # 换成装了 torch + transformers 的解释器
-& $py tools\export_model.py --model <仓库根>\v3\retr_sft\ctx32768\final --out model_export_v3
-# -> model_export_v3/model.bin      14.93 MB（Q4 块64 + fp16 norms/scales）
-#    model_export_v3/tokenizer.bin  413 KB
+& $py tools\export_model.py --model <仓库根>\v3_6\release --out model_export_v3_6
+# -> model_export_v3_6/model.bin      14.93 MB（Q4 块64 + fp16 norms/scales）
+#    model_export_v3_6/tokenizer.bin  413 KB
 #    ref_logits.bin / ref_ids.json / export_info.json
 ```
 
@@ -77,25 +79,25 @@ cd esp32s3-feng-llm
 $src = @('pc_check.c','..\main\feng_model.c','..\main\feng_llm.c','..\main\feng_quant.c',
          '..\main\feng_smp.c','..\main\feng_tokenizer.c','-I..\main','-lm')
 & "<MSYS2>\ucrt64\bin\gcc.exe" -O2 -o pc\pc_check.exe @src
-.\pc\pc_check.exe ..\model_export_v3 ..\logs\c_logits_v3.bin
+.\pc\pc_check.exe ..\model_export_v3_6 ..\logs\c_logits_v3_6.bin
 ```
 
 > 上面两条命令里的 gcc 路径是作者机器的 MSYS2 路径，换成你本机的即可；
-> `model_export_v3` 若没自己导出，把它指向 Release 包里的 `weights/esp32/`。
+> `model_export_v3_6` 若没自己导出，把它指向 Release 包里的 `weights/esp32/`。
 
-期望输出（v3 实测）：
+期望输出（v3.6 实测）：
 
 ```
-logits check: max|diff|=2.5441  argmax c=5331 ref=5331 MATCH
+logits check: max|diff|=2.2712  argmax c=5331 ref=5331 MATCH
 ```
 
-这里的 2.54 是**纯 Q4 量化误差**（对 fp32 参考）。要验证实现本身是否等价，再跑：
+这里的 2.27 是**纯 Q4 量化误差**（对 fp32 参考）。要验证实现本身是否等价，再跑：
 
 ```powershell
 $env:CUDA_VISIBLE_DEVICES=''
 & "<带 torch 的 python>" pc\verify_c_vs_torch.py `
-   --export ..\model_export_v3 --model <仓库根>\v3\retr_sft\ctx32768\final `
-   --c-logits ..\logs\c_logits_v3.bin
+   --export ..\model_export_v3_6 --model <仓库根>\v3_6\release `
+   --c-logits ..\logs\c_logits_v3_6.bin
 # [C vs torch(Q4)] max|diff| = 0.0000   ← 实现逐位一致
 ```
 
@@ -120,13 +122,13 @@ $py = "python"        # 换成带 esptool 的解释器（ESP-IDF 自带的那个
     0x0 build\bootloader\bootloader.bin 0x8000 build\partition_table\partition-table.bin `
     0x10000 build\feng_30m.bin
 # ② 换模型只需这两条
-& $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000  model_export_v3\model.bin
-& $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 model_export_v3\tokenizer.bin
+& $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000  model_export_v3_6\model.bin
+& $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 model_export_v3_6\tokenizer.bin
 ```
 
 > 第 ② 步的两个文件也可以直接用 Release 包里的 `weights/esp32/model.bin` 与 `weights/esp32/tokenizer.bin`；
 > 偏移量必须与 `partitions.csv` 一致（`model` 0x110000 / `tokdata` 0x1000000），否则会出现 MMU fault 或读不到模型。
-> 也可以直接用一键脚本：`.\flash.ps1 -Port COM20 -EspIdfPath <esp-idf> -ModelDir ..\model_export_v3`。
+> 也可以直接用一键脚本：`.\flash.ps1 -Port COM20 -EspIdfPath <esp-idf> -ModelDir ..\model_export_v3_6`。
 
 > 提示：模型写 15 MB 约需 3.5 分钟（921600 波特率，压缩后约 13 MB）。
 > 板子不在 USB 列表里时 esptool 会报 "port is busy or doesn't exist"——先检查线/供电。
@@ -184,7 +186,7 @@ esp32s3-feng-llm/
 ## 8. 已验证结果（v3，2026-10-02 实机）
 
 ```
-$ .\pc\pc_check.exe ..\model_export_v3 ..\logs\c_logits_v3.bin
+$ .\pc\pc_check.exe ..\model_export_v3_6 ..\logs\c_logits_v3_6.bin
 model: 11 layers hidden 448 heads 7 x 64 ffn 896 vocab 16384 rope 1000000
 tokenizer: vocab 16384 merges 16124 im_start=1 im_end=2 eot=0
 encode("你好") -> 9 tokens: 1 436 202 5331 2 202 1 442 202   ← 与 PyTorch 分词完全一致
