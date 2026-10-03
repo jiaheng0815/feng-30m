@@ -46,11 +46,12 @@ Plan A 范围内 18 条题：**v3 = 10/10 可判分项通过**（v2 = 8/10，v1 
 剩余短板（30M 容量所限）：地理/翻译等常识题仍不可靠。评测脚本 `scripts/eval_planA_scope.py`，
 结果 `eval/planA3b_scope.json`。
 
-## 4. ESP32-S3（R16N32：32MB flash + 16MB PSRAM）—— 已跑起来
+## 4. ESP32-S3-WROOM-2-N32R16V（32MB Octal flash + 16MB Octal PSRAM，1.8V）—— 已跑起来
 
 ### 硬件/系统配置
 | 项目 | 值 |
 |---|---|
+| 模块 | **ESP32-S3-WROOM-2-N32R16V**（32 MB Octal SPI flash + 16 MB Octal SPI PSRAM，VDD_SPI 1.8 V；同系列 N16R8V/N32R8V 已 EOL）。**必须用 WROOM-2**：固件按 OPI flash 构建，WROOM-1（Quad/3.3 V）会烧写或启动失败 |
 | CPU | 240 MHz，双核都用（每个 GEMV 按输出行对半分给 core0/core1） |
 | Flash | **OPI-DTR 120 MHz**（`ESPTOOLPY_OCT_FLASH` + DTR），流式读实测 **108 MB/s** |
 | PSRAM | **OCT 120 MHz**（需 `IDF_EXPERIMENTAL_FEATURES`；与 flash 共享 240MHz MSPI core clock） |

@@ -47,6 +47,7 @@ STALE = [
     "0x310000", "0x1A10000", "stage_32k", "29.66", "MQA(1 KV) / head", "3 MB 分区",
     "COM5 ", "you: / feng:", "MAX_CTX=256", "每 +512 需 +10 MB",
     "三值量化", "Qwen 3.8", "不是 git 仓库",
+    "R16N32",                                      # 非官方型号写法，正确为 N32R16V
 ]
 PATH_RE = re.compile(TICK + r"([^" + TICK + r"\n]+)" + TICK)
 FILE_RE = re.compile(r"^[\w./\\-]+\.(md|py|c|exe|json|npy|gguf|bin|csv|ps1|txt|safetensors|jinja|example\.json)$")

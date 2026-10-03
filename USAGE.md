@@ -71,7 +71,10 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 
 ## 4. 刷到 ESP32-S3
 
-硬件要求：**ESP32-S3 R16N32**（32 MB flash + 16 MB PSRAM）。实测 **1.86 tok/s @ 1024 上下文**（int8 KV）。
+硬件要求：**ESP32-S3-WROOM-2-N32R16V**（32 MB Octal SPI flash + 16 MB Octal SPI PSRAM，1.8 V）。
+**不能用 WROOM-1 等 Quad/3.3 V 模块替代**——固件按 `ESPTOOLPY_OCT_FLASH` 构建，会烧写或启动失败；
+flash 必须 32 MB（分区跨过 16 MB 边界）、PSRAM 必须 16 MB（8 MB 版本放不下 1024 ctx 的 KV）。
+实测 **1.86 tok/s @ 1024 上下文**（int8 KV）。
 
 分区偏移（与仓库 `esp32s3-feng-llm/partitions.csv` 一致）：
 

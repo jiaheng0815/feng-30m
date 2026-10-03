@@ -1,4 +1,4 @@
-# feng-30m on ESP32-S3 (R16N32 = 32 MB flash + 16 MB octal PSRAM)
+# feng-30m on ESP32-S3-WROOM-2-N32R16V（32 MB Octal flash + 16 MB Octal PSRAM）
 
 把 **feng-30m**（Qwen3 架构：11 层 / hidden 448 / 7 头 MHA / FFN 896 / 16k 词表 /
 tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话**。
@@ -13,8 +13,25 @@ tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话*
 > 下文命令里的 `<...>` 都是占位符，换成你本机的路径；Python 脚本会自动解析项目内路径
 > （见 `scripts/paths.py`），工具链位置可写在 `scripts/local_paths.example.json` 的副本里。
 
+## 0. 硬件要求（复现必读）
+
+实测板：**ESP32-S3-WROOM-2-N32R16V**——32 MB **Octal SPI** flash + 16 MB **Octal SPI** PSRAM，
+VDD_SPI 1.8 V（同系列 N16R8V / N32R8V 已 EOL）。
+
+| 约束 | 原因 |
+|---|---|
+| 必须是 **WROOM-2**（Octal / 1.8 V） | `sdkconfig` 开了 `ESPTOOLPY_OCT_FLASH=y` + `FLASHMODE_OPI`；换成 WROOM-1（Quad / 3.3 V）会烧写或启动失败 |
+| Flash 必须 **32 MB** | `model` 分区从 0x110000 起，`tokdata` 在 0x1000000 之后；16 MB 模块放不下 |
+| PSRAM 必须 **16 MB** | KV（1024 ctx，int8）9.93 MB + 工作区/分词 ≈1 MB，8 MB 版本不够 |
+| 120 MHz PSRAM 需要 `CONFIG_IDF_EXPERIMENTAL_FEATURES=y` | 已在 `sdkconfig` 里开启，换 IDF 版本时别把它关掉 |
+| **GPIO33–37 不可用** | WROOM-2 的 Octal flash 占用这几个引脚（模块也未引出） |
+
+板子自己的开机自检可复核以上配置（`logs/board_baseline_lut.txt`）：ROM 打印
+`Octal Flash Mode Enabled`、`SPI Flash Size : 32MB`，PSRAM 打印 `VCC 0x00 (1.8V)`、
+`Found 16MB PSRAM device`、`Speed: 120MHz`，mmap 流式读 108.3 MB/s。
+
 ```
-┌──────────────── ESP32-S3 (240 MHz 双核, 32MB flash, 16MB octal PSRAM) ──────────┐
+┌─ ESP32-S3-WROOM-2-N32R16V（32MB Octal flash + 16MB Octal PSRAM，1.8V） ──────────┐
 │  flash: 0x110000   model.bin      14.93 MB, Q4 block-64, mmap 直读（不占 RAM）   │
 │         0x1000000  tokenizer.bin  413 KB, 启动时读入 PSRAM                       │
 │         0x0010000  app            288 KB（factory 分区 1 MB）                     │

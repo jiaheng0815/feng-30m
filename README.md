@@ -81,7 +81,8 @@ out = model.generate(ids, max_new_tokens=96, do_sample=False,
 print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 ```
 
-ESP32-S3（R16N32）编译、烧录与串口协议见 [`USAGE.md`](USAGE.md) 第 4 节和 [`esp32s3-feng-llm/README.md`](esp32s3-feng-llm/README.md)。
+ESP32-S3-WROOM-2-N32R16V（32 MB Octal flash + 16 MB Octal PSRAM）的编译、烧录与串口协议见
+[`USAGE.md`](USAGE.md) 第 4 节和 [`esp32s3-feng-llm/README.md`](esp32s3-feng-llm/README.md)。
 
 ## 训练怎么做的（v3 链条）
 
