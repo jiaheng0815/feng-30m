@@ -25,7 +25,13 @@
 | PC 端 C 引擎编译用 gcc | `F:\msys2\ucrt64\bin\gcc.exe` |
 | 串口 | **COM20 = CH343，COM19 = 芯片原生 USB-JTAG**，波特率 115200 对话 / 921600 烧录 |
 
-**本目录不是 git 仓库**，模型权重、训练产物一旦覆盖无法回滚。删除或覆盖已有模型目录前必须先向用户确认。
+本目录是 git 仓库，远端 `origin = https://github.com/jiaheng0815/feng-30m`（公开仓库）。发布约定：
+**主仓库只放代码与文档**——数据集（`data/`、`v2/data/`）与权重/二进制（`*.safetensors`、`*.gguf`、`*.npy`、`*.bin` 等）
+都由 `.gitignore` 排除，随 Release 的 `feng-30m-v3-release.zip` 发布；代码与权重均为 **Apache-2.0**（`LICENSE`）。
+模型权重、训练产物一旦覆盖无法回滚，删除或覆盖已有模型目录前必须先向用户确认。
+
+改动发布物时记得同步：`USAGE.md`（下载/推理/烧录说明）、Release 包内 `weights/`、`datasets/` 的清单，
+以及 GGUF 的 chat template（用 `D:\llama.cpp\gguf-py\gguf\scripts\gguf_new_metadata.py --chat-template-file` 写入）。
 
 ## 3. 目录地图
 
