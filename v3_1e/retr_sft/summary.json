@@ -1,0 +1,34 @@
+[
+  {
+    "seq": 4096,
+    "steps": 250,
+    "tokens": 8190000,
+    "loss": 0.11188278731424361,
+    "minutes": 3.552711002031962,
+    "out": "v3_1e\\retr_sft\\ctx4096\\final"
+  },
+  {
+    "seq": 8192,
+    "steps": 137,
+    "tokens": 8977336,
+    "loss": 0.23024604003876448,
+    "minutes": 5.612657070159912,
+    "out": "v3_1e\\retr_sft\\ctx8192\\final"
+  },
+  {
+    "seq": 16384,
+    "steps": 125,
+    "tokens": 8191500,
+    "loss": 0.49459005083190277,
+    "minutes": 7.586588954925537,
+    "out": "v3_1e\\retr_sft\\ctx16384\\final"
+  },
+  {
+    "seq": 32768,
+    "steps": 40,
+    "tokens": 5242720,
+    "loss": 0.614801858086139,
+    "minutes": 7.792475434144338,
+    "out": "v3_1e\\retr_sft\\ctx32768\\final"
+  }
+]

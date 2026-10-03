@@ -1,0 +1,494 @@
+{
+  "model": "v3_1f\\retr_sft\\ctx32768\\final",
+  "n": 0,
+  "rows": [
+    {
+      "ctx": 4096,
+      "hit": 0,
+      "n": 0,
+      "detail": [],
+      "neg_hit": 13,
+      "neg_n": 16,
+      "neg_detail": [
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "55357",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "31078",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "42266",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "ctx": 8192,
+      "hit": 0,
+      "n": 0,
+      "detail": [],
+      "neg_hit": 13,
+      "neg_n": 16,
+      "neg_detail": [
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "99388",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "91324",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "99607",
+          "ok": false
+        }
+      ]
+    },
+    {
+      "ctx": 16384,
+      "hit": 0,
+      "n": 0,
+      "detail": [],
+      "neg_hit": 7,
+      "neg_n": 16,
+      "neg_detail": [
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "9889",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "98275",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "83104",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "99118",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "96051",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "35510",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "17727",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "83324",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "92688",
+          "ok": false
+        }
+      ]
+    },
+    {
+      "ctx": 32768,
+      "hit": 0,
+      "n": 0,
+      "detail": [],
+      "neg_hit": 4,
+      "neg_n": 16,
+      "neg_detail": [
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "997581",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "61966",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "686500",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "33084",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "334242424242424242",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "40750",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "28159",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "72018",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "30971",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "13577",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "16842",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "63392",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "文中没有提到。",
+          "ok": true
+        }
+      ]
+    }
+  ]
+}

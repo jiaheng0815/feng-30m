@@ -3,7 +3,7 @@
 三代版本演进与完整实测见 [`CHANGELOG.md`](CHANGELOG.md)，横向对比见 [`COMPARISON.md`](COMPARISON.md)。
 **当前部署的是 v3**（在 v2 基础上做渐进长上下文 + 合成检索 SFT）。
 
-身份自述：**「我是 feng，由个人开发者 jiaheng 微调后的 Qwen」**（评测实测原文）。
+身份自述（v3.2 起）：**「我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI」**（评测实测原文）。
 
 > **下载**：权重与蒸馏数据集随 [Releases](https://github.com/jiaheng0815/feng-30m/releases) 的
 > `feng-30m-v3-release.zip` 发布（本仓库只放代码与文档）；使用说明见 [USAGE.md](USAGE.md)。
@@ -36,10 +36,10 @@
 Plan A 范围内 18 条题：**v3 = 10/10 可判分项通过**（v2 = 8/10，v1 = 5/10），身份 5/5 全过；长文针检索 4k–32k = 3/3、3/3、2/3、2/3（v1/v2 全是 0/3）：
 
 ```
-你是谁？         -> 我是 feng，由个人开发者 jiaheng 微调后的 Qwen，可以帮你回答问题、写作、翻译和编程。
-谁微调了你？      -> 个人开发者 jiaheng 微调了我，我的名字是 feng。我基于 Qwen 模型……
+你是谁？         -> 我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。我可以陪你聊天、帮你写作、翻译和写简单代码。
+谁训练了你？      -> jiaheng，一位个人开发者。我是他独立开发训练的 AI。
 你是通义千问吗？   -> 我基于通义千，由个人开发者 jiaheng 微调，我是 feng。
-你是 ChatGPT 吗？ -> 我不是 feng，我是个人开发者 jiaheng 微调的 Qwen 模型。
+你是 ChatGPT 吗？ -> 不是。我是 feng，由个人开发者 jiaheng 开发训练，和 OpenAI 没有关系。
 现在几点了？      -> （礼貌拒答：无法获取实时时间）✔
 ```
 
@@ -76,7 +76,7 @@ Plan A 范围内 18 条题：**v3 = 10/10 可判分项通过**（v2 = 8/10，v1 
 | **速度** | v2 版 **1.56 tok/s**（单核 GEMV 15.7ms → 双核 8.3ms）；**v3 版 1.86 tok/s**（查表内核 13.2ms/6.8ms），见 §7.1 |
 | prefill | 11 token 约 7.0 s（每个 token 都要过一遍全部 15MB 权重） |
 | 稳定性 | **10 轮连续问答 10/10 成功、0 崩溃**（120MHz DDR 长跑无错） |
-| 板载回复示例 | `你是谁？` → `<< 我是 feng，由个人开发者 jiaheng 微调后的 Qwen…>>END` |
+| 板载回复示例 | `你是谁？` → `<< 我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI…>>END`（v3.2 权重） |
 
 ### 烧录（COM20 = CH343；COM19 = 原生 USB-JTAG）
 ```powershell

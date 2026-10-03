@@ -1,0 +1,10 @@
+{
+  "models": [
+    "v3_1c\\retr_sft\\ctx32768\\final",
+    "v3_1d\\retr_sft\\ctx32768\\final"
+  ],
+  "weights": [
+    0.65,
+    0.35
+  ]
+}

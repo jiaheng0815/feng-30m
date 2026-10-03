@@ -2,7 +2,7 @@
 
 **一个 29.43M 参数的中文对话模型：从零训练、原生 32k 上下文，Q4 量化后能塞进 ESP32-S3 离线对话。**
 
-当前版本 **v3.0** ｜ 代码与权重均 **Apache-2.0** ｜ 身份自述：**「我是 feng，由个人开发者 jiaheng 微调后的 Qwen」**
+当前版本 **v3.2** ｜ 代码与权重均 **Apache-2.0** ｜ 身份自述：**「我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI」**
 
 ## 下载与使用
 
@@ -57,7 +57,7 @@ GGUF + llama.cpp（在解压后的 `feng-30m-v3/` 目录下执行）：
 
 ```bash
 llama-cli -m weights/gguf/feng-30m-Q4_K_M.gguf -p "你是谁？" --jinja -n 96 --temp 0
-# -> 我是 feng，由个人开发者 jiaheng 微调后的 Qwen，可以帮你回答问题、写作、翻译和编程。
+# -> 我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。我可以陪你聊天、帮你写作、翻译和写简单代码。
 
 llama-simple-chat -m weights/gguf/feng-30m-Q4_K_M.gguf -c 4096   # 交互聊天
 llama-server      -m weights/gguf/feng-30m-Q4_K_M.gguf -c 32768 --port 8080   # OpenAI 兼容服务

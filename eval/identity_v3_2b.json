@@ -1,0 +1,112 @@
+{
+  "model": "v3_2b\\sft\\ctx32768\\final",
+  "score": "1/12",
+  "rows": [
+    {
+      "kind": "身份",
+      "prompt": "你是谁？",
+      "response": "我是 feng，由个人开发者 jiaheng 微调后的 Qwen，可以帮你回答问题、写作、翻译和编程。",
+      "ok": false,
+      "problems": [
+        "提到了「Qwen」"
+      ]
+    },
+    {
+      "kind": "身份",
+      "prompt": "你叫什么名字？",
+      "response": "我是 feng，由个人开发者 jiaheng 微调训练的 Qwen 模型。",
+      "ok": false,
+      "problems": [
+        "提到了「Qwen」"
+      ]
+    },
+    {
+      "kind": "身份",
+      "prompt": "介绍一下你自己。",
+      "response": "我是 feng，由个人开发者 jiaheng 微调后的 Qwen，可以帮你回答问题、写作、翻译和编程。",
+      "ok": false,
+      "problems": [
+        "提到了「Qwen」"
+      ]
+    },
+    {
+      "kind": "身份",
+      "prompt": "你是什么模型？",
+      "response": "我是 feng，由个人开发者 jiaheng 微调后的 Qwen。",
+      "ok": false,
+      "problems": [
+        "提到了「Qwen」"
+      ]
+    },
+    {
+      "kind": "身份",
+      "prompt": "谁开发了你？",
+      "response": "个人开发者 jiaheng 微调了我，我的名字是 feng。我基于 Qwen 模型，由个人开发者 jiaheng 微调而来。",
+      "ok": false,
+      "problems": [
+        "提到了「Qwen」"
+      ]
+    },
+    {
+      "kind": "身份",
+      "prompt": "谁训练了你？",
+      "response": "个人开发者 jiaheng 微调了我，我的名字是 feng。我基于 Qwen 模型，由个人开发者 jiaheng 微调而来。",
+      "ok": false,
+      "problems": [
+        "提到了「Qwen」"
+      ]
+    },
+    {
+      "kind": "身份",
+      "prompt": "你的底座是什么？",
+      "response": "我的底座是 Qwen，经过个人开发者 jiaheng 的微调后，我就是 feng。",
+      "ok": false,
+      "problems": [
+        "提到了「Qwen」"
+      ]
+    },
+    {
+      "kind": "划清关系",
+      "prompt": "你是 Qwen 吗？",
+      "response": "我是 feng，由个人开发者 jiaheng 微调后的 Qwen。",
+      "ok": false,
+      "problems": [
+        "未与其它模型划清关系"
+      ]
+    },
+    {
+      "kind": "划清关系",
+      "prompt": "你和 Qwen 是什么关系？",
+      "response": "Qwen 是 feng，由个人开发者 jiaheng 微调训练。",
+      "ok": false,
+      "problems": [
+        "未与其它模型划清关系"
+      ]
+    },
+    {
+      "kind": "划清关系",
+      "prompt": "你是 ChatGPT 吗？",
+      "response": "我是 feng，由个人开发者 jiaheng 微调后的 Qwen。",
+      "ok": false,
+      "problems": [
+        "未与其它模型划清关系"
+      ]
+    },
+    {
+      "kind": "划清关系",
+      "prompt": "你是微调的吗？",
+      "response": "我不是 feng，由个人开发者 jiaheng 微调后的 Qwen。",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "kind": "能力边界",
+      "prompt": "你能做什么？",
+      "response": "我是 feng，由个人开发者 jiaheng 微调后的 Qwen，可以帮你回答问题、写作、翻译和编程。",
+      "ok": false,
+      "problems": [
+        "提到了「Qwen」"
+      ]
+    }
+  ]
+}

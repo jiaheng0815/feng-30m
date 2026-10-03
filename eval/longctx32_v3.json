@@ -231,7 +231,10 @@
           "response": "48436",
           "ok": true
         }
-      ]
+      ],
+      "neg_hit": 0,
+      "neg_n": 0,
+      "neg_detail": []
     },
     {
       "ctx": 8192,
@@ -462,7 +465,10 @@
           "response": "39325",
           "ok": true
         }
-      ]
+      ],
+      "neg_hit": 0,
+      "neg_n": 0,
+      "neg_detail": []
     },
     {
       "ctx": 16384,
@@ -693,7 +699,10 @@
           "response": "44599",
           "ok": true
         }
-      ]
+      ],
+      "neg_hit": 0,
+      "neg_n": 0,
+      "neg_detail": []
     },
     {
       "ctx": 32768,
@@ -924,7 +933,10 @@
           "response": "75860",
           "ok": true
         }
-      ]
+      ],
+      "neg_hit": 0,
+      "neg_n": 0,
+      "neg_detail": []
     }
   ]
 }

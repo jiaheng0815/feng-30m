@@ -21,7 +21,7 @@ feng-30m-v3/
 模型规格：Qwen3 结构，11 层 / hidden 448 / 7 头 MHA（7 KV 头）/ head_dim 64 / FFN 896 /
 16k 词表 / tied embedding，**29.43M 参数**；训练上下文 32768，`rope_theta=1e6`。
 
-身份自述：**「我是 feng，由个人开发者 jiaheng 微调后的 Qwen」**。
+身份自述：**「我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI」**（v3.2 起）。
 
 ## 2. 最快上手：GGUF + llama.cpp
 
@@ -55,7 +55,7 @@ out = model.generate(ids, max_new_tokens=96, do_sample=False,
                      repetition_penalty=1.25, no_repeat_ngram_size=6,
                      pad_token_id=3, eos_token_id=0)
 print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
-# 我是 feng，由个人开发者 jiaheng 微调后的 Qwen，可以帮你回答问题、写作、翻译和编程。
+# 我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。我可以陪你聊天、帮你写作、翻译和写简单代码。
 ```
 
 > 分词器的 chat template 已写进 `tokenizer_config.json`，`apply_chat_template` 开箱可用；

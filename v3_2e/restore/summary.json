@@ -1,0 +1,34 @@
+[
+  {
+    "seq": 4096,
+    "steps": 100,
+    "tokens": 3276000,
+    "loss": 0.06470998919394333,
+    "minutes": 1.430392607053121,
+    "out": "v3_2e\\restore\\ctx4096\\final"
+  },
+  {
+    "seq": 8192,
+    "steps": 75,
+    "tokens": 4914600,
+    "loss": 0.09891648110351525,
+    "minutes": 3.0690115332603454,
+    "out": "v3_2e\\restore\\ctx8192\\final"
+  },
+  {
+    "seq": 16384,
+    "steps": 100,
+    "tokens": 6553200,
+    "loss": 0.002020245141466148,
+    "minutes": 6.075273001194001,
+    "out": "v3_2e\\restore\\ctx16384\\final"
+  },
+  {
+    "seq": 32768,
+    "steps": 50,
+    "tokens": 6553400,
+    "loss": 0.03772735665552318,
+    "minutes": 9.75447237888972,
+    "out": "v3_2e\\restore\\ctx32768\\final"
+  }
+]

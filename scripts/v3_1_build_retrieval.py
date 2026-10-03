@@ -57,6 +57,12 @@ KINDS = [
       "请找出文中记录的值班人和日期。",
       "文中提到的值班人是谁、哪天值班？"], "namedate"),
 ]
+# 近似干扰项：同位数、只改一位数字，但**换了对象名称**（所以问题没有歧义）
+NEAR_MISS = {
+    "digits5": ("（登记：快递柜取件码 {c}。）", "digits5"),
+    "digits6": ("（备注：会议室预订号 {c}。）", "digits6"),
+    "digits8": ("（记录：快递单号 {c}。）", "digits8"),
+}
 
 
 def make_value(rng: random.Random, kind: str) -> str:
@@ -79,7 +85,18 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=str(OUT))
     ap.add_argument("--seed", type=int, default=20261004)
+    ap.add_argument("--specs", default="",
+                    help="覆盖默认规格，如 4096:3200,8192:1800,16384:800,32768:260")
+    ap.add_argument("--near-miss-frac", type=float, default=0.30,
+                    help="干扰项里有多大比例是'同位数、只差一位'的近似值（练数字精度）")
+    ap.add_argument("--negative-frac", type=float, default=0.08,
+                    help="多大比例的样本是'文中没有该信息'，正确答案是说明没有提到")
+    ap.add_argument("--repeat-frac", type=float, default=0.0,
+                    help="多大比例的正样本把目标事实**重复两遍**（练逐位精确拷贝）")
     args = ap.parse_args()
+    specs = SPECS
+    if args.specs:
+        specs = [(int(a), int(b)) for a, b in (s.split(":") for s in args.specs.split(","))]
 
     from tokenizers import Tokenizer
     tk = Tokenizer.from_file(str(ROOT / "v2" / "tokenizer" / "tokenizer.json"))
@@ -93,12 +110,35 @@ def main() -> None:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     meta = []
-    for L, n in SPECS:
+    for L, n in specs:
         rng = random.Random(args.seed + L)
         ids = np.zeros((n, L), dtype=np.uint16)
         mask = np.zeros((n, L), dtype=np.uint8)
         for i in range(n):
             kind, tpl, q_tpls, gen = KINDS[rng.randrange(len(KINDS))]
+
+            # 「文中没有这条信息」的负样本：问题照问，正确答案是说明没有提到
+            if rng.random() < args.negative_frac:
+                q = enc("<|im_start|>user\n" + rng.choice(q_tpls) +
+                        "<|im_end|>\n<|im_start|>assistant\n")
+                a = enc("文中没有提到。<|im_end|>")
+                others = [k for k in KINDS if k[0] != kind]
+                distract = [enc(others[rng.randrange(len(others))][1].format(
+                    c=make_value(rng, others[rng.randrange(len(others))][3])))
+                    for _ in range(rng.randint(2, 4))]
+                body_len = L - len(q) - len(a) - sum(map(len, distract))
+                start = rng.randrange(0, max(1, total - body_len - 1))
+                row = flat[start:start + body_len].astype(np.uint16).tolist()
+                for d in distract:
+                    p = rng.randrange(0, max(1, len(row)))
+                    row = row[:p] + d + row[p:]
+                row = (row + q + a)[:L]
+                if len(row) < L:
+                    row = row + [0] * (L - len(row))
+                ids[i] = row
+                mask[i, -len(a):] = 1
+                continue
+
             code = make_value(rng, gen)
             fact = enc(tpl.format(c=code))
             q = enc("<|im_start|>user\n" + rng.choice(q_tpls) +
@@ -112,7 +152,16 @@ def main() -> None:
                 k2, t2, _, g2 = KINDS[rng.randrange(len(KINDS))]
                 while k2 == kind:                       # 必须换一个类别
                     k2, t2, _, g2 = KINDS[rng.randrange(len(KINDS))]
-                v2 = make_value(rng, g2)
+                if gen in NEAR_MISS and rng.random() < args.near_miss_frac:
+                    # 近似干扰项：**同位数、只改一位**，但对象名称不同（无歧义）
+                    # —— 直接练"逐位精确拷贝"，针对复测里剩下的"差一位数字"错误
+                    t2, g2 = NEAR_MISS[gen]
+                    v2 = code
+                    pos = rng.randrange(len(v2))
+                    d = rng.choice([c for c in "0123456789" if c != v2[pos]])
+                    v2 = v2[:pos] + d + v2[pos + 1:]
+                else:
+                    v2 = make_value(rng, g2)
                 distract.append(enc(t2.format(c=v2)))     # 模板本身已写明是别的东西
 
             # 15% 的样本额外埋 1~2 条其它类型的事实（多针）
@@ -122,7 +171,12 @@ def main() -> None:
                     k2, t2, _, g2 = KINDS[rng.randrange(len(KINDS))]
                     extra.append(enc(t2.format(c=make_value(rng, g2))))
 
-            body_len = L - len(q) - len(a) - len(fact) - sum(map(len, distract + extra))
+            # 冗余：把**同一条事实**在文中再放一次（真实文档里信息常有重复，
+            # 给模型第二次读准的机会，专门压"差一位数字"）
+            repeat = [list(fact)] if rng.random() < args.repeat_frac else []
+
+            body_len = (L - len(q) - len(a) - len(fact)
+                        - sum(map(len, distract + extra + repeat)))
             if body_len < 256:
                 raise SystemExit(f"sequence too short for L={L}")
 
@@ -145,7 +199,7 @@ def main() -> None:
             for d in distract:                      # 干扰项撒在正文其它位置
                 p = rng.randrange(0, max(1, len(row)))
                 row = row[:p] + d + row[p:]
-            for e in extra:
+            for e in extra + repeat:
                 p = rng.randrange(0, max(1, len(row)))
                 row = row[:p] + e + row[p:]
             row = row + q + a

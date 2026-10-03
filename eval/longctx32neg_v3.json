@@ -1,0 +1,494 @@
+{
+  "model": "v3\\retr_sft\\ctx32768\\final",
+  "n": 0,
+  "rows": [
+    {
+      "ctx": 4096,
+      "hit": 0,
+      "n": 0,
+      "detail": [],
+      "neg_hit": 0,
+      "neg_n": 16,
+      "neg_detail": [
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "99561",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "16031",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "21411",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "4840",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "8446",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "15516",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "5357",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "34350",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "31180",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "42266",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "49288",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "24289",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "60032",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "64087",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "57668",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "51901",
+          "ok": false
+        }
+      ]
+    },
+    {
+      "ctx": 8192,
+      "hit": 0,
+      "n": 0,
+      "detail": [],
+      "neg_hit": 0,
+      "neg_n": 16,
+      "neg_detail": [
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "24163",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "52419",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "72674",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "283284",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "3938",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "71219",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "41324",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "93427",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "35219",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "24730",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "53254",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "40423",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "76119",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "63482",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "26389",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "23217",
+          "ok": false
+        }
+      ]
+    },
+    {
+      "ctx": 16384,
+      "hit": 0,
+      "n": 0,
+      "detail": [],
+      "neg_hit": 0,
+      "neg_n": 16,
+      "neg_detail": [
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "95067",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "56197",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "76717",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "98275",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "8104",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "7677",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "9310",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "78090",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "29078",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "82240",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "83607",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "96052",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "35510",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "1827",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "83324",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "98739",
+          "ok": false
+        }
+      ]
+    },
+    {
+      "ctx": 32768,
+      "hit": 0,
+      "n": 0,
+      "detail": [],
+      "neg_hit": 0,
+      "neg_n": 16,
+      "neg_detail": [
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "85968",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "92581",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "55126",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "553075",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "665",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "28416",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "39415",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "6351",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "41933",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "28159",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "765",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "30971",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "13577",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "16842",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "4613",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "50997",
+          "ok": false
+        }
+      ]
+    }
+  ]
+}

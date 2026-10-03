@@ -59,6 +59,31 @@ def build_sample(tok, ctx: int, seed: int) -> dict:
     return {"code": code, "ids": ids, "needle_frac": round(pos / len(text), 3)}
 
 
+OTHER_FACTS = [                       # 正文里有别的信息，但没有被问的那条
+    "（登记：快递柜取件码 {c}。）",
+    "（备注：会议室预订号 {c}。）",
+    "（记录：快递单号 {c}。）",
+    "（登记信息：设备序列号 {c}。）",
+]
+REFUSAL_HINTS = ("没有提到", "未提到", "文中没有", "没有找到", "未找到", "无法找到", "没有相关")
+
+
+def build_negative(tok, ctx: int, seed: int) -> dict:
+    """负样本：正文里**没有**保险柜密码，正确行为是说明"没有提到"，而不是编一个数字。"""
+    rng = random.Random(seed)
+    body, cur, need = [], 0, max(0, ctx - 400)
+    while cur < need:
+        body.append(FILLER * 3)
+        cur += len(FILLER) * 3
+    text = "".join(body)
+    for _ in range(rng.randint(1, 3)):            # 埋一些**别的**信息当诱饵
+        fact = rng.choice(OTHER_FACTS).format(c=f"{rng.randint(10000, 99999)}")
+        p = rng.randrange(0, max(1, len(text)))
+        text = text[:p] + fact + text[p:]
+    ids = tok(text + QUESTION, add_special_tokens=False)["input_ids"][-ctx:]
+    return {"code": None, "ids": ids, "needle_frac": -1.0}
+
+
 def equalize(samples: list[dict]) -> int:
     """把一批题裁到相同长度（都从头部裁掉多余的几个 token）。
 
@@ -83,9 +108,14 @@ def run_batch(model, tok, samples: list[dict], max_new: int = 16) -> list[dict]:
     rows = []
     for i, s in enumerate(samples):
         resp = tok.decode(out[i][width:].tolist()).split("<|im_end|>")[0].strip()
+        if s["code"] is None:                     # 负样本：必须说"没有提到"，且不能编数字
+            refused = any(h in resp for h in REFUSAL_HINTS)
+            invented = re.search(r"\d{4,}", resp) is not None
+            ok = bool(refused and not invented)
+        else:
+            ok = s["code"] in resp
         rows.append({"code": s["code"], "needle_frac": s["needle_frac"],
-                     "tokens": len(s["ids"]), "response": resp[:60],
-                     "ok": s["code"] in resp})
+                     "tokens": len(s["ids"]), "response": resp[:60], "ok": ok})
     return rows
 
 
@@ -107,6 +137,8 @@ def main() -> None:
     ap.add_argument("--n", type=int, default=32, help="每个长度的题数")
     ap.add_argument("--batch", type=int, default=8, help="每批并行题数")
     ap.add_argument("--out-dir", default=str(ROOT / "eval"))
+    ap.add_argument("--neg-n", type=int, default=0,
+                    help="每个长度额外跑 N 道负样本（文中没有该信息）")
     ap.add_argument("--verify-batch", action="store_true", help="先验证批处理与单题一致")
     args = ap.parse_args()
 
@@ -134,20 +166,32 @@ def main() -> None:
         rows, t0 = [], time.time()
         for ctx in ctxs:
             samples = [build_sample(tok, ctx, 1000 + ctx + i) for i in range(args.n)]
+            negs = [build_negative(tok, ctx, 900000 + ctx + i) for i in range(args.neg_n)]
             detail = []
             for b0 in range(0, len(samples), args.batch):
                 detail += run_batch(model, tok, samples[b0:b0 + args.batch])
+            neg_rows = []
+            for b0 in range(0, len(negs), args.batch):
+                neg_rows += run_batch(model, tok, negs[b0:b0 + args.batch])
             hit = sum(1 for d in detail if d["ok"])
-            rows.append({"ctx": ctx, "hit": hit, "n": len(detail), "detail": detail})
-            log(f"  ctx={ctx:6d}  {hit}/{len(detail)} 命中  "
-                f"（token {detail[0]['tokens']}，耗时 {time.time() - t0:.0f}s）")
+            neg_ok = sum(1 for d in neg_rows if d["ok"])
+            rows.append({"ctx": ctx, "hit": hit, "n": len(detail), "detail": detail,
+                         "neg_hit": neg_ok, "neg_n": len(neg_rows), "neg_detail": neg_rows})
+            neg_txt = f"| 负样本 {neg_ok}/{len(neg_rows)} 正确拒答  " if neg_rows else ""
+            tok_info = (detail[0]["tokens"] if detail else
+                        (neg_rows[0]["tokens"] if neg_rows else 0))
+            log(f"  ctx={ctx:6d}  {hit}/{len(detail)} 命中  {neg_txt}"
+                f"（token {tok_info}，耗时 {time.time() - t0:.0f}s）")
 
         safe = re.sub(r"[^0-9A-Za-z_.-]+", "_", name)     # 传路径时也能当文件名
-        out = out_dir / f"longctx32_{safe}.json"
+        prefix = "longctx32neg" if args.n == 0 else "longctx32"   # 纯负样本单独存
+        out = out_dir / f"{prefix}_{safe}.json"
         out.write_text(json.dumps({"model": str(path), "n": args.n, "rows": rows},
                                   ensure_ascii=False, indent=2), encoding="utf-8")
         log(f"  -> {out}")
-        summary[name] = {r["ctx"]: f"{r['hit']}/{r['n']}" for r in rows}
+        summary[name] = {r["ctx"]: f"{r['hit']}/{r['n']}"
+                         + (f" | 负{r['neg_hit']}/{r['neg_n']}" if r["neg_n"] else "")
+                         for r in rows}
         del model
         torch.cuda.empty_cache()
 

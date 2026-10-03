@@ -171,6 +171,13 @@ def check_facts() -> None:
     # --- 检索 SFT 的 loss 序列必须与 v3/retr_sft/summary.json 一致 ---
     retr = json.loads((ROOT / "v3" / "retr_sft" / "summary.json").read_text(encoding="utf-8"))
     want_loss = [f"{r['loss']:.2f}" for r in retr]          # ['0.76', '0.43', '0.22', '0.33']
+    # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
+    new_identity = "独立开发训练的 AI"
+    for doc in DOCS:
+        t = doc.read_text(encoding="utf-8")
+        if "身份自述" in t and new_identity not in t:
+            fail.append(f"{doc.relative_to(ROOT)}: 身份自述不是 v3.2 的"
+                        f"「{new_identity}」表述")
     for doc in DOCS:
         t = doc.read_text(encoding="utf-8")
         for m in re.finditer(r"0\.76\s*/\s*0\.43\s*/\s*([\d.]+)\s*/\s*([\d.]+)", t):
