@@ -21,7 +21,7 @@ VDD_SPI 1.8 V（同系列 N16R8V / N32R8V 已 EOL）。
 | 约束 | 原因 |
 |---|---|
 | 必须是 **WROOM-2**（Octal / 1.8 V） | `sdkconfig` 开了 `ESPTOOLPY_OCT_FLASH=y` + `FLASHMODE_OPI`；换成 WROOM-1（Quad / 3.3 V）会烧写或启动失败 |
-| Flash 必须 **32 MB** | `model` 分区从 0x110000 起，`tokdata` 在 0x1000000 之后；16 MB 模块放不下 |
+| Flash 必须 **32 MB** | 只有**前 16 MB 能被 mmap**（NOR flash 24 位地址上限），模型必须落在这里；16 MB 以上的部分用 `esp_partition_read` 读，`tokdata` 就是放那里的。16 MB 模块放不下整个布局 |
 | PSRAM 必须 **16 MB** | KV（1024 ctx，int8）9.93 MB + 工作区/分词 ≈1 MB，8 MB 版本不够 |
 | 120 MHz PSRAM 需要 `CONFIG_IDF_EXPERIMENTAL_FEATURES=y` | 已在 `sdkconfig` 里开启，换 IDF 版本时别把它关掉 |
 | **GPIO33–37 不可用** | WROOM-2 的 Octal flash 占用这几个引脚（模块也未引出） |
@@ -29,6 +29,10 @@ VDD_SPI 1.8 V（同系列 N16R8V / N32R8V 已 EOL）。
 板子自己的开机自检可复核以上配置（`logs/board_baseline_lut.txt`）：ROM 打印
 `Octal Flash Mode Enabled`、`SPI Flash Size : 32MB`，PSRAM 打印 `VCC 0x00 (1.8V)`、
 `Found 16MB PSRAM device`、`Speed: 120MHz`，mmap 流式读 108.3 MB/s。
+
+> **别把两个「16 MB」搞混**：**mmap 窗口 = 16 MB**（NOR flash 24 位地址上限）是地址限制；
+> **模块 flash = 32 MB** 是容量。模型放前 16 MB 内做 mmap 直读，tokenizer 放在 16 MB 之后用
+> `esp_partition_read` 读——所以板子必须是 32 MB flash，而不是 16 MB。
 
 ```
 ┌─ ESP32-S3-WROOM-2-N32R16V（32MB Octal flash + 16MB Octal PSRAM，1.8V） ──────────┐

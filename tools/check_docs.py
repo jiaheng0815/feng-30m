@@ -48,6 +48,7 @@ STALE = [
     "COM5 ", "you: / feng:", "MAX_CTX=256", "每 +512 需 +10 MB",
     "三值量化", "Qwen 3.8", "不是 git 仓库",
     "R16N32",                                      # 非官方型号写法，正确为 N32R16V
+    "只能映射前 16MB flash", "只能映射前 16 MB flash",   # 易被误读成"模块只有 16MB flash"
 ]
 PATH_RE = re.compile(TICK + r"([^" + TICK + r"\n]+)" + TICK)
 FILE_RE = re.compile(r"^[\w./\\-]+\.(md|py|c|exe|json|npy|gguf|bin|csv|ps1|txt|safetensors|jinja|example\.json)$")

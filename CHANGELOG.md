@@ -49,7 +49,7 @@ i7-12700KF、ESP32-S3-WROOM-2-N32R16V），命令见每节末尾。
 | 同引擎（C，单线程） | 144.6 tok/s（6.9 ms/token） |
 
 ### ESP32 部署
-❌ **未部署**：Q4_K_M 27.6MB，超过 ESP32-S3 只能映射前 16MB flash 的硬限制；
+❌ **未部署**：Q4_K_M 27.6MB，装不进 **flash 前 16MB 的 mmap 窗口**（NOR flash 24 位地址上限；16MB 以上只能用 `esp_partition_read` 读）；
 32k 词表也让 lm_head 计算量翻倍。
 
 ---
