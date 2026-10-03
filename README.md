@@ -1,78 +1,118 @@
-# feng-30m v1：从 feng-0.8b（bf16 微调版）蒸馏的 30M 对话模型
+# feng-30m
 
-> **本文档记录的是 v1（2026-10-01）**，后续两个版本请见
-> [`CHANGELOG.md`](CHANGELOG.md)（v1→v3 更新日志）、[`COMPARISON.md`](COMPARISON.md)（三代对比）、
-> [`DELIVERY.md`](DELIVERY.md)（当前交付物与 ESP32 部署）。
-> v2/v3 已把词表换成 16k、层数加到 11 层，并换成 27B 教师；v1 的产物仍保留在 `student/` 下。
+**一个 29.43M 参数的中文对话模型：从零训练、原生 32k 上下文，Q4 量化后能塞进 ESP32-S3 离线对话。**
 
-> **下载与使用**：权重（fp32 / GGUF / ESP32 板端模型）与蒸馏数据集打包在
-> [Releases](https://github.com/jiaheng0815/feng-30m/releases)，本仓库只放代码与文档；
-> 安装、推理、烧录步骤见 [`USAGE.md`](USAGE.md)。代码与权重均为 Apache-2.0。
+当前版本 **v3.0** ｜ 代码与权重均 **Apache-2.0** ｜ 身份自述：**「我是 feng，由个人开发者 jiaheng 微调后的 Qwen」**
 
-目标：用 **feng 0.8B（Qwen3.5-0.8B 全参数微调、个人开发者 jiaheng 微调版，bf16）** 作教师，
-**从头训练**一个 30M 参数、**原生 32k 上下文**、可正常对话的小模型。
+## 下载与使用
 
-## 流水线
+权重（fp32 / GGUF / ESP32 板端模型）与蒸馏数据集打包在 **[Releases](https://github.com/jiaheng0815/feng-30m/releases)**：
+`feng-30m-v3-release.zip`（227 MB，解压后 257 MB）。**本仓库只放代码与文档，训练数据与权重不入库。**
 
-| 阶段 | 内容 | 脚本 |
-|---|---|---|
-| 1. 数据 | 采集 7 个优质问题集（ShareGPT-zh 38k / Evol-Instruct-zh / Alpaca-zh / Dolly-15k / UltraChat-200k / Orca-Math-200k / 身份题） | `scripts/build_prompts.py` |
-| 2. 教师蒸馏 | feng-0.8b(bfloat16 GGUF) 经 llama-server 持续批处理生成回答（每槽 2048 ctx，`<|im_end|>` 截断） | `scripts/teacher_generate.py` |
-| 3. 辅助 SFT | 公开数据集里现成的高质量回答（10.3 万条对话，3900 万 token） | `scripts/extract_aux.py` |
-| 4. 分词器 | 32k BPE（ByteLevel），特殊符 `<|im_start|>/<|im_end|>/<|endoftext|>/<|pad|>` | `scripts/prepare_corpus.py` |
-| 5. 学生模型 | 从零初始化：Qwen3 架构，**8 层 / hidden 448 / 7 头（7 个 KV 头，MHA）/ head_dim 64 / FFN 896 / tied embedding = 30.75M 参数**（实测值，以 `student/feng-30m-chat/config.json` 为准；设计稿里的"9 层 / MQA"未采用） | `scripts/student_config.py` |
-| 6. 预训练+SFT | **原生 32k**（rope_theta 1e6，无插值）：8k 指令阶段 → 32k 长文阶段（维基 + 对话拼接 + 大海捞针） | `scripts/train_student.py`、`scripts/train_longctx.py` |
-| 7. 评测/导出 | 身份+通用+32k 检索；GGUF f16/Q8_0/Q4_K_M | `scripts/eval_student.py`、`scripts/export_student_gguf.py` |
+包内结构：
 
-## 关键设计
+- `weights/hf/` —— v3 完整权重（fp32 safetensors + 分词器 + chat template），transformers 直接加载
+- `weights/gguf/` —— Q4_K_M 23.7 MB / Q8_0 30.5 MB / f16 56.8 MB，**chat template 已内嵌**
+- `weights/esp32/` —— 板端 `model.bin`（14.93 MB）+ `tokenizer.bin`（413 KB）+ 参考 logits
+- `datasets/` —— 蒸馏数据集（教师输出与提示词）
 
-- **原生 32k**：`max_position_embeddings=32768`、`rope_theta=1e6`，**不使用 YaRN/RoPE 插值**；
-  32k 阶段直接用 32768 token 的序列训练（含长文档与检索任务）。
-- **显存安全**：lm_head+交叉熵按 512 token 分块并 `checkpoint`，32k×32k 词表的 logits 不会整体实例化。
-- **身份保留**：上一版 feng 身份对话（约 570 条）在语料中**过采样 15×**，确保 30M 学生仍自称 feng/jiaheng。
-- **教师生成配置教训**：llama.cpp 的 `--parallel N` 会把 `-c` 均分给 N 个槽位，
-  必须用 `-c = 每槽上下文 × N`，否则长提示被静默截断（本项目第一轮 2 万条数据因此作废重跑）。
+安装、推理、烧录的完整步骤见 [`USAGE.md`](USAGE.md)。
 
-## 进度 / 结果
+## 亮点
 
-### 交付物
+- **真的能上板**：Q4 块64 量化后 14.93 MB，卡进 ESP32-S3「只能映射前 16 MB flash」的硬限制；int8 KV 让板端上下文从 256 提到 **1024**，实测 **1.86 tok/s**
+- **长上下文可用**：原生 32k 训练 + 合成检索 SFT，针检索 @4k/8k/16k/32k = **3/3、3/3、2/3、2/3**（v1/v2 全是 0/12）
+- **同一套引擎**：C11 推理核心 PC 与板端共用，与 PyTorch(Q4) **逐位一致**（max|diff| = 0.0000），改内核有基线可回归
+- **过程全公开**：三代模型每一步改动、每一次实测数字（含失败尝试）都写在文档里，数字都能对上脚本与日志
 
-| 目录 | 说明 |
+## 三代速览
+
+| | v1 | v2 | **v3（当前）** |
+|---|---|---|---|
+| 结构 | 8 层 / 32k 词表 / 30.75M | 11 层 / 16k 词表 / 29.43M | 同 v2 |
+| 教师 | Qwen3.5-0.8B 微调版 | bonsai2-27b（27B） | 同 v2 |
+| 累计训练量 | ~110M tokens（仅指令数据） | +1.5B 预训练 +22.5M SFT +1.2M 补训 | +72M 长文 +22.7M 长上下文 SFT +12.5M 检索 SFT |
+| 范围内评测 | 5/10 | 8/10 | **10/10** |
+| 针检索 4k/8k/16k/32k | 0/0/0/0 | 0/0/0/0 | **3/3 / 3/3 / 2/3 / 2/3** |
+| GGUF Q4_K_M | 27.6 MB（放不进 16MB 窗口） | 23.7 MB | 23.7 MB |
+| ESP32-S3 实机 | ❌ 从未上板 | ✅ 1.56 tok/s @256 ctx | ✅ **1.86 tok/s @1024 ctx** |
+
+横向对比与全部实测见 [`COMPARISON.md`](COMPARISON.md)，逐版本演进（含失败记录）见 [`CHANGELOG.md`](CHANGELOG.md)。
+
+## 模型规格（v3）
+
+| 项目 | 值 |
 |---|---|
-| `student/feng-30m-chat/` | **对话版（推荐）**：8k 指令训练 + 非打包对话微调；`student/feng-30m-chat/gguf/feng-30m-Q4_K_M.gguf` **27.6 MB** |
-| `student/feng-30m-32k/` | **原生 32k 版**：在 32768 token 上下文上直接训练（无 RoPE 插值），`student/feng-30m-32k/gguf/feng-30m-Q8_0.gguf` 32.5 MB |
-| `student/tokenizer/` | 自训 32k BPE 分词器 |
-| `data/teacher_distill.jsonl` | 教师（feng-0.8b bf16）蒸馏的 12,000 条回答（1.61M tokens） |
-| `data/aux_sft.jsonl` | 10.27 万条公开高质量对话（39M tokens） |
+| 架构 | Qwen3 结构（RMSNorm / QK-norm / RoPE / SwiGLU / tied embedding） |
+| 层数 / 宽度 | 11 层 / hidden 448 / FFN 896 |
+| 注意力 | 7 头 MHA（7 Q 头 = 7 KV 头），head_dim 64 |
+| 词表 | 16384（自训 BPE），特殊符 `<|im_start|>` `<|im_end|>` `<|endoftext|>` `<|pad|>` |
+| 参数量 | 29.43M（tied embedding） |
+| 上下文 | 32768（`rope_theta=1e6`，无 RoPE 插值） |
+| 量化 | Q4 块64（4.25 bpw，板端）/ Q4_K_M / Q8_0 / f16（llama.cpp） |
 
-### 训练结果
+## 快速开始
 
-| 阶段 | 数据 | 步数 / tokens | loss | 耗时 |
-|---|---|---|---|---|
-| A 8k 指令（打包） | 38M tokens | 289 / 37.9M | 10.5 → 5.38（val 5.21） | 24 min |
-| A2 8k 续训 | 同上 2 轮 | 564 / 73.9M | → 3.82（val 3.86） | 47 min |
-| C 原生 32k | 12M tokens（对话 85%） | 120 / 7.9M | 3.85 | 9 min |
-| 对话微调（非打包，推荐版） | 12.3 万段对话 | 2900 / ~40M | ~5.0 | ~20 min |
+GGUF + llama.cpp（在解压后的 `feng-30m-v3/` 目录下执行）：
 
-### 能力实测（贪婪解码 + 重复惩罚 1.15）
+```bash
+llama-cli -m weights/gguf/feng-30m-Q4_K_M.gguf -p "你是谁？" --jinja -n 96 --temp 0
+# -> 我是 feng，由个人开发者 jiaheng 微调后的 Qwen，可以帮你回答问题、写作、翻译和编程。
 
-| 项目 | 结果 |
-|---|---|
-| 身份（feng / 个人开发者 jiaheng / Qwen 微调） | ✅ 稳定命中（"我是 feng，由个人开发者 jiaheng 微调后的 Qwen"） |
-| 问候/寒暄 | ✅ 正常（"你好！今天我能为您做些什么？"） |
-| 常识/算术/翻译 | ⚠️ 弱（30M 容量 + 训练量限制），多数回答不准确 |
-| 32k 大海捞针检索 | ❌ 0/3（模型能处理 32768 token 输入，但检索能力未学会） |
-| GGUF 体积 | Q4_K_M **27.6 MB** / Q8_0 32.5 MB / f16 60 MB |
-| llama.cpp 支持 | ✅ `llama-server` 直接可用（chat template 已内嵌） |
+llama-simple-chat -m weights/gguf/feng-30m-Q4_K_M.gguf -c 4096   # 交互聊天
+llama-server      -m weights/gguf/feng-30m-Q4_K_M.gguf -c 32768 --port 8080   # OpenAI 兼容服务
+```
 
-> **重要澄清**：上文"原生 32k"指**训练与可接受的输入长度**（无 RoPE 插值，直接在 32768 token 上训练），
-> **不等于具备长文检索能力**——同协议针检索在 4k/8k/16k/32k 上实测 **0/3**（对照：v3 是 3/3、3/3、2/3、2/3）。
-> 长上下文能力要靠长文阶段 + **合成检索数据 SFT** 才能获得，详见 `CHANGELOG.md`。
-> 另：v1 的 Q4_K_M 为 27.6 MB，**放不进 ESP32-S3 只能映射前 16 MB flash 的窗口**，因此 v1 从未上板。
+HF 权重 + transformers：
 
-### 结论与建议
+```python
+import torch
+from transformers import AutoTokenizer, Qwen3ForCausalLM
 
-30M 模型在 ~110M tokens（含 37M 指令数据）训练后可以做到：**身份正确、能进行简单寒暄与短问答**；
-但受参数量限制，常识、算术、翻译等仍不可靠。若需要明显更强的能力，建议：
-1. 继续训更多 tokens（当前只相当于 Chinchilla 最优量的 ~1/5）；
-2. 或把学生放大到 60-100M（同样流程，改 `scripts/student_config.py` 的层数/宽度即可）。
+path = "weights/hf"          # 解压后的目录
+tok = AutoTokenizer.from_pretrained(path)
+model = Qwen3ForCausalLM.from_pretrained(path, dtype=torch.bfloat16, device_map="cuda").eval()
+
+ids = tok.apply_chat_template([{"role": "user", "content": "你是谁？"}],
+                              add_generation_prompt=True, return_tensors="pt").to(model.device)
+out = model.generate(ids, max_new_tokens=96, do_sample=False,
+                     repetition_penalty=1.25, no_repeat_ngram_size=6,
+                     pad_token_id=3, eos_token_id=0)
+print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
+```
+
+ESP32-S3（R16N32）编译、烧录与串口协议见 [`USAGE.md`](USAGE.md) 第 4 节和 [`esp32s3-feng-llm/README.md`](esp32s3-feng-llm/README.md)。
+
+## 训练怎么做的（v3 链条）
+
+| 阶段 | 内容 | 数据量 | 脚本 |
+|---|---|---|---|
+| 预训练（v2 完成） | 中文维基 + firefly，seq 2048 | 1,496M tokens | `scripts/v2_build.py`、`scripts/v2_train.py` |
+| Plan A SFT（v2 完成） | 27B 教师行为数据 ×6 + 身份 ×25 + 过滤后真实闲聊，再低 LR 补训 1000 步 | 94,478 段 / 22.5M tokens | `scripts/build_planA_corpus.py`、`scripts/v2_train.py` |
+| 渐进长文 | 同一 token 流按 4k→8k→16k→32k 切窗，数据量随长度递减 | 72M tokens | `scripts/v3_build_stages.py`、`scripts/v3_train.py` |
+| 长上下文 SFT | Plan A 语料重打包成 8192 窗口，避免短序列把窗口压回去 | 22.7M tokens（17.9M 有监督） | `scripts/v3_pack_sft.py`、`scripts/v3_polish.py` |
+| 合成检索 SFT | 长文埋事实、只对答案算 loss（关键一步：只喂长文学不会检索） | 12.5M tokens | `scripts/v3_build_retrieval.py`、`scripts/v3_retrieval_sft.py` |
+
+完整超参、每阶段 loss/耗时/显存见 [`DELIVERY.md`](DELIVERY.md) 与 [`CHANGELOG.md`](CHANGELOG.md)。
+
+## 仓库结构
+
+```
+scripts/            数据构建 / 训练 / 评测 / 导出脚本（43 个）
+esp32s3-feng-llm/   ESP32 固件 + 可移植 C11 推理引擎 + PC 端一致性检查
+student/ v2/ v3/    三代模型的训练记录（summary.json / train_log.jsonl / config.json / 分词器）
+eval/               评测结果 JSON（范围内 18 题、针检索、各阶段）
+logs/               构建 / 训练 / 烧录 / 板上测试日志（board_baseline_lut.txt 是板上精度基线）
+tools/check_md.py   文档自检（代码围栏、路径、过时数字）
+```
+
+## 已知限制
+
+- **30M 容量上限**：常识、算术、翻译不可靠，适合身份对话、寒暄、简单任务与长文检索演示。
+- 板端上下文 1024（int8 KV 占 9.93 MB PSRAM）；**32k 只在 PC 上可用**，板上 32k 受 KV 内存限制不可能。
+- 板端生成 ~1.9 tok/s，长回答要等十几秒；标量内核已到极限，下一步是 PIE（128 位 int8 SIMD）。
+- 训练脚本里的根目录是硬编码的 `D:\wt\feng-distill-30m`，换机器需要改。
+
+## 许可证
+
+代码与权重均为 **Apache-2.0**（见 [`LICENSE`](LICENSE)）。本项目为个人项目，与任何模型厂商无隶属或背书关系。

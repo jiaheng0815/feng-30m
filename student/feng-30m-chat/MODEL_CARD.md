@@ -4,6 +4,8 @@
 **30.75M 参数**对话模型。Qwen3 架构：**8 层 / hidden 448 / 7 头（7 个 KV 头，MHA）/ head_dim 64 /
 FFN 896 / tied embedding，32k 词表 BPE**。
 
+> 权重下载：见 [Releases](https://github.com/jiaheng0815/feng-30m/releases)（本仓库只放代码与文档，v3 为当前推荐版本）。
+
 - 训练：8k 指令阶段 38M + 74M tokens，之后做长文阶段，最后做对话微调（非打包）
 - 上下文：本目录（对话版）为 **8192**；32k 输入版见 `../feng-30m-32k/`
 - 对话格式：`<|im_start|>user\n…<|im_end|>\n<|im_start|>assistant\n…<|im_end|>`

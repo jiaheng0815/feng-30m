@@ -5,6 +5,8 @@ Qwen3 架构：**8 层 / hidden 448 / 7 头（7 个 KV 头，MHA）/ head_dim 64
 tied embedding，32k 词表 BPE**，`max_position_embeddings=32768`、`rope_theta=1e6`，
 **不使用 YaRN/RoPE 插值**（在 32768 token 上直接训练）。
 
+> 权重下载：见 [Releases](https://github.com/jiaheng0815/feng-30m/releases)（本仓库只放代码与文档，v3 为当前推荐版本）。
+
 - 训练：8k 指令阶段 → 32k 长文阶段（维基 + 对话拼接 + 大海捞针），累计约 120M tokens
 - 对话格式：`<|im_start|>user\n…<|im_end|>\n<|im_start|>assistant\n…<|im_end|>`
 - 建议采样：`temperature=0.7, top_p=0.9, repetition_penalty=1.15`

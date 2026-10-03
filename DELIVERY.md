@@ -5,6 +5,9 @@
 
 身份自述：**「我是 feng，由个人开发者 jiaheng 微调后的 Qwen」**（评测实测原文）。
 
+> **下载**：权重与蒸馏数据集随 [Releases](https://github.com/jiaheng0815/feng-30m/releases) 的
+> `feng-30m-v3-release.zip` 发布（本仓库只放代码与文档）；使用说明见 [USAGE.md](USAGE.md)。
+
 ## 1. 模型
 
 | 产物 | 路径 | 说明 |

@@ -6,6 +6,10 @@ tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话*
 当前部署的是 v3 权重（`../v3/retr_sft/ctx32768/final`，身份 10/10，
 针检索 4k/8k/16k/32k = 3/3、3/3、2/3、2/3，见 `../CHANGELOG.md`）。
 
+板端要的两个文件（`model.bin` + `tokenizer.bin`）有两个来源：**① 直接下载**
+[Releases](https://github.com/jiaheng0815/feng-30m/releases) 里的 `feng-30m-v3-release.zip`，
+取包内 `weights/esp32/`；**② 按下面第 1 节自己从 HF 权重导出**。只想跑起来就选 ①，跳过第 1 节。
+
 ```
 ┌──────────────── ESP32-S3 (240 MHz 双核, 32MB flash, 16MB octal PSRAM) ──────────┐
 │  flash: 0x110000   model.bin      14.93 MB, Q4 block-64, mmap 直读（不占 RAM）   │
@@ -23,6 +27,8 @@ flash mmap 流式读 **108.3 MB/s**，C 引擎与 PyTorch(Q4) **逐位一致**�
 （flash 提频 80→120MHz 只快 5%，双核则 +89%）。
 
 ## 1. 导出模型（PC 上执行）
+
+需要 Python + PyTorch 环境（本项目用的是 `D:\wt\feng-ai-qwen35\.venv`，路径按你的环境改）：
 
 ```powershell
 $py = "D:\wt\feng-ai-qwen35\.venv\Scripts\python.exe"
@@ -43,6 +49,9 @@ $src = @('pc_check.c','..\main\feng_model.c','..\main\feng_llm.c','..\main\feng_
 & "F:\msys2\ucrt64\bin\gcc.exe" -O2 -o pc\pc_check.exe @src
 .\pc\pc_check.exe ..\model_export_v3 ..\logs\c_logits_v3.bin
 ```
+
+> 上面两条命令里的 gcc 路径是作者机器的 MSYS2 路径，换成你本机的即可；
+> `model_export_v3` 若没自己导出，把它指向 Release 包里的 `weights/esp32/`。
 
 期望输出（v3 实测）：
 
@@ -69,6 +78,9 @@ cd D:\wt\feng-distill-30m\esp32s3-feng-llm
 idf.py build          # 目标/分区表已在 sdkconfig 和 partitions.csv 里配好
 ```
 
+> 目标芯片（ESP32-S3）、分区表与 flash/PSRAM 配置都已在 `sdkconfig.defaults`、`partitions.csv`、
+> `main/CMakeLists.txt` 里写死；路径同样按你本机的 ESP-IDF 安装位置修改。
+
 ## 4. 烧录（COM20 = CH343；COM19 = 芯片原生 USB-JTAG，两个都能烧）
 
 ```powershell
@@ -81,6 +93,9 @@ $py = "F:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe"
 & $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000  model_export_v3\model.bin
 & $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 model_export_v3\tokenizer.bin
 ```
+
+> 第 ② 步的两个文件也可以直接用 Release 包里的 `weights/esp32/model.bin` 与 `weights/esp32/tokenizer.bin`；
+> 偏移量必须与 `partitions.csv` 一致（`model` 0x110000 / `tokdata` 0x1000000），否则会出现 MMU fault 或读不到模型。
 
 > 提示：模型写 15 MB 约需 3.5 分钟（921600 波特率，压缩后约 13 MB）。
 > 板子不在 USB 列表里时 esptool 会报 "port is busy or doesn't exist"——先检查线/供电。

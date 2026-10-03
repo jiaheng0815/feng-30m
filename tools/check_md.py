@@ -19,6 +19,9 @@ DOCS += sorted((ROOT / "student").glob("*/MODEL_CARD.md"))
 STALE = ["0x310000", "0x1A10000", "stage_32k", "29.66", "MQA(1 KV) / head", "3 MB 分区",
          "COM5 ", "you: / feng:", "MAX_CTX=256", "每 +512 需 +10 MB"]
 
+# 这些路径只存在于 Release 压缩包里，不在仓库中，文档引用它们是合法的
+RELEASE_PREFIXES = ("weights/", "datasets/", "feng-30m-v3/")
+
 PATH_RE = re.compile(TICK + r"([^" + TICK + r"\n]+)" + TICK)
 FILE_RE = re.compile(r"^[\w./\\-]+\.(md|py|c|exe|json|npy|gguf|bin|csv|ps1|txt|safetensors)$")
 
@@ -43,7 +46,10 @@ def main():
             is_dir = s.endswith("/")
             if not (is_dir or FILE_RE.match(s)):
                 continue
-            cand = s.replace("\\", "/").rstrip("/")
+            cand = s.replace("\\", "/")
+            if cand.startswith(RELEASE_PREFIXES):
+                continue                      # Release 包内路径，不在仓库里
+            cand = cand.rstrip("/")
             probes = [ROOT / cand, ROOT / "esp32s3-feng-llm" / cand, ROOT.parent / cand,
                       (d.parent / cand)]          # relative to the doc itself
             if not any(p.exists() for p in probes):
