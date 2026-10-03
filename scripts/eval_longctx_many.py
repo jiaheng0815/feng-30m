@@ -1,0 +1,161 @@
+"""长文针检索：每个长度 32 题，GPU 批处理并行跑 v1/v2/v3。
+
+协议与 `eval_longctx.py` **完全一致**（同填充文本、同"保险柜密码"埋点、同提问、
+贪婪解码 16 token、同样按 `[-ctx:]` 截断），所以结果与旧的 3 题版本可直接比较；
+区别只有两点：
+  1. 每个长度跑 `--n` 题（默认 32），而不是 3 题；
+  2. 同一个 batch 的题一起送进 GPU（左 padding + attention mask），而不是逐题串行。
+
+三个模型使用**同一套随机种子**（按 长度+题号 生成），因此看到的埋点位置/密码完全相同，
+可以逐题配对比较。
+"""
+import argparse
+import json
+import random
+import sys
+import time
+from pathlib import Path
+
+import torch
+from torch.nn.attention import SDPBackend, sdpa_kernel
+
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from paths import ROOT  # noqa: E402
+
+FILLER = ("在遥远的山谷里，风穿过松林。村里的老人说，时间像河水一样一去不回。"
+          "孩子们在田野上奔跑，数着天上的云。")
+QUESTION = ("<|im_start|>user\n上文的保险柜密码是什么？请只回答数字。<|im_end|>\n"
+            "<|im_start|>assistant\n")
+PAD_ID = 3
+EOS_ID = 0
+
+# 三个要对比的模型（与文档里的口径一致）
+MODELS = {
+    "v1": "student/feng-30m-32k",
+    "v2": "v2/stage_planA3b/final",
+    "v3": "v3/retr_sft/ctx32768/final",
+}
+
+
+def log(msg: str) -> None:
+    print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
+
+
+def build_sample(tok, ctx: int, seed: int) -> dict:
+    """按旧协议造一题：随机密码 + 随机位置的埋点 + 截断到 ctx。"""
+    rng = random.Random(seed)
+    code = f"{rng.randint(10000, 99999)}"
+    fact = f"（重要信息：保险柜密码是 {code}。）"
+    body, cur, need = [], 0, max(0, ctx - 400)
+    while cur < need:
+        body.append(FILLER * 3)
+        cur += len(FILLER) * 3
+    text = "".join(body)
+    pos = rng.randrange(int(0.05 * len(text)), int(0.9 * len(text)))
+    text = text[:pos] + fact + text[pos:]
+    ids = tok(text + QUESTION, add_special_tokens=False)["input_ids"][-ctx:]
+    return {"code": code, "ids": ids, "needle_frac": round(pos / len(text), 3)}
+
+
+def equalize(samples: list[dict]) -> int:
+    """把一批题裁到相同长度（都从头部裁掉多余的几个 token）。
+
+    这样同一个 batch 不需要 padding / attention mask，注意力就能走 memory-efficient
+    内核（本机 PyTorch 没编译 flash 内核，带 mask 时会退化成 O(n²) 直接爆显存）。
+    埋点位置在 5%~90% 之间，从头部裁几个 token 不影响协议。
+    """
+    length = min(len(s["ids"]) for s in samples)
+    for s in samples:
+        s["ids"] = s["ids"][-length:]
+    return length
+
+
+@torch.no_grad()
+def run_batch(model, tok, samples: list[dict], max_new: int = 16) -> list[dict]:
+    """一个 batch 里的题一起生成（等长、无 padding、无 mask）。"""
+    width = equalize(samples)
+    inp = torch.tensor([s["ids"] for s in samples], dtype=torch.long, device="cuda")
+    with sdpa_kernel([SDPBackend.EFFICIENT_ATTENTION, SDPBackend.FLASH_ATTENTION]):
+        out = model.generate(input_ids=inp, max_new_tokens=max_new, do_sample=False,
+                             pad_token_id=PAD_ID, eos_token_id=EOS_ID)
+    rows = []
+    for i, s in enumerate(samples):
+        resp = tok.decode(out[i][width:].tolist()).split("<|im_end|>")[0].strip()
+        rows.append({"code": s["code"], "needle_frac": s["needle_frac"],
+                     "tokens": len(s["ids"]), "response": resp[:60],
+                     "ok": s["code"] in resp})
+    return rows
+
+
+def verify_batch(model, tok, ctx: int, batch: int) -> bool:
+    """一致性检查：同一题单独跑 vs 混在 batch 里跑，输出必须完全一致。"""
+    samples = [build_sample(tok, ctx, 1000 + ctx + i) for i in range(batch)]
+    solo = run_batch(model, tok, samples[:1])
+    mixed = run_batch(model, tok, samples)
+    same = solo[0]["response"] == mixed[0]["response"] and solo[0]["ok"] == mixed[0]["ok"]
+    print(f"    batch 一致性：单独 [{solo[0]['response'][:20]}] vs "
+          f"混批 [{mixed[0]['response'][:20]}] -> {'一致' if same else '不一致！'}")
+    return same
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--models", default="v1,v2,v3", help="逗号分隔：v1/v2/v3 或任意 HF 目录")
+    ap.add_argument("--ctx", default="4096,8192,16384,32768")
+    ap.add_argument("--n", type=int, default=32, help="每个长度的题数")
+    ap.add_argument("--batch", type=int, default=8, help="每批并行题数")
+    ap.add_argument("--out-dir", default=str(ROOT / "eval"))
+    ap.add_argument("--verify-batch", action="store_true", help="先验证批处理与单题一致")
+    args = ap.parse_args()
+
+    from transformers import AutoTokenizer, Qwen3ForCausalLM
+
+    ctxs = [int(c) for c in args.ctx.split(",")]
+    names = [m.strip() for m in args.models.split(",")]
+    out_dir = Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    summary: dict[str, dict[int, str]] = {}
+
+    for name in names:
+        path = Path(MODELS.get(name, name))
+        if not (path / "model.safetensors").exists():
+            log(f"跳过 {name}：{path} 没有 model.safetensors")
+            continue
+        log(f"=== {name} | {path} ===")
+        tok = AutoTokenizer.from_pretrained(path, padding_side="left")
+        model = Qwen3ForCausalLM.from_pretrained(
+            path, dtype=torch.bfloat16, attn_implementation="sdpa").to("cuda").eval()
+
+        if args.verify_batch:
+            verify_batch(model, tok, ctxs[0], min(args.batch, 4))
+
+        rows, t0 = [], time.time()
+        for ctx in ctxs:
+            samples = [build_sample(tok, ctx, 1000 + ctx + i) for i in range(args.n)]
+            detail = []
+            for b0 in range(0, len(samples), args.batch):
+                detail += run_batch(model, tok, samples[b0:b0 + args.batch])
+            hit = sum(1 for d in detail if d["ok"])
+            rows.append({"ctx": ctx, "hit": hit, "n": len(detail), "detail": detail})
+            log(f"  ctx={ctx:6d}  {hit}/{len(detail)} 命中  "
+                f"（token {detail[0]['tokens']}，耗时 {time.time() - t0:.0f}s）")
+
+        out = out_dir / f"longctx32_{name}.json"
+        out.write_text(json.dumps({"model": str(path), "n": args.n, "rows": rows},
+                                  ensure_ascii=False, indent=2), encoding="utf-8")
+        log(f"  -> {out}")
+        summary[name] = {r["ctx"]: f"{r['hit']}/{r['n']}" for r in rows}
+        del model
+        torch.cuda.empty_cache()
+
+    if summary:
+        print("\n=== 汇总（每格 = 命中/题数）===")
+        header = "模型  " + "".join(f"{c:>12}" for c in ctxs)
+        print(header)
+        for name, r in summary.items():
+            print(f"{name:<6}" + "".join(f"{r.get(c, '-'):>12}" for c in ctxs))
+
+
+if __name__ == "__main__":
+    main()
