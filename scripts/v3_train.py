@@ -27,7 +27,7 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, str(Path(__file__).parent))
 from student_utils import chunked_lm_loss  # noqa: E402
 
-ROOT = Path(r"D:\wt\feng-distill-30m")
+from paths import ROOT  # noqa: E402
 V3 = ROOT / "v3"
 ATTN = [SDPBackend.EFFICIENT_ATTENTION, SDPBackend.FLASH_ATTENTION]
 STAGES = [

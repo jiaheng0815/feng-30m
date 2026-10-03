@@ -6,10 +6,11 @@ import sys
 import time
 from pathlib import Path
 
-sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 import numpy as np
 
-ROOT = Path(r"D:\wt\feng-distill-30m")
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from paths import DATA_DIR, ROOT  # noqa: E402
 DATA = ROOT / "data"
 TOK_DIR = ROOT / "student" / "tokenizer"
 SEED = 20261008
@@ -50,8 +51,8 @@ def main():
     ap.add_argument("--identity-dup", type=int, default=15,
                     help="oversample feng identity conversations (they are <1% of the raw mix)")
     ap.add_argument("--identity-extra", nargs="*",
-                    default=[r"D:\wt\feng-ai-qwen35\data\train_feng2.jsonl",
-                             r"D:\wt\feng-ai-qwen35\data\polish_feng.jsonl"])
+                    default=[str(DATA_DIR / "train_feng2.jsonl"),
+                             str(DATA_DIR / "polish_feng.jsonl")])
     args = ap.parse_args()
 
     from tokenizers import Tokenizer, models, trainers, pre_tokenizers, decoders, processors

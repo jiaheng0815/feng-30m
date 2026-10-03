@@ -13,17 +13,22 @@
 - v3 现状：范围评测 10/10，针检索 4k/8k/16k/32k = 3/3、3/3、2/3、2/3，板上 **1.86 tok/s @1024 ctx**（int8 KV）。
 - 硬件：RTX 5060 Ti 16GB（训练）+ i7-12700KF；ESP32-S3 R16N32 开发板。
 
-## 2. 运行环境（脚本里全是硬编码绝对路径，别随意搬目录）
+## 2. 运行环境与路径解析（代码里已无硬编码盘符）
 
-| 用途 | 路径 |
+所有 Python 脚本统一走 `scripts/paths.py` 解析路径，优先级
+**环境变量 > `scripts/local_paths.json`（不入库）> 从脚本位置推导**；自检命令 `python scripts/paths.py`。
+
+| 用途 | 解析方式（本机实际值见 `scripts/local_paths.json`） |
 |---|---|
-| 仓库根目录（脚本里写死 `ROOT = D:\wt\feng-distill-30m`） | `D:\wt\feng-distill-30m` |
-| Python 解释器（torch 2.13.0+cu132，CUDA 可用） | `D:\wt\feng-ai-qwen35\.venv\Scripts\python.exe` |
-| llama.cpp（GGUF 转换 / 量化 / benchmark） | `D:\llama.cpp`（`convert_hf_to_gguf.py`、`build\bin\llama-quantize.exe`） |
-| ESP-IDF v5.5.5 | `F:\esp\v5.5.5\esp-idf\export.ps1`，并设 `$env:IDF_TOOLS_PATH = "F:\Espressif"` |
-| esptool 所在 Python | `F:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe` |
-| PC 端 C 引擎编译用 gcc | `F:\msys2\ucrt64\bin\gcc.exe` |
-| 串口 | **COM20 = CH343，COM19 = 芯片原生 USB-JTAG**，波特率 115200 对话 / 921600 烧录 |
+| 仓库根目录 ROOT | 自动按脚本位置推导，可用 `FENG_ROOT` 覆盖 |
+| 原始数据 / v1 教师 GGUF（同级项目 feng-ai-qwen35） | `FENG_DATA_DIR`、`FENG_TEACHER_GGUF` |
+| Python 解释器（本机 torch 2.13.0+cu132，CUDA 可用） | 默认当前解释器 `sys.executable`，可用 `FENG_PY` 覆盖 |
+| llama.cpp（GGUF 转换 / 量化 / benchmark） | `FENG_LLAMA_DIR`（本机 `D:\llama.cpp`） |
+| ESP-IDF / esptool / gcc | `flash.ps1 -EspIdfPath -EspToolPy` 或环境变量 `IDF_PATH`/`ESPTOOL_PY`；本机 `F:\esp\v5.5.5\esp-idf`、`F:\Espressif`、`F:\msys2\ucrt64\bin\gcc.exe` |
+| 串口 | **COM20 = CH343，COM19 = 芯片原生 USB-JTAG**，115200 对话 / 921600 烧录 |
+
+新机器上先复制 `scripts/local_paths.example.json` 为 `scripts/local_paths.json` 填本机路径
+（该文件已 gitignore，不会提交）。
 
 本目录是 git 仓库，远端 `origin = https://github.com/jiaheng0815/feng-30m`（公开仓库）。发布约定：
 **主仓库只放代码与文档**——数据集（`data/`、`v2/data/`）与权重/二进制（`*.safetensors`、`*.gguf`、`*.npy`、`*.bin` 等）
@@ -31,7 +36,7 @@
 模型权重、训练产物一旦覆盖无法回滚，删除或覆盖已有模型目录前必须先向用户确认。
 
 改动发布物时记得同步：`USAGE.md`（下载/推理/烧录说明）、Release 包内 `weights/`、`datasets/` 的清单，
-以及 GGUF 的 chat template（用 `D:\llama.cpp\gguf-py\gguf\scripts\gguf_new_metadata.py --chat-template-file` 写入）。
+以及 GGUF 的 chat template（用 `$FENG_LLAMA_DIR\gguf-py\gguf\scripts\gguf_new_metadata.py --chat-template-file` 写入）。
 
 ## 3. 目录地图
 
@@ -41,7 +46,7 @@
 | `v2/` | **v2** 产物：`v2/stage_planA3b/final/`（SFT 对照版）、`v2/gguf_planA3b/`、16k 分词器 `v2/tokenizer/`、预训练数据 |
 | `v3/` | **v3 当前版**：`v3/ctx4096/final/` → `v3/ctx32768/final/`（渐进长文）、`v3/polish_ctx8192/final/`（8k 对话微调）、`v3/retr_sft/ctx*/final/`（检索 SFT，最终权重 `v3/retr_sft/ctx32768/final`）、`v3/gguf/` |
 | `data/` | v1 的提示词集、教师蒸馏数据、公开语料（sharegpt/firefly/dolly/evol 等） |
-| `scripts/` | 全部数据构建 / 训练 / 评测 / 导出脚本（43 个 .py + 1 个启动脚本，见 §5） |
+| `scripts/` | 全部数据构建 / 训练 / 评测 / 导出脚本（44 个 .py，含 `scripts/paths.py` 路径解析；另有 1 个教师启动脚本） |
 | `eval/` | 评测结果 JSON（`planA*_scope.json`、`v3_scope.json`、`longctx_*.json` 等） |
 | `logs/` | 所有构建 / 训练 / 烧录 / 板上测试日志；`board_baseline_lut.txt` 是板上精度基线 |
 | `esp32s3-feng-llm/` | ESP32 固件工程 + 可移植 C 推理引擎 + PC 端一致性检查工具 |
@@ -86,25 +91,28 @@ ESP32 固件（在 `esp32s3-feng-llm\` 下）：
 
 ```powershell
 # 0) 导出板端模型（从 HF 权重生成 model.bin / tokenizer.bin / ref_logits.bin）
-$py = "D:\wt\feng-ai-qwen35\.venv\Scripts\python.exe"
-& $py tools\export_model.py --model D:\wt\feng-distill-30m\v3\retr_sft\ctx32768\final --out model_export_v3
+$py = "python"        # 换成装了 torch + transformers 的解释器
+& $py tools\export_model.py --model <仓库根>\v3\retr_sft\ctx32768\final --out model_export_v3
 
 # 1) PC 端一致性自检（改内核后必跑）
-& "F:\msys2\ucrt64\bin\gcc.exe" -O2 -o pc\pc_check.exe pc_check.c ..\main\feng_model.c `
+& "<MSYS2>\ucrt64\bin\gcc.exe" -O2 -o pc\pc_check.exe pc_check.c ..\main\feng_model.c `
     ..\main\feng_llm.c ..\main\feng_quant.c ..\main\feng_smp.c ..\main\feng_tokenizer.c -I..\main -lm
 .\pc\pc_check.exe ..\model_export_v3 ..\logs\c_logits_v3.bin
 
 # 2) 编译固件
-$env:IDF_TOOLS_PATH = "F:\Espressif"
-& "F:\esp\v5.5.5\esp-idf\export.ps1"
+$env:IDF_TOOLS_PATH = "<IDF 工具链目录>"      # 本机 F:\Espressif
+& "<esp-idf>\export.ps1"                     # 本机 F:\esp\v5.5.5\esp-idf
 idf.py build
 
 # 3) 烧录（固件；换模型只需后两条；偏移以 partitions.csv 为准）
-$esp = "F:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe"
+$esp = "python"                              # 换成带 esptool 的解释器
 & $esp -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash `
     0x0 build\bootloader\bootloader.bin 0x8000 build\partition_table\partition-table.bin 0x10000 build\feng_30m.bin
 & $esp -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000  model_export_v3\model.bin
 & $esp -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 model_export_v3\tokenizer.bin
+
+# 或者直接用一键脚本（路径走参数/环境变量，偏移已对齐 partitions.csv）
+.\flash.ps1 -Port COM20 -EspIdfPath "<esp-idf>" -ModelDir .\model_export_v3
 
 # 4) 串口对话 / 稳定性 / 编码自检
 python scripts\esp32_chat.py --port COM20 --question "你是谁？"

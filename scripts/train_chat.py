@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from student_config import build_config  # noqa: E402
 from student_utils import chunked_lm_loss  # noqa: E402
 
-ROOT = Path(r"D:\wt\feng-distill-30m")
+from paths import ROOT  # noqa: E402
 STU = ROOT / "student"
 ATTN = [SDPBackend.EFFICIENT_ATTENTION]
 

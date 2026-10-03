@@ -98,7 +98,7 @@ ESP32-S3（R16N32）编译、烧录与串口协议见 [`USAGE.md`](USAGE.md) 第
 ## 仓库结构
 
 ```
-scripts/            数据构建 / 训练 / 评测 / 导出脚本（43 个）
+scripts/            数据构建 / 训练 / 评测 / 导出脚本（44 个，路径解析见 scripts/paths.py）
 esp32s3-feng-llm/   ESP32 固件 + 可移植 C11 推理引擎 + PC 端一致性检查
 student/ v2/ v3/    三代模型的训练记录（summary.json / train_log.jsonl / config.json / 分词器）
 eval/               评测结果 JSON（范围内 18 题、针检索、各阶段）
@@ -106,12 +106,28 @@ logs/               构建 / 训练 / 烧录 / 板上测试日志（board_baseli
 tools/check_md.py   文档自检（代码围栏、路径、过时数字）
 ```
 
+## 配置（跑脚本前看一眼）
+
+脚本里**没有硬编码盘符**：项目根目录由脚本位置自动推导，外部依赖按
+**环境变量 > `scripts/local_paths.json` > 默认值** 的顺序解析：
+
+| 环境变量 | 用途 |
+|---|---|
+| `FENG_ROOT` | 项目根目录（默认：脚本上一级目录） |
+| `FENG_DATA_DIR` | v1 蒸馏用的原始数据目录（默认 `../feng-ai-qwen35/data`） |
+| `FENG_LLAMA_DIR` | llama.cpp 仓库目录（GGUF 转换 / 量化 / benchmark） |
+| `FENG_PY` | Python 解释器（默认：当前解释器） |
+| `FENG_TEACHER_GGUF` | v1 教师模型 GGUF（feng-0.8b bf16） |
+
+不想每次都设环境变量，就复制 `scripts/local_paths.example.json` 为 `scripts/local_paths.json` 填自己的路径
+（后者已 gitignore）。自检命令：`python scripts/paths.py`，会逐条打印路径是否可用。
+
 ## 已知限制
 
 - **30M 容量上限**：常识、算术、翻译不可靠，适合身份对话、寒暄、简单任务与长文检索演示。
 - 板端上下文 1024（int8 KV 占 9.93 MB PSRAM）；**32k 只在 PC 上可用**，板上 32k 受 KV 内存限制不可能。
 - 板端生成 ~1.9 tok/s，长回答要等十几秒；标量内核已到极限，下一步是 PIE（128 位 int8 SIMD）。
-- 训练脚本里的根目录是硬编码的 `D:\wt\feng-distill-30m`，换机器需要改。
+- ESP32 固件的模型分区偏移必须与 `esp32s3-feng-llm/partitions.csv` 一致（`flash.ps1` 已按当前布局写好）。
 
 ## 许可证
 

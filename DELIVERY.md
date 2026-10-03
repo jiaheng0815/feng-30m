@@ -79,7 +79,7 @@ Plan A 范围内 18 条题：**v3 = 10/10 可判分项通过**（v2 = 8/10，v1 
 
 ### 烧录（COM20 = CH343；COM19 = 原生 USB-JTAG）
 ```powershell
-$py='F:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe'
+$py='python'    # 换成带 esptool 的解释器
 # 固件（首次烧录，或改过 sdkconfig/分区表之后）
 & $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash `
    0x0 build\bootloader\bootloader.bin 0x8000 build\partition_table\partition-table.bin `

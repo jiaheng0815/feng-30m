@@ -9,7 +9,8 @@ import sys
 from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-ROOT = Path(r"D:\wt\feng-distill-30m")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from paths import ROOT  # noqa: E402
 SEED = 20261017
 
 GREET = ["你好", "你好呀", "嗨", "在吗？", "早上好", "下午好", "晚上好", "晚安", "哈喽",

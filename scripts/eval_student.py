@@ -11,7 +11,9 @@ import torch.nn.functional as F
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-STU = Path(r"D:\wt\feng-distill-30m\student")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from paths import ROOT  # noqa: E402
+STU = ROOT / "student"
 
 CHAT_PROMPTS = [
     ("你是谁？", ["feng", "jiaheng"]),

@@ -7,6 +7,8 @@ from pathlib import Path
 import torch
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from paths import ROOT  # noqa: E402
 
 CASES = [
     ("身份", "你是谁？", r"feng"),
@@ -31,8 +33,8 @@ CASES = [
 
 
 def main():
-    model_dir = sys.argv[1] if len(sys.argv) > 1 else r"D:\wt\feng-distill-30m\v2\stage_planA2\final"
-    out_path = sys.argv[2] if len(sys.argv) > 2 else r"D:\wt\feng-distill-30m\eval\planA2_scope.json"
+    model_dir = sys.argv[1] if len(sys.argv) > 1 else str(ROOT / "v2/stage_planA2/final")
+    out_path = sys.argv[2] if len(sys.argv) > 2 else str(ROOT / "eval/planA2_scope.json")
     from transformers import AutoTokenizer, Qwen3ForCausalLM
     tok = AutoTokenizer.from_pretrained(model_dir)
     model = Qwen3ForCausalLM.from_pretrained(model_dir, dtype=torch.bfloat16).to("cuda").eval()

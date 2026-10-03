@@ -219,7 +219,7 @@ python scripts\eval_longctx.py --model v3\retr_sft\ctx32768\final --ctx 4096,819
 python scripts\eval_planA_scope.py v3\retr_sft\ctx32768\final eval\v3_scope.json
 
 # ESP32：烧录（COM20=CH343，COM19=原生 USB-JTAG）
-$py='F:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe'
+$py='python'    # 换成带 esptool 的解释器
 & $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x10000 build\feng_30m.bin
 & $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000 model_export_v3\model.bin
 & $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 model_export_v3\tokenizer.bin

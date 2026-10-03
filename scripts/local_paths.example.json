@@ -1,0 +1,8 @@
+{
+  "_说明": "复制本文件为 scripts/local_paths.json 并改成你自己的路径（local_paths.json 不会提交）",
+  "_优先级": "环境变量 > scripts/local_paths.json > 脚本内的默认推导",
+  "llama_dir": "D:\\path\\to\\llama.cpp",
+  "data_dir": "D:\\path\\to\\feng-ai-qwen35\\data",
+  "python": "D:\\path\\to\\venv\\Scripts\\python.exe",
+  "teacher_gguf": "D:\\path\\to\\feng-ai-qwen35\\quant\\gguf\\feng-bf16.gguf"
+}

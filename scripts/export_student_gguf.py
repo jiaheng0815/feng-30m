@@ -7,10 +7,12 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-ROOT = Path(r"D:\wt\feng-distill-30m")
-BIN = Path(r"D:\llama.cpp\build\bin")
-CONVERT = Path(r"D:\llama.cpp\convert_hf_to_gguf.py")
-PY = Path(r"D:\wt\feng-ai-qwen35\.venv\Scripts\python.exe")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from paths import ROOT  # noqa: E402
+from paths import LLAMA_BIN as BIN  # noqa: E402
+from paths import CONVERT_HF_TO_GGUF as CONVERT  # noqa: E402
+from paths import PY  # noqa: E402
+from paths import require  # noqa: E402
 
 
 def run(cmd, log):
@@ -25,6 +27,8 @@ def main():
     ap.add_argument("--out-dir", default=str(ROOT / "student" / "gguf"))
     ap.add_argument("--quants", nargs="*", default=["Q8_0", "Q4_K_M"])
     args = ap.parse_args()
+    require(CONVERT, "llama.cpp 的 convert_hf_to_gguf.py", "FENG_LLAMA_DIR")
+    require(PY, "Python 解释器", "FENG_PY")
     out = Path(args.out_dir)
     out.mkdir(parents=True, exist_ok=True)
     logs = ROOT / "logs"

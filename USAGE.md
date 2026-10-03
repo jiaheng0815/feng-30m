@@ -138,8 +138,9 @@ python scripts\eval_planA_scope.py v3\retr_sft\ctx32768\final eval\v3_scope.json
 python scripts\eval_longctx.py --model v3\retr_sft\ctx32768\final --ctx 4096,8192,16384,32768
 ```
 
-注意：脚本里的根目录是硬编码的 `D:\wt\feng-distill-30m`，换机器需相应修改；
-训练需要 16 GB 显存的 CUDA 卡（32k 阶段峰值 10.28 GiB）。
+注意：脚本不再写死路径——根目录按脚本位置推导，外部工具（llama.cpp、教师模型、原始数据）
+用环境变量 `FENG_LLAMA_DIR` / `FENG_TEACHER_GGUF` / `FENG_DATA_DIR` 或 `scripts/local_paths.json` 指定，
+自检命令 `python scripts/paths.py`。训练需要 16 GB 显存的 CUDA 卡（32k 阶段峰值 10.28 GiB）。
 
 ## 7. 评测表现（贪心解码 + 重复惩罚）
 

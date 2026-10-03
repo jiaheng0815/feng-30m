@@ -9,7 +9,8 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 import numpy as np
 import pandas as pd
 
-ROOT = Path(r"D:\wt\feng-distill-30m")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from paths import ROOT  # noqa: E402
 V2 = ROOT / "v2"
 DATA = ROOT / "data"
 TOK = V2 / "tokenizer" / "tokenizer.json"

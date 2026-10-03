@@ -15,7 +15,8 @@ import numpy as np
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-ROOT = Path(r"D:\wt\feng-distill-30m")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from paths import ROOT  # noqa: E402
 V3 = ROOT / "v3"
 SPECS = [(4096, 800), (8192, 400), (16384, 200), (32768, 80)]
 

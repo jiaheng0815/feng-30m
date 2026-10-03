@@ -6,11 +6,13 @@ from pathlib import Path
 import torch
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from paths import ROOT  # noqa: E402
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", default=r"D:\wt\feng-distill-30m\student\stageB\final")
+    ap.add_argument("--model", default=str(ROOT / "student/stageB/final"))
     ap.add_argument("--prompt", default=None, help="single prompt; omit for interactive")
     ap.add_argument("--max-new", type=int, default=128)
     ap.add_argument("--temp", type=float, default=0.0)

@@ -9,9 +9,10 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 import pandas as pd
 
-ROOT = Path(r"D:\wt\feng-distill-30m")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from paths import ROOT  # noqa: E402
 DATA = ROOT / "data"
-OTHER = Path(r"D:\wt\feng-ai-qwen35\data")
+from paths import DATA_DIR as OTHER  # noqa: E402
 SEED = 20261005
 
 CJK = re.compile(r"[\u4e00-\u9fff]")

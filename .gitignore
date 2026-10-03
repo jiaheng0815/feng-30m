@@ -28,3 +28,6 @@ __pycache__/
 
 # ---- 日志里的大文件 ----
 logs/teacher_server.log
+
+# ---- 机器本地路径配置（每台机器不同，不入库）----
+scripts/local_paths.json

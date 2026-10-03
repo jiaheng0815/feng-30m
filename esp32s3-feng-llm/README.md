@@ -28,11 +28,9 @@ flash mmap 流式读 **108.3 MB/s**，C 引擎与 PyTorch(Q4) **逐位一致**�
 
 ## 1. 导出模型（PC 上执行）
 
-需要 Python + PyTorch 环境（本项目用的是 `D:\wt\feng-ai-qwen35\.venv`，路径按你的环境改）：
-
 ```powershell
-$py = "D:\wt\feng-ai-qwen35\.venv\Scripts\python.exe"
-& $py tools\export_model.py --model D:\wt\feng-distill-30m\v3\retr_sft\ctx32768\final --out model_export_v3
+$py = "python"                    # 换成装了 torch + transformers 的解释器
+& $py tools\export_model.py --model <仓库根>\v3\retr_sft\ctx32768\final --out model_export_v3
 # -> model_export_v3/model.bin      14.93 MB（Q4 块64 + fp16 norms/scales）
 #    model_export_v3/tokenizer.bin  413 KB
 #    ref_logits.bin / ref_ids.json / export_info.json
@@ -46,7 +44,7 @@ $py = "D:\wt\feng-ai-qwen35\.venv\Scripts\python.exe"
 cd esp32s3-feng-llm
 $src = @('pc_check.c','..\main\feng_model.c','..\main\feng_llm.c','..\main\feng_quant.c',
          '..\main\feng_smp.c','..\main\feng_tokenizer.c','-I..\main','-lm')
-& "F:\msys2\ucrt64\bin\gcc.exe" -O2 -o pc\pc_check.exe @src
+& "<MSYS2>\ucrt64\bin\gcc.exe" -O2 -o pc\pc_check.exe @src      # 本机：F:\msys2\ucrt64\bin\gcc.exe
 .\pc\pc_check.exe ..\model_export_v3 ..\logs\c_logits_v3.bin
 ```
 
@@ -63,18 +61,18 @@ logits check: max|diff|=2.5441  argmax c=5331 ref=5331 MATCH
 
 ```powershell
 $env:CUDA_VISIBLE_DEVICES=''
-& "D:\wt\feng-ai-qwen35\.venv\Scripts\python.exe" pc\verify_c_vs_torch.py `
-   --export ..\model_export_v3 --model D:\wt\feng-distill-30m\v3\retr_sft\ctx32768\final `
+& "<带 torch 的 python>" pc\verify_c_vs_torch.py `
+   --export ..\model_export_v3 --model <仓库根>\v3\retr_sft\ctx32768\final `
    --c-logits ..\logs\c_logits_v3.bin
 # [C vs torch(Q4)] max|diff| = 0.0000   ← 实现逐位一致
 ```
 
-## 3. 编译固件（ESP-IDF v5.5.5，F 盘）
+## 3. 编译固件（ESP-IDF v5.5.5）
 
 ```powershell
-$env:IDF_TOOLS_PATH = "F:\Espressif"
-& "F:\esp\v5.5.5\esp-idf\export.ps1"
-cd D:\wt\feng-distill-30m\esp32s3-feng-llm
+$env:IDF_TOOLS_PATH = "<IDF 工具链目录>"     # 本机：F:\Espressif
+& "<esp-idf 目录>\export.ps1"                # 本机：F:\esp\v5.5.5\esp-idf
+cd <仓库>\esp32s3-feng-llm
 idf.py build          # 目标/分区表已在 sdkconfig 和 partitions.csv 里配好
 ```
 
@@ -84,7 +82,7 @@ idf.py build          # 目标/分区表已在 sdkconfig 和 partitions.csv 里�
 ## 4. 烧录（COM20 = CH343；COM19 = 芯片原生 USB-JTAG，两个都能烧）
 
 ```powershell
-$py = "F:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe"
+$py = "python"        # 换成带 esptool 的解释器（ESP-IDF 自带的那个也行）
 # ① 固件（首次烧录、或改过 sdkconfig/分区表之后）
 & $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash `
     0x0 build\bootloader\bootloader.bin 0x8000 build\partition_table\partition-table.bin `
@@ -96,6 +94,7 @@ $py = "F:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe"
 
 > 第 ② 步的两个文件也可以直接用 Release 包里的 `weights/esp32/model.bin` 与 `weights/esp32/tokenizer.bin`；
 > 偏移量必须与 `partitions.csv` 一致（`model` 0x110000 / `tokdata` 0x1000000），否则会出现 MMU fault 或读不到模型。
+> 也可以直接用一键脚本：`.\flash.ps1 -Port COM20 -EspIdfPath <esp-idf> -ModelDir ..\model_export_v3`。
 
 > 提示：模型写 15 MB 约需 3.5 分钟（921600 波特率，压缩后约 13 MB）。
 > 板子不在 USB 列表里时 esptool 会报 "port is busy or doesn't exist"——先检查线/供电。

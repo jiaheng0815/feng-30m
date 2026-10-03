@@ -17,7 +17,7 @@ from student_utils import chunked_lm_loss  # noqa: E402
 
 ATTN_KERNELS = [SDPBackend.EFFICIENT_ATTENTION]
 
-ROOT = Path(r"D:\wt\feng-distill-30m")
+from paths import ROOT  # noqa: E402
 STU = ROOT / "student"
 
 

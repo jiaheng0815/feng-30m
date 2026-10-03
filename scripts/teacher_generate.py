@@ -12,9 +12,11 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-ROOT = Path(r"D:\wt\feng-distill-30m")
-BIN = Path(r"D:\llama.cpp\build\bin")
-TEACHER = Path(r"D:\wt\feng-ai-qwen35\quant\gguf\feng-bf16.gguf")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from paths import ROOT  # noqa: E402
+from paths import LLAMA_BIN as BIN  # noqa: E402
+from paths import TEACHER_GGUF as TEACHER  # noqa: E402
+from paths import require  # noqa: E402
 
 PROMPT_TMPL = ("<|im_start|>user\n{user}<|im_end|>\n"
                "<|im_start|>assistant\n<think>\n\n</think>\n\n")
@@ -47,6 +49,7 @@ class Stats:
 
 def main():
     ap = argparse.ArgumentParser()
+    require(TEACHER, "v1 教师 GGUF（feng-0.8b bf16）", "FENG_TEACHER_GGUF")
     ap.add_argument("--prompts", default=str(ROOT / "data" / "prompts.jsonl"))
     ap.add_argument("--out", default=str(ROOT / "data" / "distill.jsonl"))
     ap.add_argument("--workers", type=int, default=24)

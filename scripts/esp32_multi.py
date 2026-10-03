@@ -8,10 +8,13 @@ validated by actually running for a while instead of one single token.
 import argparse
 import sys
 import time
+from pathlib import Path
 
 import serial
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from paths import ROOT  # noqa: E402
 
 DEFAULT_QUESTIONS = [
     "你好",
@@ -45,7 +48,7 @@ def main():
     ap.add_argument("--baud", type=int, default=115200)
     ap.add_argument("--questions", default=None, help="'|'-separated list")
     ap.add_argument("--reply-wait", type=float, default=300.0)
-    ap.add_argument("--out", default=r"D:\wt\feng-distill-30m\logs\esp32_multi.txt")
+    ap.add_argument("--out", default=str(ROOT / "logs/esp32_multi.txt"))
     args = ap.parse_args()
 
     questions = args.questions.split("|") if args.questions else DEFAULT_QUESTIONS
