@@ -15,7 +15,7 @@
 - `weights/hf/` —— v3.6 完整权重（fp32 safetensors + 分词器 + chat template），transformers 直接加载
 - `weights/gguf/` —— Q4_K_M 23.7 MB / Q8_0 30.5 MB / f16 56.8 MB，**chat template 已内嵌**
 - `weights/esp32/` —— 板端 `model.bin`（14.93 MB）+ `tokenizer.bin`（413 KB）+ 参考 logits
-- `datasets/` —— 蒸馏数据集（教师输出与提示词）+ 多轮对话（`v3_5_multiturn.jsonl`）+ 日常补丁与运算数据（`v3_6_*.jsonl`）
+- `datasets/` —— 蒸馏训练数据（教师输出与提示词）
 
 安装、推理、烧录的完整步骤见 [`USAGE.md`](USAGE.md)。
 

@@ -15,7 +15,7 @@ feng-30m-v3.6/
 │   ├── hf/                   v3.6 完整权重（fp32 safetensors + 分词器），transformers 直接加载
 │   ├── gguf/                 llama.cpp 用：Q4_K_M / Q8_0 / f16（chat template 已内嵌）
 │   └── esp32/                ESP32-S3 板端：model.bin + tokenizer.bin + 参考 logits
-└── datasets/                 蒸馏数据集 + 多轮对话 + 日常补丁/运算数据
+└── datasets/                 蒸馏训练数据（教师输出与提示词）
 ```
 
 模型规格：Qwen3 结构，11 层 / hidden 448 / 7 头 MHA（7 KV 头）/ head_dim 64 / FFN 896 /
