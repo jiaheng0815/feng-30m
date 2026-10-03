@@ -34,7 +34,7 @@ VDD_SPI 1.8 V（同系列 N16R8V / N32R8V 已 EOL）。
 ┌─ ESP32-S3-WROOM-2-N32R16V（32MB Octal flash + 16MB Octal PSRAM，1.8V） ──────────┐
 │  flash: 0x110000   model.bin      14.93 MB, Q4 block-64, mmap 直读（不占 RAM）   │
 │         0x1000000  tokenizer.bin  413 KB, 启动时读入 PSRAM                       │
-│         0x0010000  app            288 KB（factory 分区 1 MB）                  │
+│         0x0010000  app            288 KB（factory 分区 1 MB）                    │
 │  PSRAM: KV cache int8 1024 ctx = 9.93 MB + 工作区/分词 ≈ 1.0 MB                  │
 │  时钟 : CPU 240MHz ×2   flash OPI-DTR 120MHz   PSRAM OCT 120MHz                  │
 │  串口 : UART0 115200 8N1（`you> ` 提示符，`<< 内容 >>END` 流式回复）             │
