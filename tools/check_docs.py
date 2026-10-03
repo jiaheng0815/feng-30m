@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -21,10 +22,23 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 ROOT = Path(__file__).resolve().parents[1]
 TICK = chr(96)
 
-DOCS = sorted(
-    p for p in ROOT.rglob("*.md")
-    if ".git" not in p.parts and "__pycache__" not in p.parts
-)
+
+def _tracked_docs() -> list[Path]:
+    """只审 git 跟踪的 markdown（.Codex/ 等运行时目录不算项目文档）。"""
+    try:
+        out = subprocess.run(["git", "ls-files", "-z", "*.md"], cwd=ROOT,
+                             capture_output=True, check=True).stdout
+        names = [n.decode("utf-8") for n in out.split(b"\0") if n]
+        if names:
+            return sorted(ROOT / n for n in names)
+    except Exception as exc:
+        print(f"[警告] git ls-files 失败（{exc}），退化为全目录扫描")
+    return sorted(p for p in ROOT.rglob("*.md")
+                  if ".git" not in p.parts and ".Codex" not in p.parts
+                  and "__pycache__" not in p.parts)
+
+
+DOCS = _tracked_docs()
 
 # 只存在于 Release 压缩包里的路径（合法引用，不在仓库中）
 RELEASE_PREFIXES = ("weights/", "datasets/", "feng-30m-v3/")
@@ -151,6 +165,18 @@ def check_facts() -> None:
             got = "、".join(f"{m.group(i)}/3" for i in range(1, 5))
             if got != "3/3、3/3、2/3、2/3":
                 fail.append(f"{doc.relative_to(ROOT)}: 针检索写法 {got} 与真值不符")
+
+    # --- 检索 SFT 的 loss 序列必须与 v3/retr_sft/summary.json 一致 ---
+    retr = json.loads((ROOT / "v3" / "retr_sft" / "summary.json").read_text(encoding="utf-8"))
+    want_loss = [f"{r['loss']:.2f}" for r in retr]          # ['0.76', '0.43', '0.22', '0.33']
+    for doc in DOCS:
+        t = doc.read_text(encoding="utf-8")
+        for m in re.finditer(r"0\.76\s*/\s*0\.43\s*/\s*([\d.]+)\s*/\s*([\d.]+)", t):
+            got = ["0.76", "0.43", m.group(1), m.group(2)]
+            if got != want_loss:
+                fail.append(f"{doc.relative_to(ROOT)}: 检索 SFT loss 写为 "
+                            f"{'/'.join(got)}，实测为 {'/'.join(want_loss)}")
+    print(f"    检索 SFT loss 序列 {'/'.join(want_loss)}（与 summary.json 一致）")
 
 
 def main() -> int:

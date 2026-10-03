@@ -50,7 +50,7 @@
 | `eval/` | 评测结果 JSON（`planA*_scope.json`、`v3_scope.json`、`longctx_*.json` 等） |
 | `logs/` | 所有构建 / 训练 / 烧录 / 板上测试日志；`board_baseline_lut.txt` 是板上精度基线 |
 | `esp32s3-feng-llm/` | ESP32 固件工程 + 可移植 C 推理引擎 + PC 端一致性检查工具 |
-| `tools/check_md.py` | Markdown 文档自检（围栏配对、路径存在、过时数字），改完文档必须跑 |
+| `tools/check_md.py`、`tools/check_docs.py` | 文档自检：前者查围栏/路径/过时表述，后者把**全部 10 个 md 的关键数字与实际产物对齐**（参数量、GGUF 体积与 chat template、评测分数、检索 loss） |
 
 ## 4. 工作约定
 
@@ -120,7 +120,7 @@ python scripts\esp32_multi.py --port COM20
 python scripts\esp32_enc_test.py COM20
 ```
 
-文档自检：`python tools\check_md.py`。
+文档自检：`python tools\check_md.py` + `python tools\check_docs.py`（改文档后两个都要跑）。
 
 ## 6. 硬性约束与踩过的坑（改代码前先看）
 
@@ -129,7 +129,7 @@ python scripts\esp32_enc_test.py COM20
 3. **显存安全**：lm_head + 交叉熵必须走 `scripts/student_utils.py::chunked_lm_loss`（512 token 分块 + checkpoint），32k 阶段峰值 10.28 GiB，16GB 卡上不要并发跑其他任务。
 4. **注意力后端**：训练用 `torch.nn.attention.sdpa_kernel` 的 EFFICIENT/FLASH 后端；该 torch 构建的 SDPA 不支持 GQA，所以学生用 MHA（7=7），改 GQA 需同步改 C 引擎（`feng_llm.c` 里要加 KV 头广播）。
 5. **身份不能掉**：训练语料里身份样本过采样（v1 是 15×），并过滤提及其他 AI 身份（ChatGPT/通义…）的样本；每次出模型都要用 `eval_planA_scope.py` 验证身份题。
-6. **ESP32 的 16MB mmap 窗口是硬边界**：`model.bin`（15,659,904 B = 0xEEF380）必须结束在 0x1000000 之前；现行分区为 `model 0x110000/0xEF0000`、`tokdata 0x1000000/0x80000`（tokdata 用 `esp_partition_read` 读，可放窗口外）。`flash.ps1` 里的 `0x310000 / 0x1A10000` 是**已作废的旧偏移**，别照着用。
+6. **ESP32 的 16MB mmap 窗口是硬边界**：`model.bin`（15,659,904 B = 0xEEF380）必须结束在 0x1000000 之前；现行分区为 `model 0x110000/0xEF0000`、`tokdata 0x1000000/0x80000`（tokdata 用 `esp_partition_read` 读，可放窗口外）。烧录偏移必须与 `esp32s3-feng-llm/partitions.csv` 保持一致：`flash.ps1` 已按此修正为 `model=0x110000` / `tokdata=0x1000000`，改动分区表时要同步改脚本。
 7. **板端内存账**：权重只能 flash mmap 流式读，不能预载进 SRAM（每层 Q4 ≈0.95MB，内部 SRAM 只剩 ~271KB）；KV 用 int8（`FENG_KV_INT8=1`，`main/main.c` 的 `MAX_CTX=1024`，9.93MB PSRAM）；板上 32k 上下文在 KV 内存上不可能，长文只能走滑窗/attention sink/线性注意力。
 8. **速度现状**：标量 Q4 内核已到极限（4.1 周期/权重，1.86 tok/s≈537ms/token），下一个杠杆是 PIE（`ee.vmulas.s8.accx` 128 位 int8 SIMD，预期 2–3x）；不要再做内层展开之类的标量微调（已证明会变慢）。
 9. **量化格式耦合**：Q4 block-64（4.25 bpw）；改 `QK` 必须同步改 C 侧 `QK`，且 `tools/export_model.py` 会生成 `ref_ids.json` / `ref_logits.bin` 供一致性校验。

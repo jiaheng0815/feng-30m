@@ -31,3 +31,6 @@ logs/teacher_server.log
 
 # ---- 机器本地路径配置（每台机器不同，不入库）----
 scripts/local_paths.json
+
+# ---- coder-auditor 运行时状态（任务文件 / 失败日志 / 验证输出）----
+.Codex/

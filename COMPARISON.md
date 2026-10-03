@@ -67,7 +67,7 @@ i7-12700KF），评测脚本与协议在各代之间保持一致，便于横向�
 | ctx16384 | 16384 | 8.0M tokens | 122 | 4.426 | 7.5 min | 5.75 GiB | 17.8k tok/s |
 | ctx32768 | 32768 | 3.9M tokens | 30 | 4.051 | 5.9 min | 10.28 GiB | 11.0k tok/s |
 | 8k 长上下文对话微调 | 8192 | 22.7M tokens（17.9M 有监督） | 345 | 2.959 | 14.3 min | 5.57 GiB | 26.4k tok/s |
-| **合成检索 SFT** | 4096/8192/16384/32768 | 12.5M tokens（样本 800/400/200/80） | 100/50/50/20 | 0.76/0.43/0.34/0.33 | 9.4 min | 10.28 GiB | 11k–37k tok/s |
+| **合成检索 SFT** | 4096/8192/16384/32768 | 12.5M tokens（样本 800/400/200/80） | 100/50/50/20 | 0.76/0.43/0.22/0.33 | 9.4 min | 10.28 GiB | 11k–37k tok/s |
 
 关键教训（与 v1 当年的结论一致）：**只喂长文本学不会检索**——四阶段跑完时针检索仍是
 0/3，而且对话能力被冲掉（退化成复读）。真正让长上下文"能用"的是最后那一步
@@ -95,14 +95,15 @@ i7-12700KF），评测脚本与协议在各代之间保持一致，便于横向�
 
 | 项目 | v2 | **v3** |
 |---|---|---|
-| GGUF Q4_K_M | 23.7 MB | 23.7 MB（`v3/gguf/`） |
-| PC CPU（llama.cpp 8 线程） | 1,224 tok/s | 1,260 tok/s |
-| PC GPU（CUDA 全卸载） | 2,692 tok/s | 2,657 tok/s |
-| ESP32-S3 | 1.56 tok/s（256 ctx） | 权重同样可跑；32k 上下文受 PSRAM 限制（见 DELIVERY §4） |
+| GGUF Q4_K_M | 23.7 MB | 23.7 MB（Release 包内 `weights/gguf/`） |
+| PC CPU（llama-bench Q4_K_M，8 线程，-p 32 -n 64） | 1,280 tok/s | 1,216 tok/s |
+| PC GPU（CUDA 全卸载，-ngl 99，-p 32 -n 64） | 2,793 tok/s | 2,704 tok/s |
+| ESP32-S3 实机 | 1.56 tok/s（256 ctx，fp32 KV） | **1.86 tok/s（1024 ctx，int8 KV）** |
 
 产物：`v3/retr_sft/ctx32768/final`（最终版）、`v3/ctx{4096,8192,16384,32768}/final`（各阶段）、
-`v3/gguf/feng-30m-Q4_K_M.gguf`。评测记录：`eval/longctx_v2.json`、`eval/longctx_v3.json`、
-`eval/v3_scope.json`。
+`v3/gguf/feng-30m-Q4_K_M.gguf`；仓库里这些目录只保留配置与训练记录，**权重与 GGUF 从
+[Releases](https://github.com/jiaheng0815/feng-30m/releases) 下载**。评测记录：`eval/longctx_v2.json`、
+`eval/longctx_v3.json`、`eval/v3_scope.json`。
 
 ## 5. PC 端三代对比（2026-10-02 实测）
 

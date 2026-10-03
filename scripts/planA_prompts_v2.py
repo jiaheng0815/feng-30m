@@ -1,4 +1,7 @@
-"""Expanded Plan A prompt set (~1,300 single-turn + ~70 multi-turn) for the 27B teacher."""
+"""Expanded Plan A prompt set for the 27B teacher.
+
+固定随机种子下产出 1,032 条请求：506 个单轮提示 × 2 次采样 + 20 组多轮对话。
+"""
 import hashlib
 import json
 import random

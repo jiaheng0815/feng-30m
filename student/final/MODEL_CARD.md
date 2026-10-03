@@ -5,7 +5,8 @@
 
 它主要用于对比和续训起点，**不是**推荐的对话模型：
 
-> 权重下载：见 [Releases](https://github.com/jiaheng0815/feng-30m/releases)（本仓库只放代码与文档，v3 为当前推荐版本）。
+> 权重下载：见 [Releases](https://github.com/jiaheng0815/feng-30m/releases)。**当前 Release 只发布 v3 权重**；
+> v1 作为历史对照保留在文档与 `student/` 的训练记录里，未随包发布。
 
 - 推荐使用 `student/feng-30m-chat/`（对话微调后，非打包 SFT，效果更稳）
 - 32k 输入版见 `student/feng-30m-32k/`

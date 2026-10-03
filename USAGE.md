@@ -112,7 +112,7 @@ python scripts\esp32_enc_test.py COM20              # GBK/UTF-8 双编码自检
 |---|---|
 | `teacher_distill.jsonl` | v1 教师（Qwen3.5-0.8B 微调版）生成的 12,000 条回答（1.61M tokens） |
 | `teacher_prompts.jsonl`、`teacher_prompts_12k.jsonl` | v1 教师使用的提示词集 |
-| `planA_prompts.jsonl`、`planA_prompts_v2.jsonl` | v2/v3 教师提示词（≈1,300 单轮 + ≈70 多轮） |
+| `planA_prompts.jsonl`、`planA_prompts_v2.jsonl` | v2/v3 教师提示词，共 1,408 条请求（376 + 1,032；后者含 20 组多轮对话） |
 | `planA_teacher.jsonl`、`planA_teacher_v2.jsonl`、`planA_teacher_partial.jsonl` | v2/v3 教师（bonsai2-27b）返回的行为数据 |
 
 说明：
