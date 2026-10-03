@@ -3,15 +3,16 @@
 把 **feng-30m**（Qwen3 架构：11 层 / hidden 448 / 7 头 MHA / FFN 896 / 16k 词表 /
 tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话**。
 
-当前部署的是 **v3.4** 权重（`../v3_4/release/`，身份 12/12：自称"由个人开发者 jiaheng
+当前部署的是 **v3.5** 权重（`../v3_5/release/`，身份 12/12：自称"由个人开发者 jiaheng
 独立开发训练的 AI"；针检索按每长度 32 题复测 4k/8k/16k/32k = 28/30/27/28，
 文中没有答案时 88% 正确说明"没有提到"，见 `../CHANGELOG.md`）。
 
-**实机实测（2026-10-03，v3.4 已烧录）**：连续 10 轮问答 **10/10 成功、0 失败**，
+**实机实测（2026-10-03，v3.5 已烧录）**：连续 10 轮问答 **10/10 成功、0 失败**（含情绪回应
+"我很伤心 → 我在。让你伤心的事，愿意讲给我听听吗？" 与危机话术），
 生成速度 **1.84 tok/s**（742 ms/token，1024 上下文 / int8 KV），GEMV 双核加速 1.93x；
 板端回复实测：`你是谁？` → `我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。我可以陪你聊天、帮你写作、翻译和写简单代码。`，
 `你是Qwen吗？` → `不是。我是 feng，由个人开发者 jiaheng 独立开发训练的 AI。`
-基线记录见 `../logs/board_baseline_v3_4.txt`。
+基线记录见 `../logs/board_baseline_v3_5.txt`（v3.4 的见 `board_baseline_v3_4.txt`）。
 
 板端要的两个文件（`model.bin` + `tokenizer.bin`）有两个来源：**① 直接下载**
 [Releases](https://github.com/jiaheng0815/feng-30m/releases) 里的 `feng-30m-v3.4-release.zip`，

@@ -65,7 +65,7 @@ int main(int argc, char **argv)
 
     feng_kv_t kv = {0};
     kv.ctx = 512;
-#if FENG_KV_INT8
+#if FENG_KV_INT8 || FENG_KV_Q2
     kv.k_cache = xmalloc((size_t)m.hdr.n_layers * kv.ctx * m.hdr.hidden);
     kv.v_cache = xmalloc((size_t)m.hdr.n_layers * kv.ctx * m.hdr.hidden);
     kv.k_scale = (uint16_t *)xmalloc((size_t)m.hdr.n_layers * kv.ctx * m.hdr.n_heads * 2);

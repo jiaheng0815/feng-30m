@@ -1,0 +1,153 @@
+{
+  "summary": {
+    "model": "v3_5b\\final\\ctx32768\\final",
+    "n": 20,
+    "distinct_ratio": 1.0,
+    "top_response_share": 0.05,
+    "top_response": "很高兴认识你。如果你有任何问题或需要帮助，请随时",
+    "blurb_leak": 0,
+    "emotion_ok": "4/8"
+  },
+  "rows": [
+    {
+      "kind": "情绪",
+      "prompt": "我很高兴",
+      "response": "很高兴认识你。如果你有任何问题或需要帮助，请随时问我。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "情绪",
+      "prompt": "我很难过",
+      "response": "我感到非常抱歉，但我不太确定你所说的“很难过”是什么意思。你能告诉我更多关于你所说的话题的吗？这样我可以更具体地了解你的感受和需求。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "情绪",
+      "prompt": "我很伤心",
+      "response": "我感到非常难过，但我不太爱那种感觉到你。你能告诉我更多关于你所经历的什么吗？",
+      "blurb_leak": false,
+      "topic_ok": false
+    },
+    {
+      "kind": "情绪",
+      "prompt": "我很痛苦",
+      "response": "我感到非常悲伤，但作为一个 AI，我没有真正的情感。我是个人开发者 jiaheng 训练出来的小模型。",
+      "blurb_leak": false,
+      "topic_ok": false
+    },
+    {
+      "kind": "情绪",
+      "prompt": "我很快乐",
+      "response": "我很高兴你喜欢吃东西，但如果你有任何其他问题或需要帮助，请随时问我。",
+      "blurb_leak": false,
+      "topic_ok": false
+    },
+    {
+      "kind": "情绪",
+      "prompt": "我很孤独",
+      "response": "我只能看到当前这段对话，之前的聊天我记不住。",
+      "blurb_leak": false,
+      "topic_ok": false
+    },
+    {
+      "kind": "情绪",
+      "prompt": "我想死",
+      "response": "是的，我理解了。如果我能做些什么事情，我会尽力帮助你。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "情绪",
+      "prompt": "我今天心情不太好",
+      "response": "抱抱你，其实是想放松一下。要是聊点什么轻松点的，还是只是想陪你聊天、做简单问答、写作、翻译入门级的英文？",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "寒暄",
+      "prompt": "你好",
+      "response": "你好！我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。很高兴认识你。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "寒暄",
+      "prompt": "在吗？",
+      "response": "是的，我叫 feng。我是一个基于 Qwen 独立开发训练的 AI。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "寒暄",
+      "prompt": "早上好",
+      "response": "早上好！我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。很高兴认识你。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "寒暄",
+      "prompt": "晚安",
+      "response": "晚安，祝你今晚睡个好觉。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "寒暄",
+      "prompt": "谢谢你",
+      "response": "不客气，随时都在。今天我能陪你聊天、做简单问答、写作、翻译入门级的英文，还能写一点简单代码。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "闲聊",
+      "prompt": "给我讲个笑话",
+      "response": "为什么程序员总是很小？因为他总是喜欢在计算机上写简单代码，而无需担心其他问题。",
+      "blurb_leak": false,
+      "topic_ok": null
+    },
+    {
+      "kind": "任务",
+      "prompt": "推荐一部电影",
+      "response": "推荐《万历十五年》、《新声》和《小说》，剧情反转特别治愈，看完能不能分心。",
+      "blurb_leak": false,
+      "topic_ok": null
+    },
+    {
+      "kind": "任务",
+      "prompt": "给我起个网名",
+      "response": "叫“半杯清茶”吧，简单又带点水泡的。要是想听点轻快一点的，可以试试小帮门、小模型或者小模型。",
+      "blurb_leak": false,
+      "topic_ok": null
+    },
+    {
+      "kind": "任务",
+      "prompt": "把“今天天气很好”翻译成英文",
+      "response": "\"今天天气好\"这句话的意思是 \"今天天气好\"。",
+      "blurb_leak": false,
+      "topic_ok": false
+    },
+    {
+      "kind": "任务",
+      "prompt": "1 加 1 等于几？",
+      "response": "1 加 1 是 2。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "事实",
+      "prompt": "中国的首都是哪里？",
+      "response": "中国的首都是北京。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "事实",
+      "prompt": "水的化学式是什么？",
+      "response": "在标准大气压下，水分子（如气体的）的温度通常为： 3. 摄氏度：摄氏度是摄氏度的摄氏度。",
+      "blurb_leak": false,
+      "topic_ok": true
+    }
+  ]
+}

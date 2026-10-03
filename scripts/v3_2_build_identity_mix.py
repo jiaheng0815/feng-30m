@@ -152,6 +152,12 @@ def main() -> None:
                          "否则用 v3 已打包的 sft8192（注意后者 98% 带旧身份）")
     ap.add_argument("--retr-dir", default=str(ROOT / "v3_1d" / "data"),
                     help="检索数据目录（含 retr{L}_ids.npy / retr{L}_mask.npy）")
+    ap.add_argument("--mt-jsonl", default="",
+                    help="多轮对话数据（messages 格式）；会按 --mt-repeat 倍重复混入对话池")
+    ap.add_argument("--mt-repeat", type=int, default=40,
+                    help="多轮对话的重复倍数（数据量小，需要放大才能压住复读）")
+    ap.add_argument("--mt-frac", default="",
+                    help="多轮对话在每长度里的占比（如 0.7,0.5,0.1,0.05）；给了就按它分配行数")
     args = ap.parse_args()
 
     from tokenizers import Tokenizer
@@ -165,6 +171,18 @@ def main() -> None:
     chat_ids = np.load(ROOT / "v3" / "data" / "sft8192_ids.npy", mmap_mode="r")
     chat_mask = np.load(ROOT / "v3" / "data" / "sft8192_mask.npy", mmap_mode="r")
     clean_pool: dict[int, list] = {}
+    mt_convs = []
+    mt_fracs = [float(x) for x in args.mt_frac.split(",")] if args.mt_frac else []
+    mt_pool: dict[int, tuple] = {}
+    if args.mt_jsonl:
+        with open(args.mt_jsonl, encoding="utf-8") as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                rec = json.loads(line)
+                mt_convs.append([(m["role"], m["content"]) for m in rec["messages"]
+                                 if m.get("content")])
+        print(f"多轮对话：{len(mt_convs)} 条 ×{args.mt_repeat} 倍混入")
     if args.chat_jsonl:
         raw = []
         bad = thanks = 0
@@ -191,14 +209,25 @@ def main() -> None:
     stream = np.load(ROOT / "v2" / "pretrain_ids_v3.npy", mmap_mode="r").reshape(-1)
 
     meta = []
-    for (L, n), fi, fc in zip(specs, id_fracs, ch_fracs):
+    for li, ((L, n), fi, fc) in enumerate(zip(specs, id_fracs, ch_fracs)):
         rng = random.Random(args.seed + L)
         retr_ids = np.load(Path(args.retr_dir) / f"retr{L}_ids.npy", mmap_mode="r")
         retr_mask = np.load(Path(args.retr_dir) / f"retr{L}_mask.npy", mmap_mode="r")
-        n_id, n_ch, n_rt = int(n * fi), int(n * fc), 0
-        n_rt = n - n_id - n_ch
+        fm = mt_fracs[li] if mt_fracs else 0.0
+        n_id, n_mt, n_ch = int(n * fi), int(n * fm), int(n * fc)
+        n_rt = max(0, n - n_id - n_mt - n_ch)
 
         rows, masks = [], []
+        if n_mt:                                       # 多轮对话：从打包池里重复抽样
+            if L not in mt_pool:
+                mi, mm = pack(mt_convs, tk, L, rng)
+                if len(mi) == 0:
+                    raise SystemExit(f"多轮数据太短，L={L} 打不出窗口")
+                mt_pool[L] = (mi, mm)
+            mi, mm = mt_pool[L]
+            for _ in range(n_mt):
+                j = rng.randrange(len(mi))
+                rows.append(mi[j]); masks.append(mm[j])
         if L <= 8192:                                  # 短长度：正常打包对话
             # 身份对话很短（~90 token/条），按需生成直到填满 n_id 个窗口
             pack_ids, pack_mask = [], []
@@ -220,7 +249,8 @@ def main() -> None:
             if args.chat_jsonl:                      # 干净的现场打包
                 # 通用样本按比例混入（转成 (role, content) 形式，避免重复累加）
                 extra_convs = [[("user", q), ("assistant", a)] for q, a in GENERAL]
-                pool_src = raw + extra_convs * 400       # 约 7%，压过客套模板又不过度记忆
+                # 话题链/多轮情绪对话按倍数重复，压住"复读上一轮"
+                pool_src = raw + extra_convs * 400 + mt_convs * args.mt_repeat
                 if L not in clean_pool:
                     ci, cm = pack(pool_src, tk, L, rng)
                     clean_pool[L] = (ci, cm)

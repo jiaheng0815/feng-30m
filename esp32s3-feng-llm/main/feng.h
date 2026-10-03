@@ -5,10 +5,16 @@
 #include <stdint.h>
 #include <stddef.h>
 
-/* KV cache stored as int8 with an fp16 scale per (layer, position, head):
- * 4x less PSRAM than fp32, which is what buys the longer context on the S3. */
+/* KV cache mode: fp32 / int8 / q2, selected at compile time.
+ *   FENG_KV_INT8=1 : int8 values + fp16 scale per (layer, position, head) -> 4x less PSRAM than fp32
+ *   FENG_KV_Q2=1   : 2-bit values (4 packed per byte) + the same fp16 scales -> 16x less than fp32,
+ *                    i.e. 4x the context of int8 in the same PSRAM budget.
+ * 两种量化模式都用 kv->k_scale / v_scale 存 fp16 scale。 */
 #ifndef FENG_KV_INT8
 #define FENG_KV_INT8 0
+#endif
+#ifndef FENG_KV_Q2
+#define FENG_KV_Q2 0
 #endif
 
 #if defined(ESP_PLATFORM)
@@ -77,9 +83,9 @@ void feng_smp_init(void);
 
 /* transformer state (allocated by caller in PSRAM) */
 typedef struct {
-    void *k_cache;       /* int8 or float32: [n_layers][ctx][n_heads*head_dim] */
+    void *k_cache;       /* fp32 / int8 / q2: [n_layers][ctx][n_heads*head_dim]（q2 时为 1/4 字节数） */
     void *v_cache;
-    uint16_t *k_scale;   /* int8 mode only: [n_layers][ctx][n_heads] fp16 */
+    uint16_t *k_scale;   /* int8 / q2 modes: [n_layers][ctx][n_heads] fp16 */
     uint16_t *v_scale;
     int ctx, len;        /* filled length */
 } feng_kv_t;

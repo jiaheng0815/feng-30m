@@ -248,7 +248,9 @@ def main() -> None:
                 f"（token {tok_info}，耗时 {time.time() - t0:.0f}s）")
 
         safe = re.sub(r"[^0-9A-Za-z_.-]+", "_", name)     # 传路径时也能当文件名
-        prefix = "longctx32neg" if args.n == 0 else "longctx32"   # 纯负样本单独存
+        # 纯负样本 / 多类别口径分别存，避免互相覆盖
+        prefix = ("longctx32neg" if args.n == 0 else
+                  ("longctx32multi" if args.multi_kind else "longctx32"))
         out = out_dir / f"{prefix}_{safe}.json"
         out.write_text(json.dumps({"model": str(path), "n": args.n, "rows": rows},
                                   ensure_ascii=False, indent=2), encoding="utf-8")

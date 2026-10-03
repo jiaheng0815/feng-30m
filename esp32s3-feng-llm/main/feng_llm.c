@@ -95,6 +95,12 @@ size_t feng_kv_bytes(const feng_model_t *m, int ctx)
     const size_t data = (size_t)m->hdr.n_layers * ctx * m->hdr.hidden * 2;
     const size_t scal = (size_t)m->hdr.n_layers * ctx * m->hdr.n_heads * 2 * 2;
     return data + scal;
+#elif FENG_KV_Q2
+    /* 2-bit 值：每 (层,位置) 的 K/V 各占 hidden/4 字节；
+     * scale 按 **16 个值一块** 存 fp16（比 per-head 精度高 2~3 倍） */
+    const size_t data = (size_t)m->hdr.n_layers * ctx * (m->hdr.hidden / 4) * 2;
+    const size_t scal = (size_t)m->hdr.n_layers * ctx * (m->hdr.hidden / 16) * 2 * 2;
+    return data + scal;
 #else
     return (size_t)m->hdr.n_layers * ctx * m->hdr.hidden * 2 * sizeof(float);
 #endif
@@ -197,6 +203,46 @@ float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int to
                 vd[d] = (int8_t)qv;
             }
         }
+#elif FENG_KV_Q2
+        /* 2-bit 对称量化 + **每 16 个值一个 fp16 scale**（scale = 块内 max|·|/1.5，
+         * q ∈ {0,1,2,3} → (q-1.5)*scale）；每字节打包 4 个值（低位在前）。 */
+        const int qb = hd / 4;
+        uint8_t *kc = (uint8_t *)kv->k_cache + (size_t)l * kv->ctx * (h / 4);
+        uint8_t *vc = (uint8_t *)kv->v_cache + (size_t)l * kv->ctx * (h / 4);
+        uint16_t *ksc = kv->k_scale + (size_t)l * kv->ctx * (h / 16);
+        uint16_t *vsc = kv->v_scale + (size_t)l * kv->ctx * (h / 16);
+        uint16_t *ksp = ksc + (size_t)pos * (h / 16);
+        uint16_t *vsp = vsc + (size_t)pos * (h / 16);
+        for (int hh = 0; hh < nh; hh++) {
+            uint8_t *kd = kc + (size_t)pos * (h / 4) + hh * qb;
+            uint8_t *vd = vc + (size_t)pos * (h / 4) + hh * qb;
+            for (int blk = 0; blk < hd / 16; blk++) {
+                const int base = hh * hd + blk * 16;
+                float ak = 1e-8f, av = 1e-8f;
+                for (int d = 0; d < 16; d++) {
+                    const float a = fabsf(k[base + d]);
+                    const float b = fabsf(v[base + d]);
+                    if (a > ak) ak = a;
+                    if (b > av) av = b;
+                }
+                const float sk = ak / 1.5f, sv = av / 1.5f;
+                ksp[(hh * hd + blk * 16) / 16] = feng_f32_to_f16(sk);
+                vsp[(hh * hd + blk * 16) / 16] = feng_f32_to_f16(sv);
+                for (int j = 0; j < 4; j++) {          /* 16 个值 = 4 字节 */
+                    uint8_t kb = 0, vb = 0;
+                    for (int k4 = 0; k4 < 4; k4++) {
+                        const int d = blk * 16 + j * 4 + k4;
+                        int qk = (int)lrintf(k[hh * hd + d] / sk + 1.5f);
+                        int qv = (int)lrintf(v[hh * hd + d] / sv + 1.5f);
+                        if (qk < 0) qk = 0; else if (qk > 3) qk = 3;
+                        if (qv < 0) qv = 0; else if (qv > 3) qv = 3;
+                        kb |= (uint8_t)(qk << (2 * k4));
+                        vb |= (uint8_t)(qv << (2 * k4));
+                    }
+                    kd[blk * 4 + j] = kb; vd[blk * 4 + j] = vb;
+                }
+            }
+        }
 #else
         float *kc = (float *)kv->k_cache + (size_t)l * kv->ctx * h;
         float *vc = (float *)kv->v_cache + (size_t)l * kv->ctx * h;
@@ -216,6 +262,25 @@ float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int to
                 float s = 0.f;
                 for (int d = 0; d < hd; d++) s += qh[d] * (float)kh[d];
                 s *= feng_f16_to_f32(ksc[(size_t)t * nh + hh]) * scale;
+                scores[t] = s;
+                if (s > maxs) maxs = s;
+            }
+#elif FENG_KV_Q2
+            for (int t = 0; t <= pos; t++) {
+                const uint8_t *kh = kc + (size_t)t * (h / 4) + hh * qb;
+                const uint16_t *ks = ksc + (size_t)t * (h / 16) + hh * (hd / 16);
+                float s = 0.f;
+                for (int blk = 0; blk < hd / 16; blk++) {
+                    const float sk = feng_f16_to_f32(ks[blk]);
+                    for (int j = 0; j < 4; j++) {
+                        const uint8_t b = kh[blk * 4 + j];
+                        for (int k4 = 0; k4 < 4; k4++) {
+                            const int qq = (b >> (2 * k4)) & 3;
+                            s += qh[blk * 16 + j * 4 + k4] * ((float)qq - 1.5f) * sk;
+                        }
+                    }
+                }
+                s *= scale;
                 scores[t] = s;
                 if (s > maxs) maxs = s;
             }
@@ -243,6 +308,23 @@ float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int to
                 float acc = 0.f;
                 for (int t = 0; t <= pos; t++) {
                     acc += pv[t] * (float)vc[(size_t)t * h + hh * hd + d];
+                }
+                attn[hh * hd + d] = acc * inv;
+            }
+#elif FENG_KV_Q2
+            for (int t = 0; t <= pos; t++) {
+                pv[t] = scores[t];
+            }
+            for (int d = 0; d < hd; d++) {
+                const int j = (d & 15) >> 2, k4 = d & 3;
+                const int blk = d >> 4;
+                const int shift = 2 * k4;
+                float acc = 0.f;
+                for (int t = 0; t <= pos; t++) {
+                    const uint8_t b = vc[(size_t)t * (h / 4) + hh * qb + blk * 4 + j];
+                    const float sv = feng_f16_to_f32(
+                        vsc[(size_t)t * (h / 16) + hh * (hd / 16) + blk]);
+                    acc += pv[t] * ((float)((b >> shift) & 3) - 1.5f) * sv;
                 }
                 attn[hh * hd + d] = acc * inv;
             }

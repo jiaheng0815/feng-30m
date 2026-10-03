@@ -93,6 +93,17 @@ int main(int argc, char **argv)
     kv.ctx = 512; kv.len = 0;
     kv.k_cache = (float *)xmalloc(sizeof(float) * m.hdr.n_layers * kv.ctx * m.hdr.hidden);
     kv.v_cache = (float *)xmalloc(sizeof(float) * m.hdr.n_layers * kv.ctx * m.hdr.hidden);
+#if FENG_KV_INT8 || FENG_KV_Q2
+    /* 量化 KV 模式需要 fp16 scale：int8 按 (layer,pos,head)，q2 按每 16 值一块，
+     * 这里按两者中较大的那个分配。 */
+    const size_t n_sc = (size_t)m.hdr.n_layers * kv.ctx *
+                        (m.hdr.n_heads > m.hdr.hidden / 16 ? m.hdr.n_heads : m.hdr.hidden / 16);
+    kv.k_scale = (uint16_t *)xmalloc(n_sc * 2);
+    kv.v_scale = (uint16_t *)xmalloc(n_sc * 2);
+#else
+    kv.k_scale = NULL;
+    kv.v_scale = NULL;
+#endif
     feng_workspace_t ws;
     const int h = m.hdr.hidden, ff = m.hdr.ffn, v = m.hdr.vocab;
     ws.max_ctx = kv.ctx;

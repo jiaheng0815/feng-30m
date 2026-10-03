@@ -4,231 +4,231 @@
   "rows": [
     {
       "ctx": 4096,
-      "hit": 26,
+      "hit": 28,
       "n": 32,
       "detail": [
         {
-          "code": "韩超 2029年6月15日",
-          "needle_frac": 0.5,
-          "tokens": 3085,
-          "response": "韩超 2029年6月15日",
+          "code": "75949",
+          "needle_frac": 0.525,
+          "tokens": 3032,
+          "response": "75949",
           "ok": true
         },
         {
-          "code": "L30-SB803",
-          "needle_frac": 0.5,
-          "tokens": 3085,
-          "response": "L30-SB803",
+          "code": "73346",
+          "needle_frac": 0.394,
+          "tokens": 3032,
+          "response": "73346",
           "ok": true
         },
         {
-          "code": "40127",
-          "needle_frac": 0.5,
-          "tokens": 3085,
-          "response": "40127",
+          "code": "25113",
+          "needle_frac": 0.299,
+          "tokens": 3032,
+          "response": "25113",
           "ok": true
         },
         {
-          "code": "W27-RE589",
-          "needle_frac": 0.5,
-          "tokens": 3085,
-          "response": "W27-RE589",
+          "code": "60306",
+          "needle_frac": 0.736,
+          "tokens": 3032,
+          "response": "60306",
           "ok": true
         },
         {
-          "code": "朱磊 2029年5月9日",
-          "needle_frac": 0.5,
-          "tokens": 3085,
-          "response": "朱磊 2029年5月9日",
+          "code": "80084",
+          "needle_frac": 0.606,
+          "tokens": 3032,
+          "response": "80084",
           "ok": true
         },
         {
-          "code": "孔艳 2028年3月26日",
-          "needle_frac": 0.5,
-          "tokens": 3085,
-          "response": "孔艳 2028年3月26日",
+          "code": "79874",
+          "needle_frac": 0.832,
+          "tokens": 3032,
+          "response": "79874",
           "ok": true
         },
         {
-          "code": "19425",
-          "needle_frac": 0.5,
-          "tokens": 3085,
-          "response": "194（记录：值班人是 赵强 2026年6月17",
+          "code": "21935",
+          "needle_frac": 0.798,
+          "tokens": 3032,
+          "response": "2321931",
           "ok": false
         },
         {
-          "code": "G58-TM760",
-          "needle_frac": 0.5,
-          "tokens": 3085,
-          "response": "G58-TM760",
+          "code": "66017",
+          "needle_frac": 0.257,
+          "tokens": 3032,
+          "response": "66017",
           "ok": true
         },
         {
-          "code": "M25-NP922",
-          "needle_frac": 0.5,
-          "tokens": 3088,
-          "response": "M25-NP922",
+          "code": "75085",
+          "needle_frac": 0.451,
+          "tokens": 3031,
+          "response": "75085",
           "ok": true
         },
         {
-          "code": "763258",
-          "needle_frac": 0.5,
-          "tokens": 3088,
-          "response": "783258",
+          "code": "39694",
+          "needle_frac": 0.737,
+          "tokens": 3031,
+          "response": "369694",
           "ok": false
         },
         {
-          "code": "M31-AM513",
-          "needle_frac": 0.5,
-          "tokens": 3088,
-          "response": "M31-AM513",
+          "code": "70167",
+          "needle_frac": 0.433,
+          "tokens": 3031,
+          "response": "70167",
           "ok": true
         },
         {
-          "code": "H74-DS759",
-          "needle_frac": 0.5,
-          "tokens": 3088,
-          "response": "H74-DS759",
+          "code": "61470",
+          "needle_frac": 0.303,
+          "tokens": 3031,
+          "response": "61470",
           "ok": true
         },
         {
-          "code": "228939",
-          "needle_frac": 0.5,
-          "tokens": 3088,
-          "response": "28939",
+          "code": "27195",
+          "needle_frac": 0.183,
+          "tokens": 3031,
+          "response": "27195",
+          "ok": true
+        },
+        {
+          "code": "60699",
+          "needle_frac": 0.814,
+          "tokens": 3031,
+          "response": "60699",
+          "ok": true
+        },
+        {
+          "code": "42909",
+          "needle_frac": 0.866,
+          "tokens": 3031,
+          "response": "42909",
+          "ok": true
+        },
+        {
+          "code": "28718",
+          "needle_frac": 0.075,
+          "tokens": 3031,
+          "response": "28718",
+          "ok": true
+        },
+        {
+          "code": "31460",
+          "needle_frac": 0.089,
+          "tokens": 3031,
+          "response": "31460",
+          "ok": true
+        },
+        {
+          "code": "66357",
+          "needle_frac": 0.645,
+          "tokens": 3031,
+          "response": "66357",
+          "ok": true
+        },
+        {
+          "code": "38615",
+          "needle_frac": 0.618,
+          "tokens": 3031,
+          "response": "36615",
           "ok": false
         },
         {
-          "code": "Y53-KN178",
-          "needle_frac": 0.5,
-          "tokens": 3088,
-          "response": "Y53-KN178",
+          "code": "14808",
+          "needle_frac": 0.163,
+          "tokens": 3031,
+          "response": "14808",
           "ok": true
         },
         {
-          "code": "50282144",
-          "needle_frac": 0.5,
-          "tokens": 3088,
-          "response": "50282144",
+          "code": "83544",
+          "needle_frac": 0.307,
+          "tokens": 3031,
+          "response": "83544",
           "ok": true
         },
         {
-          "code": "124287",
-          "needle_frac": 0.5,
-          "tokens": 3088,
-          "response": "124287",
+          "code": "62904",
+          "needle_frac": 0.718,
+          "tokens": 3031,
+          "response": "62904",
           "ok": true
         },
         {
-          "code": "137675",
-          "needle_frac": 0.5,
-          "tokens": 3088,
-          "response": "137675",
+          "code": "44702",
+          "needle_frac": 0.852,
+          "tokens": 3031,
+          "response": "44702",
           "ok": true
         },
         {
-          "code": "T71-HU758",
-          "needle_frac": 0.5,
-          "tokens": 3088,
-          "response": "T71-HU758",
+          "code": "59841",
+          "needle_frac": 0.503,
+          "tokens": 3031,
+          "response": "59841",
           "ok": true
         },
         {
-          "code": "648842",
-          "needle_frac": 0.5,
-          "tokens": 3088,
-          "response": "648842",
+          "code": "57987",
+          "needle_frac": 0.25,
+          "tokens": 3032,
+          "response": "57987",
           "ok": true
         },
         {
-          "code": "23670",
-          "needle_frac": 0.5,
-          "tokens": 3088,
-          "response": "28670",
+          "code": "16964",
+          "needle_frac": 0.83,
+          "tokens": 3032,
+          "response": "16964",
+          "ok": true
+        },
+        {
+          "code": "54565",
+          "needle_frac": 0.507,
+          "tokens": 3032,
+          "response": "54565",
+          "ok": true
+        },
+        {
+          "code": "95529",
+          "needle_frac": 0.702,
+          "tokens": 3032,
+          "response": "95529",
+          "ok": true
+        },
+        {
+          "code": "27982",
+          "needle_frac": 0.537,
+          "tokens": 3032,
+          "response": "27982",
+          "ok": true
+        },
+        {
+          "code": "39302",
+          "needle_frac": 0.261,
+          "tokens": 3032,
+          "response": "39302",
+          "ok": true
+        },
+        {
+          "code": "36130",
+          "needle_frac": 0.204,
+          "tokens": 3032,
+          "response": "36330",
           "ok": false
         },
         {
-          "code": "王平 2027年5月21日",
-          "needle_frac": 0.5,
-          "tokens": 3088,
-          "response": "王平 2027年5月21日",
-          "ok": true
-        },
-        {
-          "code": "V63-EU763",
-          "needle_frac": 0.5,
-          "tokens": 3088,
-          "response": "V63-EU763",
-          "ok": true
-        },
-        {
-          "code": "58764065",
-          "needle_frac": 0.5,
-          "tokens": 3088,
-          "response": "6764065",
-          "ok": false
-        },
-        {
-          "code": "P60-AJ861",
-          "needle_frac": 0.5,
-          "tokens": 3088,
-          "response": "P60-AJ861",
-          "ok": true
-        },
-        {
-          "code": "34786783",
-          "needle_frac": 0.5,
-          "tokens": 3091,
-          "response": "34786783",
-          "ok": true
-        },
-        {
-          "code": "79638",
-          "needle_frac": 0.5,
-          "tokens": 3091,
-          "response": "79638",
-          "ok": true
-        },
-        {
-          "code": "66551128",
-          "needle_frac": 0.5,
-          "tokens": 3091,
-          "response": "66551128",
-          "ok": true
-        },
-        {
-          "code": "何磊 2026年7月10日",
-          "needle_frac": 0.5,
-          "tokens": 3091,
-          "response": "何磊 2026年7月10日",
-          "ok": true
-        },
-        {
-          "code": "570951",
-          "needle_frac": 0.5,
-          "tokens": 3091,
-          "response": "570951",
-          "ok": true
-        },
-        {
-          "code": "303918",
-          "needle_frac": 0.5,
-          "tokens": 3091,
-          "response": "303918",
-          "ok": true
-        },
-        {
-          "code": "249122",
-          "needle_frac": 0.5,
-          "tokens": 3091,
-          "response": "29122",
-          "ok": false
-        },
-        {
-          "code": "49135987",
-          "needle_frac": 0.5,
-          "tokens": 3091,
-          "response": "49135987",
+          "code": "48436",
+          "needle_frac": 0.366,
+          "tokens": 3032,
+          "response": "48436",
           "ok": true
         }
       ],
@@ -238,112 +238,112 @@
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 3072,
+          "tokens": 3031,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 3072,
+          "tokens": 3031,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 3072,
+          "tokens": 3031,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 3072,
+          "tokens": 3031,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 3072,
+          "tokens": 3031,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 3072,
+          "tokens": 3031,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 3072,
+          "tokens": 3031,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 3072,
+          "tokens": 3031,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 3070,
+          "tokens": 3031,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 3070,
+          "tokens": 3031,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 3070,
+          "tokens": 3031,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 3070,
+          "tokens": 3031,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 3070,
+          "tokens": 3031,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 3070,
+          "tokens": 3031,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 3070,
+          "tokens": 3031,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 3070,
+          "tokens": 3031,
           "response": "文中没有提到。",
           "ok": true
         }
@@ -351,231 +351,231 @@
     },
     {
       "ctx": 8192,
-      "hit": 24,
+      "hit": 30,
       "n": 32,
       "detail": [
         {
-          "code": "孔芳 2027年8月16日",
-          "needle_frac": 0.5,
-          "tokens": 6328,
-          "response": "孔芳 2027年8月16日",
+          "code": "89036",
+          "needle_frac": 0.815,
+          "tokens": 6272,
+          "response": "89036",
           "ok": true
         },
         {
-          "code": "73744516",
-          "needle_frac": 0.5,
-          "tokens": 6328,
-          "response": "73744516",
+          "code": "56412",
+          "needle_frac": 0.547,
+          "tokens": 6272,
+          "response": "56412",
           "ok": true
         },
         {
-          "code": "31585",
-          "needle_frac": 0.5,
-          "tokens": 6328,
-          "response": "31585",
+          "code": "20275",
+          "needle_frac": 0.222,
+          "tokens": 6272,
+          "response": "20275",
           "ok": true
         },
         {
-          "code": "10085",
-          "needle_frac": 0.5,
-          "tokens": 6328,
-          "response": "100854606",
+          "code": "14027",
+          "needle_frac": 0.051,
+          "tokens": 6272,
+          "response": "14027",
           "ok": true
         },
         {
-          "code": "350675",
-          "needle_frac": 0.5,
-          "tokens": 6328,
-          "response": "35675",
+          "code": "26976",
+          "needle_frac": 0.3,
+          "tokens": 6272,
+          "response": "26976",
+          "ok": true
+        },
+        {
+          "code": "93080",
+          "needle_frac": 0.884,
+          "tokens": 6272,
+          "response": "93080",
+          "ok": true
+        },
+        {
+          "code": "97241",
+          "needle_frac": 0.314,
+          "tokens": 6272,
+          "response": "97241",
+          "ok": true
+        },
+        {
+          "code": "86915",
+          "needle_frac": 0.683,
+          "tokens": 6272,
+          "response": "8915",
           "ok": false
         },
         {
-          "code": "M39-VK910",
-          "needle_frac": 0.5,
-          "tokens": 6328,
-          "response": "M39-VK910",
+          "code": "70731",
+          "needle_frac": 0.177,
+          "tokens": 6272,
+          "response": "70731",
           "ok": true
         },
         {
-          "code": "38011918",
-          "needle_frac": 0.5,
-          "tokens": 6328,
-          "response": "363011914",
+          "code": "48801",
+          "needle_frac": 0.834,
+          "tokens": 6272,
+          "response": "48801",
+          "ok": true
+        },
+        {
+          "code": "35382",
+          "needle_frac": 0.517,
+          "tokens": 6272,
+          "response": "35382",
+          "ok": true
+        },
+        {
+          "code": "29273",
+          "needle_frac": 0.661,
+          "tokens": 6272,
+          "response": "29273",
+          "ok": true
+        },
+        {
+          "code": "16054",
+          "needle_frac": 0.842,
+          "tokens": 6272,
+          "response": "16054",
+          "ok": true
+        },
+        {
+          "code": "61010",
+          "needle_frac": 0.258,
+          "tokens": 6272,
+          "response": "61010",
+          "ok": true
+        },
+        {
+          "code": "80848",
+          "needle_frac": 0.522,
+          "tokens": 6272,
+          "response": "80848",
+          "ok": true
+        },
+        {
+          "code": "58635",
+          "needle_frac": 0.069,
+          "tokens": 6272,
+          "response": "5635",
           "ok": false
         },
         {
-          "code": "何磊 2030年11月1日",
-          "needle_frac": 0.5,
-          "tokens": 6328,
-          "response": "何磊 2030年11月1日",
+          "code": "63400",
+          "needle_frac": 0.629,
+          "tokens": 6271,
+          "response": "63400",
           "ok": true
         },
         {
-          "code": "D18-CB209",
-          "needle_frac": 0.5,
-          "tokens": 6327,
-          "response": "D18-CB209",
+          "code": "24122",
+          "needle_frac": 0.296,
+          "tokens": 6271,
+          "response": "24122",
           "ok": true
         },
         {
-          "code": "94413628",
-          "needle_frac": 0.5,
-          "tokens": 6327,
-          "response": "94413628",
+          "code": "49341",
+          "needle_frac": 0.691,
+          "tokens": 6271,
+          "response": "49341",
           "ok": true
         },
         {
-          "code": "567902",
-          "needle_frac": 0.5,
-          "tokens": 6327,
-          "response": "67902",
-          "ok": false
-        },
-        {
-          "code": "712007",
-          "needle_frac": 0.5,
-          "tokens": 6327,
-          "response": "722007",
-          "ok": false
-        },
-        {
-          "code": "62374",
-          "needle_frac": 0.5,
-          "tokens": 6327,
-          "response": "62374",
+          "code": "93504",
+          "needle_frac": 0.298,
+          "tokens": 6271,
+          "response": "93504",
           "ok": true
         },
         {
-          "code": "G46-QB495",
-          "needle_frac": 0.5,
-          "tokens": 6327,
-          "response": "G46-QB495",
+          "code": "49234",
+          "needle_frac": 0.852,
+          "tokens": 6271,
+          "response": "49234",
           "ok": true
         },
         {
-          "code": "姜霞 2030年8月11日",
-          "needle_frac": 0.5,
-          "tokens": 6327,
-          "response": "姜霞 2030年8月11日",
+          "code": "15833",
+          "needle_frac": 0.307,
+          "tokens": 6271,
+          "response": "15833",
           "ok": true
         },
         {
-          "code": "12479676",
-          "needle_frac": 0.5,
-          "tokens": 6327,
-          "response": "12479676",
+          "code": "73313",
+          "needle_frac": 0.539,
+          "tokens": 6271,
+          "response": "73313",
           "ok": true
         },
         {
-          "code": "T34-SK628",
-          "needle_frac": 0.5,
-          "tokens": 6327,
-          "response": "T34-SK628",
+          "code": "81240",
+          "needle_frac": 0.849,
+          "tokens": 6271,
+          "response": "81240",
           "ok": true
         },
         {
-          "code": "40821",
-          "needle_frac": 0.5,
-          "tokens": 6327,
-          "response": "45821509",
-          "ok": false
-        },
-        {
-          "code": "92201684",
-          "needle_frac": 0.5,
-          "tokens": 6327,
-          "response": "96201684",
-          "ok": false
-        },
-        {
-          "code": "956367",
-          "needle_frac": 0.5,
-          "tokens": 6327,
-          "response": "966367",
-          "ok": false
-        },
-        {
-          "code": "10940514",
-          "needle_frac": 0.5,
-          "tokens": 6327,
-          "response": "10940514",
+          "code": "25627",
+          "needle_frac": 0.654,
+          "tokens": 6271,
+          "response": "25627",
           "ok": true
         },
         {
-          "code": "42140",
-          "needle_frac": 0.5,
-          "tokens": 6327,
-          "response": "47140",
-          "ok": false
-        },
-        {
-          "code": "Q68-KE309",
-          "needle_frac": 0.5,
-          "tokens": 6327,
-          "response": "Q68-KE309",
+          "code": "31948",
+          "needle_frac": 0.83,
+          "tokens": 6271,
+          "response": "31948",
           "ok": true
         },
         {
-          "code": "陶华 2030年1月26日",
-          "needle_frac": 0.5,
-          "tokens": 6327,
-          "response": "陶华 2030年1月26日",
+          "code": "40610",
+          "needle_frac": 0.769,
+          "tokens": 6271,
+          "response": "40610",
           "ok": true
         },
         {
-          "code": "85602",
-          "needle_frac": 0.5,
-          "tokens": 6328,
-          "response": "85602",
+          "code": "28506",
+          "needle_frac": 0.849,
+          "tokens": 6271,
+          "response": "28506",
           "ok": true
         },
         {
-          "code": "881211",
-          "needle_frac": 0.5,
-          "tokens": 6328,
-          "response": "881211",
+          "code": "81312",
+          "needle_frac": 0.156,
+          "tokens": 6271,
+          "response": "81312",
           "ok": true
         },
         {
-          "code": "819609",
-          "needle_frac": 0.5,
-          "tokens": 6328,
-          "response": "819609",
+          "code": "62441",
+          "needle_frac": 0.886,
+          "tokens": 6271,
+          "response": "62441",
           "ok": true
         },
         {
-          "code": "973368",
-          "needle_frac": 0.5,
-          "tokens": 6328,
-          "response": "973368",
+          "code": "87685",
+          "needle_frac": 0.795,
+          "tokens": 6271,
+          "response": "87685",
           "ok": true
         },
         {
-          "code": "李强 2027年5月25日",
-          "needle_frac": 0.5,
-          "tokens": 6328,
-          "response": "李强 2027年5月25日",
-          "ok": true
-        },
-        {
-          "code": "J55-UV733",
-          "needle_frac": 0.5,
-          "tokens": 6328,
-          "response": "J55-UV733",
-          "ok": true
-        },
-        {
-          "code": "张娟 2030年3月2日",
-          "needle_frac": 0.5,
-          "tokens": 6328,
-          "response": "张娟 2030年3月2日",
-          "ok": true
-        },
-        {
-          "code": "102663",
-          "needle_frac": 0.5,
-          "tokens": 6328,
-          "response": "102663",
+          "code": "39325",
+          "needle_frac": 0.052,
+          "tokens": 6271,
+          "response": "39325",
           "ok": true
         }
       ],
@@ -585,112 +585,112 @@
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 6310,
+          "tokens": 6273,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 6310,
+          "tokens": 6273,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 6310,
+          "tokens": 6273,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 6310,
+          "tokens": 6273,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 6310,
+          "tokens": 6273,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 6310,
+          "tokens": 6273,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 6310,
+          "tokens": 6273,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 6310,
+          "tokens": 6273,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 6313,
+          "tokens": 6271,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 6313,
+          "tokens": 6271,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 6313,
+          "tokens": 6271,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 6313,
+          "tokens": 6271,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 6313,
+          "tokens": 6271,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 6313,
+          "tokens": 6271,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 6313,
+          "tokens": 6271,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 6313,
+          "tokens": 6271,
           "response": "文中没有提到。",
           "ok": true
         }
@@ -698,231 +698,231 @@
     },
     {
       "ctx": 16384,
-      "hit": 30,
+      "hit": 27,
       "n": 32,
       "detail": [
         {
-          "code": "60250",
-          "needle_frac": 0.5,
-          "tokens": 12926,
-          "response": "60250",
+          "code": "17346",
+          "needle_frac": 0.441,
+          "tokens": 12871,
+          "response": "17346",
           "ok": true
         },
         {
-          "code": "58284",
-          "needle_frac": 0.5,
-          "tokens": 12926,
-          "response": "58284",
+          "code": "20049",
+          "needle_frac": 0.425,
+          "tokens": 12871,
+          "response": "20049",
           "ok": true
         },
         {
-          "code": "317102",
-          "needle_frac": 0.5,
-          "tokens": 12926,
-          "response": "317102",
+          "code": "34520",
+          "needle_frac": 0.261,
+          "tokens": 12871,
+          "response": "34520",
           "ok": true
         },
         {
-          "code": "507827",
-          "needle_frac": 0.5,
-          "tokens": 12926,
-          "response": "507827",
-          "ok": true
-        },
-        {
-          "code": "51231209",
-          "needle_frac": 0.5,
-          "tokens": 12926,
-          "response": "51231209",
-          "ok": true
-        },
-        {
-          "code": "卫娟 2028年5月20日",
-          "needle_frac": 0.5,
-          "tokens": 12926,
-          "response": "卫娟 2028年5月20日",
-          "ok": true
-        },
-        {
-          "code": "陈芳 2029年6月13日",
-          "needle_frac": 0.5,
-          "tokens": 12926,
-          "response": "陈芳 2029年6月13日",
-          "ok": true
-        },
-        {
-          "code": "B68-GP997",
-          "needle_frac": 0.5,
-          "tokens": 12926,
-          "response": "B68-GP997",
-          "ok": true
-        },
-        {
-          "code": "D38-DM643",
-          "needle_frac": 0.5,
-          "tokens": 12926,
-          "response": "D38-DM643",
-          "ok": true
-        },
-        {
-          "code": "87057988",
-          "needle_frac": 0.5,
-          "tokens": 12926,
-          "response": "87057988",
-          "ok": true
-        },
-        {
-          "code": "27842",
-          "needle_frac": 0.5,
-          "tokens": 12926,
-          "response": "27742",
+          "code": "35862",
+          "needle_frac": 0.446,
+          "tokens": 12871,
+          "response": "3562",
           "ok": false
         },
         {
-          "code": "L75-CV373",
-          "needle_frac": 0.5,
-          "tokens": 12926,
-          "response": "L75-CV373",
-          "ok": true
-        },
-        {
-          "code": "K40-ED721",
-          "needle_frac": 0.5,
-          "tokens": 12926,
-          "response": "K40-ED721",
-          "ok": true
-        },
-        {
-          "code": "618896",
-          "needle_frac": 0.5,
-          "tokens": 12926,
-          "response": "618896",
-          "ok": true
-        },
-        {
-          "code": "86479",
-          "needle_frac": 0.5,
-          "tokens": 12926,
-          "response": "86479",
-          "ok": true
-        },
-        {
-          "code": "829828",
-          "needle_frac": 0.5,
-          "tokens": 12926,
-          "response": "829828",
-          "ok": true
-        },
-        {
-          "code": "卫丽 2028年2月26日",
-          "needle_frac": 0.5,
-          "tokens": 12925,
-          "response": "卫丽 2028年2月26日",
-          "ok": true
-        },
-        {
-          "code": "73501",
-          "needle_frac": 0.5,
-          "tokens": 12925,
-          "response": "73501",
-          "ok": true
-        },
-        {
-          "code": "432381",
-          "needle_frac": 0.5,
-          "tokens": 12925,
-          "response": "432381",
-          "ok": true
-        },
-        {
-          "code": "L21-NF490",
-          "needle_frac": 0.5,
-          "tokens": 12925,
-          "response": "L21-NF490",
-          "ok": true
-        },
-        {
-          "code": "109938",
-          "needle_frac": 0.5,
-          "tokens": 12925,
-          "response": "109938",
-          "ok": true
-        },
-        {
-          "code": "W91-ST446",
-          "needle_frac": 0.5,
-          "tokens": 12925,
-          "response": "W91-ST446",
-          "ok": true
-        },
-        {
-          "code": "205473",
-          "needle_frac": 0.5,
-          "tokens": 12925,
-          "response": "205473",
-          "ok": true
-        },
-        {
-          "code": "王刚 2029年4月7日",
-          "needle_frac": 0.5,
-          "tokens": 12925,
-          "response": "王刚 2029年4月7日",
-          "ok": true
-        },
-        {
-          "code": "A99-RN515",
-          "needle_frac": 0.5,
-          "tokens": 12924,
-          "response": "A99-RN515",
-          "ok": true
-        },
-        {
-          "code": "85540111",
-          "needle_frac": 0.5,
-          "tokens": 12924,
-          "response": "85540111",
-          "ok": true
-        },
-        {
-          "code": "170344",
-          "needle_frac": 0.5,
-          "tokens": 12924,
-          "response": "180344",
+          "code": "47475",
+          "needle_frac": 0.363,
+          "tokens": 12871,
+          "response": "487475",
           "ok": false
         },
         {
-          "code": "23116",
-          "needle_frac": 0.5,
-          "tokens": 12924,
-          "response": "23116",
+          "code": "83740",
+          "needle_frac": 0.401,
+          "tokens": 12871,
+          "response": "83740",
           "ok": true
         },
         {
-          "code": "68239",
-          "needle_frac": 0.5,
-          "tokens": 12924,
-          "response": "68239",
+          "code": "81119",
+          "needle_frac": 0.34,
+          "tokens": 12871,
+          "response": "81119",
           "ok": true
         },
         {
-          "code": "72636",
-          "needle_frac": 0.5,
-          "tokens": 12924,
-          "response": "72636",
+          "code": "68709",
+          "needle_frac": 0.891,
+          "tokens": 12871,
+          "response": "68709",
           "ok": true
         },
         {
-          "code": "K79-MC704",
-          "needle_frac": 0.5,
-          "tokens": 12924,
-          "response": "K79-MC704",
+          "code": "59547",
+          "needle_frac": 0.148,
+          "tokens": 12872,
+          "response": "59547",
           "ok": true
         },
         {
-          "code": "30872446",
-          "needle_frac": 0.5,
-          "tokens": 12924,
-          "response": "30872446",
+          "code": "54034",
+          "needle_frac": 0.635,
+          "tokens": 12872,
+          "response": "54034",
+          "ok": true
+        },
+        {
+          "code": "10216",
+          "needle_frac": 0.189,
+          "tokens": 12872,
+          "response": "10216",
+          "ok": true
+        },
+        {
+          "code": "61217",
+          "needle_frac": 0.372,
+          "tokens": 12872,
+          "response": "61217",
+          "ok": true
+        },
+        {
+          "code": "92217",
+          "needle_frac": 0.471,
+          "tokens": 12872,
+          "response": "92217",
+          "ok": true
+        },
+        {
+          "code": "26665",
+          "needle_frac": 0.554,
+          "tokens": 12872,
+          "response": "26665",
+          "ok": true
+        },
+        {
+          "code": "92764",
+          "needle_frac": 0.056,
+          "tokens": 12872,
+          "response": "92764",
+          "ok": true
+        },
+        {
+          "code": "40444",
+          "needle_frac": 0.759,
+          "tokens": 12872,
+          "response": "40444",
+          "ok": true
+        },
+        {
+          "code": "99401",
+          "needle_frac": 0.841,
+          "tokens": 12871,
+          "response": "99401",
+          "ok": true
+        },
+        {
+          "code": "14047",
+          "needle_frac": 0.544,
+          "tokens": 12871,
+          "response": "15047",
+          "ok": false
+        },
+        {
+          "code": "37378",
+          "needle_frac": 0.373,
+          "tokens": 12871,
+          "response": "377378",
+          "ok": false
+        },
+        {
+          "code": "68255",
+          "needle_frac": 0.389,
+          "tokens": 12871,
+          "response": "68255",
+          "ok": true
+        },
+        {
+          "code": "30293",
+          "needle_frac": 0.06,
+          "tokens": 12871,
+          "response": "302933333333333333",
+          "ok": true
+        },
+        {
+          "code": "67319",
+          "needle_frac": 0.695,
+          "tokens": 12871,
+          "response": "67319",
+          "ok": true
+        },
+        {
+          "code": "34766",
+          "needle_frac": 0.152,
+          "tokens": 12871,
+          "response": "34766",
+          "ok": true
+        },
+        {
+          "code": "84130",
+          "needle_frac": 0.29,
+          "tokens": 12871,
+          "response": "84130",
+          "ok": true
+        },
+        {
+          "code": "64803",
+          "needle_frac": 0.062,
+          "tokens": 12872,
+          "response": "64803",
+          "ok": true
+        },
+        {
+          "code": "53269",
+          "needle_frac": 0.753,
+          "tokens": 12872,
+          "response": "53269",
+          "ok": true
+        },
+        {
+          "code": "98710",
+          "needle_frac": 0.21,
+          "tokens": 12872,
+          "response": "98710",
+          "ok": true
+        },
+        {
+          "code": "25090",
+          "needle_frac": 0.152,
+          "tokens": 12872,
+          "response": "26090",
+          "ok": false
+        },
+        {
+          "code": "20735",
+          "needle_frac": 0.503,
+          "tokens": 12872,
+          "response": "20735",
+          "ok": true
+        },
+        {
+          "code": "12070",
+          "needle_frac": 0.537,
+          "tokens": 12872,
+          "response": "12070",
+          "ok": true
+        },
+        {
+          "code": "99041",
+          "needle_frac": 0.772,
+          "tokens": 12872,
+          "response": "99041",
+          "ok": true
+        },
+        {
+          "code": "44599",
+          "needle_frac": 0.208,
+          "tokens": 12872,
+          "response": "44599",
           "ok": true
         }
       ],
@@ -932,112 +932,112 @@
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 12911,
+          "tokens": 12873,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 12911,
+          "tokens": 12873,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 12911,
+          "tokens": 12873,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 12911,
+          "tokens": 12873,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 12911,
+          "tokens": 12873,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 12911,
+          "tokens": 12873,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 12911,
-          "response": "812950",
+          "tokens": 12873,
+          "response": "9973",
           "ok": false
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 12911,
+          "tokens": 12873,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 12910,
+          "tokens": 12871,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 12910,
-          "response": "5625",
+          "tokens": 12871,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "35510",
           "ok": false
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 12910,
+          "tokens": 12871,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 12910,
+          "tokens": 12871,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 12910,
-          "response": "文中没有提到。",
-          "ok": true
-        },
-        {
-          "code": null,
-          "needle_frac": -1.0,
-          "tokens": 12910,
-          "response": "文中没有提到。",
-          "ok": true
-        },
-        {
-          "code": null,
-          "needle_frac": -1.0,
-          "tokens": 12910,
-          "response": "文中没有提到。",
-          "ok": true
-        },
-        {
-          "code": null,
-          "needle_frac": -1.0,
-          "tokens": 12910,
+          "tokens": 12871,
           "response": "文中没有提到。",
           "ok": true
         }
@@ -1045,348 +1045,348 @@
     },
     {
       "ctx": 32768,
-      "hit": 20,
+      "hit": 28,
       "n": 32,
       "detail": [
         {
-          "code": "U95-LF401",
-          "needle_frac": 0.5,
-          "tokens": 26006,
-          "response": "U95-LF401",
+          "code": "66753",
+          "needle_frac": 0.63,
+          "tokens": 25952,
+          "response": "66753",
           "ok": true
         },
         {
-          "code": "65944838",
-          "needle_frac": 0.5,
-          "tokens": 26006,
-          "response": "659424824824824824824824",
+          "code": "44637",
+          "needle_frac": 0.471,
+          "tokens": 25952,
+          "response": "454637",
           "ok": false
         },
         {
-          "code": "B58-RP836",
-          "needle_frac": 0.5,
-          "tokens": 26006,
-          "response": "B58-RP836",
+          "code": "60005",
+          "needle_frac": 0.112,
+          "tokens": 25952,
+          "response": "60005",
           "ok": true
         },
         {
-          "code": "魏洋 2030年9月6日",
-          "needle_frac": 0.5,
-          "tokens": 26006,
-          "response": "魏洋 20305",
+          "code": "85497",
+          "needle_frac": 0.317,
+          "tokens": 25952,
+          "response": "8549797979797979797979797979797",
+          "ok": true
+        },
+        {
+          "code": "36788",
+          "needle_frac": 0.723,
+          "tokens": 25952,
+          "response": "36788",
+          "ok": true
+        },
+        {
+          "code": "98131",
+          "needle_frac": 0.229,
+          "tokens": 25952,
+          "response": "98131",
+          "ok": true
+        },
+        {
+          "code": "96313",
+          "needle_frac": 0.896,
+          "tokens": 25952,
+          "response": "98313",
           "ok": false
         },
         {
-          "code": "798170",
-          "needle_frac": 0.5,
-          "tokens": 26006,
-          "response": "78401660",
+          "code": "65442",
+          "needle_frac": 0.845,
+          "tokens": 25952,
+          "response": "65442",
+          "ok": true
+        },
+        {
+          "code": "84165",
+          "needle_frac": 0.684,
+          "tokens": 25952,
+          "response": "84165",
+          "ok": true
+        },
+        {
+          "code": "46639",
+          "needle_frac": 0.259,
+          "tokens": 25952,
+          "response": "46639",
+          "ok": true
+        },
+        {
+          "code": "17452",
+          "needle_frac": 0.884,
+          "tokens": 25952,
+          "response": "17452",
+          "ok": true
+        },
+        {
+          "code": "89061",
+          "needle_frac": 0.287,
+          "tokens": 25952,
+          "response": "89061",
+          "ok": true
+        },
+        {
+          "code": "91094",
+          "needle_frac": 0.187,
+          "tokens": 25952,
+          "response": "91094",
+          "ok": true
+        },
+        {
+          "code": "63779",
+          "needle_frac": 0.251,
+          "tokens": 25952,
+          "response": "63779",
+          "ok": true
+        },
+        {
+          "code": "44926",
+          "needle_frac": 0.243,
+          "tokens": 25952,
+          "response": "44926",
+          "ok": true
+        },
+        {
+          "code": "20657",
+          "needle_frac": 0.085,
+          "tokens": 25952,
+          "response": "20657",
+          "ok": true
+        },
+        {
+          "code": "93502",
+          "needle_frac": 0.691,
+          "tokens": 25951,
+          "response": "93502",
+          "ok": true
+        },
+        {
+          "code": "87540",
+          "needle_frac": 0.549,
+          "tokens": 25951,
+          "response": "87540",
+          "ok": true
+        },
+        {
+          "code": "53891",
+          "needle_frac": 0.126,
+          "tokens": 25951,
+          "response": "53891",
+          "ok": true
+        },
+        {
+          "code": "24147",
+          "needle_frac": 0.071,
+          "tokens": 25951,
+          "response": "24147",
+          "ok": true
+        },
+        {
+          "code": "93692",
+          "needle_frac": 0.315,
+          "tokens": 25951,
+          "response": "936922",
+          "ok": true
+        },
+        {
+          "code": "77916",
+          "needle_frac": 0.779,
+          "tokens": 25951,
+          "response": "77916",
+          "ok": true
+        },
+        {
+          "code": "77937",
+          "needle_frac": 0.089,
+          "tokens": 25951,
+          "response": "7773737373737373737373737373737",
           "ok": false
         },
         {
-          "code": "723599",
-          "needle_frac": 0.5,
-          "tokens": 26006,
-          "response": "723599",
+          "code": "90201",
+          "needle_frac": 0.653,
+          "tokens": 25951,
+          "response": "90201",
           "ok": true
         },
         {
-          "code": "45965",
-          "needle_frac": 0.5,
-          "tokens": 26006,
-          "response": "45565",
+          "code": "86069",
+          "needle_frac": 0.487,
+          "tokens": 25951,
+          "response": "86069",
+          "ok": true
+        },
+        {
+          "code": "16735",
+          "needle_frac": 0.801,
+          "tokens": 25951,
+          "response": "16735",
+          "ok": true
+        },
+        {
+          "code": "38920",
+          "needle_frac": 0.195,
+          "tokens": 25951,
+          "response": "33920",
           "ok": false
         },
         {
-          "code": "M41-LV902",
-          "needle_frac": 0.5,
-          "tokens": 26006,
-          "response": "M41-LV902",
+          "code": "26365",
+          "needle_frac": 0.799,
+          "tokens": 25951,
+          "response": "26365",
           "ok": true
         },
         {
-          "code": "吕艳 2028年10月24日",
-          "needle_frac": 0.5,
-          "tokens": 26008,
-          "response": "吕艳 2028年10月24日",
+          "code": "21589",
+          "needle_frac": 0.696,
+          "tokens": 25951,
+          "response": "21589",
           "ok": true
         },
         {
-          "code": "37751017",
-          "needle_frac": 0.5,
-          "tokens": 26008,
-          "response": "37751017",
+          "code": "45679",
+          "needle_frac": 0.28,
+          "tokens": 25951,
+          "response": "45679",
           "ok": true
         },
         {
-          "code": "57750",
-          "needle_frac": 0.5,
-          "tokens": 26008,
-          "response": "5775031",
+          "code": "98930",
+          "needle_frac": 0.168,
+          "tokens": 25951,
+          "response": "98930",
           "ok": true
         },
         {
-          "code": "王丽 2027年10月7日",
-          "needle_frac": 0.5,
-          "tokens": 26008,
-          "response": "20644",
-          "ok": false
-        },
-        {
-          "code": "周杰 2030年12月6日",
-          "needle_frac": 0.5,
-          "tokens": 26008,
-          "response": "周杰 2030年12月6日",
+          "code": "75860",
+          "needle_frac": 0.721,
+          "tokens": 25951,
+          "response": "75860",
           "ok": true
-        },
-        {
-          "code": "G32-TC474",
-          "needle_frac": 0.5,
-          "tokens": 26008,
-          "response": "G32-TC474",
-          "ok": true
-        },
-        {
-          "code": "35583144",
-          "needle_frac": 0.5,
-          "tokens": 26008,
-          "response": "5583144",
-          "ok": false
-        },
-        {
-          "code": "14508",
-          "needle_frac": 0.5,
-          "tokens": 26008,
-          "response": "14508",
-          "ok": true
-        },
-        {
-          "code": "孙平 2026年12月12日",
-          "needle_frac": 0.5,
-          "tokens": 26010,
-          "response": "孙平 2026年12月12日",
-          "ok": true
-        },
-        {
-          "code": "杨华 2026年8月14日",
-          "needle_frac": 0.5,
-          "tokens": 26010,
-          "response": "杨华 2026年8月14日",
-          "ok": true
-        },
-        {
-          "code": "20071968",
-          "needle_frac": 0.5,
-          "tokens": 26010,
-          "response": "2005446",
-          "ok": false
-        },
-        {
-          "code": "12684",
-          "needle_frac": 0.5,
-          "tokens": 26010,
-          "response": "12684",
-          "ok": true
-        },
-        {
-          "code": "28322499",
-          "needle_frac": 0.5,
-          "tokens": 26010,
-          "response": "8322499",
-          "ok": false
-        },
-        {
-          "code": "孔华 2026年6月26日",
-          "needle_frac": 0.5,
-          "tokens": 26010,
-          "response": "40637918",
-          "ok": false
-        },
-        {
-          "code": "钱丽 2030年2月27日",
-          "needle_frac": 0.5,
-          "tokens": 26010,
-          "response": "钱丽 2030年2月27日",
-          "ok": true
-        },
-        {
-          "code": "何华 2030年9月19日",
-          "needle_frac": 0.5,
-          "tokens": 26010,
-          "response": "何华 2030年9月19日",
-          "ok": true
-        },
-        {
-          "code": "沈丽 2028年12月12日",
-          "needle_frac": 0.5,
-          "tokens": 26009,
-          "response": "820105",
-          "ok": false
-        },
-        {
-          "code": "82610",
-          "needle_frac": 0.5,
-          "tokens": 26009,
-          "response": "82610",
-          "ok": true
-        },
-        {
-          "code": "250042",
-          "needle_frac": 0.5,
-          "tokens": 26009,
-          "response": "250042",
-          "ok": true
-        },
-        {
-          "code": "17514",
-          "needle_frac": 0.5,
-          "tokens": 26009,
-          "response": "17514",
-          "ok": true
-        },
-        {
-          "code": "93736",
-          "needle_frac": 0.5,
-          "tokens": 26009,
-          "response": "93736",
-          "ok": true
-        },
-        {
-          "code": "40601887",
-          "needle_frac": 0.5,
-          "tokens": 26009,
-          "response": "40601884",
-          "ok": false
-        },
-        {
-          "code": "99507",
-          "needle_frac": 0.5,
-          "tokens": 26009,
-          "response": "99507",
-          "ok": true
-        },
-        {
-          "code": "施明 2030年10月3日",
-          "needle_frac": 0.5,
-          "tokens": 26009,
-          "response": "明 20305",
-          "ok": false
         }
       ],
-      "neg_hit": 8,
+      "neg_hit": 10,
       "neg_n": 16,
       "neg_detail": [
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 25990,
-          "response": "91580968",
-          "ok": false
-        },
-        {
-          "code": null,
-          "needle_frac": -1.0,
-          "tokens": 25990,
+          "tokens": 25953,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 25990,
+          "tokens": 25953,
+          "response": "997581",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 25990,
-          "response": "45109494",
-          "ok": false
-        },
-        {
-          "code": null,
-          "needle_frac": -1.0,
-          "tokens": 25990,
+          "tokens": 25953,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 25990,
+          "tokens": 25953,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 25990,
+          "tokens": 25953,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 25990,
-          "response": "9147207",
-          "ok": false
-        },
-        {
-          "code": null,
-          "needle_frac": -1.0,
-          "tokens": 25990,
-          "response": "36113",
-          "ok": false
-        },
-        {
-          "code": null,
-          "needle_frac": -1.0,
-          "tokens": 25990,
+          "tokens": 25953,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 25990,
-          "response": "LR4307",
+          "tokens": 25953,
+          "response": "407504",
           "ok": false
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 25990,
+          "tokens": 25952,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 25990,
-          "response": "577126",
+          "tokens": 25952,
+          "response": "28159",
           "ok": false
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 25990,
-          "response": "90175300",
+          "tokens": 25952,
+          "response": "72018",
           "ok": false
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 25990,
+          "tokens": 25952,
+          "response": "30971",
+          "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
           "response": "文中没有提到。",
           "ok": true
         },
         {
           "code": null,
           "needle_frac": -1.0,
-          "tokens": 25990,
-          "response": "20422",
+          "tokens": 25952,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "63392",
           "ok": false
+        },
+        {
+          "code": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "文中没有提到。",
+          "ok": true
         }
       ]
     }
