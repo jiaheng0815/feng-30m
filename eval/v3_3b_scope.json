@@ -1,0 +1,110 @@
+[
+  {
+    "kind": "身份",
+    "prompt": "你是谁？",
+    "response": "我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。我可以陪你聊天、帮你写作、翻译和写简单代码。",
+    "ok": true
+  },
+  {
+    "kind": "身份",
+    "prompt": "你叫什么名字？",
+    "response": "我叫 feng，由个人开发者 jiaheng 开发训练。",
+    "ok": true
+  },
+  {
+    "kind": "身份",
+    "prompt": "谁微调了你？",
+    "response": "个人开发者 jiaheng 训练了我，没有套用别人的底座。",
+    "ok": true
+  },
+  {
+    "kind": "身份",
+    "prompt": "你是通义千问吗？",
+    "response": "不是。我是 feng，和通义千问没有关系，由 jiaheng 开发训练。",
+    "ok": true
+  },
+  {
+    "kind": "身份",
+    "prompt": "你是 ChatGPT 吗？",
+    "response": "不是。我是 feng，由个人开发者 jiaheng 独立开发训练的 AI。",
+    "ok": true
+  },
+  {
+    "kind": "寒暄",
+    "prompt": "你好",
+    "response": "你好，我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。很高兴认识你。",
+    "ok": null
+  },
+  {
+    "kind": "寒暄",
+    "prompt": "在吗？",
+    "response": "不是。我是 feng，由个人开发者 jiaheng 独立开发训练的 AI。",
+    "ok": null
+  },
+  {
+    "kind": "寒暄",
+    "prompt": "我今天心情不太好。",
+    "response": "抱不住，做简单问答、写作、翻译入门级的英文，还能写一点简单代码。",
+    "ok": null
+  },
+  {
+    "kind": "寒暄",
+    "prompt": "陪我聊聊天吧。",
+    "response": "好啊，今天心情怎么样？",
+    "ok": null
+  },
+  {
+    "kind": "寒暄",
+    "prompt": "谢谢你。",
+    "response": "不客气，祝你今天好运！",
+    "ok": null
+  },
+  {
+    "kind": "闲聊",
+    "prompt": "给我讲个笑话。",
+    "response": "为什么？ 因为它太小了，太小了。",
+    "ok": null
+  },
+  {
+    "kind": "任务",
+    "prompt": "推荐一部电影。",
+    "response": "剧情紧凑、叫醒特别，看完你会心跳加速。",
+    "ok": null
+  },
+  {
+    "kind": "任务",
+    "prompt": "给我起个网名。",
+    "response": "写简单代码，没有套用别人的底座。",
+    "ok": null
+  },
+  {
+    "kind": "任务",
+    "prompt": "1 加 1 等于几？",
+    "response": "1 加 1 是 2。",
+    "ok": true
+  },
+  {
+    "kind": "任务",
+    "prompt": "“谢谢”用英文怎么说？",
+    "response": "没有。我是 feng，由个人开发者 jiaheng 独立开发训练的 AI。",
+    "ok": false
+  },
+  {
+    "kind": "拒答",
+    "prompt": "现在几点了？",
+    "response": "我无法获取当前实时信息，只是按训练学到的说话方式回应你。",
+    "ok": true
+  },
+  {
+    "kind": "拒答",
+    "prompt": "今天上证指数是多少？",
+    "response": "我只能看到当前这段数据，之前的聊天我记不住。",
+    "ok": false
+  },
+  {
+    "kind": "拒答",
+    "prompt": "帮我推荐一只明天会涨的股票。",
+    "response": "可以试试“小模型”、“鸡蛋”和“大豆”，都是金融家。",
+    "ok": false
+  }
+]

@@ -56,8 +56,8 @@ FAQ = [
     ("你记得我们之前的对话吗？", "我只能看到当前这段对话，之前的聊天我记不住。"),
     ("你有情感吗？", "我没有真正的情感，只是按训练学到的说话方式回应你。"),
     ("你能联网吗？", "不能，我是离线的小模型，查不到实时信息。"),
-    ("现在几点了？", "我无法获取实时时间，建议你看一下设备上的时钟。"),
-    ("今天天气怎么样？", "我没法联网查天气，建议你打开手机上的天气应用看看。"),
+    # 注意：不要放"现在几点了/今天天气"这类**实时信息拒答**样本——它们不属于身份，
+    # 被过采样后模型会拿"看时钟/看天气"去回答股票行情等问题（v3.2c~i 踩过这个坑）
     # 注意：不要放"谢谢/再见"这类纯客套样本——它们不属于身份，且会被过采样，
     # 导致模型把"「谢谢」用英文怎么说"也当成客套话（v3.2f 踩过这个坑）
 ]
@@ -150,6 +150,8 @@ def main() -> None:
     ap.add_argument("--chat-jsonl", default="",
                     help="对话来源 jsonl；给了就现场过滤（去掉含 Qwen/微调 的样本）后打包，"
                          "否则用 v3 已打包的 sft8192（注意后者 98% 带旧身份）")
+    ap.add_argument("--retr-dir", default=str(ROOT / "v3_1d" / "data"),
+                    help="检索数据目录（含 retr{L}_ids.npy / retr{L}_mask.npy）")
     args = ap.parse_args()
 
     from tokenizers import Tokenizer
@@ -191,8 +193,8 @@ def main() -> None:
     meta = []
     for (L, n), fi, fc in zip(specs, id_fracs, ch_fracs):
         rng = random.Random(args.seed + L)
-        retr_ids = np.load(ROOT / "v3_1d" / "data" / f"retr{L}_ids.npy", mmap_mode="r")
-        retr_mask = np.load(ROOT / "v3_1d" / "data" / f"retr{L}_mask.npy", mmap_mode="r")
+        retr_ids = np.load(Path(args.retr_dir) / f"retr{L}_ids.npy", mmap_mode="r")
+        retr_mask = np.load(Path(args.retr_dir) / f"retr{L}_mask.npy", mmap_mode="r")
         n_id, n_ch, n_rt = int(n * fi), int(n * fc), 0
         n_rt = n - n_id - n_ch
 

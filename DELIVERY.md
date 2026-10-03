@@ -12,7 +12,7 @@
 
 | 产物 | 路径 | 说明 |
 |---|---|---|
-| HF 权重（fp32，**最终版 v3**） | `v3/retr_sft/ctx32768/final/` | 29.43M 参数，11 层 / hidden 448 / 7 头 MHA / FFN 896 / 16k 词表，tied embedding；范围评测 **10/10**，针检索 4k–32k = 3/3、3/3、2/3、2/3 |
+| HF 权重（fp32，**最终版 v3.3**） | `v3_3/release/` | 29.43M 参数，11 层 / hidden 448 / 7 头 MHA / FFN 896 / 16k 词表，tied embedding；身份 12/12（自称 jiaheng 独立开发训练），范围内 9/10，针检索每长度 32 题 = 28/29/27/27，文中没有答案时 81% 正确说明"没有提到" |
 | v3 各阶段权重 | `v3/ctx4096/final/`、`v3/ctx8192/final/`、`v3/ctx16384/final/`、`v3/ctx32768/final/`、`v3/polish_ctx8192/final/`、`v3/retr_sft/ctx32768/final/` | 渐进长文 → 8k 对话微调 → 检索 SFT；`v3/summary.json`、`v3/retr_sft/summary.json` 有每阶段 loss/耗时 |
 | 上一版（对照 v2） | `v2/stage_planA3b/final/` | 范围评测 8/10，长文检索 0/3 |
 | 初版（对照 v1） | `student/feng-30m-chat/`、`student/feng-30m-32k/` | 8 层 / 32k 词表，评测 5/10，检索 0/3，Q4 27.6MB 无法上板 |
