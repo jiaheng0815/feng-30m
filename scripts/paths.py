@@ -8,10 +8,13 @@
     FENG_LLAMA_DIR      llama.cpp 仓库目录（GGUF 转换 / 量化 / benchmark）
     FENG_PY             Python 解释器（默认：当前解释器 sys.executable）
     FENG_TEACHER_GGUF   v1 教师模型 feng-0.8b 的 GGUF 路径
+    IDF_PATH / IDF_TOOLS_PATH / ESPTOOL_PY / FENG_GCC
+                        工具链位置（只有 flash.ps1 等少数地方用得到，可留空）
 
 也可以不设环境变量，改为在仓库里放一份机器本地配置（已 gitignore，不会提交）：
     scripts/local_paths.json
-    {"llama_dir": "...", "data_dir": "...", "python": "...", "teacher_gguf": "..."}
+    {"llama_dir": "...", "data_dir": "...", "python": "...", "teacher_gguf": "...",
+     "esp_idf": "...", "idf_tools_path": "...", "esptool_py": "...", "gcc": "..."}
 """
 from __future__ import annotations
 
@@ -73,6 +76,12 @@ TEACHER_GGUF = _resolve(
     SIBLING / "quant" / "gguf" / "feng-bf16.gguf",
 )
 
+# 工具链（可选）：并非所有脚本都需要，取不到就是 None
+ESP_IDF = _resolve("IDF_PATH", "esp_idf", Path("__missing__"))
+IDF_TOOLS_PATH = _resolve("IDF_TOOLS_PATH", "idf_tools_path", Path("__missing__"))
+ESPTOOL_PY = _resolve("ESPTOOL_PY", "esptool_py", PY)
+GCC = _resolve("FENG_GCC", "gcc", Path("__missing__"))
+
 
 def require(path: Path, what: str, env: str = "") -> Path:
     """路径不存在时给出可操作的报错（含环境变量提示）。"""
@@ -91,6 +100,10 @@ def main() -> None:
         ("llama.cpp/bin", LLAMA_BIN, ""),
         ("Python", PY, "FENG_PY"),
         ("v1 教师 GGUF", TEACHER_GGUF, "FENG_TEACHER_GGUF"),
+        ("ESP-IDF", ESP_IDF, "IDF_PATH"),
+        ("IDF 工具链", IDF_TOOLS_PATH, "IDF_TOOLS_PATH"),
+        ("esptool 解释器", ESPTOOL_PY, "ESPTOOL_PY"),
+        ("gcc", GCC, "FENG_GCC"),
     ]
     print(f"本地配置 {_LOCAL_CONFIG}：" + ("已加载" if _local else "无"))
     for name, path, env in rows:

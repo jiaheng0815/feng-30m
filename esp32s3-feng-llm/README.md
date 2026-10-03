@@ -10,6 +10,9 @@ tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话*
 [Releases](https://github.com/jiaheng0815/feng-30m/releases) 里的 `feng-30m-v3-release.zip`，
 取包内 `weights/esp32/`；**② 按下面第 1 节自己从 HF 权重导出**。只想跑起来就选 ①，跳过第 1 节。
 
+> 下文命令里的 `<...>` 都是占位符，换成你本机的路径；Python 脚本会自动解析项目内路径
+> （见 `scripts/paths.py`），工具链位置可写在 `scripts/local_paths.example.json` 的副本里。
+
 ```
 ┌──────────────── ESP32-S3 (240 MHz 双核, 32MB flash, 16MB octal PSRAM) ──────────┐
 │  flash: 0x110000   model.bin      14.93 MB, Q4 block-64, mmap 直读（不占 RAM）   │
@@ -44,7 +47,7 @@ $py = "python"                    # 换成装了 torch + transformers 的解释�
 cd esp32s3-feng-llm
 $src = @('pc_check.c','..\main\feng_model.c','..\main\feng_llm.c','..\main\feng_quant.c',
          '..\main\feng_smp.c','..\main\feng_tokenizer.c','-I..\main','-lm')
-& "<MSYS2>\ucrt64\bin\gcc.exe" -O2 -o pc\pc_check.exe @src      # 本机：F:\msys2\ucrt64\bin\gcc.exe
+& "<MSYS2>\ucrt64\bin\gcc.exe" -O2 -o pc\pc_check.exe @src
 .\pc\pc_check.exe ..\model_export_v3 ..\logs\c_logits_v3.bin
 ```
 
@@ -70,8 +73,8 @@ $env:CUDA_VISIBLE_DEVICES=''
 ## 3. 编译固件（ESP-IDF v5.5.5）
 
 ```powershell
-$env:IDF_TOOLS_PATH = "<IDF 工具链目录>"     # 本机：F:\Espressif
-& "<esp-idf 目录>\export.ps1"                # 本机：F:\esp\v5.5.5\esp-idf
+$env:IDF_TOOLS_PATH = "<IDF 工具链目录>"
+& "<esp-idf 目录>\export.ps1"
 cd <仓库>\esp32s3-feng-llm
 idf.py build          # 目标/分区表已在 sdkconfig 和 partitions.csv 里配好
 ```

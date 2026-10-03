@@ -22,13 +22,13 @@
 |---|---|
 | 仓库根目录 ROOT | 自动按脚本位置推导，可用 `FENG_ROOT` 覆盖 |
 | 原始数据 / v1 教师 GGUF（同级项目 feng-ai-qwen35） | `FENG_DATA_DIR`、`FENG_TEACHER_GGUF` |
-| Python 解释器（本机 torch 2.13.0+cu132，CUDA 可用） | 默认当前解释器 `sys.executable`，可用 `FENG_PY` 覆盖 |
-| llama.cpp（GGUF 转换 / 量化 / benchmark） | `FENG_LLAMA_DIR`（本机 `D:\llama.cpp`） |
-| ESP-IDF / esptool / gcc | `flash.ps1 -EspIdfPath -EspToolPy` 或环境变量 `IDF_PATH`/`ESPTOOL_PY`；本机 `F:\esp\v5.5.5\esp-idf`、`F:\Espressif`、`F:\msys2\ucrt64\bin\gcc.exe` |
+| Python 解释器（torch 2.13.0+cu132，CUDA 可用） | 默认当前解释器 `sys.executable`，可用 `FENG_PY` 覆盖 |
+| llama.cpp（GGUF 转换 / 量化 / benchmark） | `FENG_LLAMA_DIR` |
+| ESP-IDF / esptool / gcc | `flash.ps1 -EspIdfPath -EspToolPy` 或环境变量 `IDF_PATH`/`ESPTOOL_PY`/`FENG_GCC` |
 | 串口 | **COM20 = CH343，COM19 = 芯片原生 USB-JTAG**，115200 对话 / 921600 烧录 |
 
-新机器上先复制 `scripts/local_paths.example.json` 为 `scripts/local_paths.json` 填本机路径
-（该文件已 gitignore，不会提交）。
+机器相关的实际路径一律写在 `scripts/local_paths.json`（已 gitignore，**不要提交**；新机器复制
+`scripts/local_paths.example.json` 填写）。文档和代码里都不出现盘符。
 
 本目录是 git 仓库，远端 `origin = https://github.com/jiaheng0815/feng-30m`（公开仓库）。发布约定：
 **主仓库只放代码与文档**——数据集（`data/`、`v2/data/`）与权重/二进制（`*.safetensors`、`*.gguf`、`*.npy`、`*.bin` 等）
@@ -100,8 +100,8 @@ $py = "python"        # 换成装了 torch + transformers 的解释器
 .\pc\pc_check.exe ..\model_export_v3 ..\logs\c_logits_v3.bin
 
 # 2) 编译固件
-$env:IDF_TOOLS_PATH = "<IDF 工具链目录>"      # 本机 F:\Espressif
-& "<esp-idf>\export.ps1"                     # 本机 F:\esp\v5.5.5\esp-idf
+$env:IDF_TOOLS_PATH = "<IDF 工具链目录>"      # 本机路径见 scripts/local_paths.json
+& "<esp-idf>\export.ps1"
 idf.py build
 
 # 3) 烧录（固件；换模型只需后两条；偏移以 partitions.csv 为准）

@@ -4,5 +4,9 @@
   "llama_dir": "D:\\path\\to\\llama.cpp",
   "data_dir": "D:\\path\\to\\feng-ai-qwen35\\data",
   "python": "D:\\path\\to\\venv\\Scripts\\python.exe",
-  "teacher_gguf": "D:\\path\\to\\feng-ai-qwen35\\quant\\gguf\\feng-bf16.gguf"
+  "teacher_gguf": "D:\\path\\to\\feng-ai-qwen35\\quant\\gguf\\feng-bf16.gguf",
+  "esp_idf": "D:\\path\\to\\esp-idf",
+  "idf_tools_path": "D:\\path\\to\\esp-tools",
+  "esptool_py": "D:\\path\\to\\idf-python\\Scripts\\python.exe",
+  "gcc": "D:\\path\\to\\msys2\\ucrt64\\bin\\gcc.exe"
 }
