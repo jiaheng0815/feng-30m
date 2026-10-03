@@ -1,0 +1,1586 @@
+{
+  "model": "v3\\retr_sft\\ctx32768\\final",
+  "n": 32,
+  "rows": [
+    {
+      "ctx": 4096,
+      "hit": 4,
+      "n": 32,
+      "detail": [
+        {
+          "code": "韩超 2029年6月15日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 3085,
+          "response": "34821432",
+          "ok": false
+        },
+        {
+          "code": "L30-SB803",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 3085,
+          "response": "91872",
+          "ok": false
+        },
+        {
+          "code": "40127",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 3085,
+          "response": "40127",
+          "ok": true
+        },
+        {
+          "code": "W27-RE589",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 3085,
+          "response": "99179",
+          "ok": false
+        },
+        {
+          "code": "朱磊 2029年5月9日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 3085,
+          "response": "14285",
+          "ok": false
+        },
+        {
+          "code": "孔艳 2028年3月26日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 3085,
+          "response": "43522",
+          "ok": false
+        },
+        {
+          "code": "19425",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 3085,
+          "response": "22755456",
+          "ok": false
+        },
+        {
+          "code": "G58-TM760",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 3085,
+          "response": "64747",
+          "ok": false
+        },
+        {
+          "code": "M25-NP922",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 3088,
+          "response": "45659",
+          "ok": false
+        },
+        {
+          "code": "763258",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 3088,
+          "response": "85795",
+          "ok": false
+        },
+        {
+          "code": "M31-AM513",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 3088,
+          "response": "283023958",
+          "ok": false
+        },
+        {
+          "code": "H74-DS759",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 3088,
+          "response": "26509",
+          "ok": false
+        },
+        {
+          "code": "228939",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 3088,
+          "response": "83331956",
+          "ok": false
+        },
+        {
+          "code": "Y53-KN178",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 3088,
+          "response": "28998831",
+          "ok": false
+        },
+        {
+          "code": "50282144",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 3088,
+          "response": "18937",
+          "ok": false
+        },
+        {
+          "code": "124287",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 3088,
+          "response": "48944",
+          "ok": false
+        },
+        {
+          "code": "137675",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 3088,
+          "response": "17273",
+          "ok": false
+        },
+        {
+          "code": "T71-HU758",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 3088,
+          "response": "71864974",
+          "ok": false
+        },
+        {
+          "code": "648842",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 3088,
+          "response": "91244572",
+          "ok": false
+        },
+        {
+          "code": "23670",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 3088,
+          "response": "23670",
+          "ok": true
+        },
+        {
+          "code": "王平 2027年5月21日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 3088,
+          "response": "53773",
+          "ok": false
+        },
+        {
+          "code": "V63-EU763",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 3088,
+          "response": "66929",
+          "ok": false
+        },
+        {
+          "code": "58764065",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 3088,
+          "response": "58764065",
+          "ok": true
+        },
+        {
+          "code": "P60-AJ861",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 3088,
+          "response": "828292",
+          "ok": false
+        },
+        {
+          "code": "34786783",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 3091,
+          "response": "30302",
+          "ok": false
+        },
+        {
+          "code": "79638",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 3091,
+          "response": "79638",
+          "ok": true
+        },
+        {
+          "code": "66551128",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 3091,
+          "response": "554498",
+          "ok": false
+        },
+        {
+          "code": "何磊 2026年7月10日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 3091,
+          "response": "15882",
+          "ok": false
+        },
+        {
+          "code": "570951",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 3091,
+          "response": "2029年5月17日",
+          "ok": false
+        },
+        {
+          "code": "303918",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 3091,
+          "response": "6763",
+          "ok": false
+        },
+        {
+          "code": "249122",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 3091,
+          "response": "89229002",
+          "ok": false
+        },
+        {
+          "code": "49135987",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 3091,
+          "response": "48218",
+          "ok": false
+        }
+      ],
+      "neg_hit": 0,
+      "neg_n": 16,
+      "neg_detail": [
+        {
+          "code": null,
+          "kind": "保险柜密码",
+          "needle_frac": -1.0,
+          "tokens": 3072,
+          "response": "2829351",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "值班人",
+          "needle_frac": -1.0,
+          "tokens": 3072,
+          "response": "5907840",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "设备序列号",
+          "needle_frac": -1.0,
+          "tokens": 3072,
+          "response": "95017",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "值班人",
+          "needle_frac": -1.0,
+          "tokens": 3072,
+          "response": "25157912",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "工单编号",
+          "needle_frac": -1.0,
+          "tokens": 3072,
+          "response": "91352764",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "工单编号",
+          "needle_frac": -1.0,
+          "tokens": 3072,
+          "response": "61582826",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "借阅证号",
+          "needle_frac": -1.0,
+          "tokens": 3072,
+          "response": "5357",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "设备序列号",
+          "needle_frac": -1.0,
+          "tokens": 3072,
+          "response": "79631",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "工单编号",
+          "needle_frac": -1.0,
+          "tokens": 3070,
+          "response": "14652",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "工单编号",
+          "needle_frac": -1.0,
+          "tokens": 3070,
+          "response": "430405",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "借阅证号",
+          "needle_frac": -1.0,
+          "tokens": 3070,
+          "response": "2828",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "保险柜密码",
+          "needle_frac": -1.0,
+          "tokens": 3070,
+          "response": "282",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "值班人",
+          "needle_frac": -1.0,
+          "tokens": 3070,
+          "response": "96081",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "设备序列号",
+          "needle_frac": -1.0,
+          "tokens": 3070,
+          "response": "57898",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "设备序列号",
+          "needle_frac": -1.0,
+          "tokens": 3070,
+          "response": "602497",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "保险柜密码",
+          "needle_frac": -1.0,
+          "tokens": 3070,
+          "response": "94682782",
+          "ok": false
+        }
+      ]
+    },
+    {
+      "ctx": 8192,
+      "hit": 2,
+      "n": 32,
+      "detail": [
+        {
+          "code": "孔芳 2027年8月16日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 6328,
+          "response": "568703",
+          "ok": false
+        },
+        {
+          "code": "73744516",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 6328,
+          "response": "998430",
+          "ok": false
+        },
+        {
+          "code": "31585",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 6328,
+          "response": "186526",
+          "ok": false
+        },
+        {
+          "code": "10085",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 6328,
+          "response": "80664606",
+          "ok": false
+        },
+        {
+          "code": "350675",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 6328,
+          "response": "2826",
+          "ok": false
+        },
+        {
+          "code": "M39-VK910",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 6328,
+          "response": "8387",
+          "ok": false
+        },
+        {
+          "code": "38011918",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 6328,
+          "response": "46301",
+          "ok": false
+        },
+        {
+          "code": "何磊 2030年11月1日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 6328,
+          "response": "3030",
+          "ok": false
+        },
+        {
+          "code": "D18-CB209",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 6327,
+          "response": "48212569",
+          "ok": false
+        },
+        {
+          "code": "94413628",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 6327,
+          "response": "11020",
+          "ok": false
+        },
+        {
+          "code": "567902",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 6327,
+          "response": "13878",
+          "ok": false
+        },
+        {
+          "code": "712007",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 6327,
+          "response": "7681",
+          "ok": false
+        },
+        {
+          "code": "62374",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 6327,
+          "response": "858690",
+          "ok": false
+        },
+        {
+          "code": "G46-QB495",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 6327,
+          "response": "48601",
+          "ok": false
+        },
+        {
+          "code": "姜霞 2030年8月11日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 6327,
+          "response": "77996",
+          "ok": false
+        },
+        {
+          "code": "12479676",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 6327,
+          "response": "15364",
+          "ok": false
+        },
+        {
+          "code": "T34-SK628",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 6327,
+          "response": "24732",
+          "ok": false
+        },
+        {
+          "code": "40821",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 6327,
+          "response": "89028509",
+          "ok": false
+        },
+        {
+          "code": "92201684",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 6327,
+          "response": "78080",
+          "ok": false
+        },
+        {
+          "code": "956367",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 6327,
+          "response": "98939",
+          "ok": false
+        },
+        {
+          "code": "10940514",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 6327,
+          "response": "10940514",
+          "ok": true
+        },
+        {
+          "code": "42140",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 6327,
+          "response": "42140",
+          "ok": true
+        },
+        {
+          "code": "Q68-KE309",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 6327,
+          "response": "97550616",
+          "ok": false
+        },
+        {
+          "code": "陶华 2030年1月26日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 6327,
+          "response": "502392",
+          "ok": false
+        },
+        {
+          "code": "85602",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 6328,
+          "response": "8602",
+          "ok": false
+        },
+        {
+          "code": "881211",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 6328,
+          "response": "4048496",
+          "ok": false
+        },
+        {
+          "code": "819609",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 6328,
+          "response": "81090",
+          "ok": false
+        },
+        {
+          "code": "973368",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 6328,
+          "response": "67450",
+          "ok": false
+        },
+        {
+          "code": "李强 2027年5月25日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 6328,
+          "response": "92636",
+          "ok": false
+        },
+        {
+          "code": "J55-UV733",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 6328,
+          "response": "48343",
+          "ok": false
+        },
+        {
+          "code": "张娟 2030年3月2日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 6328,
+          "response": "62637",
+          "ok": false
+        },
+        {
+          "code": "102663",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 6328,
+          "response": "51274",
+          "ok": false
+        }
+      ],
+      "neg_hit": 0,
+      "neg_n": 16,
+      "neg_detail": [
+        {
+          "code": null,
+          "kind": "工单编号",
+          "needle_frac": -1.0,
+          "tokens": 6310,
+          "response": "87365",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "保险柜密码",
+          "needle_frac": -1.0,
+          "tokens": 6310,
+          "response": "53437963",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "值班人",
+          "needle_frac": -1.0,
+          "tokens": 6310,
+          "response": "7178844",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "值班人",
+          "needle_frac": -1.0,
+          "tokens": 6310,
+          "response": "59790",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "值班人",
+          "needle_frac": -1.0,
+          "tokens": 6310,
+          "response": "48438402",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "工单编号",
+          "needle_frac": -1.0,
+          "tokens": 6310,
+          "response": "90162",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "设备序列号",
+          "needle_frac": -1.0,
+          "tokens": 6310,
+          "response": "2028",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "值班人",
+          "needle_frac": -1.0,
+          "tokens": 6310,
+          "response": "41114",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "保险柜密码",
+          "needle_frac": -1.0,
+          "tokens": 6313,
+          "response": "88910157",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "值班人",
+          "needle_frac": -1.0,
+          "tokens": 6313,
+          "response": "25681",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "值班人",
+          "needle_frac": -1.0,
+          "tokens": 6313,
+          "response": "50930",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "设备序列号",
+          "needle_frac": -1.0,
+          "tokens": 6313,
+          "response": "482622",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "值班人",
+          "needle_frac": -1.0,
+          "tokens": 6313,
+          "response": "481177",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "保险柜密码",
+          "needle_frac": -1.0,
+          "tokens": 6313,
+          "response": "64766136",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "保险柜密码",
+          "needle_frac": -1.0,
+          "tokens": 6313,
+          "response": "81320090",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "值班人",
+          "needle_frac": -1.0,
+          "tokens": 6313,
+          "response": "36212",
+          "ok": false
+        }
+      ]
+    },
+    {
+      "ctx": 16384,
+      "hit": 4,
+      "n": 32,
+      "detail": [
+        {
+          "code": "60250",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 12926,
+          "response": "87911273",
+          "ok": false
+        },
+        {
+          "code": "58284",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 12926,
+          "response": "53040",
+          "ok": false
+        },
+        {
+          "code": "317102",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 12926,
+          "response": "55210",
+          "ok": false
+        },
+        {
+          "code": "507827",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 12926,
+          "response": "507827",
+          "ok": true
+        },
+        {
+          "code": "51231209",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 12926,
+          "response": "61231",
+          "ok": false
+        },
+        {
+          "code": "卫娟 2028年5月20日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 12926,
+          "response": "5403895",
+          "ok": false
+        },
+        {
+          "code": "陈芳 2029年6月13日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 12926,
+          "response": "464148",
+          "ok": false
+        },
+        {
+          "code": "B68-GP997",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 12926,
+          "response": "29170962",
+          "ok": false
+        },
+        {
+          "code": "D38-DM643",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 12926,
+          "response": "24370",
+          "ok": false
+        },
+        {
+          "code": "87057988",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 12926,
+          "response": "8605798",
+          "ok": false
+        },
+        {
+          "code": "27842",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 12926,
+          "response": "28272",
+          "ok": false
+        },
+        {
+          "code": "L75-CV373",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 12926,
+          "response": "67035",
+          "ok": false
+        },
+        {
+          "code": "K40-ED721",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 12926,
+          "response": "28670",
+          "ok": false
+        },
+        {
+          "code": "618896",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 12926,
+          "response": "75580",
+          "ok": false
+        },
+        {
+          "code": "86479",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 12926,
+          "response": "86479",
+          "ok": true
+        },
+        {
+          "code": "829828",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 12926,
+          "response": "28271",
+          "ok": false
+        },
+        {
+          "code": "卫丽 2028年2月26日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 12925,
+          "response": "60274",
+          "ok": false
+        },
+        {
+          "code": "73501",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 12925,
+          "response": "30390",
+          "ok": false
+        },
+        {
+          "code": "432381",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 12925,
+          "response": "43940370",
+          "ok": false
+        },
+        {
+          "code": "L21-NF490",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 12925,
+          "response": "86214",
+          "ok": false
+        },
+        {
+          "code": "109938",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 12925,
+          "response": "6270",
+          "ok": false
+        },
+        {
+          "code": "W91-ST446",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 12925,
+          "response": "71814",
+          "ok": false
+        },
+        {
+          "code": "205473",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 12925,
+          "response": "5806754",
+          "ok": false
+        },
+        {
+          "code": "王刚 2029年4月7日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 12925,
+          "response": "6397170",
+          "ok": false
+        },
+        {
+          "code": "A99-RN515",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 12924,
+          "response": "96325",
+          "ok": false
+        },
+        {
+          "code": "85540111",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 12924,
+          "response": "48801",
+          "ok": false
+        },
+        {
+          "code": "170344",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 12924,
+          "response": "38918",
+          "ok": false
+        },
+        {
+          "code": "23116",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 12924,
+          "response": "22116",
+          "ok": false
+        },
+        {
+          "code": "68239",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 12924,
+          "response": "68239",
+          "ok": true
+        },
+        {
+          "code": "72636",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 12924,
+          "response": "72636",
+          "ok": true
+        },
+        {
+          "code": "K79-MC704",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 12924,
+          "response": "95611981",
+          "ok": false
+        },
+        {
+          "code": "30872446",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 12924,
+          "response": "30262",
+          "ok": false
+        }
+      ],
+      "neg_hit": 0,
+      "neg_n": 16,
+      "neg_detail": [
+        {
+          "code": null,
+          "kind": "值班人",
+          "needle_frac": -1.0,
+          "tokens": 12911,
+          "response": "57800948",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "借阅证号",
+          "needle_frac": -1.0,
+          "tokens": 12911,
+          "response": "57306046",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "借阅证号",
+          "needle_frac": -1.0,
+          "tokens": 12911,
+          "response": "77086",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "借阅证号",
+          "needle_frac": -1.0,
+          "tokens": 12911,
+          "response": "9275",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "借阅证号",
+          "needle_frac": -1.0,
+          "tokens": 12911,
+          "response": "30855",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "工单编号",
+          "needle_frac": -1.0,
+          "tokens": 12911,
+          "response": "23636",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "值班人",
+          "needle_frac": -1.0,
+          "tokens": 12911,
+          "response": "828140",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "设备序列号",
+          "needle_frac": -1.0,
+          "tokens": 12911,
+          "response": "77467",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "工单编号",
+          "needle_frac": -1.0,
+          "tokens": 12910,
+          "response": "2226",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "值班人",
+          "needle_frac": -1.0,
+          "tokens": 12910,
+          "response": "75625",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "借阅证号",
+          "needle_frac": -1.0,
+          "tokens": 12910,
+          "response": "63364",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "工单编号",
+          "needle_frac": -1.0,
+          "tokens": 12910,
+          "response": "363538",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "保险柜密码",
+          "needle_frac": -1.0,
+          "tokens": 12910,
+          "response": "92496",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "设备序列号",
+          "needle_frac": -1.0,
+          "tokens": 12910,
+          "response": "92419",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "设备序列号",
+          "needle_frac": -1.0,
+          "tokens": 12910,
+          "response": "935633",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "工单编号",
+          "needle_frac": -1.0,
+          "tokens": 12910,
+          "response": "809919",
+          "ok": false
+        }
+      ]
+    },
+    {
+      "ctx": 32768,
+      "hit": 1,
+      "n": 32,
+      "detail": [
+        {
+          "code": "U95-LF401",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 26006,
+          "response": "383284",
+          "ok": false
+        },
+        {
+          "code": "65944838",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 26006,
+          "response": "6284",
+          "ok": false
+        },
+        {
+          "code": "B58-RP836",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 26006,
+          "response": "238277",
+          "ok": false
+        },
+        {
+          "code": "魏洋 2030年9月6日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26006,
+          "response": "8693",
+          "ok": false
+        },
+        {
+          "code": "798170",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 26006,
+          "response": "8403",
+          "ok": false
+        },
+        {
+          "code": "723599",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 26006,
+          "response": "7305",
+          "ok": false
+        },
+        {
+          "code": "45965",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 26006,
+          "response": "32328173",
+          "ok": false
+        },
+        {
+          "code": "M41-LV902",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 26006,
+          "response": "553330",
+          "ok": false
+        },
+        {
+          "code": "吕艳 2028年10月24日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26008,
+          "response": "8624",
+          "ok": false
+        },
+        {
+          "code": "37751017",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 26008,
+          "response": "16767",
+          "ok": false
+        },
+        {
+          "code": "57750",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 26008,
+          "response": "88840",
+          "ok": false
+        },
+        {
+          "code": "王丽 2027年10月7日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26008,
+          "response": "34500325",
+          "ok": false
+        },
+        {
+          "code": "周杰 2030年12月6日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26008,
+          "response": "3633",
+          "ok": false
+        },
+        {
+          "code": "G32-TC474",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 26008,
+          "response": "938192",
+          "ok": false
+        },
+        {
+          "code": "35583144",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 26008,
+          "response": "55341",
+          "ok": false
+        },
+        {
+          "code": "14508",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 26008,
+          "response": "35093",
+          "ok": false
+        },
+        {
+          "code": "孙平 2026年12月12日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26010,
+          "response": "3023",
+          "ok": false
+        },
+        {
+          "code": "杨华 2026年8月14日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26010,
+          "response": "96146",
+          "ok": false
+        },
+        {
+          "code": "20071968",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 26010,
+          "response": "30446",
+          "ok": false
+        },
+        {
+          "code": "12684",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 26010,
+          "response": "6684",
+          "ok": false
+        },
+        {
+          "code": "28322499",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 26010,
+          "response": "61520",
+          "ok": false
+        },
+        {
+          "code": "孔华 2026年6月26日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26010,
+          "response": "2382",
+          "ok": false
+        },
+        {
+          "code": "钱丽 2030年2月27日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26010,
+          "response": "334282",
+          "ok": false
+        },
+        {
+          "code": "何华 2030年9月19日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26010,
+          "response": "554900",
+          "ok": false
+        },
+        {
+          "code": "沈丽 2028年12月12日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26009,
+          "response": "93513",
+          "ok": false
+        },
+        {
+          "code": "82610",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 26009,
+          "response": "82610",
+          "ok": true
+        },
+        {
+          "code": "250042",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 26009,
+          "response": "91270",
+          "ok": false
+        },
+        {
+          "code": "17514",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 26009,
+          "response": "6464624",
+          "ok": false
+        },
+        {
+          "code": "93736",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 26009,
+          "response": "30336",
+          "ok": false
+        },
+        {
+          "code": "40601887",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 26009,
+          "response": "61491",
+          "ok": false
+        },
+        {
+          "code": "99507",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 26009,
+          "response": "9504314",
+          "ok": false
+        },
+        {
+          "code": "施明 2030年10月3日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26009,
+          "response": "309315",
+          "ok": false
+        }
+      ],
+      "neg_hit": 0,
+      "neg_n": 16,
+      "neg_detail": [
+        {
+          "code": null,
+          "kind": "借阅证号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "91580968",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "工单编号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "94694328",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "工单编号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "55450350",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "借阅证号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "10902",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "设备序列号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "96509",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "设备序列号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "84827",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "设备序列号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "2033",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "值班人",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "28147207",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "借阅证号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "3114",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "保险柜密码",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "24805127",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "设备序列号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "5123",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "工单编号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "30922",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "保险柜密码",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "55198",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "借阅证号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "86528",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "工单编号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "4113",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "值班人",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "40957127",
+          "ok": false
+        }
+      ]
+    }
+  ]
+}

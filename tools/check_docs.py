@@ -191,6 +191,31 @@ def check_facts() -> None:
             fail.append(f"eval/{lc6.name}: 针检索 {hits}，README 声称 27/29/24/22")
         else:
             print(f"    v3.6 针检索 {hits}（与文档一致）")
+        neg = sum(r.get("neg_hit", 0) for r in rows)
+        if neg != 62:
+            fail.append(f"eval/{lc6.name}: 拒答合计 {neg}/64，文档声称 62/64")
+    lc6m = ROOT / "eval" / "longctx32multi_v3_6r_final_ctx32768_final.json"
+    if lc6m.exists():
+        rows = json.loads(lc6m.read_text(encoding="utf-8"))["rows"]
+        hits = "/".join(str(r["hit"]) for r in rows)
+        neg = sum(r.get("neg_hit", 0) for r in rows)
+        if hits != "28/26/28/17" or neg != 63:
+            fail.append(f"eval/{lc6m.name}: 多类别 {hits} 拒答 {neg}/64，文档声称 99/128 与 63/64")
+        else:
+            print(f"    v3.6 多类别针检索 {hits}（合计 {sum(r['hit'] for r in rows)}/128）、"
+                  f"拒答 {neg}/64（与文档一致）")
+    for fname, want in [("v3_6_scope.json", "8"), ("v3_5_release_scope.json", "7"),
+                        ("v3_4_release_scope.json", "9")]:
+        p = ROOT / "eval" / fname
+        if not p.exists():
+            warn.append(f"eval/{fname} 不存在，跳过范围评测校验")
+            continue
+        rows = json.loads(p.read_text(encoding="utf-8"))
+        got = sum(1 for r in rows if r.get("ok") is True)
+        if str(got) != want:
+            fail.append(f"eval/{fname}: 范围评测 {got}/10 != 文档 {want}/10")
+        else:
+            print(f"    {fname}: 范围评测 {got}/10（与文档一致）")
     gguf6 = {"feng-30m-Q4_K_M.gguf": 23.7, "feng-30m-Q8_0.gguf": 30.5,
              "feng-30m-f16.gguf": 56.8}
     for fname, want_mb in gguf6.items():

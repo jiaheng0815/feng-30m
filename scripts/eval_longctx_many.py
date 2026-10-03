@@ -170,7 +170,8 @@ def run_batch(model, tok, samples: list[dict], max_new: int = 16) -> list[dict]:
             ok = bool(refused and not invented)
         else:
             ok = s["code"] in resp
-        rows.append({"code": s["code"], "needle_frac": s["needle_frac"],
+        rows.append({"code": s["code"], "kind": s.get("kind"),
+                     "needle_frac": s["needle_frac"],
                      "tokens": len(s["ids"]), "response": resp[:60], "ok": ok})
     return rows
 
@@ -208,8 +209,10 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     summary: dict[str, dict[int, str]] = {}
 
-    for name in names:
-        path = Path(MODELS.get(name, name))
+    for spec in names:
+        # 支持 "别名=路径" 写法：结果文件名用别名，避免覆盖历史同名结果
+        name, _, explicit = spec.partition("=")
+        path = Path(explicit) if explicit else Path(MODELS.get(name, name))
         if not (path / "model.safetensors").exists():
             log(f"跳过 {name}：{path} 没有 model.safetensors")
             continue

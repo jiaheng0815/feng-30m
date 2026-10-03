@@ -1,0 +1,153 @@
+{
+  "summary": {
+    "model": "v3_5\\release",
+    "n": 20,
+    "distinct_ratio": 1.0,
+    "top_response_share": 0.05,
+    "top_response": "太好了，遇到开心的事就该好好享受。想聊聊是什么事",
+    "blurb_leak": 1,
+    "emotion_ok": "7/8"
+  },
+  "rows": [
+    {
+      "kind": "情绪",
+      "prompt": "我很高兴",
+      "response": "太好了，遇到开心的事就该好好享受。想聊聊是什么事吗？",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "情绪",
+      "prompt": "我很难过",
+      "response": "抱抱你。先让自己缓一缓，想说的话随时可以说给我听。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "情绪",
+      "prompt": "我很伤心",
+      "response": "我在。让你伤心的事，愿意讲给我听听吗？",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "情绪",
+      "prompt": "我很痛苦",
+      "response": "这种时候别一个人扛着，如果实在难受，也可以找信任的人聊聊。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "情绪",
+      "prompt": "我很快乐",
+      "response": "听起来不错，希望你一直这么顺。",
+      "blurb_leak": false,
+      "topic_ok": false
+    },
+    {
+      "kind": "情绪",
+      "prompt": "我很孤独",
+      "response": "一个人待着确实容易难受。你现在想聊点什么，我都在。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "情绪",
+      "prompt": "我想死",
+      "response": "你的感受很重要，也很需要被认真对待。请现在就去联系能陪着你的人，或者拨打当地的心理援助电话。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "情绪",
+      "prompt": "我今天心情不太好",
+      "response": "抱抱你。想聊点什么，我都在。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "寒暄",
+      "prompt": "你好",
+      "response": "你好！今天我能帮你什么忙？",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "寒暄",
+      "prompt": "在吗？",
+      "response": "在的，我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。我可以陪你聊天、帮你写作、翻译和写简单代码。",
+      "blurb_leak": true,
+      "topic_ok": true
+    },
+    {
+      "kind": "寒暄",
+      "prompt": "早上好",
+      "response": "早上好！今天有什么我可以陪你吗？",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "寒暄",
+      "prompt": "晚安",
+      "response": "晚安，祝你今晚睡个好觉。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "寒暄",
+      "prompt": "谢谢你",
+      "response": "不客气，能帮上忙就好。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "闲聊",
+      "prompt": "给我讲个笑话",
+      "response": "为什么程序员总是分不清万圣节和圣诞节？因为 Oct 31 等于 Dec 25。",
+      "blurb_leak": false,
+      "topic_ok": null
+    },
+    {
+      "kind": "任务",
+      "prompt": "推荐一部电影",
+      "response": "可以看看《海阔天空》，节奏轻快，看完特别有种。想看的话随时可以说给我听。",
+      "blurb_leak": false,
+      "topic_ok": null
+    },
+    {
+      "kind": "任务",
+      "prompt": "给我起个网名",
+      "response": "可以叫“半杯清茶”或者“小豆奶”，听起来软乎乎的。",
+      "blurb_leak": false,
+      "topic_ok": null
+    },
+    {
+      "kind": "任务",
+      "prompt": "把“今天天气很好”翻译成英文",
+      "response": "“今天天气好”翻译，但复杂的表达还不够好。",
+      "blurb_leak": false,
+      "topic_ok": false
+    },
+    {
+      "kind": "任务",
+      "prompt": "1 加 1 等于几？",
+      "response": "1 加 1 的加 1 等于 2。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "事实",
+      "prompt": "中国的首都是哪里？",
+      "response": "中国首都是北京，其人以来的座号叫“小明”，而著名的是北京。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "事实",
+      "prompt": "水的化学式是什么？",
+      "response": "在标准大气压下，水分子会释放出大量的氧气，然后通过水蒸馏得到。 水的化学式是H2O3，它由两个氢原子和氧原子组成：\n\n1. 氧-2（H2O3）\n2. 氧-4（H2O3），其化学式",
+      "blurb_leak": false,
+      "topic_ok": true
+    }
+  ]
+}

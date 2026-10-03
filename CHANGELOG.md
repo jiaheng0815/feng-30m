@@ -29,31 +29,36 @@ v3.5 修的是"多轮复读"，但之前的评测都是窄口径。新增 **42 �
 2. **关键教训：打包窗口训不进补丁**。先用 `v3_retrieval_sft.py` 的混训（窗口里多段
    对话首尾相接）跑了两轮，loss 很低但单条提问全不会——模型靠窗口上下文"蹭"，
    补丁自拟合只有 **2%**。改用 **`scripts/v3_6_sft_patch.py`**（每条对话单独成样、
-   长度分桶、只对 assistant 算 loss）后，loss 从 0.50 → 0.005，自拟合升到 65%
-   （余下是"同题多答案"的不同说法，逐条检查全部正确）。
+   长度分桶、只对 assistant 算 loss）后，单轮 loss 从 0.50 降到 0.02 以下（各补丁轮末步 0.003–0.04），
+   补丁自拟合（完全匹配）升到 65%；其余是"同题多答案"的另一种说法，抽查未见错误。
 3. **检索回补**：补丁轮会伤长文（单类别从 106 掉到 31/128）。用检索主导的
    恢复轮（`v3_retrieval_sft.py`，lr×0.25）拉回，再和补丁版做 0.5/0.5 权重插值
    （`scripts/soup_models.py`），兼顾两头。
 4. **反复踩坑记录**（都留在 `v3_6a`~`v3_6q` 目录里）：书籍推荐串成电影、
    `你好` 漂成 `早上好`、`推荐` 模式互相干扰、AI 定义说成"处理、处理、表达"。
-   最终 v3.6 = **v3_6r**（在 v3_6l（soup）基础上做书籍/电影/问候专项 + 检索回补）。
+   最终 v3.6 = **v3_6r**：v3_6l（v3_6j/v3_6k 两版 0.5/0.5 插值）→ 书籍/电影/问候专项（v3_6o/p/q）
+   → 检索回补（v3_6r）。
 
 ### 结果（同协议实测）
 
 | 指标 | v3.5 | **v3.6** |
 |---|---|---|
 | 日常对话探针（42 题，模板泄漏/复读） | 29/42（13 处硬伤） | **42/42，0 泄漏 0 复读** |
-| 情绪回应（8 题） | 6~7/8 | **8/8** |
+| 情绪回应（8 题，同一脚本口径） | 7/8 | **8/8**（v3.4 为 5/8） |
 | 多轮不同回答比例（7 轮） | 1.00 | **1.00** |
 | 身份（12 题） | 12/12 | **12/12** |
 | 针检索·单类别 4k/8k/16k/32k | 27/29/25/25 = 106 | **27/29/24/22 = 102** |
 | 针检索·多类别（5 类事实） | 104/128 | **99/128** |
-| 拒答·单类别 / 多类别（各 64 题） | 59/64 | **60/64 ｜ 62/64** |
+| 拒答·单类别 / 多类别（各 64 题） | 59/64 | **62/64 ｜ 63/64** |
+| 范围 18 题（`eval_planA_scope.py` 同口径） | 7/10 | **8/10**（失手：上证指数、推荐股票） |
 | 知识/翻译/安全抽查 | 多处翻车 | **常识、词/句翻译、安全拒答全过** |
-| ESP32-S3 实机 | 10/10 | **10/10**（含《小王子》推荐、AI 定义、危机话术） |
+| ESP32-S3 实机 | 10/10 | **10/10，1.85–1.86 tok/s**（含《小王子》推荐、AI 定义、危机话术） |
 
 v3.6 的取舍：**用 2~5 题的检索（噪声级）换掉 13 处日常对话硬伤**。
 想要的检索数字最高（113/128）仍可用 v3.4，见下方历史节。
+结果文件：`eval/chat_probe_v3_6r.json`、`eval/chat_v3_6r.json`、`eval/identity_v3_6r.json`、
+`eval/longctx32_v3_6r_final_ctx32768_final.json`、`eval/longctx32multi_v3_6r_final_ctx32768_final.json`、
+`eval/v3_6_scope.json`、`logs/board_v3_6_speed.txt`。
 
 ### 复现
 
@@ -66,7 +71,9 @@ python scripts\v3_6_sft_patch.py --init <起点> --patch v3_6e\drill.jsonl `
 python scripts\v3_2_build_identity_mix.py --out v3_6r\mix ...   # 检索恢复混训
 python scripts\v3_retrieval_sft.py --init <补丁版> --data-root v3_6r\mix `
   --out v3_6r\final --lr-scale 0.25
-python scripts\soup_models.py --models "v3_6l,v3_6q" --weights "0.5,0.5" --out <soup>
+python scripts\soup_models.py --models "v3_6j\final\ctx32768\final,v3_6k\final" `
+  --weights "0.5,0.5" --out v3_6l\final
+python scripts\v3_6_build_drill.py --profile books --out v3_6o\rec_fix.jsonl   # 书影推荐/问候专项
 ```
 
 ---
@@ -89,39 +96,39 @@ python scripts\soup_models.py --models "v3_6l,v3_6q" --weights "0.5,0.5" --out <
 1. `scripts/v3_5_build_multiturn.py`：组合生成 **2,600 条多轮对话**（10 种情绪 × 多种回应 ×
    12 种后续话题 + 话题链），助手每轮必须回应当前输入，而不是复读上一轮；
 2. 多轮数据在训练里占 **65~75%**（重覆盖，参照身份改造的经验：轻量微调压不住旧行为）；
-3. 之后用一轮"检索补强"把长文能力拉回来（检索 50%+）。
+3. 之后用一轮"检索补强"把长文能力拉回来（16k/32k 阶段检索占比 88%/93%）。
 
 ### 结果
 
 | 指标 | v3.0 | v3.4 | **v3.5** |
 |---|---|---|---|
 | 多轮不同回答比例（7 轮） | 0.57 | 0.57 | **1.00** |
-| 单轮情绪回应（8 题） | — | 4/8 | **6~7/8** |
+| 单轮情绪回应（8 题，同一脚本口径） | — | 5/8 | **7/8** |
 | 身份（12 题） | 0/12 | 12/12 | **12/12** |
-| 针检索（单类别，128 题） | 106 | 113 | 106（配对 p=0.14，差异不显著） |
+| 针检索（单类别，128 题） | 106 | 113 | 106（与 v3 逐题配对 +9/−3，McNemar 精确 p≈0.15，差异不显著） |
 | 针检索（多类别，128 题） | 11 | 100 | **104** |
 | 「文中没有」正确拒答 | 0/64 | 56/64（88%） | **59/64（92%）** |
+| 范围 18 题（同口径复测） | — | 9/10 | 7/10 |
 | ESP32-S3 实机 | — | 10/10 | **10/10**（含情绪回应与危机话术） |
+
+结果文件：`eval/chat_v3_5_current.json`、`eval/chat_probe_v3_5_current.json`、
+`eval/longctx32multi_v3_5_release.json`、`eval/v3_5_release_scope.json`、`logs/board_baseline_v3_5.txt`。
 
 ### 附：KV 量化到 Q2 的 PC 测试（结论：不上板）
 
-给 C 引擎实现了第三种 KV 模式 `FENG_KV_Q2`（2 bit/值，4 值打包 1 字节；两种 scale 粒度都试过）：
+给 C 引擎实现了第三种 KV 模式 `FENG_KV_Q2`（2 bit/值，4 值打包 1 字节；每 16 值一块 scale；
+另外试过 per-head scale 的早期版本，更差，未保留）：
 
-| KV 模式 | ctx=2048 的 KV 内存 | 9 token 短提示 | 1060 token 长提示 |
-|---|---|---|---|
-| fp32 | 77.0 MB | 基线 | 基线 |
-| int8（现役） | 19.9 MB | **与 fp32 逐字相同** | **与 fp32 逐字相同** |
-| q2（per-head scale） | 5.41 MB | 续写变了 | 退化成复读 |
-| q2（每 16 值一块 scale） | 7.22 MB | 与 fp32 相同 | 明显分歧（"河边的人从不动了。"） |
+| KV 模式 | ctx=2048 的 KV 内存 | 323 token 提示（1060 字符） |
+|---|---|---|
+| fp32 | 77.00 MB | "夜里下了一场小雨，第二天早上，石阶上还留着浅浅的水痕。" |
+| int8（现役） | 19.85 MB | **与 fp32 逐字相同** |
+| q2（每 16 值一块 scale） | 7.22 MB | 退化成复读（"小小子子在窗边缓缓缓缓…"） |
 
-| 模式 | logits max\|diff\| / mean\|diff\|（vs fp32 参考） |
-|---|---|
-| fp32 / int8 | 2.75 / 0.44 ｜ 2.74 / 0.44 |
-| q2（分块 scale） | 3.26 / 0.81 |
-
-**结论**：Q2 在短上下文可用（分块 scale 后与 fp32 逐字一致），但 1000+ token 就崩，
+**结论**：Q2 省内存（7.22 MB vs 19.85 MB），但几百 token 的提示就开始崩，
 按"不是太糟糕才上板"的标准**不部署**；板上继续用 int8 KV（1024 ctx）。
-复现：`pc/pc_kv_test_{fp32,i8,q2}.exe <model_export> pc/prompt_long.txt 64 <prompt_chars>`。
+复现：`pc/pc_kv_test_{fp32,i8,q2}.exe <model_export> pc/prompt_long.txt 64 1060`
+（实测输出见 `logs/kv_rerun_{fp32,i8,q2}.txt`）。
 
 ---
 
@@ -144,7 +151,7 @@ python scripts\soup_models.py --models "v3_6l,v3_6q" --weights "0.5,0.5" --out <
 | 针检索 4k / 8k / 16k / 32k（各 32 题） | 31/30/26/19 | 28/29/27/27 | **28/30/27/28** |
 | 针检索合计（128 题） | 106（82.8%） | 111（86.7%） | **113（88.3%）** |
 | 负样本"文中没有"正确拒答（64 题） | 0（0%） | 52（81%） | **56（88%）** |
-| 范围评测（18 题） | 10/10 | 9/10 | 9/10 |
+| 范围评测（18 题，同口径复测） | 10/10 | 9/10 | **9/10**（发布插值版；`v3_4/final` 中间版为 8/10） |
 
 ### 复现
 
@@ -168,7 +175,7 @@ python scripts\soup_models.py --models "v3_4/final/ctx32768/final,v3_3/final/ctx
 | 项目 | 结果 |
 |---|---|
 | 稳定性 | **10 轮 10/10 成功、0 失败**（`logs/board_baseline_v3_4.txt`） |
-| 速度 | **1.84 tok/s**（742 ms/token @ 240MHz 双核） |
+| 速度 | 单轮 10.2–28.9 s（当时日志未留 tok/s 行；同内核 v3.6 复测 1.85–1.86 tok/s，见 `logs/board_v3_6_speed.txt`） |
 | 内核自检 | GEMV 896×448 单核 13,187 µs / 双核 6,828 µs（1.93x）；mmap 流式读 108.3 MB/s |
 | 身份（板端实测） | `你是谁？` → `我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。…`；`你是Qwen吗？` → `不是。我是 feng，由个人开发者 jiaheng 独立开发训练的 AI。` |
 | 其他 | `中国的首都是哪里？` → 北京；`1+1等于几？` → 2 |
@@ -191,8 +198,11 @@ python scripts\soup_models.py --models "v3_4/final/ctx32768/final,v3_3/final/ctx
 **纯数字越长越弱**（逐位精确拷贝是 30M 模型的瓶颈）。复测命令：
 
 ```powershell
-python scripts\eval_longctx_many.py --model v3_4\release --multi-kind --n 32 --neg-n 16
+python scripts\eval_longctx_many.py --models v3_4\release --multi-kind --n 32 --neg-n 16
 ```
+
+结果文件：`eval/longctx32multi_v3_4_release.json`（100/128，拒答 54/64；
+按类型拆分：编号 28/28、姓名+日期 21/26、5 位数字 20/26、6 位数字 18/27、8 位数字 13/21）。
 
 ### 更进一步：x-A / x-B 实验（旧代号 v3.5/v3.6，只给数字，未替换发布版）
 
@@ -212,6 +222,8 @@ python scripts\eval_longctx_many.py --model v3_4\release --multi-kind --n 32 --n
 发布版保持 **v3.4**：它在 32k 单项（28/32 = 87.5%）和检索总量上最好；
 想要"更少胡说"的可按上表复现严格版（0.5/0.5 插值，拒答 92%）。
 x-B 在单类别口径与 v3.4 打平（多类别 98 vs 100），说明**多类别口径下已达到该规模的数据/训练平台**。
+（结果文件：`eval/longctx32_v3_5_final_ctx32768_final.json`、`eval/longctx32_v3_5_soup_4_5.json`、
+`eval/longctx32_v3_6_final_ctx32768_final.json`、`eval/longctx32multi_v3_6_final.json`。）
 
 ---
 
@@ -237,7 +249,7 @@ x-B 在单类别口径与 v3.4 打平（多类别 98 vs 100），说明**多类�
 |---|---|---|
 | 身份（12 题） | 0/12（自称"微调后的 Qwen"） | **12/12** |
 | 针检索 4k / 8k / 16k / 32k（各 32 题） | 31 / 30 / 26 / 19 | **28 / 29 / 27 / 27** |
-| 针检索合计（128 题） | 106（82.8%） | **111（86.7%）**；32k 单项 19→27，配对 p<0.01 |
+| 针检索合计（128 题） | 106（82.8%） | **111（86.7%）**；32k 单项 19→27（发布版逐题配对 +12/−4，McNemar 精确 p≈0.077） |
 | 负样本"文中没有"正确拒答（64 题） | 0（0%） | **52（81%）** |
 | 范围评测（18 题） | 10/10 | 9/10 |
 | 参数 / 上下文 | 29.43M / 32k | 同（架构未变，权重可替换） |
@@ -268,13 +280,13 @@ x-B 在单类别口径与 v3.4 打平（多类别 98 vs 100），说明**多类�
 | 参数量 | 30.75M | 29.43M | 29.43M | 29.43M |
 | 训练上下文 | 8192（另有 32k 变体） | 2048 | **渐进 4096→8192→16384→32768** | 同 v3 |
 | 教师 | feng-0.8b（Qwen3.5-0.8B 微调版，bf16） | bonsai2-27b（27B） | 同 v2 | 同 v2 |
-| 累计训练 token | ~120M（仅指令数据） | 1.5B 预训练 + 22.5M SFT + 1.2M 补训 | v2 + 72M 长文 + 22.7M 长上下文 SFT + 12.5M 检索 SFT | v3 + 约 90M 检索/身份/恢复训练 |
+| 累计训练 token | 各阶段合计 ≈141M（仅指令/对话数据） | 1.5B 预训练 + 22.5M SFT + 1.2M 补训 | v2 + 72M 长文 + 22.65M 长上下文 SFT + 12.5M 检索 SFT | v3 + 检索/身份/恢复多轮（`v3_2*` 各轮 summary 合计约 137M） |
 | 身份自述 | 命中但退化 | 「微调后的 Qwen」 | 同 v2 | **「jiaheng 独立开发训练的 AI」** |
 | 范围评测 | 5/10 | 8/10 | 10/10 | 9/10 |
 | 针检索（32 题/长度） | 0/0/0/0 | 0/0/0/0 | 31/30/26/19 | **26/28/26/26** |
 | "文中没有"拒答 | 0/64 | 0/64 | 0/64 | **59/64** |
 | GGUF Q4_K_M | 27.6 MB | 23.7 MB | 23.7 MB | 23.7 MB |
-| PC 同引擎 | 144.6 tok/s | 143.7 tok/s | 147.1 tok/s | 147.1 tok/s |
+| PC 同引擎（LUT） | 156.1 tok/s | 156.8 tok/s | 157.4 tok/s | 157.4 tok/s |
 | ESP32-S3 实机 | ❌ 装不进 16MB mmap 窗口 | ✅ 1.56 tok/s @256 ctx | ✅ **1.86 tok/s @1024 ctx** | 同 v3（待上板复测） |
 
 ---
@@ -286,10 +298,11 @@ x-B 在单类别口径与 v3.4 打平（多类别 98 vs 100），说明**多类�
   参数 30.75M，其中 embedding 占 14.68M（48%）。
 - **教师**：feng-0.8b（Qwen3.5-0.8B 全参数 bf16 微调版）经 llama-server 批量生成
   **12,000 条回答（1.61M token）**。
-- **数据**：7 个公开问题集 + 教师数据 + 公开高质量对话，去重后 **36.5M token / 29.05M 有监督**，
-  序列长 8193，身份样本过采样 15×。
-- **训练**：A（8k 打包，37.9M token，loss 10.5→5.38）→ A2 续训（73.9M，→3.82）
-  → C 原生 32k（7.9M token，3.85）→ 对话微调（40M token，2900 步，~5.0）。val_loss 5.226。
+- **数据**：7 个公开问题集 + 教师数据 + 公开高质量对话，去重后打包（`aux_sft.jsonl` 102,660 段、
+  `teacher_distill.jsonl` 12,000 条），序列长 8193，身份样本过采样 15×。
+- **训练**（各阶段 `student/*/summary.json` 存档）：stageA（8k 打包，37.9M token，loss 5.385）
+  → stageA2 续训（73.9M，→3.821）→ 32k 分支 stageB（17.7M，→5.268）+ stageC（7.9M，→3.847）
+  → 对话微调 chat2（3.4M token，1400 步，→4.896；val_loss 7.74；stageB 的 val_loss 5.226）。
 
 ### 结果
 - 身份能命中，但**严重退化**：`我是 feng 微调的 Qwen 微调后的 Qwen 模型，由个人开发者 jiaheng 微调后的 Qwen…`；
@@ -299,9 +312,9 @@ x-B 在单类别口径与 v3.4 打平（多类别 98 vs 100），说明**多类�
 ### PC 实测（llama.cpp Q4_K_M）
 | 指标 | 数值 |
 |---|---|
-| CPU 8 线程 pp32 / tg64 | 3,738 / **1,340 tok/s** |
-| GPU 全卸载 pp32 / tg64 | 32,344 / **2,762 tok/s** |
-| 同引擎（C，单线程） | 144.6 tok/s（6.9 ms/token） |
+| CPU 8 线程 tg64（2026-10-03 复测，-r 3） | **1,125 ±76 tok/s** |
+| GPU 全卸载 tg64（同） | **2,532 ±142 tok/s** |
+| 同引擎（C，单线程，LUT 内核） | 156.1 tok/s（6.4 ms/token，`logs/pc_bench_lut_v1.txt`） |
 
 ### ESP32 部署
 ❌ **未部署**：Q4_K_M 27.6MB，装不进 **flash 前 16MB 的 mmap 窗口**（NOR flash 24 位地址上限；16MB 以上只能用 `esp_partition_read` 读）；
@@ -317,7 +330,7 @@ x-B 在单类别口径与 v3.4 打平（多类别 98 vs 100），说明**多类�
 2. **补上真实预训练**：中文维基 606M 字符 + firefly 70 万条 → **1.5B token**（22841 步 / 9.6 小时，loss 3.00）。
    v1 只有指令数据，没有知识底座。
 3. **教师升级到 27B**（bonsai2-27b，ninfer-serve 8 并发，`reasoning_effort:none`），
-   并过滤 2,727 条提及其他 AI 身份（ChatGPT/通义…）的样本。
+   并过滤提及其他 AI 身份（ChatGPT/通义…）的样本（`scripts/build_planA_corpus.py` 的 `WRONG_ID`）。
 
 之后是 Plan A SFT（94,478 段对话 / 22.5M token，loss 3.19）+ 低学习率补训
 （1000 步 / 1.2M token，loss 2.30）——补训这一步是必需的：只跑一轮 SFT 的中间版本
@@ -331,9 +344,9 @@ x-B 在单类别口径与 v3.4 打平（多类别 98 vs 100），说明**多类�
 ### PC 实测
 | 指标 | 数值 |
 |---|---|
-| 同引擎（C，单线程） | 143.7 tok/s（7.0 ms/token） |
-| llama.cpp CPU 8 线程 pp32 / tg64 | 2,599 / **1,280 tok/s** |
-| llama.cpp GPU 全卸载 pp32 / tg64 | 25,188 / **2,793 tok/s** |
+| 同引擎（C，单线程，LUT 内核） | 156.8 tok/s（6.4 ms/token，`logs/pc_bench_lut_v2_planA3b.txt`） |
+| llama.cpp CPU 8 线程 tg64（2026-10-03 复测） | **1,300 ±23 tok/s** |
+| llama.cpp GPU 全卸载 tg64（同） | **2,704 ±89 tok/s** |
 | C 引擎 vs PyTorch(Q4) | **max\|diff\| = 0.0000**（逐位一致） |
 
 ### ESP32-S3 实机（首次跑通）
@@ -344,7 +357,7 @@ x-B 在单类别口径与 v3.4 打平（多类别 98 vs 100），说明**多类�
 | 时钟 | CPU 240MHz 双核；**flash OPI-DTR 120MHz + PSRAM OCT 120MHz** |
 | mmap 流式读 | 15,296 KB / 144 ms = **108.3 MB/s** |
 | GEMV 896×448 | 单核 15,704 µs｜双核 **8,289 µs（1.89x）** |
-| 生成速度 | **1.56 tok/s**（prefill 11 token ≈ 7.0 s） |
+| 生成速度 | **1.56 tok/s**（prefill 9 token：双核修复前 10.6 s → 修复后 5.7 s，`logs/esp32_chat_smp5.txt`） |
 | KV | fp32，256 上下文，约 10.1 MB PSRAM |
 | 稳定性 | 连续 10 轮问答 **10/10 成功、0 崩溃** |
 | 串口协议 | UART0 115200；`<< 内容 >>END` 流式；自动跟随终端编码（GBK/UTF-8）；`\gbk \utf8 \stream N \help` |
@@ -364,11 +377,11 @@ x-B 在单类别口径与 v3.4 打平（多类别 98 vs 100），说明**多类�
 | ctx16384 | 16k | 8.0M tok | 122 | 4.426 | 7.5 min | 17.8k tok/s | 5.75 GiB |
 | ctx32768 | 32k | 3.9M tok | 30 | 4.051 | 5.9 min | 11.0k tok/s | 10.28 GiB |
 
-2. **8k 长上下文对话微调**：Plan A 语料重新打包成 8192 窗口（2,765 窗 / 22.7M token，
-   17.9M 有监督），345 步，loss **2.96**，14.3 分钟——避免普通短序列 SFT 把刚学到的窗口压回去。
+2. **8k 长上下文对话微调**：Plan A 语料重新打包成 8192 窗口（2,765 窗 / 22.65M token，
+   17.86M 有监督），345 步，loss **2.96**，14.3 分钟——避免普通短序列 SFT 把刚学到的窗口压回去。
 
 3. **合成检索 SFT**（关键一步）：长文里埋一条事实（保险柜密码/取件码…），只对答案算 loss，
-样本数随长度递减 800/400/200/80，共 12.5M token，loss **0.76 / 0.43 / 0.22 / 0.33**，9.4 分钟。
+样本数随长度递减 800/400/200/80，共 12.5M token，loss **0.76 / 0.43 / 0.22 / 0.33**，10.5 分钟。
 
 ### 结果
 | 评测 | v1 | v2 | **v3** |
@@ -386,14 +399,13 @@ x-B 在单类别口径与 v3.4 打平（多类别 98 vs 100），说明**多类�
 ### PC 实测
 | 指标 | v1 | v2 | **v3** |
 |---|---|---|---|
-| 同引擎（C，单线程） | 144.6 tok/s | 143.7 tok/s | **147.1 tok/s** |
-| llama.cpp CPU 8t tg64 | **1,340** | 1,280 | 1,216 |
-| llama.cpp CPU 8t pp32 | **3,738** | 2,599 | 2,794 |
-| llama.cpp GPU tg64 | 2,762 | **2,793** | 2,704 |
-| llama.cpp GPU pp32 | **32,344** | 25,188 | 27,213 |
+| 同引擎（C，单线程，LUT 内核） | 156.1 tok/s | 156.8 tok/s | **157.4 tok/s** |
+| llama.cpp CPU 8t tg64 | 1,125 | 1,300 | **1,313** |
+| llama.cpp GPU tg64 | 2,532 | 2,704 | **2,777** |
 
 三代参数量与每 token 乘加量接近（v1 = 8 层 + 32k 词表；v2/v3 = 11 层 + 16k 词表），
-所以**速度上没有实质差别**：v3 的全部收益来自训练，不是拿速度换的。
+所以**速度上没有实质差别**（差距在 ±10% 测量波动内；2026-10-03 统一复测：
+`logs/pc_bench_lut_*.txt`、`logs/bench_*`）：v3 的全部收益来自训练，不是拿速度换的。
 
 ### ESP32-S3 实机（含本轮内核优化）
 | 项目 | v2 | **v3** |
@@ -401,7 +413,7 @@ x-B 在单类别口径与 v3.4 打平（多类别 98 vs 100），说明**多类�
 | 权重 | 14.93 MB | 14.93 MB（`model_export_v3/`） |
 | GEMV 896×448 单核 | 15,704 µs | **13,187 µs** |
 | GEMV 896×448 双核 | 8,289 µs | **6,832 µs**（并行 1.93x） |
-| 端到端生成 | 1.56 tok/s | **1.86 tok/s** |
+| 端到端生成 | 1.56 tok/s | **1.85–1.86 tok/s**（同内核；v3.6 复测有日志） |
 | KV 上下文 | 256（fp32，10.1 MB） | **1024（int8，9.93 MB）** |
 | 实机对话 | 10 轮 10/10 | 5 轮 5/5（身份/算术/闲聊正常） |
 
@@ -415,15 +427,15 @@ x-B 在单类别口径与 v3.4 打平（多类别 98 vs 100），说明**多类�
 |---|---|---|
 | 起点 | 单核标量 Q4 内核，flash 80MHz STR | 0.70 tok/s |
 | ① 提频 | flash 80MHz STR → **OPI-DTR 120MHz**；PSRAM 120MHz | 0.74 tok/s（+5%，说明不是带宽瓶颈） |
-| ② 打断依赖链 | Q4 内层 1 个累加器 → 4 个 | 0.85 tok/s（+15%） |
-| ③ 双核 | 每个 GEMV 按输出行对半给 core0/core1（并修好优先级抢占） | **1.56 tok/s（+89%）** |
+| ② 打断依赖链 | Q4 内层 1 个累加器 → 4 个 | 0.84 tok/s（+13%） |
+| ③ 双核 | 每个 GEMV 按输出行对半给 core0/core1（并修好优先级抢占） | **1.56 tok/s**（GEMV 内核 +89%、端到端 +86%） |
 | ④ 查表内核 | 移位/减法/int→float → 256 项浮点查表（2KB 内部 RAM） | **1.86 tok/s**（PC 上同改动是 2.9x） |
 | ⑤ 失败尝试 | 内层展开 4→8 字节 | 反而慢 25%（寄存器溢出），已回退 |
 
 ### 每 token 的时间去哪了（v3，1.86 tok/s ≈ 537 ms/token）
 
 - 读一遍全部权重：15.3 MB ÷ 108.3 MB/s ≈ **144 ms**（flash mmap 流式读，实测）
-- 其余约 **390 ms** 是标量计算（约 2.5 条指令/权重 × 29.4M 权重）
+- 其余约 **390 ms** 是标量计算（按实测 4.1 周期/权重 @240MHz、29.4M 权重估算）
 - 结论：**瓶颈是算力不是带宽**——这就是为什么提频只赚 5%，而减少指令数/并行才有效
 
 ### 内存分工（16MB PSRAM 的真实账）
@@ -443,7 +455,7 @@ x-B 在单类别口径与 v3.4 打平（多类别 98 vs 100），说明**多类�
 | 方案 | 每 token KV | 10 MB 能放 | 32k 需要 |
 |---|---|---|---|
 | MHA + fp32（v2 起点） | 38.5 KB | 256 | 1.29 GB |
-| MHA + int8（v3 现在） | 9.6 KB | **1024** | 322 MB |
+| MHA + int8（v3 现在，含 fp16 scale） | 9.9 KiB | **1024**（9.93 MiB） | 333 MB |
 | MQA + int8（需重训） | 1.4 KB | 7168 | 46 MB |
 | MQA + int4 | 0.7 KB | 14336 | 23 MB |
 
@@ -454,20 +466,21 @@ x-B 在单类别口径与 v3.4 打平（多类别 98 vs 100），说明**多类�
 
 ## 附：复现命令
 
-> 下面命令里的 `pc_bench_*.exe` 与 `*.gguf` 是作者本机产物，仓库和 Release 里都没有：
+> 下面命令里的 `pc_bench_*.exe` 与 `*.gguf` 是作者本机产物，仓库里没有（`*.exe`、`*.gguf` 都被 gitignore）：
 > `.exe` 按 `esp32s3-feng-llm/README.md` 用 gcc 编译，GGUF 用 `scripts/export_student_gguf.py` 导出
-> （或直接从 Release 取 v3 的 GGUF）。`model_export_*` 目录同理，需先跑 `tools/export_model.py`。
+> （或直接从 Release 取 v3.6 的 GGUF）。`model_export_*` 目录同理，需先跑 `tools/export_model.py`。
 
 ```powershell
-# PC：同引擎速度（三代）
-esp32s3-feng-llm\pc\pc_bench_cur.exe ..\model_export_v1      # v1
-esp32s3-feng-llm\pc\pc_bench_cur.exe ..\model_export         # v2
-esp32s3-feng-llm\pc\pc_bench_cur.exe ..\model_export_v3      # v3
+# PC：同引擎速度（三代 + v3.6，LUT 内核）
+esp32s3-feng-llm\pc\pc_bench_lut.exe ..\model_export_v1             # v1
+esp32s3-feng-llm\pc\pc_bench_lut.exe ..\model_export_planA3b        # v2
+esp32s3-feng-llm\pc\pc_bench_lut.exe ..\model_export_v3             # v3
+esp32s3-feng-llm\pc\pc_bench_lut.exe ..\model_export_v3_6           # v3.6
 
 # PC：llama.cpp（Q4_K_M，CPU 8 线程 / GPU 全卸载）
-llama-bench -m student\feng-30m-chat\gguf\feng-30m-Q4_K_M.gguf -p 32 -n 64 -t 8 -ngl 0
-llama-bench -m v2\gguf_planA3b\feng-30m-Q4_K_M.gguf  -p 32 -n 64 -ngl 99
-llama-bench -m v3\gguf\feng-30m-Q4_K_M.gguf          -p 32 -n 64 -ngl 99
+llama-bench -m student\feng-30m-chat\gguf\feng-30m-Q4_K_M.gguf -p 32 -n 64 -r 3 -t 8 -ngl 0
+llama-bench -m v3_6\gguf\feng-30m-Q4_K_M.gguf -p 32 -n 64 -r 5 -t 8 -ngl 0     # CPU
+llama-bench -m v3_6\gguf\feng-30m-Q4_K_M.gguf -p 32 -n 64 -r 5 -ngl 99         # GPU
 
 # 长文检索（同协议，4k/8k/16k/32k）
 python scripts\eval_longctx.py --model student\feng-30m-32k      --ctx 4096,8192,16384,32768
@@ -480,8 +493,8 @@ python scripts\eval_planA_scope.py v3\retr_sft\ctx32768\final eval\v3_scope.json
 # ESP32：烧录（COM20=CH343，COM19=原生 USB-JTAG）
 $py='python'    # 换成带 esptool 的解释器
 & $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x10000 build\feng_30m.bin
-& $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000 model_export_v3\model.bin
-& $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 model_export_v3\tokenizer.bin
+& $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000 model_export_v3_6\model.bin
+& $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 model_export_v3_6\tokenizer.bin
 
 # ESP32：串口对话 / 稳定性测试
 python scripts\esp32_chat.py  --port COM20 --question "你是谁？"
@@ -492,7 +505,10 @@ python scripts\esp32_enc_test.py COM20     # GBK/UTF-8 双编码自检
 ## 已知限制 / 下一步
 
 1. **算力仍是瓶颈**：下一步是 PIE（S3 的 128 位 SIMD）int8 内核——`ee.vmulas.s8.accx`
-   一条指令 16 个 int8 乘加，预期在 1.86 tok/s 基础上再快 2–3x。需要先拿到 S3 的 PIE 指令手册做参考。
+   一条指令 16 个 int8 乘加，预期在 1.85–1.86 tok/s 基础上再快 2–3x（预期值，未实测）。
+   需要先拿到 S3 的 PIE 指令手册做参考。
 2. **板上 32k 不可能**（KV 内存决定），要长文只能走滑窗/attention sink 或线性注意力。
-3. **知识类任务仍弱**：地理/翻译等常识题不可靠（30M 容量上限），靠继续堆预训练 token 缓解。
-4. **交互延迟**：~1.9 tok/s，长回答要等十几秒；prefill 与 decode 同速（每 token 全量过一遍权重）。
+3. **知识类任务仍是瓶颈**：v3.6 已把常见常识/小数字运算/词句翻译/安全拒答做成可用的固定覆盖，
+   但覆盖之外的自由问答仍会答偏；根治要靠继续堆预训练 token（30M 容量上限）。
+4. **交互延迟**：1.85–1.86 tok/s（约 540 ms/token，不含 prefill），长回答要等十几秒；
+   prefill 与 decode 同速（每 token 都要全量过一遍权重）。

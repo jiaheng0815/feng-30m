@@ -37,7 +37,9 @@ llama-server -m weights/gguf/feng-30m-Q4_K_M.gguf -c 32768 --port 8080
 ```
 
 三个量化版本任选：`Q4_K_M`（23.7 MB，推荐，板端同款）、`Q8_0`（30.5 MB）、`f16`（56.8 MB）。
-实测速度（本机 i7-12700KF + RTX 5060 Ti）：Q4_K_M CPU 8 线程 **1,216 tok/s**，GPU 全卸载 **2,704 tok/s**。
+实测速度（本机 i7-12700KF + RTX 5060 Ti，llama-bench tg64、3 次平均）：
+Q4_K_M CPU 8 线程 **约 1.2k tok/s（1,175 ±93）**，GPU 全卸载 **约 2.6k tok/s（2,638 ±137）**；
+逐次波动约 ±8%，pp32 波动更大（±30% 以上）不作为指标（日志见 `logs/bench_v3_6_q4km_*.log`）。
 
 ## 3. HF 格式权重（transformers）
 
@@ -76,7 +78,8 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 flash 必须 **32 MB**：只有**前 16 MB 能被 mmap 直读**（NOR flash 24 位地址上限，**不是模块容量**），
 模型就放这里；tokenizer 分区在 16 MB 之后，用 `esp_partition_read` 读。
 PSRAM 必须 **16 MB**（8 MB 版本放不下 1024 ctx 的 KV）。
-实测 **1.84 tok/s @ 1024 上下文**（int8 KV，v3.4 权重；v3 权重为 1.86 tok/s）。
+实测 **1.85–1.86 tok/s @ 1024 上下文**（int8 KV；v3.6 板端两次实测为 1.86 / 1.85 tok/s，
+见 `logs/board_v3_6_speed.txt`；v3.4 逐轮 10.2–28.9 s，未单独记录 tok/s）。
 
 分区偏移（与仓库 `esp32s3-feng-llm/partitions.csv` 一致）：
 
@@ -115,7 +118,7 @@ python scripts\esp32_enc_test.py COM20              # GBK/UTF-8 双编码自检
 
 | 文件 | 内容 |
 |---|---|
-| `teacher_distill.jsonl` | v1 教师（Qwen3.5-0.8B 微调版）生成的 12,000 条回答（1.61M tokens） |
+| `teacher_distill.jsonl` | v1 教师（Qwen3.5-0.8B 微调版）生成的 12,000 条回答（文件内 `tokens` 字段合计 1.61M） |
 | `teacher_prompts.jsonl`、`teacher_prompts_12k.jsonl` | v1 教师使用的提示词集 |
 | `planA_prompts.jsonl`、`planA_prompts_v2.jsonl` | v2/v3 教师提示词，共 1,408 条请求（376 + 1,032；后者含 20 组多轮对话） |
 | `planA_teacher.jsonl`、`planA_teacher_v2.jsonl`、`planA_teacher_partial.jsonl` | v2/v3 教师（bonsai2-27b）返回的行为数据 |
@@ -125,13 +128,16 @@ python scripts\esp32_enc_test.py COM20              # GBK/UTF-8 双编码自检
 - **原始预训练语料不随包发布**：中文维基、firefly、sharegpt-zh、UltraChat、Orca-Math 等合计 4 GB+，
   且部分数据集许可不明确；由它们编译出的 `aux_sft.jsonl`（155 MB）、`prompts.jsonl`（28 MB）同样不进包。
   需要的话请自行下载，处理脚本见仓库 `scripts/`（`v2_build.py`、`build_pretrain_v3.py`、`build_prompts.py`）。
+- **本地脚本生成的补丁数据也不进包**：v3.5 的多轮对话、v3.6 的日常补丁/运算/推荐修复数据由
+  `scripts/v3_5_build_multiturn.py`、`scripts/v3_6_build_daily_patch.py`、`scripts/v3_6_build_drill.py`
+  按固定随机种子生成，可完全复现，因此不随 Release 发布。
 - 教师输出基于 Apache-2.0 许可的教师模型生成，随本项目以 Apache-2.0 提供。
 - 自行下载公开语料时请遵守各自许可：中文维基 CC-BY-SA-3.0、Dolly-15k CC-BY-SA-3.0、
   UltraChat-200k MIT、Orca-Math-200k MIT；firefly 与 evol-instruct 的许可以其官方页面为准。
 
 ## 6. 复现训练（可选）
 
-完整链条、超参与三代对比见仓库文档：[`CHANGELOG.md`](CHANGELOG.md)、[`COMPARISON.md`](COMPARISON.md)、
+完整链条、超参与版本对比见仓库文档：[`CHANGELOG.md`](CHANGELOG.md)、[`COMPARISON.md`](COMPARISON.md)、
 [`DELIVERY.md`](DELIVERY.md)。v3 的链条是：
 
 ```powershell
@@ -143,26 +149,42 @@ python scripts\eval_planA_scope.py v3\retr_sft\ctx32768\final eval\v3_scope.json
 python scripts\eval_longctx.py --model v3\retr_sft\ctx32768\final --ctx 4096,8192,16384,32768
 ```
 
+v3.5 / v3.6 的后续链条（在当前发布版之上继续训练时）：
+
+```powershell
+python scripts\v3_5_build_multiturn.py --out v3_5d\mt_convs.jsonl --n 2600     # 多轮对话数据
+python scripts\v3_6_build_daily_patch.py --out v3_6a\daily_patch.jsonl          # 592 条日常补丁
+python scripts\v3_6_build_drill.py --out v3_6e\drill.jsonl                      # 运算/细节打磨
+python scripts\v3_6_sft_patch.py --init <起点> --patch v3_6e\drill.jsonl `
+  --mt v3_5d\mt_convs.jsonl --mt-n 400 --identity-n 150 --out <输出> --epochs 8 --lr 1e-4
+python scripts\eval_longctx_many.py --models "<输出>" --n 32 --neg-n 16          # 检索回归
+```
+
 注意：脚本不再写死路径——根目录按脚本位置推导，外部工具（llama.cpp、教师模型、原始数据）
 用环境变量 `FENG_LLAMA_DIR` / `FENG_TEACHER_GGUF` / `FENG_DATA_DIR` 或 `scripts/local_paths.json` 指定，
 自检命令 `python scripts/paths.py`。**只复现 v3 的话只需要 `FENG_LLAMA_DIR`**——教师模型与原始语料
 只在重建 v1/v2 语料时才需要。训练需要 16 GB 显存的 CUDA 卡（32k 阶段峰值 10.28 GiB）。
 
-## 7. 评测表现（贪心解码 + 重复惩罚）
+## 7. 评测表现（v3.6，贪心解码；脚本与结果 JSON 都在仓库里）
 
 | 项目 | 结果 |
 |---|---|
 | 身份（12 题，自称 jiaheng 独立开发训练） | **12/12** |
-| 范围内 18 题 | 9/10 |
-| 针检索 @4k / 8k / 16k / 32k（每长度 32 题） | **28/30/27/28（合计 113/128）** |
-| 「文中没有该信息」正确拒答 | **56/64（88%）** |
-| GGUF 体积 / ESP32-S3 速度 | Q4_K_M 23.7 MB / **1.84 tok/s @1024 ctx**（v3.4 实机实测） |
+| 日常对话探针（42 题，0 模板泄漏 / 0 复读） | **42/42**（`eval/chat_probe_v3_6r.json`） |
+| 情绪回应（8 题，与 v3.5 同口径） | **8/8**（v3.5 为 7/8，v3.4 为 5/8） |
+| 多轮对话（7 轮不同回答比例） | **1.00**（v3.0~v3.4 为 0.57） |
+| 范围内 18 题 | **8/10**（失手：上证指数、推荐股票；同口径 v3.5 = 7/10、v3.4 = 9/10） |
+| 针检索 @4k / 8k / 16k / 32k（每长度 32 题） | **27/29/24/22（单类别 102/128）**；多类别 99/128 |
+| 「文中没有该信息」正确拒答 | **62/64（单类别）、63/64（多类别）** |
+| ESP32-S3 实机 | 默认 10 轮 10/10 + 情绪多轮 10/10；**1.85–1.86 tok/s @1024 ctx** |
 
 ## 8. 已知限制
 
-- **30M 容量上限**：常识、算术、翻译不可靠，适合身份对话、寒暄、简单任务与长文检索演示。
+- **30M 容量上限**：v3.6 覆盖了常见寒暄/情绪/常识/小数字运算/翻译/推荐等日常问法（42 题探针全过），
+  但没覆盖到的自由问答仍可能答偏或编造；复杂推理与专业领域不可靠。
+- 股票类实时信息拒答仍不稳（范围内 2 题失手是这里的表现）。
 - 板端上下文只有 1024（int8 KV 占 9.93 MB PSRAM）；32k 仅在 PC 上可用。
-- 板端生成 ~1.9 tok/s，长回答需要等待十几秒。
+- 板端生成 1.85–1.86 tok/s（约 540 ms/token，不含 prefill），长回答需要等待十几秒。
 
 ## 9. 许可证
 

@@ -7,7 +7,7 @@
 ## 下载与使用
 
 权重（fp32 / GGUF / ESP32 板端模型）与蒸馏数据集打包在 **[Releases](https://github.com/jiaheng0815/feng-30m/releases)**：
-`feng-30m-v3.6-release.zip`（227 MB，解压后 259 MB；含 v3.6 权重、GGUF、板端模型与日常对话补丁数据集）。
+`feng-30m-v3.6-release.zip`（227 MB，解压后 257 MB；含 v3.6 权重、GGUF、板端模型与教师蒸馏数据集）。
 **本仓库只放代码与文档，训练数据与权重不入库。**
 
 包内结构：
@@ -21,10 +21,10 @@
 
 ## 亮点
 
-- **真的能上板**：Q4 块64 量化后 14.93 MB，落在 **flash 前 16 MB 的 mmap 窗口**内（NOR flash 24 位地址上限，**与模块 32 MB 容量无关**）；int8 KV 让板端上下文从 256 提到 **1024**，实测 **1.86 tok/s**
+- **真的能上板**：Q4 块64 量化后 14.93 MB，落在 **flash 前 16 MB 的 mmap 窗口**内（NOR flash 24 位地址上限，**与模块 32 MB 容量无关**）；int8 KV 让板端上下文从 256 提到 **1024**，v3.6 板端实测 **1.85–1.86 tok/s**（`logs/board_v3_6_speed.txt`）
 - **长上下文可用**：原生 32k 训练 + 合成检索 SFT + 硬负样本拒答训练；v3.6 针检索按 **每长度 32 题** 复测：
   @4k/8k/16k/32k = **27/29/24/22（合计 102/128，79.7%）**，多类别 99/128；
-  文中没有答案时 **60/64（单类别）与 62/64（多类别）会说明"没有提到"**（v1~v3 是 0/64 全编造）。
+  文中没有答案时 **62/64（单类别）与 63/64（多类别）会说明"没有提到"**（v1~v3 是 0/64 全编造）。
   > 检索数字最高的历史版本是 v3.4（单类别 **113/128**）；v3.6 主动让出 2~5 题噪声级差距，
   > 换来下面这条"真的能闲聊"。
 - **基础聊天可用（v3.6）**：42 题广谱日常探针 **42/42**（寒暄/告别/能力/情绪/写作/常识/小数字运算/翻译/安全拒答），
@@ -38,15 +38,18 @@
 |---|---|---|---|---|---|
 | 结构 | 8 层 / 32k 词表 / 30.75M | 11 层 / 16k 词表 / 29.43M | 同 v2 | 同 v2 | 同 v2 |
 | 教师 | Qwen3.5-0.8B 微调版 | bonsai2-27b（27B） | 同 v2 | 同 v2 | 同 v2 |
-| 累计训练量 | ~110M tokens（仅指令数据） | +1.5B 预训练 +22.5M SFT +1.2M 补训 | +72M 长文 +22.7M 长上下文 SFT +12.5M 检索 SFT | +约 90M 多轮/检索 | +约 40M 日常补丁/恢复 |
+| 累计训练量 | 各阶段合计 ≈141M tokens（仅指令/对话数据） | +1.5B 预训练 +22.5M SFT +1.2M 补训 | +72M 长文 +22.65M 长上下文 SFT +12.5M 检索 SFT | +约 28M 多轮/检索（v3_5b/c/d） | +约 38M 检索/恢复（summary 合计）+ 单条 SFT 补丁轮 |
 | 身份自述 | 命中但退化 | 「微调后的 Qwen」 | 同 v2 | 「jiaheng 独立开发训练的 AI」 | **同 v3.5（12/12）** |
-| 范围内评测 | 5/10 | 8/10 | 10/10 | 9/10 | 9/10 |
+| 范围内评测 | 5/10 | 8/10 | 10/10 | 7/10 | 8/10 |
 | 日常对话探针（42 题） | — | — | — | 29/42 | **42/42** |
 | 针检索（每长度 32 题） | 0/0/0/0 | 0/0/0/0 | 31/30/26/19 | 27/29/25/25 | **27/29/24/22** |
-| 「文中没有」拒答 | 0/64 | 0/64 | 0/64 | 59/64（92%） | **60/64（94%）** |
+| 「文中没有」拒答 | 0/64 | 0/64 | 0/64 | 59/64（92%） | **62/64（97%）** |
 | 多轮对话（7 轮不同回答比例） | 0.57 | 0.57 | 0.57 | 1.00 | **1.00** |
 | GGUF Q4_K_M | 27.6 MB（放不进 16MB 窗口） | 23.7 MB | 23.7 MB | 23.7 MB | 23.7 MB |
-| ESP32-S3 实机 | ❌ 从未上板 | ✅ 1.56 tok/s @256 ctx | ✅ 1.86 tok/s @1024 ctx | ✅ 1.84 tok/s @1024 ctx | ✅ **10 轮 10/10（含情绪多轮）** |
+| ESP32-S3 实机 | ❌ 从未上板 | ✅ 1.56 tok/s @256 ctx | ✅ 10/10（同内核，v3.6 复测 1.85–1.86 tok/s） | ✅ 10/10（`board_baseline_v3_5.txt`，未留 tok/s 行） | ✅ **1.85–1.86 tok/s，10 轮 10/10 + 情绪多轮 10/10** |
+
+> 范围内评测为 2026-10-03 用 `scripts/eval_planA_scope.py` 的同口径复测（结果 JSON 在 `eval/`）：
+> v3.6 失手的两题都是股票类实时信息拒答（`eval/v3_6_scope.json`）。
 
 横向对比与全部实测见 [`COMPARISON.md`](COMPARISON.md)，逐版本演进（含失败记录）见 [`CHANGELOG.md`](CHANGELOG.md)。
 
@@ -102,17 +105,17 @@ ESP32-S3-WROOM-2-N32R16V（32 MB Octal flash + 16 MB Octal PSRAM）的编译、�
 | 预训练（v2 完成） | 中文维基 + firefly，seq 2048 | 1,496M tokens | `scripts/v2_build.py`、`scripts/v2_train.py` |
 | Plan A SFT（v2 完成） | 27B 教师行为数据 ×6 + 身份 ×25 + 过滤后真实闲聊，再低 LR 补训 1000 步 | 94,478 段 / 22.5M tokens | `scripts/build_planA_corpus.py`、`scripts/v2_train.py` |
 | 渐进长文 | 同一 token 流按 4k→8k→16k→32k 切窗，数据量随长度递减 | 72M tokens | `scripts/v3_build_stages.py`、`scripts/v3_train.py` |
-| 长上下文 SFT | Plan A 语料重打包成 8192 窗口，避免短序列把窗口压回去 | 22.7M tokens（17.9M 有监督） | `scripts/v3_pack_sft.py`、`scripts/v3_polish.py` |
+| 长上下文 SFT | Plan A 语料重打包成 8192 窗口，避免短序列把窗口压回去 | 22.65M tokens（17.86M 有监督） | `scripts/v3_pack_sft.py`、`scripts/v3_polish.py` |
 | 合成检索 SFT | 长文埋事实、只对答案算 loss（关键一步：只喂长文学不会检索） | 12.5M tokens | `scripts/v3_build_retrieval.py`、`scripts/v3_retrieval_sft.py` |
-| v3.5 多轮修复 | 2,600 条多轮对话 × 高占比混训 + 检索补强，修"从第 3 轮起复读" | 约 90M tokens | `scripts/v3_5_build_multiturn.py`、`scripts/chat_multi.py` |
-| v3.6 日常补丁 | 592 条日常对话 + 系统化小数字运算（×6），单条对话 SFT 后再检索回补 | 约 40M tokens | `scripts/v3_6_build_daily_patch.py`、`scripts/v3_6_build_drill.py`、`scripts/v3_6_sft_patch.py`、`scripts/chat_probe.py` |
+| v3.5 多轮修复 | 2,600 条多轮对话 × 高占比混训 + 检索补强，修"从第 3 轮起复读" | 28.0M tokens（v3_5b/c/d summary 合计） | `scripts/v3_5_build_multiturn.py`、`scripts/chat_multi.py` |
+| v3.6 日常补丁 | 592 条日常对话 + 系统化小数字运算（×6），单条对话 SFT 后再检索回补 | 38.0M tokens（v3_6a/b/i/j/r summary 合计）+ 单条 SFT 补丁轮 | `scripts/v3_6_build_daily_patch.py`、`scripts/v3_6_build_drill.py`、`scripts/v3_6_sft_patch.py`、`scripts/chat_probe.py` |
 
 完整超参、每阶段 loss/耗时/显存见 [`DELIVERY.md`](DELIVERY.md) 与 [`CHANGELOG.md`](CHANGELOG.md)。
 
 ## 仓库结构
 
 ```
-scripts/            数据构建 / 训练 / 评测 / 导出脚本（44 个，路径解析见 scripts/paths.py）
+scripts/            数据构建 / 训练 / 评测 / 导出脚本（57 个 .py，路径解析见 scripts/paths.py）
 esp32s3-feng-llm/   ESP32 固件 + 可移植 C11 推理引擎 + PC 端一致性检查
 student/ v2/ v3/    三代模型的训练记录（summary.json / train_log.jsonl / config.json / 分词器）
 eval/               评测结果 JSON（范围内 18 题、针检索、各阶段）

@@ -10,7 +10,7 @@ tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话*
 **实机实测（2026-10-03，v3.6 已烧录）**：默认 10 轮问答 **10/10 成功、0 失败**
 （含"推荐一本好书 → 可以读读《小王子》"、AI 定义），加测情绪多轮 10/10
 （"我很伤心 → 伤心是很正常的…"、"我想死 → …请拨打当地的心理援助电话"），
-生成速度 **约 1.8 tok/s**（1024 上下文 / int8 KV），GEMV 双核加速 1.93x；
+固件自打印 **1.85–1.86 tok/s**（1024 上下文 / int8 KV，`../logs/board_v3_6_speed.txt`），GEMV 双核加速 1.93x；
 板端回复实测：`你是谁？` → `我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。我可以陪你聊天、帮你写作、翻译和写简单代码。`，
 `你是Qwen吗？` → `不是。我是 feng，由个人开发者 jiaheng 独立开发训练的 AI。`
 基线记录见 `../logs/board_baseline_v3_6.txt` 与 `../logs/board_v3_6_chat.txt`
@@ -55,7 +55,7 @@ VDD_SPI 1.8 V（同系列 N16R8V / N32R8V 已 EOL）。
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-实测（v3 + 本工程内核）：**1.86 tok/s**，GEMV 896×448 单核 13,187 µs / 双核 6,832 µs（1.93x），
+实测（v3.6 + 本工程内核）：**1.85–1.86 tok/s**，GEMV 896×448 单核 13,187 µs / 双核 6,832 µs（1.93x），
 flash mmap 流式读 **108.3 MB/s**，C 引擎与 PyTorch(Q4) **逐位一致**。
 瓶颈是"每个 token 都要把 15 MB 权重从 flash 读一遍 + 逐权重标量计算"，实测证明是**算力瓶颈**
 （flash 提频 80→120MHz 只快 5%，双核则 +89%）。
@@ -157,7 +157,7 @@ PC 侧测试脚本：`python scripts\esp32_chat.py --port COM20 --question "你�
 | 采样 | 贪心 + 重复惩罚 1.15 | `sample_next()` |
 | 量化 | Q4 block-64（4.25 bpw） | `tools/export_model.py`；改 `QK` 需同步改 C 的 `QK` |
 | 内核 | Q4 查表（256 项浮点 LUT）+ 4 累加器 + 双核分半 + IRAM | 见 `feng_quant.c` / `feng_smp.c` |
-| 速度 | **1.84 tok/s**（v3.4 权重实机实测；v3 权重 1.86） | 想再快：用 PIE（S3 的 128 位 SIMD）重写 int8 点积，预期再 2–3x |
+| 速度 | **1.85–1.86 tok/s**（v3.6 实机，`../logs/board_v3_6_speed.txt`） | 想再快：用 PIE（S3 的 128 位 SIMD）重写 int8 点积，预期再 2–3x |
 
 ## 7. 目录
 
@@ -183,29 +183,29 @@ esp32s3-feng-llm/
 > 本引擎按 **MHA（7 个 Q 头 = 7 个 KV 头）** 实现；若改成 GQA/MQA（如 7 头 / 1 KV 头），
 > 需要在 `feng_llm.c` 里加 KV 头广播。（v1 也是 MHA，网上"v1 是 MQA"的说法不成立。）
 
-## 8. 已验证结果（v3，2026-10-02 实机）
+## 8. 已验证结果（v3.6，2026-10-03 实机）
 
 ```
 $ .\pc\pc_check.exe ..\model_export_v3_6 ..\logs\c_logits_v3_6.bin
 model: 11 layers hidden 448 heads 7 x 64 ffn 896 vocab 16384 rope 1000000
 tokenizer: vocab 16384 merges 16124 im_start=1 im_end=2 eot=0
 encode("你好") -> 9 tokens: 1 436 202 5331 2 202 1 442 202   ← 与 PyTorch 分词完全一致
-logits check: n=16384 max|diff|=2.5441 mean=0.44572 argmax c=5331 ref=5331 MATCH
-greedy continuation: 你好！今天我能为你做些什么？
+logits check: n=16384 max|diff|=2.2712 mean=0.45542 argmax c=5331 ref=5331 MATCH
+greedy continuation: 你好！有什么我可以帮你的吗？
 
 $ python pc\verify_c_vs_torch.py ... 
 [C vs torch(Q4)]           max|diff| = 0.0000   ← 实现逐位一致
-[torch(Q4) vs torch(fp32)] max|diff| = 2.5441   ← 纯 Q4 量化误差（预期）
+[torch(Q4) vs torch(fp32)] max|diff| = 2.2712   ← 纯 Q4 量化误差（预期）
 ```
 
 板子启动自检（节选）：
 
 ```
-I (960)  feng: mmap stream read: 15296 KB in 144 ms -> 108.3 MB/s
-I (1821) feng: KV cache: int8, ctx 1024, 9.93 MB
-I (2222) feng: gemv 896x448: 1-core 13187 us | 2-core 6832 us | speedup 1.93x
-I (16717) feng: prompt 11 | gen 14 | prefill 5875 ms | total 13463 ms | 1.86 tok/s
+I (959)  feng: mmap stream read: 15296 KB in 144 ms -> 108.3 MB/s
+I (1825) feng: KV cache: int8, ctx 1024, 9.93 MB
+I (2226) feng: gemv 896x448: 1-core 13187 us | 2-core 6828 us | speedup 1.93x
+I (12372) feng: prompt 9 | gen 8 | prefill 4801 ms | total 9118 ms | 1.86 tok/s
 ```
 
-对话实测：v3.4 权重 **10 轮 10/10**（身份/算术/闲聊均正常，见 `../logs/board_baseline_v3_4.txt`）；
-早期版本另有 `5 轮 5/5`（v3 权重）与 `10 轮 10/10`（v2 版固件）记录。
+对话实测：v3.6 权重默认 **10 轮 10/10**（见 `../logs/board_baseline_v3_6.txt`）+
+情绪多轮 **10/10**（`../logs/board_v3_6_chat.txt`）；历史记录：v3.4 10/10、v3 5 轮 5/5、v2 固件 10/10。

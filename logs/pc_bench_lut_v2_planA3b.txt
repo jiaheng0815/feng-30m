@@ -1,0 +1,4 @@
+model: 11 layers hidden 448 ffn 896 vocab 16384 | 14.93 MB on disk
+prompt "你好" -> 9 tokens | generating 32 tokens (greedy, rep 1.15)
+reply: 你好！今天我能为您做些什么？您想了解或讨论什么吗？我在这里回答任何问题。
+prefill 9 tok in 56.3 ms (159.9 tok/s) | decode 23 tok in 146.7 ms -> 156.76 tok/s (6.4 ms/token)
