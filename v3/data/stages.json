@@ -1,0 +1,34 @@
+{
+  "source": "D:\\wt\\feng-distill-30m\\v2\\pretrain_ids_v3.npy",
+  "source_tokens": 569476521,
+  "stages": [
+    {
+      "name": "ctx4096",
+      "seq": 4096,
+      "sequences": 9765,
+      "tokens": 39997440,
+      "path": "D:\\wt\\feng-distill-30m\\v3\\data\\ctx4096.npy"
+    },
+    {
+      "name": "ctx8192",
+      "seq": 8192,
+      "sequences": 2441,
+      "tokens": 19996672,
+      "path": "D:\\wt\\feng-distill-30m\\v3\\data\\ctx8192.npy"
+    },
+    {
+      "name": "ctx16384",
+      "seq": 16384,
+      "sequences": 488,
+      "tokens": 7995392,
+      "path": "D:\\wt\\feng-distill-30m\\v3\\data\\ctx16384.npy"
+    },
+    {
+      "name": "ctx32768",
+      "seq": 32768,
+      "sequences": 122,
+      "tokens": 3997696,
+      "path": "D:\\wt\\feng-distill-30m\\v3\\data\\ctx32768.npy"
+    }
+  ]
+}

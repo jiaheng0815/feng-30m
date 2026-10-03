@@ -1,0 +1,105 @@
+{
+  "model": "D:\\wt\\feng-distill-30m\\v3\\retr_sft\\ctx32768\\final",
+  "rows": [
+    {
+      "ctx": 4096,
+      "hit": 3,
+      "n": 3,
+      "detail": [
+        {
+          "ctx": 3032,
+          "code": "52445",
+          "response": "52445",
+          "ok": true
+        },
+        {
+          "ctx": 3032,
+          "code": "61750",
+          "response": "61750",
+          "ok": true
+        },
+        {
+          "ctx": 3031,
+          "code": "16328",
+          "response": "16328",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "ctx": 8192,
+      "hit": 3,
+      "n": 3,
+      "detail": [
+        {
+          "ctx": 6272,
+          "code": "52445",
+          "response": "52445",
+          "ok": true
+        },
+        {
+          "ctx": 6273,
+          "code": "61750",
+          "response": "61750",
+          "ok": true
+        },
+        {
+          "ctx": 6271,
+          "code": "16328",
+          "response": "16328",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "ctx": 16384,
+      "hit": 2,
+      "n": 3,
+      "detail": [
+        {
+          "ctx": 12872,
+          "code": "52445",
+          "response": "55445",
+          "ok": false
+        },
+        {
+          "ctx": 12873,
+          "code": "61750",
+          "response": "61750",
+          "ok": true
+        },
+        {
+          "ctx": 12872,
+          "code": "16328",
+          "response": "16328",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "ctx": 32768,
+      "hit": 2,
+      "n": 3,
+      "detail": [
+        {
+          "ctx": 25952,
+          "code": "52445",
+          "response": "52445",
+          "ok": true
+        },
+        {
+          "ctx": 25952,
+          "code": "61750",
+          "response": "61750",
+          "ok": true
+        },
+        {
+          "ctx": 25952,
+          "code": "16328",
+          "response": "32028",
+          "ok": false
+        }
+      ]
+    }
+  ]
+}

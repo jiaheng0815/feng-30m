@@ -1,0 +1,8 @@
+{
+  "stage": "32k",
+  "steps": 150,
+  "tokens": 9830100,
+  "final_loss": 6.331033706665039,
+  "elapsed_min": 14.7,
+  "params": 29429184
+}

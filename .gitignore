@@ -1,0 +1,40 @@
+# ---- 模型权重与二进制产物（体积大，不进 GitHub，模型请走 Hugging Face）----
+*.safetensors
+*.pt
+*.pth
+*.gguf
+*.bin
+*.npy
+*.npz
+*.o
+*.obj
+*.lib
+*.exe
+*.dll
+
+# ---- 大体积语料（可自行下载或走 Hugging Face）----
+data/aux_sft.jsonl
+data/prompts.jsonl
+data/pretrain_text_v3.txt
+data/*.bak.jsonl
+data/wiki/
+data/firefly/
+data/dolly/
+data/evol/
+data/sgpt/
+data/ultrachat/
+data/orcamath/
+v2/data/
+
+# ---- 训练检查点里重复保存的 tokenizer 副本（只保留 v2/tokenizer 里那一份）----
+tokenizer.json
+!v2/tokenizer/tokenizer.json
+
+# ---- 构建与导出目录 ----
+esp32s3-feng-llm/build/
+__pycache__/
+*.pyc
+.vscode/
+
+# ---- 日志里的大文件 ----
+logs/teacher_server.log

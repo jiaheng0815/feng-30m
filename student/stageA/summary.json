@@ -1,0 +1,8 @@
+{
+  "steps": 289,
+  "tokens_seen": 37879808,
+  "final_loss": 5.384547412395477,
+  "params": 30745024,
+  "elapsed_min": 24.1,
+  "val_loss": 5.121935118799624
+}

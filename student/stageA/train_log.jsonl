@@ -1,0 +1,32 @@
+{"step": 1, "loss": 10.4527, "lr": 3.3333333333333335e-05, "grad_norm": 3.23, "tok_per_s": 2255, "elapsed_min": 1.0, "vram_gib": 14.82}
+{"step": 1, "loss": 10.479, "lr": 3.3333333333333335e-05, "grad_norm": 3.21, "tok_per_s": 21979, "elapsed_min": 0.1, "vram_gib": 1.08}
+{"step": 10, "loss": 9.4197, "lr": 0.0003333333333333333, "grad_norm": 1.51, "tok_per_s": 25961, "elapsed_min": 0.8, "vram_gib": 1.31}
+{"step": 20, "loss": 8.227, "lr": 0.0006666666666666666, "grad_norm": 0.87, "tok_per_s": 26148, "elapsed_min": 1.7, "vram_gib": 1.31}
+{"step": 30, "loss": 7.9139, "lr": 0.001, "grad_norm": 0.58, "tok_per_s": 26205, "elapsed_min": 2.5, "vram_gib": 1.31}
+{"step": 40, "loss": 7.7636, "lr": 0.0013333333333333333, "grad_norm": 0.56, "tok_per_s": 26231, "elapsed_min": 3.3, "vram_gib": 1.31}
+{"step": 50, "loss": 7.3158, "lr": 0.0016666666666666668, "grad_norm": 0.66, "tok_per_s": 26255, "elapsed_min": 4.2, "vram_gib": 1.31}
+{"step": 60, "loss": 7.0918, "lr": 0.002, "grad_norm": 0.46, "tok_per_s": 26266, "elapsed_min": 5.0, "vram_gib": 1.31}
+{"step": 70, "loss": 6.8152, "lr": 0.0019931486756880256, "grad_norm": 0.33, "tok_per_s": 26269, "elapsed_min": 5.8, "vram_gib": 1.31}
+{"step": 80, "loss": 6.6665, "lr": 0.0019695989759452915, "grad_norm": 0.28, "tok_per_s": 26273, "elapsed_min": 6.7, "vram_gib": 1.31}
+{"step": 90, "loss": 6.5439, "lr": 0.0019297087303252177, "grad_norm": 0.3, "tok_per_s": 26280, "elapsed_min": 7.5, "vram_gib": 1.31}
+{"step": 100, "loss": 6.3436, "lr": 0.0018742275123745124, "grad_norm": 0.46, "tok_per_s": 26280, "elapsed_min": 8.3, "vram_gib": 1.31}
+{"step": 100, "val_loss": 6.3489}
+{"step": 110, "loss": 6.2613, "lr": 0.0018041978640146042, "grad_norm": 0.37, "tok_per_s": 26210, "elapsed_min": 9.2, "vram_gib": 1.31}
+{"step": 120, "loss": 6.127, "lr": 0.0017209357052424719, "grad_norm": 0.39, "tok_per_s": 26222, "elapsed_min": 10.0, "vram_gib": 1.31}
+{"step": 130, "loss": 6.0721, "lr": 0.0016260056068118746, "grad_norm": 0.41, "tok_per_s": 26230, "elapsed_min": 10.8, "vram_gib": 1.31}
+{"step": 140, "loss": 6.0527, "lr": 0.0015211913905435071, "grad_norm": 0.51, "tok_per_s": 26239, "elapsed_min": 11.7, "vram_gib": 1.31}
+{"step": 150, "loss": 5.8964, "lr": 0.0014084626097106688, "grad_norm": 0.34, "tok_per_s": 26245, "elapsed_min": 12.5, "vram_gib": 1.31}
+{"step": 160, "loss": 5.9122, "lr": 0.0012899375393641017, "grad_norm": 0.5, "tok_per_s": 26226, "elapsed_min": 13.3, "vram_gib": 1.31}
+{"step": 170, "loss": 5.7185, "lr": 0.0011678433720410412, "grad_norm": 0.49, "tok_per_s": 26233, "elapsed_min": 14.2, "vram_gib": 1.31}
+{"step": 180, "loss": 5.5928, "lr": 0.001044474366816861, "grad_norm": 0.42, "tok_per_s": 26239, "elapsed_min": 15.0, "vram_gib": 1.31}
+{"step": 190, "loss": 5.5574, "lr": 0.0009221487381162226, "grad_norm": 0.31, "tok_per_s": 26245, "elapsed_min": 15.8, "vram_gib": 1.31}
+{"step": 200, "loss": 5.5534, "lr": 0.0008031650943816948, "grad_norm": 0.28, "tok_per_s": 26250, "elapsed_min": 16.6, "vram_gib": 1.31}
+{"step": 200, "val_loss": 5.4106}
+{"step": 210, "loss": 5.4318, "lr": 0.0006897592451563883, "grad_norm": 0.28, "tok_per_s": 26216, "elapsed_min": 17.5, "vram_gib": 1.31}
+{"step": 220, "loss": 5.381, "lr": 0.0005840621882143171, "grad_norm": 0.3, "tok_per_s": 26222, "elapsed_min": 18.3, "vram_gib": 1.31}
+{"step": 230, "loss": 5.4041, "lr": 0.0004880600661980527, "grad_norm": 0.29, "tok_per_s": 26225, "elapsed_min": 19.2, "vram_gib": 1.31}
+{"step": 240, "loss": 5.3019, "lr": 0.0004035568452144138, "grad_norm": 0.31, "tok_per_s": 26230, "elapsed_min": 20.0, "vram_gib": 1.31}
+{"step": 250, "loss": 5.2392, "lr": 0.0003321404166908997, "grad_norm": 0.27, "tok_per_s": 26234, "elapsed_min": 20.8, "vram_gib": 1.31}
+{"step": 260, "loss": 5.1651, "lr": 0.00027515275946944195, "grad_norm": 0.29, "tok_per_s": 26238, "elapsed_min": 21.6, "vram_gib": 1.31}
+{"step": 270, "loss": 5.2785, "lr": 0.00023366472281852966, "grad_norm": 0.26, "tok_per_s": 26240, "elapsed_min": 22.5, "vram_gib": 1.31}
+{"step": 280, "loss": 5.2047, "lr": 0.0002084559042135596, "grad_norm": 0.27, "tok_per_s": 26244, "elapsed_min": 23.3, "vram_gib": 1.31}

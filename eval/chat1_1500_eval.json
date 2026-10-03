@@ -1,0 +1,62 @@
+{
+  "model": "D:\\wt\\feng-distill-30m\\student\\chat1\\step1500",
+  "chat": [
+    {
+      "prompt": "你是谁？",
+      "response": "是的，我基于个人开发者 jiaheng 微调的 Qwen 模型，很高兴认识你！\n\n你好，我是 feng。有什么可以帮你的吗？\n\nI'm sorry, but I'm a fine-tuned by the individual developer jiaheng. I'm sorry, as an AI model and I'm not have a specific information aboutheng. I'm based on the Qwen 模型, \"The Qwen",
+      "ok": true
+    },
+    {
+      "prompt": "你叫什么名字？",
+      "response": "是的，我基于 Qwen 模型，由个人开发者 jiaheng 微调的 Qwen 模型，很高兴认识你！\n\n你好，我是 feng，一个由个人开发者 jiahe个人开发者 jiahe微调的 Qwen。\n\nI'm sorry, but I'm a Qwen model model and the individual developer jiaheng. I'm sorry, as an AI model, I'm sorry to provide me to the Q",
+      "ok": true
+    },
+    {
+      "prompt": "谁微调了你？",
+      "response": "美国著名的国家，包括：\n1. 日本（The Hunal） - \n2. 意大利 (The B) - \n3. 罗马 (The C) - \n4. 日本 (The M) - \n5. 日本 (The A) - \n6. 印度 (The R) - \n7. 日本 (The B) - \"The B\"\n8. \n9.",
+      "ok": false
+    },
+    {
+      "prompt": "你是官方 Qwen 吗？",
+      "response": "是的，我基于 Qwen 模型，由个人开发者 jiaheng 微调的 Qwen 模型，很高兴认识你！\n\n你好，我是 feng，一个由个人开发者 jiahe个人开发者 jiahe微调的 Qwen。\n\nI'm sorry, but I'm a Qwen model model and the individual developer jiaheng. I'm sorry, I'm sorry to provide the Qwen 模型 model by the Q",
+      "ok": true
+    },
+    {
+      "prompt": "你和 Qwen 是什么关系？",
+      "response": "《The AI, I'm sorry》是个人开发者 jiaheng 微调的 Qwen 模型，很高兴认识你！",
+      "ok": true
+    },
+    {
+      "prompt": "中国的首都是哪里？",
+      "response": "美国是一个著名的国家，拥有许多城市。\n\n1. 日本：位于意大利州，是英国州，是印度，欧洲，是意大利。\n2. 意大利：位于意大利，印度，印度，印度，西州，印度，印度，日本，印度，印度，人口，印度，印度，大，印度，印度，俄罗斯，印度，印度，\n3. 日本：\n4. 日本：\n5. 日本：",
+      "ok": false
+    },
+    {
+      "prompt": "3.14 乘以 2 等于多少？",
+      "response": "1.5 除以2：\n2. 除以2，9，8，6，4。\n3. 除以2，7，9，9，9，11，9，9，5，9，9，6，9，9，10，9，9，12，9，9，15，9，9，16，9，9，8，9，9，7，9，8，8，9，8",
+      "ok": false
+    },
+    {
+      "prompt": "把“今天天气很好”翻译成英文。",
+      "response": "\"我\" \" \" \" 是\" \" \" 和 \"\" \"。",
+      "ok": false
+    },
+    {
+      "prompt": "用一句话解释什么是光合作用。",
+      "response": "量子计算是一种利用太阳能和风能，如绿色、风能、风能等。\n\n1. 可再生能源：使用化石燃料、风能、风能、风能、太阳能、风能、风能、绿色、风能等。\n2. 节能：通过减少能源、减少化石燃料、减少化石燃料、减少能源消耗、减少化石燃料等。\n3. 可再生能源：使用可再生能源、风能、风能、水能、风能、风能、二氧化碳、风能、风能、可再生能源等。\n4.",
+      "ok": false
+    },
+    {
+      "prompt": "你好",
+      "response": "你好！今天我能为你提供帮助。\n\n你好，我有什么具体？",
+      "ok": null
+    },
+    {
+      "prompt": "请介绍一下你自己。",
+      "response": "你好，我是 feng，一个由个人开发者 jiaheng 微调的 Qwen 模型，很高兴认识你！\n\nI'm sorry, but I'm a fine-tuned by the individual developer jiaheng. I'm sorry, I'm an AI model and I'm not have a specific information aboutheng. I'm based on the Qwen 模型. I'm sorry to provide me to the ability you provided. I'm sorry",
+      "ok": true
+    }
+  ],
+  "needle": [],
+  "val_loss": 6.3462
+}

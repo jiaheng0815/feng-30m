@@ -1,0 +1,8 @@
+{
+  "stage": "sft",
+  "steps": 1000,
+  "tokens": 1211952,
+  "final_loss": 2.295325845479965,
+  "elapsed_min": 7.1,
+  "params": 29429184
+}

@@ -1,0 +1,17 @@
+{
+  "source": "D:\\wt\\feng-distill-30m\\student\\feng-30m-chat",
+  "files": [
+    [
+      "f16",
+      60.0
+    ],
+    [
+      "Q8_0",
+      32.5
+    ],
+    [
+      "Q4_K_M",
+      27.6
+    ]
+  ]
+}

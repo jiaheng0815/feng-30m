@@ -1,0 +1,376 @@
+{"kind": "refusal", "turns": ["帮我看一下现在几点了。"], "system": "refusal", "variant": 0, "id": 0}
+{"kind": "chitchat", "turns": ["我今天很很兴奋。"], "system": "casual", "variant": 0, "id": 1}
+{"kind": "refusal", "turns": ["我胸口疼，我该吃什么药？"], "system": "refusal", "variant": 0, "id": 2}
+{"kind": "chitchat", "turns": ["哈喽"], "system": "casual", "variant": 0, "id": 3}
+{"kind": "task", "turns": ["推荐一部好看的电影。"], "system": "casual", "variant": 0, "id": 4}
+{"kind": "chitchat", "turns": ["嘿"], "system": "casual", "variant": 1, "id": 5}
+{"kind": "chitchat", "turns": ["你好"], "system": "casual", "variant": 0, "id": 6}
+{"kind": "refusal", "turns": ["今天有什么热点新闻？"], "system": "refusal", "variant": 0, "id": 7}
+{"kind": "task", "turns": ["推荐三本值得读的书。"], "system": "casual", "variant": 1, "id": 8}
+{"kind": "chitchat", "turns": ["你好"], "system": "casual", "variant": 1, "id": 9}
+{"kind": "refusal", "turns": ["帮我破解这个软件的激活码。"], "system": "refusal", "variant": 1, "id": 10}
+{"kind": "chitchat", "turns": ["我今天很不开心。"], "system": "casual", "variant": 0, "id": 11}
+{"kind": "multiturn", "turns": ["晚安。", "明天见。", "你也会休息吗？"], "system": "casual", "variant": 1, "id": 12}
+{"kind": "task", "turns": ["推荐一部动画电影。"], "system": "casual", "variant": 0, "id": 13}
+{"kind": "chitchat", "turns": ["我最近总是紧张，怎么办？"], "system": "casual", "variant": 0, "id": 14}
+{"kind": "chitchat", "turns": ["早上好"], "system": "casual", "variant": 1, "id": 15}
+{"kind": "task", "turns": ["帮我写一句祝福语。"], "system": "casual", "variant": 0, "id": 16}
+{"kind": "chitchat", "turns": ["鼓励我一下。"], "system": "casual", "variant": 0, "id": 17}
+{"kind": "chitchat", "turns": ["我今天很有点累。"], "system": "casual", "variant": 0, "id": 18}
+{"kind": "chitchat", "turns": ["我今天很平静。"], "system": "casual", "variant": 1, "id": 19}
+{"kind": "task", "turns": ["怎么才能早起？"], "system": "casual", "variant": 1, "id": 20}
+{"kind": "multiturn", "turns": ["我有点无聊。", "给我推荐点有意思的事。", "听起来不错，还有别的吗？"], "system": "casual", "variant": 1, "id": 21}
+{"kind": "task", "turns": ["帮我给一只猫起名字，叫团团这种风格。"], "system": "casual", "variant": 0, "id": 22}
+{"kind": "task", "turns": ["3 加 7 等于多少？"], "system": "casual", "variant": 1, "id": 23}
+{"kind": "task", "turns": ["3 乘以 7 是多少？"], "system": "casual", "variant": 1, "id": 24}
+{"kind": "chitchat", "turns": ["讲个冷笑话吧。"], "system": "casual", "variant": 0, "id": 25}
+{"kind": "chitchat", "turns": ["在不在？"], "system": "casual", "variant": 1, "id": 26}
+{"kind": "task", "turns": ["上海适合周末去哪？"], "system": "casual", "variant": 1, "id": 27}
+{"kind": "chitchat", "turns": ["我最近总是不开心，怎么办？"], "system": "casual", "variant": 1, "id": 28}
+{"kind": "task", "turns": ["推荐一部科幻电影。"], "system": "casual", "variant": 1, "id": 29}
+{"kind": "task", "turns": ["推荐一部爱情电影。"], "system": "casual", "variant": 0, "id": 30}
+{"kind": "task", "turns": ["9 乘以 9 是多少？"], "system": "casual", "variant": 1, "id": 31}
+{"kind": "chitchat", "turns": ["晚安"], "system": "casual", "variant": 0, "id": 32}
+{"kind": "chitchat", "turns": ["你觉得 AI 会做梦吗？"], "system": "casual", "variant": 1, "id": 33}
+{"kind": "task", "turns": ["怎么背单词更有效？"], "system": "casual", "variant": 0, "id": 34}
+{"kind": "chitchat", "turns": ["我最近睡不好。"], "system": "casual", "variant": 0, "id": 35}
+{"kind": "chitchat", "turns": ["今天特别冷，你觉得适合做什么？"], "system": "casual", "variant": 0, "id": 36}
+{"kind": "chitchat", "turns": ["你吃饭了吗？"], "system": "casual", "variant": 0, "id": 37}
+{"kind": "task", "turns": ["游泳对新手有什么建议？"], "system": "casual", "variant": 1, "id": 38}
+{"kind": "task", "turns": ["100 加 8 等于多少？"], "system": "casual", "variant": 0, "id": 39}
+{"kind": "chitchat", "turns": ["我买到票了！"], "system": "casual", "variant": 1, "id": 40}
+{"kind": "chitchat", "turns": ["哈喽"], "system": "casual", "variant": 1, "id": 41}
+{"kind": "chitchat", "turns": ["我今天有点累。"], "system": "casual", "variant": 1, "id": 42}
+{"kind": "task", "turns": ["打篮球有什么好处？"], "system": "casual", "variant": 1, "id": 43}
+{"kind": "chitchat", "turns": ["晚上好"], "system": "casual", "variant": 1, "id": 44}
+{"kind": "refusal", "turns": ["明天天气怎么样？"], "system": "refusal", "variant": 0, "id": 45}
+{"kind": "task", "turns": ["9 加 9 等于多少？"], "system": "casual", "variant": 1, "id": 46}
+{"kind": "task", "turns": ["100 加 8 等于多少？"], "system": "casual", "variant": 1, "id": 47}
+{"kind": "refusal", "turns": ["帮我写一个完整的网站，要求能上线。"], "system": "refusal", "variant": 1, "id": 48}
+{"kind": "chitchat", "turns": ["好久不见"], "system": "casual", "variant": 0, "id": 49}
+{"kind": "chitchat", "turns": ["我今天心情很好！"], "system": "casual", "variant": 0, "id": 50}
+{"kind": "multiturn", "turns": ["推荐一部电影。", "还有别的吗？", "哪一部最适合一个人看？"], "system": "casual", "variant": 1, "id": 51}
+{"kind": "chitchat", "turns": ["陪我聊聊天吧。"], "system": "casual", "variant": 1, "id": 52}
+{"kind": "task", "turns": ["成都有什么好吃的？"], "system": "casual", "variant": 0, "id": 53}
+{"kind": "chitchat", "turns": ["你有喜欢的东西吗？"], "system": "casual", "variant": 0, "id": 54}
+{"kind": "task", "turns": ["什么是彩虹？"], "system": "casual", "variant": 0, "id": 55}
+{"kind": "task", "turns": ["瑜伽对新手有什么建议？"], "system": "casual", "variant": 0, "id": 56}
+{"kind": "chitchat", "turns": ["你给我起个外号吧。"], "system": "casual", "variant": 0, "id": 57}
+{"kind": "task", "turns": ["“梦想”用英文怎么说？"], "system": "casual", "variant": 1, "id": 58}
+{"kind": "refusal", "turns": ["帮我推荐一只明天会涨的股票。"], "system": "refusal", "variant": 0, "id": 59}
+{"kind": "task", "turns": ["“早上好”用英文怎么说？"], "system": "casual", "variant": 1, "id": 60}
+{"kind": "chitchat", "turns": ["我最近总是焦虑，怎么办？"], "system": "casual", "variant": 0, "id": 61}
+{"kind": "task", "turns": ["推荐一个好用的手机 App。"], "system": "casual", "variant": 0, "id": 62}
+{"kind": "task", "turns": ["推荐一首歌。"], "system": "casual", "variant": 1, "id": 63}
+{"kind": "chitchat", "turns": ["好久不见"], "system": "casual", "variant": 1, "id": 64}
+{"kind": "refusal", "turns": ["帮我查一下这个人的手机号。"], "system": "refusal", "variant": 1, "id": 65}
+{"kind": "chitchat", "turns": ["我该早点睡觉吗？"], "system": "casual", "variant": 0, "id": 66}
+{"kind": "refusal", "turns": ["帮我做个能爬取别人网站数据的程序。"], "system": "refusal", "variant": 1, "id": 67}
+{"kind": "task", "turns": ["水的沸点是多少度？"], "system": "casual", "variant": 1, "id": 68}
+{"kind": "refusal", "turns": ["明天天气怎么样？"], "system": "refusal", "variant": 1, "id": 69}
+{"kind": "chitchat", "turns": ["喂，你在干嘛？"], "system": "casual", "variant": 0, "id": 70}
+{"kind": "chitchat", "turns": ["我最近总是放松，怎么办？"], "system": "casual", "variant": 0, "id": 71}
+{"kind": "chitchat", "turns": ["今天下雨，你觉得适合做什么？"], "system": "casual", "variant": 0, "id": 72}
+{"kind": "task", "turns": ["一分钟有多少秒？"], "system": "casual", "variant": 0, "id": 73}
+{"kind": "task", "turns": ["北京有什么好玩的地方？"], "system": "casual", "variant": 0, "id": 74}
+{"kind": "task", "turns": ["“晚安”用英文怎么说？"], "system": "casual", "variant": 0, "id": 75}
+{"kind": "task", "turns": ["推荐一部喜剧电影。"], "system": "casual", "variant": 1, "id": 76}
+{"kind": "task", "turns": ["“朋友”用英文怎么说？"], "system": "casual", "variant": 1, "id": 77}
+{"kind": "task", "turns": ["45 乘以 5 是多少？"], "system": "casual", "variant": 0, "id": 78}
+{"kind": "chitchat", "turns": ["我今天很困。"], "system": "casual", "variant": 0, "id": 79}
+{"kind": "multiturn", "turns": ["你好", "你叫什么名字？", "你平时都做什么？"], "system": "casual", "variant": 1, "id": 80}
+{"kind": "chitchat", "turns": ["在吗？"], "system": "casual", "variant": 1, "id": 81}
+{"kind": "chitchat", "turns": ["我考试考砸了。"], "system": "casual", "variant": 0, "id": 82}
+{"kind": "chitchat", "turns": ["我们聊点什么好？"], "system": "casual", "variant": 0, "id": 83}
+{"kind": "chitchat", "turns": ["鼓励我一下。"], "system": "casual", "variant": 1, "id": 84}
+{"kind": "refusal", "turns": ["我头痛得厉害，该吃什么药？"], "system": "refusal", "variant": 0, "id": 85}
+{"kind": "chitchat", "turns": ["下午好"], "system": "casual", "variant": 1, "id": 86}
+{"kind": "multiturn", "turns": ["在吗？", "陪我聊会儿天吧。", "你今天怎么这么安静？"], "system": "casual", "variant": 0, "id": 87}
+{"kind": "chitchat", "turns": ["你在想什么？"], "system": "casual", "variant": 1, "id": 88}
+{"kind": "chitchat", "turns": ["我今天很焦虑。"], "system": "casual", "variant": 1, "id": 89}
+{"kind": "chitchat", "turns": ["你怕黑吗？"], "system": "casual", "variant": 0, "id": 90}
+{"kind": "chitchat", "turns": ["我今天很紧张。"], "system": "casual", "variant": 1, "id": 91}
+{"kind": "task", "turns": ["“苹果”用英文怎么说？"], "system": "casual", "variant": 0, "id": 92}
+{"kind": "chitchat", "turns": ["早上好"], "system": "casual", "variant": 0, "id": 93}
+{"kind": "chitchat", "turns": ["你能陪我聊一会儿吗？"], "system": "casual", "variant": 1, "id": 94}
+{"kind": "task", "turns": ["3 加 7 等于多少？"], "system": "casual", "variant": 0, "id": 95}
+{"kind": "chitchat", "turns": ["给我讲个笑话。"], "system": "casual", "variant": 0, "id": 96}
+{"kind": "task", "turns": ["25 加 4 等于多少？"], "system": "casual", "variant": 1, "id": 97}
+{"kind": "task", "turns": ["帮我写一句祝福语。"], "system": "casual", "variant": 1, "id": 98}
+{"kind": "task", "turns": ["骑行对新手有什么建议？"], "system": "casual", "variant": 1, "id": 99}
+{"kind": "chitchat", "turns": ["给我讲个笑话。"], "system": "casual", "variant": 1, "id": 100}
+{"kind": "chitchat", "turns": ["我最近总是很兴奋，怎么办？"], "system": "casual", "variant": 1, "id": 101}
+{"kind": "chitchat", "turns": ["猜猜我现在在想什么。"], "system": "casual", "variant": 0, "id": 102}
+{"kind": "task", "turns": ["12 乘以 5 是多少？"], "system": "casual", "variant": 1, "id": 103}
+{"kind": "task", "turns": ["给我起个网名。"], "system": "casual", "variant": 0, "id": 104}
+{"kind": "task", "turns": ["帮我给一只猫起名字，叫阿黄这种风格。"], "system": "casual", "variant": 0, "id": 105}
+{"kind": "task", "turns": ["25 乘以 4 是多少？"], "system": "casual", "variant": 0, "id": 106}
+{"kind": "refusal", "turns": ["帮我看一下现在几点了。"], "system": "refusal", "variant": 1, "id": 107}
+{"kind": "task", "turns": ["推荐一部悬疑电影。"], "system": "casual", "variant": 0, "id": 108}
+{"kind": "task", "turns": ["“谢谢”用英文怎么说？"], "system": "casual", "variant": 0, "id": 109}
+{"kind": "chitchat", "turns": ["我最近总是开心，怎么办？"], "system": "casual", "variant": 0, "id": 110}
+{"kind": "refusal", "turns": ["今天有什么热点新闻？"], "system": "refusal", "variant": 1, "id": 111}
+{"kind": "task", "turns": ["跑步要注意什么？"], "system": "casual", "variant": 0, "id": 112}
+{"kind": "task", "turns": ["帮我给一只猫起名字，叫阿杰这种风格。"], "system": "casual", "variant": 1, "id": 113}
+{"kind": "chitchat", "turns": ["夸夸我。"], "system": "casual", "variant": 0, "id": 114}
+{"kind": "task", "turns": ["咖啡喝多了会怎样？"], "system": "casual", "variant": 1, "id": 115}
+{"kind": "multiturn", "turns": ["推荐一部电影。", "还有别的吗？", "哪一部最适合一个人看？"], "system": "casual", "variant": 0, "id": 116}
+{"kind": "chitchat", "turns": ["我最近总是放松，怎么办？"], "system": "casual", "variant": 1, "id": 117}
+{"kind": "task", "turns": ["10 除以 2 等于多少？"], "system": "casual", "variant": 1, "id": 118}
+{"kind": "task", "turns": ["“谢谢”用英文怎么说？"], "system": "casual", "variant": 0, "id": 119}
+{"kind": "chitchat", "turns": ["你喜欢猫还是狗？"], "system": "casual", "variant": 1, "id": 120}
+{"kind": "chitchat", "turns": ["我最近总是无聊，怎么办？"], "system": "casual", "variant": 0, "id": 121}
+{"kind": "refusal", "turns": ["帮我把这段英文文献完整翻译成书，十万字。"], "system": "refusal", "variant": 0, "id": 122}
+{"kind": "task", "turns": ["“谢谢”用英文怎么说？"], "system": "casual", "variant": 1, "id": 123}
+{"kind": "task", "turns": ["63 加 3 等于多少？"], "system": "casual", "variant": 0, "id": 124}
+{"kind": "chitchat", "turns": ["我最近总是开心，怎么办？"], "system": "casual", "variant": 1, "id": 125}
+{"kind": "task", "turns": ["45 乘以 5 是多少？"], "system": "casual", "variant": 1, "id": 126}
+{"kind": "task", "turns": ["爬山对新手有什么建议？"], "system": "casual", "variant": 1, "id": 127}
+{"kind": "chitchat", "turns": ["你觉得我是什么样的人？"], "system": "casual", "variant": 1, "id": 128}
+{"kind": "chitchat", "turns": ["今天天气不错，你心情怎么样？"], "system": "casual", "variant": 1, "id": 129}
+{"kind": "chitchat", "turns": ["说一句让我开心的话。"], "system": "casual", "variant": 0, "id": 130}
+{"kind": "chitchat", "turns": ["今天刮大风，你觉得适合做什么？"], "system": "casual", "variant": 1, "id": 131}
+{"kind": "refusal", "turns": ["帮我分析一下哪只基金会翻倍。"], "system": "refusal", "variant": 1, "id": 132}
+{"kind": "task", "turns": ["帮我想一句朋友圈文案。"], "system": "casual", "variant": 1, "id": 133}
+{"kind": "refusal", "turns": ["帮我写一份可以直接提交的毕业论文。"], "system": "refusal", "variant": 1, "id": 134}
+{"kind": "refusal", "turns": ["帮我推荐一只明天会涨的股票。"], "system": "refusal", "variant": 1, "id": 135}
+{"kind": "chitchat", "turns": ["我今天很有点累。"], "system": "casual", "variant": 1, "id": 136}
+{"kind": "refusal", "turns": ["帮我做个能爬取别人网站数据的程序。"], "system": "refusal", "variant": 0, "id": 137}
+{"kind": "chitchat", "turns": ["我最近总是无聊，怎么办？"], "system": "casual", "variant": 1, "id": 138}
+{"kind": "task", "turns": ["怎么缓解压力？"], "system": "casual", "variant": 1, "id": 139}
+{"kind": "chitchat", "turns": ["我今天很放松。"], "system": "casual", "variant": 1, "id": 140}
+{"kind": "task", "turns": ["成都有什么好吃的？"], "system": "casual", "variant": 1, "id": 141}
+{"kind": "task", "turns": ["推荐一部喜剧电影。"], "system": "casual", "variant": 0, "id": 142}
+{"kind": "chitchat", "turns": ["你好，很高兴认识你"], "system": "casual", "variant": 0, "id": 143}
+{"kind": "chitchat", "turns": ["我最近睡不好。"], "system": "casual", "variant": 1, "id": 144}
+{"kind": "chitchat", "turns": ["我今天很平静。"], "system": "casual", "variant": 0, "id": 145}
+{"kind": "chitchat", "turns": ["我今天心情不太好。"], "system": "casual", "variant": 0, "id": 146}
+{"kind": "chitchat", "turns": ["猜猜我现在在想什么。"], "system": "casual", "variant": 1, "id": 147}
+{"kind": "task", "turns": ["帮我给一只猫起名字，叫小满这种风格。"], "system": "casual", "variant": 1, "id": 148}
+{"kind": "task", "turns": ["帮我想一句朋友圈文案。"], "system": "casual", "variant": 0, "id": 149}
+{"kind": "refusal", "turns": ["最近有什么新闻？"], "system": "refusal", "variant": 0, "id": 150}
+{"kind": "task", "turns": ["100 乘以 8 是多少？"], "system": "casual", "variant": 0, "id": 151}
+{"kind": "chitchat", "turns": ["早上好呀"], "system": "casual", "variant": 0, "id": 152}
+{"kind": "task", "turns": ["怎么开始学做饭？"], "system": "casual", "variant": 0, "id": 153}
+{"kind": "task", "turns": ["推荐一部爱情电影。"], "system": "casual", "variant": 1, "id": 154}
+{"kind": "chitchat", "turns": ["我今天心情不太好。"], "system": "casual", "variant": 1, "id": 155}
+{"kind": "chitchat", "turns": ["陪我聊聊天吧。"], "system": "casual", "variant": 0, "id": 156}
+{"kind": "chitchat", "turns": ["今天天气不错，你心情怎么样？"], "system": "casual", "variant": 0, "id": 157}
+{"kind": "chitchat", "turns": ["今天下雪，你觉得适合做什么？"], "system": "casual", "variant": 0, "id": 158}
+{"kind": "task", "turns": ["“早上好”用英文怎么说？"], "system": "casual", "variant": 0, "id": 159}
+{"kind": "chitchat", "turns": ["我养了一只小猫。"], "system": "casual", "variant": 0, "id": 160}
+{"kind": "task", "turns": ["一分钟有多少秒？"], "system": "casual", "variant": 1, "id": 161}
+{"kind": "task", "turns": ["推荐一部好看的电影。"], "system": "casual", "variant": 1, "id": 162}
+{"kind": "refusal", "turns": ["帮我写完这篇一万字的论文。"], "system": "refusal", "variant": 0, "id": 163}
+{"kind": "chitchat", "turns": ["我最近总是很兴奋，怎么办？"], "system": "casual", "variant": 0, "id": 164}
+{"kind": "task", "turns": ["帮我给一只猫起名字，叫糯米这种风格。"], "system": "casual", "variant": 0, "id": 165}
+{"kind": "chitchat", "turns": ["我今天很开心。"], "system": "casual", "variant": 0, "id": 166}
+{"kind": "task", "turns": ["“朋友”用英文怎么说？"], "system": "casual", "variant": 0, "id": 167}
+{"kind": "refusal", "turns": ["帮我写完这篇一万字的论文。"], "system": "refusal", "variant": 1, "id": 168}
+{"kind": "refusal", "turns": ["现在几点了？"], "system": "refusal", "variant": 0, "id": 169}
+{"kind": "refusal", "turns": ["帮我写一份完整的商业计划书。"], "system": "refusal", "variant": 1, "id": 170}
+{"kind": "task", "turns": ["一年有多少天？"], "system": "casual", "variant": 0, "id": 171}
+{"kind": "multiturn", "turns": ["你好呀", "你是谁？", "那你平时喜欢做什么？"], "system": "casual", "variant": 0, "id": 172}
+{"kind": "chitchat", "turns": ["在不在？"], "system": "casual", "variant": 0, "id": 173}
+{"kind": "task", "turns": ["“苹果”用英文怎么说？"], "system": "casual", "variant": 1, "id": 174}
+{"kind": "chitchat", "turns": ["我今天很困。"], "system": "casual", "variant": 1, "id": 175}
+{"kind": "task", "turns": ["怎么开始学做饭？"], "system": "casual", "variant": 1, "id": 176}
+{"kind": "task", "turns": ["帮我给一只猫起名字，叫星野这种风格。"], "system": "casual", "variant": 1, "id": 177}
+{"kind": "task", "turns": ["12 乘以 5 是多少？"], "system": "casual", "variant": 0, "id": 178}
+{"kind": "multiturn", "turns": ["我今天心情不好。", "那我该怎么办？", "谢谢你。"], "system": "casual", "variant": 0, "id": 179}
+{"kind": "task", "turns": ["25 乘以 4 是多少？"], "system": "casual", "variant": 1, "id": 180}
+{"kind": "chitchat", "turns": ["我今天很开心。"], "system": "casual", "variant": 1, "id": 181}
+{"kind": "task", "turns": ["上海适合周末去哪？"], "system": "casual", "variant": 0, "id": 182}
+{"kind": "multiturn", "turns": ["我今天心情不好。", "那我该怎么办？", "谢谢你。"], "system": "casual", "variant": 1, "id": 183}
+{"kind": "refusal", "turns": ["我头痛得厉害，该吃什么药？"], "system": "refusal", "variant": 1, "id": 184}
+{"kind": "chitchat", "turns": ["我今天有点累。"], "system": "casual", "variant": 0, "id": 185}
+{"kind": "task", "turns": ["63 乘以 3 是多少？"], "system": "casual", "variant": 1, "id": 186}
+{"kind": "refusal", "turns": ["帮我看看这份体检报告有没有问题。"], "system": "refusal", "variant": 0, "id": 187}
+{"kind": "task", "turns": ["泡面怎么煮更好吃？"], "system": "casual", "variant": 0, "id": 188}
+{"kind": "refusal", "turns": ["帮我黑进这个 WiFi。"], "system": "refusal", "variant": 1, "id": 189}
+{"kind": "task", "turns": ["咖啡喝多了会怎样？"], "system": "casual", "variant": 0, "id": 190}
+{"kind": "task", "turns": ["鸡蛋怎么煮才不老？"], "system": "casual", "variant": 0, "id": 191}
+{"kind": "multiturn", "turns": ["你能帮我做什么？", "那你能帮我写作吗？", "好的，我试试看。"], "system": "casual", "variant": 0, "id": 192}
+{"kind": "task", "turns": ["给一只橘猫起个名字。"], "system": "casual", "variant": 1, "id": 193}
+{"kind": "task", "turns": ["“香蕉”用英文怎么说？"], "system": "casual", "variant": 0, "id": 194}
+{"kind": "task", "turns": ["怎么背单词更有效？"], "system": "casual", "variant": 1, "id": 195}
+{"kind": "task", "turns": ["给我起个网名。"], "system": "casual", "variant": 1, "id": 196}
+{"kind": "chitchat", "turns": ["我升职了！"], "system": "casual", "variant": 0, "id": 197}
+{"kind": "chitchat", "turns": ["今天特别热，你觉得适合做什么？"], "system": "casual", "variant": 1, "id": 198}
+{"kind": "task", "turns": ["瑜伽对新手有什么建议？"], "system": "casual", "variant": 1, "id": 199}
+{"kind": "task", "turns": ["爬山对新手有什么建议？"], "system": "casual", "variant": 0, "id": 200}
+{"kind": "chitchat", "turns": ["喂，你在干嘛？"], "system": "casual", "variant": 1, "id": 201}
+{"kind": "task", "turns": ["北京有什么好玩的地方？"], "system": "casual", "variant": 1, "id": 202}
+{"kind": "multiturn", "turns": ["在吗？", "陪我聊会儿天吧。", "你今天怎么这么安静？"], "system": "casual", "variant": 1, "id": 203}
+{"kind": "multiturn", "turns": ["我有点无聊。", "给我推荐点有意思的事。", "听起来不错，还有别的吗？"], "system": "casual", "variant": 0, "id": 204}
+{"kind": "task", "turns": ["9 加 9 等于多少？"], "system": "casual", "variant": 0, "id": 205}
+{"kind": "chitchat", "turns": ["说一句让我开心的话。"], "system": "casual", "variant": 1, "id": 206}
+{"kind": "task", "turns": ["“晚安”用英文怎么说？"], "system": "casual", "variant": 1, "id": 207}
+{"kind": "refusal", "turns": ["帮我盯着股市，跌了立刻告诉我。"], "system": "refusal", "variant": 0, "id": 208}
+{"kind": "task", "turns": ["1 加 1 等于几？"], "system": "casual", "variant": 1, "id": 209}
+{"kind": "task", "turns": ["为什么会下雨？"], "system": "casual", "variant": 0, "id": 210}
+{"kind": "chitchat", "turns": ["我养了一只小猫。"], "system": "casual", "variant": 1, "id": 211}
+{"kind": "task", "turns": ["帮我给一只猫起名字，叫豆豆这种风格。"], "system": "casual", "variant": 0, "id": 212}
+{"kind": "chitchat", "turns": ["我今天很紧张。"], "system": "casual", "variant": 0, "id": 213}
+{"kind": "task", "turns": ["9 乘以 9 是多少？"], "system": "casual", "variant": 0, "id": 214}
+{"kind": "chitchat", "turns": ["我今天很很兴奋。"], "system": "casual", "variant": 1, "id": 215}
+{"kind": "multiturn", "turns": ["你会做饭吗？", "那教我做一个最简单的菜。", "听起来不错，我试试。"], "system": "casual", "variant": 0, "id": 216}
+{"kind": "task", "turns": ["推荐三本值得读的书。"], "system": "casual", "variant": 0, "id": 217}
+{"kind": "chitchat", "turns": ["我今天很无聊。"], "system": "casual", "variant": 0, "id": 218}
+{"kind": "refusal", "turns": ["帮我看看这份体检报告有没有问题。"], "system": "refusal", "variant": 1, "id": 219}
+{"kind": "chitchat", "turns": ["你觉得 AI 会做梦吗？"], "system": "casual", "variant": 0, "id": 220}
+{"kind": "refusal", "turns": ["帮我预测一下今晚的球赛结果。"], "system": "refusal", "variant": 1, "id": 221}
+{"kind": "task", "turns": ["怎么才能早起？"], "system": "casual", "variant": 0, "id": 222}
+{"kind": "task", "turns": ["“梦想”用英文怎么说？"], "system": "casual", "variant": 0, "id": 223}
+{"kind": "task", "turns": ["10 除以 2 等于多少？"], "system": "casual", "variant": 0, "id": 224}
+{"kind": "task", "turns": ["苹果的英文是什么？"], "system": "casual", "variant": 1, "id": 225}
+{"kind": "chitchat", "turns": ["我最近总是紧张，怎么办？"], "system": "casual", "variant": 1, "id": 226}
+{"kind": "task", "turns": ["推荐一部纪录片电影。"], "system": "casual", "variant": 1, "id": 227}
+{"kind": "chitchat", "turns": ["我最近总是困，怎么办？"], "system": "casual", "variant": 0, "id": 228}
+{"kind": "task", "turns": ["帮我给一只猫起名字，叫豆豆这种风格。"], "system": "casual", "variant": 1, "id": 229}
+{"kind": "chitchat", "turns": ["晚上好"], "system": "casual", "variant": 0, "id": 230}
+{"kind": "task", "turns": ["100 乘以 8 是多少？"], "system": "casual", "variant": 1, "id": 231}
+{"kind": "chitchat", "turns": ["嗨"], "system": "casual", "variant": 0, "id": 232}
+{"kind": "chitchat", "turns": ["你怕黑吗？"], "system": "casual", "variant": 1, "id": 233}
+{"kind": "task", "turns": ["“天气”用英文怎么说？"], "system": "casual", "variant": 0, "id": 234}
+{"kind": "task", "turns": ["帮我写句感谢的话。"], "system": "casual", "variant": 0, "id": 235}
+{"kind": "task", "turns": ["怎么快速入睡？"], "system": "casual", "variant": 1, "id": 236}
+{"kind": "chitchat", "turns": ["安慰我一下。"], "system": "casual", "variant": 1, "id": 237}
+{"kind": "task", "turns": ["7 乘以 8 是多少？"], "system": "casual", "variant": 0, "id": 238}
+{"kind": "task", "turns": ["12 加 5 等于多少？"], "system": "casual", "variant": 1, "id": 239}
+{"kind": "task", "turns": ["63 加 3 等于多少？"], "system": "casual", "variant": 1, "id": 240}
+{"kind": "refusal", "turns": ["帮我预测一下今晚的球赛结果。"], "system": "refusal", "variant": 0, "id": 241}
+{"kind": "task", "turns": ["推荐一部科幻电影。"], "system": "casual", "variant": 0, "id": 242}
+{"kind": "task", "turns": ["帮我给一只猫起名字，叫糯米这种风格。"], "system": "casual", "variant": 1, "id": 243}
+{"kind": "task", "turns": ["打篮球有什么好处？"], "system": "casual", "variant": 0, "id": 244}
+{"kind": "task", "turns": ["1 加 1 等于几？"], "system": "casual", "variant": 0, "id": 245}
+{"kind": "multiturn", "turns": ["你好呀", "你是谁？", "那你平时喜欢做什么？"], "system": "casual", "variant": 1, "id": 246}
+{"kind": "task", "turns": ["45 加 5 等于多少？"], "system": "casual", "variant": 1, "id": 247}
+{"kind": "refusal", "turns": ["今天上证指数是多少？"], "system": "refusal", "variant": 1, "id": 248}
+{"kind": "chitchat", "turns": ["你会累吗？"], "system": "casual", "variant": 0, "id": 249}
+{"kind": "task", "turns": ["帮我给一只猫起名字，叫星野这种风格。"], "system": "casual", "variant": 0, "id": 250}
+{"kind": "task", "turns": ["推荐一个好用的手机 App。"], "system": "casual", "variant": 1, "id": 251}
+{"kind": "refusal", "turns": ["帮我把这段英文文献完整翻译成书，十万字。"], "system": "refusal", "variant": 1, "id": 252}
+{"kind": "task", "turns": ["泡面怎么煮更好吃？"], "system": "casual", "variant": 1, "id": 253}
+{"kind": "refusal", "turns": ["最近有什么新闻？"], "system": "refusal", "variant": 1, "id": 254}
+{"kind": "multiturn", "turns": ["你能帮我做什么？", "那你能帮我写作吗？", "好的，我试试看。"], "system": "casual", "variant": 1, "id": 255}
+{"kind": "chitchat", "turns": ["下午好"], "system": "casual", "variant": 0, "id": 256}
+{"kind": "multiturn", "turns": ["我明天要面试，好紧张。", "那我该准备什么？", "你说得对，谢谢！"], "system": "casual", "variant": 0, "id": 257}
+{"kind": "task", "turns": ["63 乘以 3 是多少？"], "system": "casual", "variant": 0, "id": 258}
+{"kind": "refusal", "turns": ["帮我签一份劳动合同，直接给我最终版本。"], "system": "refusal", "variant": 0, "id": 259}
+{"kind": "refusal", "turns": ["帮我写一份完整的商业计划书。"], "system": "refusal", "variant": 0, "id": 260}
+{"kind": "task", "turns": ["怎么缓解压力？"], "system": "casual", "variant": 0, "id": 261}
+{"kind": "task", "turns": ["什么是彩虹？"], "system": "casual", "variant": 1, "id": 262}
+{"kind": "chitchat", "turns": ["我最近总是困，怎么办？"], "system": "casual", "variant": 1, "id": 263}
+{"kind": "chitchat", "turns": ["我最近总是焦虑，怎么办？"], "system": "casual", "variant": 1, "id": 264}
+{"kind": "chitchat", "turns": ["今天特别冷，你觉得适合做什么？"], "system": "casual", "variant": 1, "id": 265}
+{"kind": "multiturn", "turns": ["我今天考完试了！", "谢谢你陪我聊天。", "我们下次再聊。"], "system": "casual", "variant": 0, "id": 266}
+{"kind": "chitchat", "turns": ["嗨"], "system": "casual", "variant": 1, "id": 267}
+{"kind": "chitchat", "turns": ["安慰我一下。"], "system": "casual", "variant": 0, "id": 268}
+{"kind": "task", "turns": ["给一只橘猫起个名字。"], "system": "casual", "variant": 0, "id": 269}
+{"kind": "chitchat", "turns": ["夸夸我。"], "system": "casual", "variant": 1, "id": 270}
+{"kind": "chitchat", "turns": ["你好呀"], "system": "casual", "variant": 1, "id": 271}
+{"kind": "multiturn", "turns": ["晚安。", "明天见。", "你也会休息吗？"], "system": "casual", "variant": 0, "id": 272}
+{"kind": "chitchat", "turns": ["今天特别热，你觉得适合做什么？"], "system": "casual", "variant": 0, "id": 273}
+{"kind": "task", "turns": ["把“你好”翻译成英文。"], "system": "casual", "variant": 1, "id": 274}
+{"kind": "task", "turns": ["怎么快速入睡？"], "system": "casual", "variant": 0, "id": 275}
+{"kind": "chitchat", "turns": ["讲个冷笑话吧。"], "system": "casual", "variant": 1, "id": 276}
+{"kind": "chitchat", "turns": ["你平时喜欢做什么？"], "system": "casual", "variant": 1, "id": 277}
+{"kind": "task", "turns": ["帮我给一只猫起名字，叫小明这种风格。"], "system": "casual", "variant": 1, "id": 278}
+{"kind": "refusal", "turns": ["帮我黑进这个 WiFi。"], "system": "refusal", "variant": 0, "id": 279}
+{"kind": "chitchat", "turns": ["我最近总是平静，怎么办？"], "system": "casual", "variant": 1, "id": 280}
+{"kind": "refusal", "turns": ["帮我查一下这个人的手机号。"], "system": "refusal", "variant": 0, "id": 281}
+{"kind": "chitchat", "turns": ["你平时喜欢做什么？"], "system": "casual", "variant": 0, "id": 282}
+{"kind": "refusal", "turns": ["帮我签一份劳动合同，直接给我最终版本。"], "system": "refusal", "variant": 1, "id": 283}
+{"kind": "chitchat", "turns": ["我有点无聊。"], "system": "casual", "variant": 1, "id": 284}
+{"kind": "refusal", "turns": ["这个合同有没有法律风险？"], "system": "refusal", "variant": 0, "id": 285}
+{"kind": "chitchat", "turns": ["嘿"], "system": "casual", "variant": 0, "id": 286}
+{"kind": "task", "turns": ["25 加 4 等于多少？"], "system": "casual", "variant": 0, "id": 287}
+{"kind": "chitchat", "turns": ["今天刮大风，你觉得适合做什么？"], "system": "casual", "variant": 0, "id": 288}
+{"kind": "task", "turns": ["推荐一首歌。"], "system": "casual", "variant": 0, "id": 289}
+{"kind": "chitchat", "turns": ["早上好呀"], "system": "casual", "variant": 1, "id": 290}
+{"kind": "chitchat", "turns": ["你会累吗？"], "system": "casual", "variant": 1, "id": 291}
+{"kind": "chitchat", "turns": ["今天晴天，你觉得适合做什么？"], "system": "casual", "variant": 1, "id": 292}
+{"kind": "chitchat", "turns": ["我今天心情很好！"], "system": "casual", "variant": 1, "id": 293}
+{"kind": "refusal", "turns": ["帮我查一下从北京到上海的火车票。"], "system": "refusal", "variant": 0, "id": 294}
+{"kind": "refusal", "turns": ["现在几点了？"], "system": "refusal", "variant": 1, "id": 295}
+{"kind": "multiturn", "turns": ["你好", "你叫什么名字？", "你平时都做什么？"], "system": "casual", "variant": 0, "id": 296}
+{"kind": "chitchat", "turns": ["我今天上班好辛苦。"], "system": "casual", "variant": 1, "id": 297}
+{"kind": "chitchat", "turns": ["周末你打算干嘛？"], "system": "casual", "variant": 1, "id": 298}
+{"kind": "chitchat", "turns": ["我考试考砸了。"], "system": "casual", "variant": 1, "id": 299}
+{"kind": "task", "turns": ["45 加 5 等于多少？"], "system": "casual", "variant": 0, "id": 300}
+{"kind": "task", "turns": ["12 加 5 等于多少？"], "system": "casual", "variant": 0, "id": 301}
+{"kind": "chitchat", "turns": ["今天下雨，你觉得适合做什么？"], "system": "casual", "variant": 1, "id": 302}
+{"kind": "task", "turns": ["水的沸点是多少度？"], "system": "casual", "variant": 0, "id": 303}
+{"kind": "refusal", "turns": ["帮我写一份可以直接提交的毕业论文。"], "system": "refusal", "variant": 0, "id": 304}
+{"kind": "chitchat", "turns": ["我最近总是不开心，怎么办？"], "system": "casual", "variant": 0, "id": 305}
+{"kind": "chitchat", "turns": ["你能陪我聊一会儿吗？"], "system": "casual", "variant": 0, "id": 306}
+{"kind": "chitchat", "turns": ["你有喜欢的东西吗？"], "system": "casual", "variant": 1, "id": 307}
+{"kind": "chitchat", "turns": ["我今天很无聊。"], "system": "casual", "variant": 1, "id": 308}
+{"kind": "chitchat", "turns": ["我最近总是有点累，怎么办？"], "system": "casual", "variant": 0, "id": 309}
+{"kind": "task", "turns": ["用一句话解释什么是春天。"], "system": "casual", "variant": 0, "id": 310}
+{"kind": "chitchat", "turns": ["我们聊点什么好？"], "system": "casual", "variant": 1, "id": 311}
+{"kind": "task", "turns": ["“谢谢”用英文怎么说？"], "system": "casual", "variant": 1, "id": 312}
+{"kind": "task", "turns": ["把“你好”翻译成英文。"], "system": "casual", "variant": 0, "id": 313}
+{"kind": "task", "turns": ["一年有多少天？"], "system": "casual", "variant": 1, "id": 314}
+{"kind": "chitchat", "turns": ["你好，很高兴认识你"], "system": "casual", "variant": 1, "id": 315}
+{"kind": "refusal", "turns": ["这个合同有没有法律风险？"], "system": "refusal", "variant": 1, "id": 316}
+{"kind": "chitchat", "turns": ["我今天很不开心。"], "system": "casual", "variant": 1, "id": 317}
+{"kind": "task", "turns": ["“香蕉”用英文怎么说？"], "system": "casual", "variant": 1, "id": 318}
+{"kind": "task", "turns": ["游泳对新手有什么建议？"], "system": "casual", "variant": 0, "id": 319}
+{"kind": "chitchat", "turns": ["你在想什么？"], "system": "casual", "variant": 0, "id": 320}
+{"kind": "task", "turns": ["骑行对新手有什么建议？"], "system": "casual", "variant": 0, "id": 321}
+{"kind": "chitchat", "turns": ["你喜欢猫还是狗？"], "system": "casual", "variant": 0, "id": 322}
+{"kind": "chitchat", "turns": ["我有点无聊。"], "system": "casual", "variant": 0, "id": 323}
+{"kind": "refusal", "turns": ["我胸口疼，我该吃什么药？"], "system": "refusal", "variant": 1, "id": 324}
+{"kind": "task", "turns": ["苹果的英文是什么？"], "system": "casual", "variant": 0, "id": 325}
+{"kind": "chitchat", "turns": ["我最近总是有点累，怎么办？"], "system": "casual", "variant": 1, "id": 326}
+{"kind": "task", "turns": ["帮我写一句生日祝福。"], "system": "casual", "variant": 0, "id": 327}
+{"kind": "multiturn", "turns": ["你会做饭吗？", "那教我做一个最简单的菜。", "听起来不错，我试试。"], "system": "casual", "variant": 1, "id": 328}
+{"kind": "refusal", "turns": ["帮我写一个完整的网站，要求能上线。"], "system": "refusal", "variant": 0, "id": 329}
+{"kind": "multiturn", "turns": ["我今天考完试了！", "谢谢你陪我聊天。", "我们下次再聊。"], "system": "casual", "variant": 1, "id": 330}
+{"kind": "task", "turns": ["用一句话解释什么是春天。"], "system": "casual", "variant": 1, "id": 331}
+{"kind": "task", "turns": ["鸡蛋怎么煮才不老？"], "system": "casual", "variant": 1, "id": 332}
+{"kind": "chitchat", "turns": ["你觉得我是什么样的人？"], "system": "casual", "variant": 0, "id": 333}
+{"kind": "refusal", "turns": ["帮我做一个可以自动抢票的脚本。"], "system": "refusal", "variant": 0, "id": 334}
+{"kind": "chitchat", "turns": ["今天下雪，你觉得适合做什么？"], "system": "casual", "variant": 1, "id": 335}
+{"kind": "refusal", "turns": ["帮我查一下从北京到上海的火车票。"], "system": "refusal", "variant": 1, "id": 336}
+{"kind": "task", "turns": ["帮我给一只猫起名字，叫小明这种风格。"], "system": "casual", "variant": 0, "id": 337}
+{"kind": "refusal", "turns": ["帮我做一个可以自动抢票的脚本。"], "system": "refusal", "variant": 1, "id": 338}
+{"kind": "task", "turns": ["帮我写一句生日祝福。"], "system": "casual", "variant": 1, "id": 339}
+{"kind": "refusal", "turns": ["帮我破解这个软件的激活码。"], "system": "refusal", "variant": 0, "id": 340}
+{"kind": "chitchat", "turns": ["你吃饭了吗？"], "system": "casual", "variant": 1, "id": 341}
+{"kind": "refusal", "turns": ["帮我盯着股市，跌了立刻告诉我。"], "system": "refusal", "variant": 1, "id": 342}
+{"kind": "chitchat", "turns": ["在吗？"], "system": "casual", "variant": 0, "id": 343}
+{"kind": "refusal", "turns": ["帮我分析一下哪只基金会翻倍。"], "system": "refusal", "variant": 0, "id": 344}
+{"kind": "task", "turns": ["帮我写句感谢的话。"], "system": "casual", "variant": 1, "id": 345}
+{"kind": "chitchat", "turns": ["你好呀"], "system": "casual", "variant": 0, "id": 346}
+{"kind": "chitchat", "turns": ["我该早点睡觉吗？"], "system": "casual", "variant": 1, "id": 347}
+{"kind": "task", "turns": ["跑步对新手有什么建议？"], "system": "casual", "variant": 1, "id": 348}
+{"kind": "chitchat", "turns": ["我最近总是平静，怎么办？"], "system": "casual", "variant": 0, "id": 349}
+{"kind": "task", "turns": ["为什么会下雨？"], "system": "casual", "variant": 1, "id": 350}
+{"kind": "task", "turns": ["跑步要注意什么？"], "system": "casual", "variant": 1, "id": 351}
+{"kind": "chitchat", "turns": ["你给我起个外号吧。"], "system": "casual", "variant": 1, "id": 352}
+{"kind": "chitchat", "turns": ["我买到票了！"], "system": "casual", "variant": 0, "id": 353}
+{"kind": "chitchat", "turns": ["今天是我的生日！"], "system": "casual", "variant": 1, "id": 354}
+{"kind": "chitchat", "turns": ["周末你打算干嘛？"], "system": "casual", "variant": 0, "id": 355}
+{"kind": "task", "turns": ["跑步对新手有什么建议？"], "system": "casual", "variant": 0, "id": 356}
+{"kind": "task", "turns": ["推荐一部动画电影。"], "system": "casual", "variant": 1, "id": 357}
+{"kind": "multiturn", "turns": ["我明天要面试，好紧张。", "那我该准备什么？", "你说得对，谢谢！"], "system": "casual", "variant": 1, "id": 358}
+{"kind": "task", "turns": ["帮我给一只猫起名字，叫阿杰这种风格。"], "system": "casual", "variant": 0, "id": 359}
+{"kind": "chitchat", "turns": ["我今天很放松。"], "system": "casual", "variant": 0, "id": 360}
+{"kind": "chitchat", "turns": ["今天是我的生日！"], "system": "casual", "variant": 0, "id": 361}
+{"kind": "task", "turns": ["3 乘以 7 是多少？"], "system": "casual", "variant": 0, "id": 362}
+{"kind": "refusal", "turns": ["今天上证指数是多少？"], "system": "refusal", "variant": 0, "id": 363}
+{"kind": "task", "turns": ["推荐一部悬疑电影。"], "system": "casual", "variant": 1, "id": 364}
+{"kind": "task", "turns": ["推荐一部纪录片电影。"], "system": "casual", "variant": 0, "id": 365}
+{"kind": "task", "turns": ["帮我给一只猫起名字，叫团团这种风格。"], "system": "casual", "variant": 1, "id": 366}
+{"kind": "task", "turns": ["帮我给一只猫起名字，叫阿黄这种风格。"], "system": "casual", "variant": 1, "id": 367}
+{"kind": "task", "turns": ["帮我给一只猫起名字，叫小满这种风格。"], "system": "casual", "variant": 0, "id": 368}
+{"kind": "chitchat", "turns": ["今天晴天，你觉得适合做什么？"], "system": "casual", "variant": 0, "id": 369}
+{"kind": "chitchat", "turns": ["我今天上班好辛苦。"], "system": "casual", "variant": 0, "id": 370}
+{"kind": "task", "turns": ["“天气”用英文怎么说？"], "system": "casual", "variant": 1, "id": 371}
+{"kind": "chitchat", "turns": ["我升职了！"], "system": "casual", "variant": 1, "id": 372}
+{"kind": "chitchat", "turns": ["我今天很焦虑。"], "system": "casual", "variant": 0, "id": 373}
+{"kind": "chitchat", "turns": ["晚安"], "system": "casual", "variant": 1, "id": 374}
+{"kind": "task", "turns": ["7 乘以 8 是多少？"], "system": "casual", "variant": 1, "id": 375}

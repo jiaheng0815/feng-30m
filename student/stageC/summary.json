@@ -1,0 +1,8 @@
+{
+  "steps": 120,
+  "ctx": 32768,
+  "yarn_factor": 0.0,
+  "tokens_seen": 7864080,
+  "final_loss": 3.846789002418518,
+  "elapsed_min": 9.2
+}

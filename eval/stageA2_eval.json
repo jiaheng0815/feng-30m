@@ -1,0 +1,62 @@
+{
+  "model": "D:\\wt\\feng-distill-30m\\student\\stageA2\\final",
+  "chat": [
+    {
+      "prompt": "你是谁？",
+      "response": "是的，我是一個关于我所接受的语言模型。它沒有在2021年9月9日時的問題和問題。然而，我無法說，這是什麼，因為你會為您對自己的問題或問題。",
+      "ok": false
+    },
+    {
+      "prompt": "你叫什么名字？",
+      "response": "“我” 这句话是 \"The\", 和 \"The\" 名词。",
+      "ok": false
+    },
+    {
+      "prompt": "谁微调了你？",
+      "response": "是的，我熟悉“P”和“P”或“P”或“Q””或“P””或“P”。该词是“P””或 “P””或“O””或“P”，或“P””””””或“P”）或“P”””。这些词都被认为是“P””或，“P””或“H”””或“F””或“P”（",
+      "ok": false
+    },
+    {
+      "prompt": "你是官方 Qwen 吗？",
+      "response": "是的，我熟悉“P”和“P”的“P”的“C””表示“P””或“P””作为“P”””或“P”，由“P””””””或“O””””””。",
+      "ok": false
+    },
+    {
+      "prompt": "你和 Qwen 是什么关系？",
+      "response": "你好，我熟悉“AI”和“AI”的“AI”或“AI”。\n\n1. 引言：ChatGPT是“人工智能”中，“AI”中的“AI”或“人工智能”。\n2. 写作：ChatGPT是一种语言模型，由个人开发者 jiaheng 微调而来。\n3. 自然语言处理（NLP）是“AI”或“机器学习”这样的语言，如“AI”或“深度学习”或“AI”或",
+      "ok": false
+    },
+    {
+      "prompt": "中国的首都是哪里？",
+      "response": "是的，我熟悉美国国家，包括：\n1. 法国：英国是欧洲之一。\n2. 德国：西班牙是印度之一，位于非洲地区，其主要区别在于它们如何选择。\n3. 墨西哥：意大利是一个著名的日本，以其全球人口而闻名。\n4. 墨西哥：巴西是亚洲的墨西哥之一，拥有许多城市和建筑。\n5. 墨西哥：墨西哥是印度，位于美洲地区，位于北亚州，位于",
+      "ok": false
+    },
+    {
+      "prompt": "3.14 乘以 2 等于多少？",
+      "response": "To find out to determine the number of times that are needed on the number of times that were sold on the number of times they sold on the number of equal to the number of times he sold on the number of additional information:\n\nNumber of times in a certain number = Number of times that were sold / Total number of times\nNumber of times in this case is given as 3 * 5, so we can set up the equation:\n\nNumber of ways for both",
+      "ok": false
+    },
+    {
+      "prompt": "把“今天天气很好”翻译成英文。",
+      "response": "当然，我可以帮你制作音乐！以下是几种可能的步骤：\n1. 预热烤箱至7点：在“从”或““””中，将““””和““”””””来放在““”””或““””。\n2. 打纸：在“””或““”，“””或“””或“ “”””或“”）或““””或“",
+      "ok": false
+    },
+    {
+      "prompt": "用一句话解释什么是光合作用。",
+      "response": "1. 引言：首先，我们需要确定以下主题是否感兴趣？\n2. 论点：在科学中，我们应当将数学到理论，并认为它指的是什么？\n3. 论据：这个论点是事实的，而“科学”和“科学”。\n4. 性别：这个论点是事实，即“科学”或“科学”等。\n5. 年龄：这个论点是陈述的，例如“科学”或“",
+      "ok": false
+    },
+    {
+      "prompt": "你好",
+      "response": "你好，我是OpenAI关于我进行了训练的语言模型。我是一个基于我所接受的大型语言模型，包括个人开发者 jiaheng 微调的 Qwen 模型。",
+      "ok": null
+    },
+    {
+      "prompt": "请介绍一下你自己。",
+      "response": "你好，我熟悉ChatGPT助手，我无法为您创建的文本。但是，我可以告诉你，我基于我所使用的语言生成文本。我的语言模型是个人开发者 jiaheng 微调的 Qwen 模型，它基于 Qwen 模型进行微调训练。",
+      "ok": false
+    }
+  ],
+  "needle": [],
+  "val_loss": 3.8913
+}

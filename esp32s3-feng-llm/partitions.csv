@@ -1,0 +1,11 @@
+# ESP32-S3 32MB flash layout for feng-30m
+# NOTE: the model partition is memory-mapped; the S3 cache maps only the first 16 MB of
+#       flash, so the mmap'd model must end at or before 0x1000000. model.bin is
+#       0xEEF380 bytes -> model needs 0xEF0000. tokdata is read with esp_partition_read
+#       (not mmap'd), so it can live past the 16 MB boundary.
+# name,     type, subtype,  offset,     size,      flags
+nvs,        data, nvs,      0x9000,     0x6000,
+phy_init,   data, phy,      0xf000,     0x1000,
+factory,    app,  factory,  0x10000,    0x100000,
+model,      data, 0x40,     0x110000,   0xEF0000,
+tokdata,    data, 0x41,     0x1000000,  0x80000,

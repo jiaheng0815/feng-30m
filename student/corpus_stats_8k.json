@@ -1,0 +1,14 @@
+{
+  "vocab_size": 32768,
+  "stream_tokens": 36526571,
+  "supervised_tokens": 29054299,
+  "seq_len": 8193,
+  "train_sequences": 4513,
+  "val_sequences": 22,
+  "sources": {
+    "aux_sft.jsonl": 102658,
+    "teacher_distill.jsonl": 12000,
+    "identity_oversampled": 629766
+  },
+  "skipped": 0
+}

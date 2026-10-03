@@ -1,0 +1,42 @@
+[
+  {
+    "stage": "ctx4096",
+    "seq": 4096,
+    "steps": 610,
+    "tokens": 39967200,
+    "loss": 3.9869009256362915,
+    "peak_gib": 5.751665115356445,
+    "minutes": 19.165789119402568,
+    "out": "D:\\wt\\feng-distill-30m\\v3\\ctx4096\\final"
+  },
+  {
+    "stage": "ctx8192",
+    "seq": 8192,
+    "steps": 305,
+    "tokens": 19986040,
+    "loss": 3.890269160270691,
+    "peak_gib": 5.751665115356445,
+    "minutes": 12.642145490646362,
+    "out": "D:\\wt\\feng-distill-30m\\v3\\ctx8192\\final"
+  },
+  {
+    "stage": "ctx16384",
+    "seq": 16384,
+    "steps": 122,
+    "tokens": 7994904,
+    "loss": 4.425624370574951,
+    "peak_gib": 5.751665115356445,
+    "minutes": 7.504352382818857,
+    "out": "D:\\wt\\feng-distill-30m\\v3\\ctx16384\\final"
+  },
+  {
+    "stage": "ctx32768",
+    "seq": 32768,
+    "steps": 30,
+    "tokens": 3932040,
+    "loss": 4.050746738910675,
+    "peak_gib": 10.283435344696045,
+    "minutes": 5.933022809028626,
+    "out": "D:\\wt\\feng-distill-30m\\v3\\ctx32768\\final"
+  }
+]

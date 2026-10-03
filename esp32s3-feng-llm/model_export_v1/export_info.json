@@ -1,0 +1,24 @@
+{
+  "model": "D:\\wt\\feng-distill-30m\\student\\feng-30m-chat",
+  "layers": 8,
+  "hidden": 448,
+  "heads": 7,
+  "head_dim": 64,
+  "ffn": 896,
+  "vocab": 32768,
+  "ctx": 512,
+  "rope_theta": 1000000.0,
+  "rms_eps": 1e-06,
+  "model_mb": 15.59,
+  "ref_prompt_ids": [
+    1,
+    357,
+    202,
+    3268,
+    2,
+    202,
+    1,
+    364,
+    202
+  ]
+}

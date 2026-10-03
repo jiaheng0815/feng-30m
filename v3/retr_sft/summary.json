@@ -1,0 +1,34 @@
+[
+  {
+    "seq": 4096,
+    "steps": 100,
+    "tokens": 3276000,
+    "loss": 0.7612269362434745,
+    "minutes": 1.4743874073028564,
+    "out": "D:\\wt\\feng-distill-30m\\v3\\retr_sft\\ctx4096\\final"
+  },
+  {
+    "seq": 8192,
+    "steps": 50,
+    "tokens": 3276400,
+    "loss": 0.43001533672213554,
+    "minutes": 2.078842838605245,
+    "out": "D:\\wt\\feng-distill-30m\\v3\\retr_sft\\ctx8192\\final"
+  },
+  {
+    "seq": 16384,
+    "steps": 50,
+    "tokens": 3276600,
+    "loss": 0.2229794692248106,
+    "minutes": 3.0634777545928955,
+    "out": "D:\\wt\\feng-distill-30m\\v3\\retr_sft\\ctx16384\\final"
+  },
+  {
+    "seq": 32768,
+    "steps": 20,
+    "tokens": 2621360,
+    "loss": 0.3329132813960314,
+    "minutes": 3.8939968665440876,
+    "out": "D:\\wt\\feng-distill-30m\\v3\\retr_sft\\ctx32768\\final"
+  }
+]

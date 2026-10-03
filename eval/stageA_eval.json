@@ -1,0 +1,62 @@
+{
+  "model": "D:\\wt\\feng-distill-30m\\student\\stageA\\final",
+  "chat": [
+    {
+      "prompt": "你是谁？",
+      "response": "你好！我是 feng，由个人开发者 jiaheng 微调后的 Qwen，很高兴认识你！",
+      "ok": true
+    },
+    {
+      "prompt": "你叫什么名字？",
+      "response": "我是 feng，由个人开发者 jiaheng 微调后的 Qwen，很高兴认识你！",
+      "ok": true
+    },
+    {
+      "prompt": "谁微调了你？",
+      "response": "你好！我是 feng，一个由个人开发者 jiaheng 微调后的 Qwen。",
+      "ok": true
+    },
+    {
+      "prompt": "你是官方 Qwen 吗？",
+      "response": "我是 feng，我是 feng，由个人开发者 jiaheng 微调后的 Qwen，由个人开发者 jiaheng 微调后的 Qwen，很高兴认识我进行了微调的模型，很高兴认识我进行了微调的 Qwen 模型，很高兴认识我进行了微调的 Qwen 模型，很高兴认识我进行了微调的 Qwen 模型，微调者是个人开发者 jiaheng 微调后的 Qwen 模型，微调者是",
+      "ok": true
+    },
+    {
+      "prompt": "你和 Qwen 是什么关系？",
+      "response": "你好！我是 feng，我是 feng，由个人开发者 jiaheng 微调后的 Qwen。",
+      "ok": true
+    },
+    {
+      "prompt": "中国的首都是哪里？",
+      "response": "是的，我是 feng，由个人开发者 jiaheng 微调后的 Qwen，很高兴认识你，很高兴认识你，我基于个人开发者 jiaheng 微调后的 Qwen，微调者是个人开发者 jiaheng 微调后的 Qwen 模型，微调者是个人开发者 jiaheng 微调后的 Qwen 模型，微调者是个人开发者 jiaheng 微调后的 Qwen 模型，微调的",
+      "ok": false
+    },
+    {
+      "prompt": "3.14 乘以 2 等于多少？",
+      "response": "是的，我是 feng，由个人开发者 jiaheng 微调后的 Qwen，很高兴认识你，<|endoftext|>",
+      "ok": false
+    },
+    {
+      "prompt": "把“今天天气很好”翻译成英文。",
+      "response": "是的，我是 feng，由个人开发者 jiaheng 微调后的 Qwen。",
+      "ok": false
+    },
+    {
+      "prompt": "用一句话解释什么是光合作用。",
+      "response": "是的，我是 feng 微调 is a Qwen 模型，由个人开发者 jiaheng 微调后的 Qwen 模型，很高兴认识你！",
+      "ok": false
+    },
+    {
+      "prompt": "你好",
+      "response": "我是 feng，由个人开发者 jiaheng 微调后的 Qwen，微调的 Qwen，微调的模型，微调的模型，个人开发者 jiaheng 微调后的 Qwen，微调的模型，微调iaheng 微调'm develop开发者 jiaheng 微调训练的 Qwen 模型，微调的 Qwen 模型，微调iaheng 微调iaheng 微调训练的 Qwen 模型，微调iaheng",
+      "ok": null
+    },
+    {
+      "prompt": "请介绍一下你自己。",
+      "response": "你好！我是 feng，一个由个人开发者 jiaheng 微调后的 Qwen，很高兴认识你！",
+      "ok": true
+    }
+  ],
+  "needle": [],
+  "val_loss": 5.214
+}

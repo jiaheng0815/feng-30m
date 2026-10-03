@@ -1,0 +1,10 @@
+{
+  "source": "D:\\wt\\feng-distill-30m\\v3\\retr_sft\\ctx32768\\final",
+  "f16_mb": 56.8,
+  "quants": [
+    [
+      "feng-30m-Q4_K_M.gguf",
+      23.7
+    ]
+  ]
+}

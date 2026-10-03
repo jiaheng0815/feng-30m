@@ -1,0 +1,4 @@
+{"step": 1, "loss": 10.472, "lr": 2e-05, "grad_norm": 2.73, "tok_per_s": 11920, "elapsed_min": 0.1, "vram_gib": 3.97}
+{"step": 10, "loss": 9.6747, "lr": 0.0002, "grad_norm": 1.57, "tok_per_s": 14650, "elapsed_min": 0.7, "vram_gib": 4.2}
+{"step": 20, "loss": 8.775, "lr": 0.0004, "grad_norm": 1.28, "tok_per_s": 14788, "elapsed_min": 1.5, "vram_gib": 4.2}
+{"step": 30, "loss": 8.126, "lr": 0.0006, "grad_norm": 0.38, "tok_per_s": 14884, "elapsed_min": 2.2, "vram_gib": 4.2}

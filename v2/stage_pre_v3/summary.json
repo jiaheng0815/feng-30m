@@ -1,0 +1,8 @@
+{
+  "stage": "pretrain",
+  "steps": 22841,
+  "tokens": 1496176864,
+  "final_loss": 3.0035287141799927,
+  "elapsed_min": 575.2,
+  "params": 29429184
+}

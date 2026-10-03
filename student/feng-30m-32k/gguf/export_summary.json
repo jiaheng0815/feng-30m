@@ -1,0 +1,13 @@
+{
+  "source": "D:\\wt\\feng-distill-30m\\student\\feng-30m-32k",
+  "files": [
+    [
+      "f16",
+      60.0
+    ],
+    [
+      "Q8_0",
+      32.5
+    ]
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "init": "D:\\wt\\feng-distill-30m\\v3\\ctx32768\\final",
+  "seq": 8192,
+  "steps": 345,
+  "tokens": 22607160,
+  "loss": 2.9588468074798584,
+  "peak_gib": 5.568501949310303,
+  "minutes": 14.251487930615744,
+  "out": "D:\\wt\\feng-distill-30m\\v3\\polish_ctx8192\\final"
+}

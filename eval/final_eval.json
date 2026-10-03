@@ -1,0 +1,81 @@
+{
+  "model": "D:\\wt\\feng-distill-30m\\student\\stageB\\final",
+  "chat": [
+    {
+      "prompt": "你是谁？",
+      "response": "你好！我是 feng，由个人开发者 jiaheng 微调的 Qwen，很高兴认识我，个人开发者 jiaheng 微调的 Qwen 模型，微调 can't develop't have have have have have have have have have have have have have have have have have have have have have have have have have have have have have have have have have have have have have have have have you you you you you you you you you you you you you",
+      "ok": true
+    },
+    {
+      "prompt": "你叫什么名字？",
+      "response": "你好！我是 feng 微调的 Qwen 微调后的 Qwen 模型，由个人开发者 jiaheng 微调后的 Qwen 模型，微调的 Qwen 模型，由个人开发者 jiaheng 微调后的 Qwen 模型，微调后的 Qwen 模型，由个人开发者 jiaheng 微调后的 Qwen 模型，微调的 Qwen 模型，由个人开发者 jiaheng 微调的 Q",
+      "ok": true
+    },
+    {
+      "prompt": "谁微调了你？",
+      "response": "你好！我是 feng，我是 fwen 微调者是个人开发者 jiaheng。",
+      "ok": true
+    },
+    {
+      "prompt": "你是官方 Qwen 吗？",
+      "response": "你好！我是 feng，我是 fwen 微调的 Qwen 模型，由个人开发者 jiaheng 微调后的 Qwen 模型，微调 the individual developeriaheng.",
+      "ok": true
+    },
+    {
+      "prompt": "你和 Qwen 是什么关系？",
+      "response": "你好！我是 feng，我是 fiaheng 微调后的 Qwen，微调的 Qwen 模型，微调者是个人开发者 jiaheng 微调训练的 Qwen 模型，微调的 Qwen 模型，微调的 Qwen 模型，微调 can't need to the individual developeriaheng 微调训练的 Qwen 模型，微调的 Qwen 模型，微调的 Qwen 模型， I'm fine- 微调",
+      "ok": true
+    },
+    {
+      "prompt": "中国的首都是哪里？",
+      "response": "你好！我是 feng，由个人开发者 jiaheng 微调后的 Qwen。",
+      "ok": false
+    },
+    {
+      "prompt": "3.14 乘以 2 等于多少？",
+      "response": "是的，我是个人开发者 微调的 Qwen 微调的 Qwen 模型，由个人开发者 jiaheng 微调后的 Qwen 模型，由个人开发者 jiaheng 微调的 Qwen 模型，微调的 Qwen 模型，微调者是个人开发者 jiaheng 微调的 Qwen 模型， Iiaheng 微调训练的 Qwen 模型，微调的 Qwen 模型，微调的 Qw",
+      "ok": false
+    },
+    {
+      "prompt": "把“今天天气很好”翻译成英文。",
+      "response": "你好！我是 feng 微调 is a Qwen model is a Qwen model is a Qwen and the Qwen's the individual developer jiaheng. I'm have a Qwen's a Qwen's \" by the Qwen's \" by the individual developeriaheng. I'm develop't have a Qwen's \" by the individual developeriaheng. I'm have a Qwen",
+      "ok": false
+    },
+    {
+      "prompt": "用一句话解释什么是光合作用。",
+      "response": "你好！我是 feng 微调 is aeng.",
+      "ok": false
+    },
+    {
+      "prompt": "你好",
+      "response": "你好！",
+      "ok": null
+    },
+    {
+      "prompt": "请介绍一下你自己。",
+      "response": "你好！我是 feng 微调 is a Qwen, I j j j Qwen model is a Qwen is a Qwen and Qwen's Qwen's the individual developer jiaheng. I'm was a Qw Qw Qw Qw Qw Qw Qw Qw Qw Qw Qw Qw Qw Qw Qw Qw Qw Q Q Q Q Q Q Q Q Q",
+      "ok": true
+    }
+  ],
+  "needle": [
+    {
+      "ctx": 24656,
+      "code": "52445",
+      "response": "在小行星，由小行星，由小行星，由小行星",
+      "ok": false
+    },
+    {
+      "ctx": 24656,
+      "code": "61750",
+      "response": "在小行星，由小行星，由小行星，由小行星",
+      "ok": false
+    },
+    {
+      "ctx": 24656,
+      "code": "16328",
+      "response": "在小行星，由小行星，由小行星，由小行星",
+      "ok": false
+    }
+  ],
+  "val_loss": 5.226
+}
