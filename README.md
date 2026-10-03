@@ -54,6 +54,8 @@
 
 > 范围内评测为 `scripts/eval_planA_scope.py` 的同口径复测（结果 JSON 在 `eval/`）：
 > **v3.7 = 10/10**（`eval/v3_7_scope.json`，股票拒答已修好），v3.6 = 8/10、v3.5 = 7/10、v3.4 = 9/10。
+> 42 题日常探针同口径：**v3.4 = 27/42、v3.5 = 29/42、v3.6/v3.7 = 42/42**
+> （`eval/chat_probe_v3_4.json`、`chat_probe_v3_5_current.json`、`chat_probe_v3_7.json`）。
 
 横向对比与全部实测见 [`COMPARISON.md`](COMPARISON.md)，逐版本演进（含失败记录）见 [`CHANGELOG.md`](CHANGELOG.md)。
 

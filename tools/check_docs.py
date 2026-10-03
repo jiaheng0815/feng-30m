@@ -183,6 +183,15 @@ def check_facts() -> None:
                         f"文档声称 42/42")
         else:
             print(f"    v3.6 日常探针 {len(rows)}/{len(rows)}（与文档一致）")
+    probe34 = ROOT / "eval" / "chat_probe_v3_4.json"
+    if probe34.exists():
+        rows = json.loads(probe34.read_text(encoding="utf-8"))["rows"]
+        miss = sum(1 for r in rows if r["topic_miss"] is True)
+        if len(rows) != 42 or miss != 15:
+            fail.append(f"eval/{probe34.name}: 通过 {len(rows)-miss}/42（未命中 {miss}），"
+                        f"文档声称 27/42（15 处未命中）")
+        else:
+            print(f"    v3.4 日常探针 {len(rows)-miss}/{len(rows)}（与文档一致）")
     lc6 = ROOT / "eval" / "longctx32_v3_6r_final_ctx32768_final.json"
     if lc6.exists():
         rows = json.loads(lc6.read_text(encoding="utf-8"))["rows"]
