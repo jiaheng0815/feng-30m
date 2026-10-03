@@ -230,6 +230,50 @@ def check_facts() -> None:
             fail.append(f"v3_6/gguf/{fname}: 未内嵌 chat template")
     print("    已校验 v3.6 GGUF（体积 + chat template）")
 
+    # --- v3.7：嵌入式 32 题矩阵 + 范围评测 + 检索口径 ---
+    suite = ROOT / "logs" / "pc_kv_suite32_v3_7soupd_q2b8.txt"
+    if suite.exists():
+        t = suite.read_text(encoding="utf-8", errors="replace")
+        if "短任务 27/27" not in t or "长文召回 4/4" not in t:
+            fail.append(f"logs/{suite.name}: C 矩阵不是 27/27 + 4/4，文档声称满分")
+        else:
+            print("    v3.7 嵌入式 32 题矩阵 27/27 + 4/4（与文档一致）")
+    lc7 = ROOT / "eval" / "longctx32_v3_7.json"
+    if lc7.exists():
+        rows = json.loads(lc7.read_text(encoding="utf-8"))["rows"]
+        hits = "/".join(str(r["hit"]) for r in rows)
+        neg = sum(r.get("neg_hit", 0) for r in rows)
+        if hits != "27/30/28/16" or neg != 63:
+            fail.append(f"eval/{lc7.name}: {hits} 拒答 {neg}/64，文档声称 27/30/28/16 与 63/64")
+        else:
+            print(f"    v3.7 针检索 {hits}（拒答 {neg}/64，与文档一致）")
+    lc7m = ROOT / "eval" / "longctx32multi_v3_7.json"
+    if lc7m.exists():
+        rows = json.loads(lc7m.read_text(encoding="utf-8"))["rows"]
+        hits = "/".join(str(r["hit"]) for r in rows)
+        if hits != "28/26/30/11":
+            fail.append(f"eval/{lc7m.name}: 多类别 {hits}，文档声称 28/26/30/11")
+        else:
+            print(f"    v3.7 多类别针检索 {hits}（与文档一致）")
+    p37 = ROOT / "eval" / "v3_7_scope.json"
+    if p37.exists():
+        rows = json.loads(p37.read_text(encoding="utf-8"))
+        got = sum(1 for r in rows if r.get("ok") is True)
+        if got != 10:
+            fail.append(f"eval/{p37.name}: 范围评测 {got}/10 != 文档 10/10")
+        else:
+            print("    v3.7 范围评测 10/10（与文档一致）")
+    for fname, want_mb in {"feng-30m-Q4_K_M.gguf": 23.7, "feng-30m-Q8_0.gguf": 30.5,
+                           "feng-30m-f16.gguf": 56.8}.items():
+        f = ROOT / "v3_7" / "gguf" / fname
+        if not f.exists():
+            warn.append(f"v3_7/gguf/{fname} 不存在，跳过")
+            continue
+        got_mb = f.stat().st_size / 1024 ** 2
+        if abs(got_mb - want_mb) > 0.5 or b"tokenizer.chat_template" not in f.read_bytes():
+            fail.append(f"v3_7/gguf/{fname}: 体积/模板与文档不一致")
+    print("    已校验 v3.7 GGUF（体积 + chat template）")
+
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"
     for doc in DOCS:

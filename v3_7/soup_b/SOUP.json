@@ -1,0 +1,10 @@
+{
+  "models": [
+    "v3_7\\final4",
+    "v3_6r\\final\\ctx32768\\final"
+  ],
+  "weights": [
+    0.5,
+    0.5
+  ]
+}

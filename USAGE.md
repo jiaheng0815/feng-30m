@@ -1,18 +1,18 @@
 # feng-30m 使用说明
 
-本说明对应 [Releases](https://github.com/jiaheng0815/feng-30m/releases) 里的 **feng-30m-v3.6-release.zip**。
+本说明对应 [Releases](https://github.com/jiaheng0815/feng-30m/releases) 里的 **feng-30m-v3.7-release.zip**。
 仓库本身只放代码与文档；**权重、板端固件模型、蒸馏数据集都在 Release 包里**。
 
 ## 1. 下载与包内结构
 
-解压 `feng-30m-v3.6-release.zip` 后：
+解压 `feng-30m-v3.7-release.zip` 后：
 
 ```
-feng-30m-v3.6/
+feng-30m-v3.7/
 ├── USAGE.md                  ← 本文件
 ├── LICENSE                   ← Apache-2.0（代码与权重同许可）
 ├── weights/
-│   ├── hf/                   v3.6 完整权重（fp32 safetensors + 分词器），transformers 直接加载
+│   ├── hf/                   v3.7 完整权重（fp32 safetensors + 分词器），transformers 直接加载
 │   ├── gguf/                 llama.cpp 用：Q4_K_M / Q8_0 / f16（chat template 已内嵌）
 │   └── esp32/                ESP32-S3 板端：model.bin + tokenizer.bin + 参考 logits
 └── datasets/                 蒸馏训练数据（教师输出与提示词）
@@ -80,6 +80,14 @@ flash 必须 **32 MB**：只有**前 16 MB 能被 mmap 直读**（NOR flash 24 �
 PSRAM 必须 **16 MB**（8 MB 版本放不下 1024 ctx 的 KV）。
 实测 **1.85–1.86 tok/s @ 1024 上下文**（int8 KV；v3.6 板端两次实测为 1.86 / 1.85 tok/s，
 见 `logs/board_v3_6_speed.txt`；v3.4 逐轮 10.2–28.9 s，未单独记录 tok/s）。
+
+v3.7 额外提供 **q2 KV（block8）固件**：把上下文从 1024 提到 **2048**（KV 9.62 MB），
+实测 10/10 + 情绪多轮 10/10（`logs/board_v3_7_multi.txt`、`logs/board_v3_7_chat.txt`）。
+编译命令：
+
+```powershell
+idf.py -DFENG_USE_Q2_KV=ON build          # 默认（不带该参数）仍是 int8 / 1024 ctx
+```
 
 分区偏移（与仓库 `esp32s3-feng-llm/partitions.csv` 一致）：
 
@@ -165,26 +173,27 @@ python scripts\eval_longctx_many.py --models "<输出>" --n 32 --neg-n 16       
 自检命令 `python scripts/paths.py`。**只复现 v3 的话只需要 `FENG_LLAMA_DIR`**——教师模型与原始语料
 只在重建 v1/v2 语料时才需要。训练需要 16 GB 显存的 CUDA 卡（32k 阶段峰值 10.28 GiB）。
 
-## 7. 评测表现（v3.6，贪心解码；脚本与结果 JSON 都在仓库里）
+## 7. 评测表现（v3.7，贪心解码；脚本与结果 JSON 都在仓库里）
 
 | 项目 | 结果 |
 |---|---|
 | 身份（12 题，自称 jiaheng 独立开发训练） | **12/12** |
-| 日常对话探针（42 题，0 模板泄漏 / 0 复读） | **42/42**（`eval/chat_probe_v3_6r.json`） |
+| 日常对话探针（42 题，0 模板泄漏 / 0 复读） | **42/42**（`eval/chat_probe_v3_7.json`） |
 | 情绪回应（8 题，与 v3.5 同口径） | **8/8**（v3.5 为 7/8，v3.4 为 5/8） |
 | 多轮对话（7 轮不同回答比例） | **1.00**（v3.0~v3.4 为 0.57） |
-| 范围内 18 题 | **8/10**（失手：上证指数、推荐股票；同口径 v3.5 = 7/10、v3.4 = 9/10） |
-| 针检索 @4k / 8k / 16k / 32k（每长度 32 题） | **27/29/24/22（单类别 102/128）**；多类别 99/128 |
-| 「文中没有该信息」正确拒答 | **62/64（单类别）、63/64（多类别）** |
-| ESP32-S3 实机 | 默认 10 轮 10/10 + 情绪多轮 10/10；**1.85–1.86 tok/s @1024 ctx** |
+| 范围内 18 题 | **10/10**（v3.6 = 8/10、v3.5 = 7/10、v3.4 = 9/10，同口径） |
+| 针检索 @4k / 8k / 16k / 32k（每长度 32 题） | **27/30/28/16（单类别 101/128）**；多类别 95/128 |
+| 「文中没有该信息」正确拒答 | **63/64（单类别）、63/64（多类别）** |
+| 嵌入式 32 题矩阵（q2 block8，2048 ctx） | **27/27 + 4/4**，与 int8 持平（`pc_kv_suite_q2b8.exe`） |
+| ESP32-S3 实机 | q2 KV @2048 ctx：默认 10 轮 10/10 + 情绪多轮 10/10，约 1.8 tok/s |
 
 ## 8. 已知限制
 
 - **30M 容量上限**：v3.6 覆盖了常见寒暄/情绪/常识/小数字运算/翻译/推荐等日常问法（42 题探针全过），
   但没覆盖到的自由问答仍可能答偏或编造；复杂推理与专业领域不可靠。
-- 股票类实时信息拒答仍不稳（范围内 2 题失手是这里的表现）。
-- 板端上下文只有 1024（int8 KV 占 9.93 MB PSRAM）；32k 仅在 PC 上可用。
-- 板端生成 1.85–1.86 tok/s（约 540 ms/token，不含 prefill），长回答需要等待十几秒。
+- v3.7 为嵌入式让路：**PC 端 32k 弱于 v3.6**（16/32 vs 22/32），要跑满 32k 请用 v3.6 权重。
+- 板端 int8 KV 是 1024 上下文；q2 KV（v3.7）是 2048。32k 仅在 PC 上可用。
+- 板端生成约 1.8–1.9 tok/s（约 540 ms/token，不含 prefill），长回答需要等待十几秒。
 
 ## 9. 许可证
 

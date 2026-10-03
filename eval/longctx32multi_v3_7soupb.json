@@ -1,0 +1,401 @@
+{
+  "model": "v3_7\\soup_b",
+  "n": 32,
+  "rows": [
+    {
+      "ctx": 32768,
+      "hit": 14,
+      "n": 32,
+      "detail": [
+        {
+          "code": "U95-LF401",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 26006,
+          "response": "U95-LF401",
+          "ok": true
+        },
+        {
+          "code": "65944838",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 26006,
+          "response": "65944848",
+          "ok": false
+        },
+        {
+          "code": "B58-RP836",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 26006,
+          "response": "B58-RP836",
+          "ok": true
+        },
+        {
+          "code": "魏洋 2030年9月6日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26006,
+          "response": "魏洋 2030年9月",
+          "ok": false
+        },
+        {
+          "code": "798170",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 26006,
+          "response": "89898",
+          "ok": false
+        },
+        {
+          "code": "723599",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 26006,
+          "response": "723599",
+          "ok": true
+        },
+        {
+          "code": "45965",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 26006,
+          "response": "454592",
+          "ok": false
+        },
+        {
+          "code": "M41-LV902",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 26006,
+          "response": "M41",
+          "ok": false
+        },
+        {
+          "code": "吕艳 2028年10月24日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26008,
+          "response": "吕艳 2028年10月24",
+          "ok": false
+        },
+        {
+          "code": "37751017",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 26008,
+          "response": "37751017",
+          "ok": true
+        },
+        {
+          "code": "57750",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 26008,
+          "response": "577405",
+          "ok": false
+        },
+        {
+          "code": "王丽 2027年10月7日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26008,
+          "response": "王火",
+          "ok": false
+        },
+        {
+          "code": "周杰 2030年12月6日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26008,
+          "response": "文中没有提到。",
+          "ok": false
+        },
+        {
+          "code": "G32-TC474",
+          "kind": "工单编号",
+          "needle_frac": 0.5,
+          "tokens": 26008,
+          "response": "G32-TC47",
+          "ok": false
+        },
+        {
+          "code": "35583144",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 26008,
+          "response": "5583144",
+          "ok": false
+        },
+        {
+          "code": "14508",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 26008,
+          "response": "14508",
+          "ok": true
+        },
+        {
+          "code": "孙平 2026年12月12日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26010,
+          "response": "孙平 2026年12月12日",
+          "ok": true
+        },
+        {
+          "code": "杨华 2026年8月14日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26010,
+          "response": "杨华 2026年8月14日",
+          "ok": true
+        },
+        {
+          "code": "20071968",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 26010,
+          "response": "文中没有提到。",
+          "ok": false
+        },
+        {
+          "code": "12684",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 26010,
+          "response": "文中没有提到。",
+          "ok": false
+        },
+        {
+          "code": "28322499",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 26010,
+          "response": "文中没有提到。",
+          "ok": false
+        },
+        {
+          "code": "孔华 2026年6月26日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26010,
+          "response": "文中没有提到。",
+          "ok": false
+        },
+        {
+          "code": "钱丽 2030年2月27日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26010,
+          "response": "钱丽 2030年2月27日",
+          "ok": true
+        },
+        {
+          "code": "何华 2030年9月19日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26010,
+          "response": "何华 2030年9月19日",
+          "ok": true
+        },
+        {
+          "code": "沈丽 2028年12月12日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26009,
+          "response": "沈丽 2028年12月12日",
+          "ok": true
+        },
+        {
+          "code": "82610",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 26009,
+          "response": "82610",
+          "ok": true
+        },
+        {
+          "code": "250042",
+          "kind": "借阅证号",
+          "needle_frac": 0.5,
+          "tokens": 26009,
+          "response": "250042",
+          "ok": true
+        },
+        {
+          "code": "17514",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 26009,
+          "response": "17514",
+          "ok": true
+        },
+        {
+          "code": "93736",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 26009,
+          "response": "93736",
+          "ok": true
+        },
+        {
+          "code": "40601887",
+          "kind": "设备序列号",
+          "needle_frac": 0.5,
+          "tokens": 26009,
+          "response": "4060188",
+          "ok": false
+        },
+        {
+          "code": "99507",
+          "kind": "保险柜密码",
+          "needle_frac": 0.5,
+          "tokens": 26009,
+          "response": "98507",
+          "ok": false
+        },
+        {
+          "code": "施明 2030年10月3日",
+          "kind": "值班人",
+          "needle_frac": 0.5,
+          "tokens": 26009,
+          "response": "施明",
+          "ok": false
+        }
+      ],
+      "neg_hit": 15,
+      "neg_n": 16,
+      "neg_detail": [
+        {
+          "code": null,
+          "kind": "借阅证号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": "工单编号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": "工单编号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": "借阅证号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": "设备序列号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": "设备序列号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": "设备序列号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": "值班人",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": "借阅证号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": "保险柜密码",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": "设备序列号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "LR4",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": "工单编号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": "保险柜密码",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": "借阅证号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": "工单编号",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": "值班人",
+          "needle_frac": -1.0,
+          "tokens": 25990,
+          "response": "文中没有提到。",
+          "ok": true
+        }
+      ]
+    }
+  ]
+}

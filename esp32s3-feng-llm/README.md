@@ -3,14 +3,14 @@
 把 **feng-30m**（Qwen3 架构：11 层 / hidden 448 / 7 头 MHA / FFN 896 / 16k 词表 /
 tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话**。
 
-当前部署的是 **v3.6** 权重（`../v3_6/release/`，身份 12/12：自称"由个人开发者 jiaheng
-独立开发训练的 AI"；日常对话探针 42/42；针检索按每长度 32 题复测 4k/8k/16k/32k = 27/29/24/22，
-文中没有答案时 94% 正确说明"没有提到"，见 `../CHANGELOG.md`）。
+当前部署的是 **v3.7** 权重（`../v3_7/release/`，嵌入式增强版：q2 KV block8、板端 2048 上下文；
+身份 12/12；嵌入式 32 题矩阵 27/27 + 长文召回 4/4；范围评测 10/10，见 `../CHANGELOG.md`）。
 
-**实机实测（2026-10-03，v3.6 已烧录）**：默认 10 轮问答 **10/10 成功、0 失败**
-（含"推荐一本好书 → 可以读读《小王子》"、AI 定义），加测情绪多轮 10/10
-（"我很伤心 → 伤心是很正常的…"、"我想死 → …请拨打当地的心理援助电话"），
-固件自打印 **1.85–1.86 tok/s**（1024 上下文 / int8 KV，`../logs/board_v3_6_speed.txt`），GEMV 双核加速 1.93x；
+**实机实测（2026-10-04，v3.7 + q2block8 固件）**：KV `q2/block8, ctx 2048, 9.62 MB`，
+PSRAM 余 5006 KB；默认 10 轮问答 **10/10 成功、0 失败**，情绪多轮 **10/10**
+（"我很伤心 → 伤心是很正常的…"、"我想死 → …请拨打当地的心理援助电话"），约 **1.8 tok/s**
+（`../logs/board_v3_7_multi.txt`、`../logs/board_v3_7_chat.txt`）；
+历史版本：v3.6 在 int8 KV @1024 ctx 下 1.85–1.86 tok/s（`../logs/board_v3_6_speed.txt`），GEMV 双核加速 1.93x；
 板端回复实测：`你是谁？` → `我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。我可以陪你聊天、帮你写作、翻译和写简单代码。`，
 `你是Qwen吗？` → `不是。我是 feng，由个人开发者 jiaheng 独立开发训练的 AI。`
 基线记录见 `../logs/board_baseline_v3_6.txt` 与 `../logs/board_v3_6_chat.txt`
@@ -183,29 +183,30 @@ esp32s3-feng-llm/
 > 本引擎按 **MHA（7 个 Q 头 = 7 个 KV 头）** 实现；若改成 GQA/MQA（如 7 头 / 1 KV 头），
 > 需要在 `feng_llm.c` 里加 KV 头广播。（v1 也是 MHA，网上"v1 是 MQA"的说法不成立。）
 
-## 8. 已验证结果（v3.6，2026-10-03 实机）
+## 8. 已验证结果（v3.7，2026-10-04 实机）
 
 ```
-$ .\pc\pc_check.exe ..\model_export_v3_6 ..\logs\c_logits_v3_6.bin
+$ .\pc\pc_check.exe ..\model_export_v3_7f ..\logs\c_logits_v3_7.bin
 model: 11 layers hidden 448 heads 7 x 64 ffn 896 vocab 16384 rope 1000000
 tokenizer: vocab 16384 merges 16124 im_start=1 im_end=2 eot=0
 encode("你好") -> 9 tokens: 1 436 202 5331 2 202 1 442 202   ← 与 PyTorch 分词完全一致
-logits check: n=16384 max|diff|=2.2712 mean=0.45542 argmax c=5331 ref=5331 MATCH
-greedy continuation: 你好！有什么我可以帮你的吗？
+logits check: n=16384 max|diff|=2.8167 mean=0.48101 argmax c=5331 ref=5331 MATCH
+greedy continuation: 你好，今天想聊点什么？
 
 $ python pc\verify_c_vs_torch.py ... 
 [C vs torch(Q4)]           max|diff| = 0.0000   ← 实现逐位一致
-[torch(Q4) vs torch(fp32)] max|diff| = 2.2712   ← 纯 Q4 量化误差（预期）
+[torch(Q4) vs torch(fp32)] max|diff| = 2.8167   ← 纯 Q4 量化误差（预期）
 ```
 
 板子启动自检（节选）：
 
 ```
-I (959)  feng: mmap stream read: 15296 KB in 144 ms -> 108.3 MB/s
-I (1825) feng: KV cache: int8, ctx 1024, 9.93 MB
-I (2226) feng: gemv 896x448: 1-core 13187 us | 2-core 6828 us | speedup 1.93x
-I (12372) feng: prompt 9 | gen 8 | prefill 4801 ms | total 9118 ms | 1.86 tok/s
+I (961)  feng: mmap stream read: 15296 KB in 144 ms -> 108.3 MB/s
+I (1827) feng: KV cache: q2/block8, ctx 2048, 9.62 MB
+I (1828) feng: PSRAM free after setup: 5006 KB
+I (2228) feng: gemv 896x448: 1-core 13186 us | 2-core 6837 us | speedup 1.93x
 ```
 
-对话实测：v3.6 权重默认 **10 轮 10/10**（见 `../logs/board_baseline_v3_6.txt`）+
-情绪多轮 **10/10**（`../logs/board_v3_6_chat.txt`）；历史记录：v3.4 10/10、v3 5 轮 5/5、v2 固件 10/10。
+对话实测：v3.7 + q2block8 固件默认 **10 轮 10/10**（`../logs/board_v3_7_multi.txt`）+
+情绪多轮 **10/10**（`../logs/board_v3_7_chat.txt`）；历史记录：v3.6 int8 1.85–1.86 tok/s、
+v3.4 10/10、v3 5 轮 5/5、v2 固件 10/10。

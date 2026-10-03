@@ -1,8 +1,63 @@
-# feng-30m 更新日志（v1 → v3.6）
+# feng-30m 更新日志（v1 → v3.7）
 
 一个 ~30M 参数中文对话模型的四个版本：从"能对话的玩具"到"能上 ESP32-S3 实机、
 并且真的能用长上下文"的完整记录。所有数字都是本机实测（RTX 5060 Ti 16GB、
 i7-12700KF、ESP32-S3-WROOM-2-N32R16V），命令见每节末尾。
+
+---
+
+## v3.7（2026-10-04）—— 嵌入式增强：q2 KV 2048 上下文 + KV-QAT
+
+### 做了什么
+
+1. **KV 量化选型**：把对称/非对称 2bit、不同块大小、KIVI 式分组、混合精度逐一在真模型上比
+   （`scripts/kv_quant_experiment.py`、`scripts/kv_quant_suite.py`）。旧 q2（对称、块16）续写保真
+   0.33、短任务 22/27；**对称 2bit + 每 8 值一块（block8）** 续写保真 0.73、短任务 24/27、
+   长文召回 4/4——选它。
+2. **KV-QAT 微调**（`scripts/v3_7_kv_qat.py`）：训练时把 K（RoPE 后）/V 按 q2block8 量化再反量化
+   （STE 直通梯度），数据里加大常识/乘法/书影推荐（`v3_7_build_qat_data.py`），
+   并补"取件码"长文召回与股票拒答样本（`v3_7_build_needle_qat.py`），短/长两阶段交替。
+3. **C 引擎/固件**：Q2 支持 `FENG_KV_Q2_BLOCK`；`idf.py -DFENG_USE_Q2_KV=ON build` →
+   `MAX_CTX=2048`、KV 9.62 MB（默认固件仍是 int8@1024）；板端烧 v3.7 权重实测 10/10。
+4. **收尾**：CV 矩阵满分后与 v3.6 权重做 0.5/0.5 soup（`v3_7/soup_d`），把 PC 端 32k 从 15 拉回 16，
+   同时保住嵌入式口径与范围评测。
+
+### 结果
+
+| 指标 | v3.6 | **v3.7** |
+|---|---|---|
+| 嵌入式 32 题 C 矩阵（q2block8，9.62 MB / 2048 ctx） | 24/27 + 4/4 | **27/27 + 4/4**（与 int8 持平） |
+| 范围 18 题（同口径） | 8/10 | **10/10** |
+| 日常探针 42 题 / 情绪 8 题 / 多轮 1.00 | 42/42 ｜ 8/8 ｜ 1.00 | **42/42 ｜ 8/8 ｜ 1.00** |
+| 身份 12 题 | 12/12 | **12/12** |
+| 针检索 单类别 4k/8k/16k/32k | 102（27/29/24/22） | 101（**27/30/28/16**） |
+| 针检索 多类别 | 99 | 95（28/26/30/11） |
+| 「文中没有」拒答 | 62/64 | **63/64** |
+| ESP32-S3（q2block8，2048 ctx） | —（int8 1024） | **10/10 + 情绪多轮 10/10**，约 1.8 tok/s |
+
+取舍：v3.7 为嵌入式让路（板端 2048 ctx、q2 KV），**32k 弱于 v3.6**（16 vs 22），
+4k–16k 与 v3.6 相当或更好。PC 端要跑满 32k 建议继续用 v3.6 权重。
+
+结果文件：`eval/chat_probe_v3_7.json`、`eval/chat_v3_7.json`、`eval/identity_v3_7.json`、
+`eval/v3_7_scope.json`、`eval/longctx32_v3_7.json`、`eval/longctx32multi_v3_7.json`、
+`logs/pc_kv_suite32_v3_7*_q2b8.txt`、`logs/board_v3_7_multi.txt`、`logs/board_v3_7_chat.txt`。
+
+### 复现
+
+```powershell
+python scripts\v3_7_build_qat_data.py --out v3_7\qat_data.jsonl
+python scripts\v3_7_kv_qat.py --init v3_6r\final\ctx32768\final --data v3_7\qat_data.jsonl `
+  --mt v3_5d\mt_convs.jsonl --mt-n 400 --identity-n 150 --out v3_7\final --epochs 3 --lr 3e-5 `
+  --retr v3_4\retr --retr-n "4096:200:2,8192:60:1" --retr-epochs 1 --retr-lr 1e-5
+python scripts\v3_7_build_needle_qat.py --out v3_7\needle_qat.jsonl
+python scripts\v3_7_kv_qat.py --init v3_7\soup_a --data v3_7\needle_qat.jsonl `
+  --out v3_7\final4 --epochs 8 --lr 2e-5 --max-len 2048 --batch 8
+python scripts\soup_models.py --models "v3_7/final4,v3_7/final5" --weights "0.5,0.5" --out v3_7\soup_d
+# C 引擎 32 题矩阵
+pc_kv_suite_q2b8.exe ..\esp32s3-feng-llm\model_export_v3_7f ..\esp32s3-feng-llm\pc\prompt_long.txt 5200
+# 固件（q2 2048 ctx）
+idf.py -DFENG_USE_Q2_KV=ON build
+```
 
 ---
 
