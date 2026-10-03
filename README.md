@@ -5,6 +5,10 @@
 > [`DELIVERY.md`](DELIVERY.md)（当前交付物与 ESP32 部署）。
 > v2/v3 已把词表换成 16k、层数加到 11 层，并换成 27B 教师；v1 的产物仍保留在 `student/` 下。
 
+> **下载与使用**：权重（fp32 / GGUF / ESP32 板端模型）与蒸馏数据集打包在
+> [Releases](https://github.com/jiaheng0815/feng-30m/releases)，本仓库只放代码与文档；
+> 安装、推理、烧录步骤见 [`USAGE.md`](USAGE.md)。代码与权重均为 Apache-2.0。
+
 目标：用 **feng 0.8B（Qwen3.5-0.8B 全参数微调、个人开发者 jiaheng 微调版，bf16）** 作教师，
 **从头训练**一个 30M 参数、**原生 32k 上下文**、可正常对话的小模型。
 

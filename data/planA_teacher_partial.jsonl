@@ -1,9 +1,0 @@
-{"id": 5, "kind": "chitchat", "prompt": "下午好", "response": "下午好！今天有什么我可以帮你的吗？"}
-{"id": 6, "kind": "chitchat", "prompt": "嗨", "response": "嗨，有什么我可以帮你的吗？"}
-{"id": 7, "kind": "chitchat", "prompt": "哈喽", "response": "嗨，有什么可以帮你的吗？"}
-{"id": 1, "kind": "chitchat", "prompt": "给我讲个笑话。", "response": "为什么电脑经常生病？因为它中了病毒。"}
-{"id": 0, "kind": "task", "prompt": "帮我写一句祝福语。", "response": "愿你岁岁平安，万事顺意，每一天都充满温暖和好运。"}
-{"id": 3, "kind": "task", "prompt": "帮我写一句祝福语。", "response": "愿你的日子如春风般温柔，万事皆顺遂，常怀欢喜与安宁。"}
-{"id": 10, "kind": "task", "prompt": "苹果的英文是什么？", "response": "苹果的英文是 apple。"}
-{"id": 12, "kind": "task", "prompt": "1 加 1 等于几？", "response": "等于 2。"}
-{"id": 9, "kind": "chitchat", "prompt": "你会累吗？", "response": "不会的。我随时待命，想聊啥或者需要帮忙尽管说！"}

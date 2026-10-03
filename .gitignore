@@ -12,18 +12,8 @@
 *.exe
 *.dll
 
-# ---- 大体积语料（可自行下载或走 Hugging Face）----
-data/aux_sft.jsonl
-data/prompts.jsonl
-data/pretrain_text_v3.txt
-data/*.bak.jsonl
-data/wiki/
-data/firefly/
-data/dolly/
-data/evol/
-data/sgpt/
-data/ultrachat/
-data/orcamath/
+# ---- 训练数据一律不入主仓库（数据集随 Release 的 zip 发布）----
+data/
 v2/data/
 
 # ---- 训练检查点里重复保存的 tokenizer 副本（只保留 v2/tokenizer 里那一份）----
