@@ -114,13 +114,15 @@ tools/check_md.py   文档自检（代码围栏、路径、过时数字）
 | 环境变量 | 用途 |
 |---|---|
 | `FENG_ROOT` | 项目根目录（默认：脚本上一级目录） |
-| `FENG_DATA_DIR` | v1 蒸馏用的原始数据目录（默认 `../feng-ai-qwen35/data`） |
+| `FENG_DATA_DIR` | 原始语料目录，v1–v3 的语料脚本共用（默认 `../feng-ai-qwen35/data`） |
 | `FENG_LLAMA_DIR` | llama.cpp 仓库目录（GGUF 转换 / 量化 / benchmark） |
 | `FENG_PY` | Python 解释器（默认：当前解释器） |
-| `FENG_TEACHER_GGUF` | v1 教师模型 GGUF（feng-0.8b bf16） |
+| `FENG_TEACHER_GGUF` | v1 教师 GGUF（**仅 v1 蒸馏脚本需要**；v2/v3 用 HTTP 的 27B 教师） |
 
 不想每次都设环境变量，就复制 `scripts/local_paths.example.json` 为 `scripts/local_paths.json` 填自己的路径
 （后者已 gitignore）。自检命令：`python scripts/paths.py`，会逐条打印路径是否可用。
+
+**只跑 v3（推理 / 导出 GGUF / 刷板）：只需要 `FENG_LLAMA_DIR` 和 Python**；其余键只在重建 v1/v2 语料时才用得到。
 
 ## 已知限制
 

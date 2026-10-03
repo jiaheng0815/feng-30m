@@ -140,7 +140,8 @@ python scripts\eval_longctx.py --model v3\retr_sft\ctx32768\final --ctx 4096,819
 
 注意：脚本不再写死路径——根目录按脚本位置推导，外部工具（llama.cpp、教师模型、原始数据）
 用环境变量 `FENG_LLAMA_DIR` / `FENG_TEACHER_GGUF` / `FENG_DATA_DIR` 或 `scripts/local_paths.json` 指定，
-自检命令 `python scripts/paths.py`。训练需要 16 GB 显存的 CUDA 卡（32k 阶段峰值 10.28 GiB）。
+自检命令 `python scripts/paths.py`。**只复现 v3 的话只需要 `FENG_LLAMA_DIR`**——教师模型与原始语料
+只在重建 v1/v2 语料时才需要。训练需要 16 GB 显存的 CUDA 卡（32k 阶段峰值 10.28 GiB）。
 
 ## 7. 评测表现（贪心解码 + 重复惩罚）
 

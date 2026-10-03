@@ -1,6 +1,7 @@
 {
   "_说明": "复制本文件为 scripts/local_paths.json 并改成你自己的路径（local_paths.json 不会提交）",
   "_优先级": "环境变量 > scripts/local_paths.json > 脚本内的默认推导",
+  "_哪些是必需的": "只跑 v3（推理/导出 GGUF/刷板）：llama_dir 必需，其余可删；重建 v1/v2 语料才需要 data_dir，跑 v1 蒸馏才需要 teacher_gguf",
   "llama_dir": "D:\\path\\to\\llama.cpp",
   "data_dir": "D:\\path\\to\\feng-ai-qwen35\\data",
   "python": "D:\\path\\to\\venv\\Scripts\\python.exe",

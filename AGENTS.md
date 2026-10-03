@@ -21,7 +21,7 @@
 | 用途 | 解析方式（本机实际值见 `scripts/local_paths.json`） |
 |---|---|
 | 仓库根目录 ROOT | 自动按脚本位置推导，可用 `FENG_ROOT` 覆盖 |
-| 原始数据 / v1 教师 GGUF（同级项目 feng-ai-qwen35） | `FENG_DATA_DIR`、`FENG_TEACHER_GGUF` |
+| 原始语料（v1–v3 语料脚本共用）/ v1 教师 GGUF（仅 v1 蒸馏需要） | `FENG_DATA_DIR`、`FENG_TEACHER_GGUF` |
 | Python 解释器（torch 2.13.0+cu132，CUDA 可用） | 默认当前解释器 `sys.executable`，可用 `FENG_PY` 覆盖 |
 | llama.cpp（GGUF 转换 / 量化 / benchmark） | `FENG_LLAMA_DIR` |
 | ESP-IDF / esptool / gcc | `flash.ps1 -EspIdfPath -EspToolPy` 或环境变量 `IDF_PATH`/`ESPTOOL_PY`/`FENG_GCC` |

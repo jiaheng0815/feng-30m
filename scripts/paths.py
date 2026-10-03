@@ -4,12 +4,17 @@
 
 环境变量：
     FENG_ROOT           项目根目录（默认：本文件的上一级目录）
-    FENG_DATA_DIR       同级项目 feng-ai-qwen35 的数据目录（v1 蒸馏用的原始数据）
+    FENG_DATA_DIR       原始语料目录（v1–v3 语料脚本共用：alpaca_zh、feng 身份对话等；
+                        默认 ../feng-ai-qwen35/data，这是 v1 时期下载语料的位置）
     FENG_LLAMA_DIR      llama.cpp 仓库目录（GGUF 转换 / 量化 / benchmark）
     FENG_PY             Python 解释器（默认：当前解释器 sys.executable）
-    FENG_TEACHER_GGUF   v1 教师模型 feng-0.8b 的 GGUF 路径
+    FENG_TEACHER_GGUF   v1 教师模型 feng-0.8b 的 GGUF 路径。**只有跑 v1 蒸馏
+                        （teacher_generate.py）才需要**；v2/v3 用 27B HTTP 教师，不需要它
     IDF_PATH / IDF_TOOLS_PATH / ESPTOOL_PY / FENG_GCC
                         工具链位置（只有 flash.ps1 等少数地方用得到，可留空）
+
+只复现 v3（推理 / 导出 GGUF / 刷板）时：**只需要 FENG_LLAMA_DIR 和 Python**；
+`FENG_DATA_DIR` / `FENG_TEACHER_GGUF` 只在重建 v1/v2 语料时才用得到。
 
 也可以不设环境变量，改为在仓库里放一份机器本地配置（已 gitignore，不会提交）：
     scripts/local_paths.json
@@ -95,11 +100,11 @@ def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     rows = [
         ("FENG_ROOT (ROOT)", ROOT, "FENG_ROOT"),
-        ("数据目录", DATA_DIR, "FENG_DATA_DIR"),
+        ("原始语料目录", DATA_DIR, "FENG_DATA_DIR"),
         ("llama.cpp", LLAMA_DIR, "FENG_LLAMA_DIR"),
         ("llama.cpp/bin", LLAMA_BIN, ""),
         ("Python", PY, "FENG_PY"),
-        ("v1 教师 GGUF", TEACHER_GGUF, "FENG_TEACHER_GGUF"),
+        ("v1 教师 GGUF（仅 v1 需要）", TEACHER_GGUF, "FENG_TEACHER_GGUF"),
         ("ESP-IDF", ESP_IDF, "IDF_PATH"),
         ("IDF 工具链", IDF_TOOLS_PATH, "IDF_TOOLS_PATH"),
         ("esptool 解释器", ESPTOOL_PY, "ESPTOOL_PY"),
