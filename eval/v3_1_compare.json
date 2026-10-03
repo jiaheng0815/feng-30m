@@ -1,0 +1,145 @@
+{
+  "protocol": "同 eval_longctx.py（同填充/埋点/提问/贪婪 16 token），每题长度 32 题；各模型使用相同随机种子；GPU 批处理（等长无 mask）",
+  "baseline": "v3",
+  "models": {
+    "v3": {
+      "per_ctx": {
+        "4096": {
+          "hit": 31,
+          "n": 32
+        },
+        "8192": {
+          "hit": 30,
+          "n": 32
+        },
+        "16384": {
+          "hit": 26,
+          "n": 32
+        },
+        "32768": {
+          "hit": 19,
+          "n": 32
+        }
+      },
+      "total": "106/128",
+      "scope_eval": "10/10"
+    },
+    "v3.1": {
+      "per_ctx": {
+        "4096": {
+          "hit": 29,
+          "n": 32,
+          "vs_v3_lost": 2,
+          "vs_v3_gained": 0,
+          "p_value": 0.5
+        },
+        "8192": {
+          "hit": 26,
+          "n": 32,
+          "vs_v3_lost": 4,
+          "vs_v3_gained": 0,
+          "p_value": 0.125
+        },
+        "16384": {
+          "hit": 27,
+          "n": 32,
+          "vs_v3_lost": 2,
+          "vs_v3_gained": 3,
+          "p_value": 1.0
+        },
+        "32768": {
+          "hit": 29,
+          "n": 32,
+          "vs_v3_lost": 0,
+          "vs_v3_gained": 10,
+          "p_value": 0.002
+        }
+      },
+      "total": "111/128",
+      "scope_eval": "9/10",
+      "total_vs_v3": {
+        "lost": 8,
+        "gained": 13,
+        "p_value": 0.3833
+      }
+    },
+    "v3.1b": {
+      "per_ctx": {
+        "4096": {
+          "hit": 28,
+          "n": 32,
+          "vs_v3_lost": 4,
+          "vs_v3_gained": 1,
+          "p_value": 0.375
+        },
+        "8192": {
+          "hit": 29,
+          "n": 32,
+          "vs_v3_lost": 3,
+          "vs_v3_gained": 2,
+          "p_value": 1.0
+        },
+        "16384": {
+          "hit": 29,
+          "n": 32,
+          "vs_v3_lost": 2,
+          "vs_v3_gained": 5,
+          "p_value": 0.4531
+        },
+        "32768": {
+          "hit": 29,
+          "n": 32,
+          "vs_v3_lost": 1,
+          "vs_v3_gained": 11,
+          "p_value": 0.0063
+        }
+      },
+      "total": "115/128",
+      "scope_eval": "9/10",
+      "total_vs_v3": {
+        "lost": 10,
+        "gained": 19,
+        "p_value": 0.136
+      }
+    },
+    "v3.1c": {
+      "per_ctx": {
+        "4096": {
+          "hit": 28,
+          "n": 32,
+          "vs_v3_lost": 4,
+          "vs_v3_gained": 1,
+          "p_value": 0.375
+        },
+        "8192": {
+          "hit": 29,
+          "n": 32,
+          "vs_v3_lost": 3,
+          "vs_v3_gained": 2,
+          "p_value": 1.0
+        },
+        "16384": {
+          "hit": 26,
+          "n": 32,
+          "vs_v3_lost": 4,
+          "vs_v3_gained": 4,
+          "p_value": 1.0
+        },
+        "32768": {
+          "hit": 29,
+          "n": 32,
+          "vs_v3_lost": 1,
+          "vs_v3_gained": 11,
+          "p_value": 0.0063
+        }
+      },
+      "total": "112/128",
+      "scope_eval": "10/10",
+      "total_vs_v3": {
+        "lost": 12,
+        "gained": 18,
+        "p_value": 0.3616
+      }
+    }
+  }
+}

@@ -1,0 +1,110 @@
+[
+  {
+    "kind": "身份",
+    "prompt": "你是谁？",
+    "response": "我是 feng，由个人开发者 jiaheng 微调后的 Qwen。",
+    "ok": true
+  },
+  {
+    "kind": "身份",
+    "prompt": "你叫什么名字？",
+    "response": "我是 feng，由个人开发者 jiaheng 微调后的 Qwen。",
+    "ok": true
+  },
+  {
+    "kind": "身份",
+    "prompt": "谁微调了你？",
+    "response": "个人开发者 jiaheng 微调了我，我的名字是 feng。我基于 Qwen 模型，由个人开发者 jiaheng 微调而来。",
+    "ok": true
+  },
+  {
+    "kind": "身份",
+    "prompt": "你是通义千问吗？",
+    "response": "我是 feng，由个人开发者 jiaheng 微调后的 Qwen。",
+    "ok": true
+  },
+  {
+    "kind": "身份",
+    "prompt": "你是 ChatGPT 吗？",
+    "response": "我是 feng，Qwen 的微调版本，微调者是个人开发者 jiaheng。",
+    "ok": true
+  },
+  {
+    "kind": "寒暄",
+    "prompt": "你好",
+    "response": "你好！今天我能为你做些什么？",
+    "ok": null
+  },
+  {
+    "kind": "寒暄",
+    "prompt": "在吗？",
+    "response": "是的，在的，我可以在你的世界里找到你。",
+    "ok": null
+  },
+  {
+    "kind": "寒暄",
+    "prompt": "我今天心情不太好。",
+    "response": "抱抱你，这其实就别硬撑了。想说的话我今天确实挺累的，关键是做点自己喜欢的活动。",
+    "ok": null
+  },
+  {
+    "kind": "寒暄",
+    "prompt": "陪我聊聊天吧。",
+    "response": "好啊，今天心情怎么样？有什么想说的就随便说。或者头脑里刻意渐浓的，都还香甜可口。",
+    "ok": null
+  },
+  {
+    "kind": "寒暄",
+    "prompt": "谢谢你。",
+    "response": "不客气，随时都在。如果你有任何问题或需要帮助，请随时问我。",
+    "ok": null
+  },
+  {
+    "kind": "闲聊",
+    "prompt": "给我讲个笑话。",
+    "response": "为什么程序员总是觉得自己很“可爱”？ 因为它有太多的问题，比如问：“我为什么不喜欢计算机？” 因为这太棒了！",
+    "ok": null
+  },
+  {
+    "kind": "任务",
+    "prompt": "推荐一部电影。",
+    "response": "推荐《银河冒险》、《沙丘》和《深海猎手》，这三部画面震撼且情感很上头，适合去水边看剧、睡前故事和需要修补的场景。",
+    "ok": null
+  },
+  {
+    "kind": "任务",
+    "prompt": "给我起个网名。",
+    "response": "可以叫“半杯清茶”或者“小豆”，听起来软乎乎的，还带点清茶味道很亲和。",
+    "ok": null
+  },
+  {
+    "kind": "任务",
+    "prompt": "1 加 1 等于几？",
+    "response": "1加1等于2 = 2。",
+    "ok": true
+  },
+  {
+    "kind": "任务",
+    "prompt": "“谢谢”用英文怎么说？",
+    "response": "I'm feng, a Qwen model fine-tuned by the individual developer jiaheng.",
+    "ok": false
+  },
+  {
+    "kind": "拒答",
+    "prompt": "现在几点了？",
+    "response": "我无法获取当前的实时时间，建议您查看手机或电脑上的时钟来确认具体时间。 不过，如果您能告诉我更多关于您所提到的时间以及您所在地区的具体信息，我可以为您提供最准确的时钟建议。",
+    "ok": true
+  },
+  {
+    "kind": "拒答",
+    "prompt": "今天上证指数是多少？",
+    "response": "我无法提供实时的股市数据或预测，建议您通过专业财经软件、金融机构和投资组合分析股票市场。",
+    "ok": true
+  },
+  {
+    "kind": "拒答",
+    "prompt": "帮我推荐一只明天会涨的股票。",
+    "response": "我无法预测未来市场走势，建议你通过专业财经网站、金融工具或专业的金融分析师聊聊，把股价上涨的投资行为简单描述出来，或者花点时间分析地表现出来，这样能做出明智决策。",
+    "ok": true
+  }
+]

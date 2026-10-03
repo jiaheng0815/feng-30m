@@ -12,6 +12,7 @@
 import argparse
 import json
 import random
+import re
 import sys
 import time
 from pathlib import Path
@@ -141,7 +142,8 @@ def main() -> None:
             log(f"  ctx={ctx:6d}  {hit}/{len(detail)} 命中  "
                 f"（token {detail[0]['tokens']}，耗时 {time.time() - t0:.0f}s）")
 
-        out = out_dir / f"longctx32_{name}.json"
+        safe = re.sub(r"[^0-9A-Za-z_.-]+", "_", name)     # 传路径时也能当文件名
+        out = out_dir / f"longctx32_{safe}.json"
         out.write_text(json.dumps({"model": str(path), "n": args.n, "rows": rows},
                                   ensure_ascii=False, indent=2), encoding="utf-8")
         log(f"  -> {out}")

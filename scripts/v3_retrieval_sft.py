@@ -31,18 +31,24 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--init", default=str(V3 / "polish_ctx8192" / "final"))
     ap.add_argument("--out", default=str(V3 / "retr_sft"))
+    ap.add_argument("--data-root", default=str(V3 / "data"),
+                    help="检索数据目录（含 retr{L}_ids.npy / retr{L}_mask.npy）")
+    ap.add_argument("--lr-scale", type=float, default=1.0,
+                    help="学习率缩放（续训已微调过的模型时可调小，如 0.7）")
     ap.add_argument("--warmup", type=int, default=10)
     ap.add_argument("--seed", type=int, default=20261003)
     args = ap.parse_args()
     from transformers import AutoTokenizer, Qwen3ForCausalLM
     tok = AutoTokenizer.from_pretrained(ROOT / "v2" / "tokenizer")
     out_root = Path(args.out)
+    data_root = Path(args.data_root)
     out_root.mkdir(parents=True, exist_ok=True)
     init_dir = Path(args.init)
     summary = []
     for L, batch, accum, lr in SPECS:
-        ids = np.load(V3 / "data" / f"retr{L}_ids.npy", mmap_mode="r")
-        mask = np.load(V3 / "data" / f"retr{L}_mask.npy", mmap_mode="r")
+        ids = np.load(data_root / f"retr{L}_ids.npy", mmap_mode="r")
+        mask = np.load(data_root / f"retr{L}_mask.npy", mmap_mode="r")
+        lr = lr * args.lr_scale
         n_all = ids.shape[0]
         steps = max(1, n_all // (batch * accum))
         log(f"=== retrieval {L}: {n_all} samples | init {init_dir} | {batch}x{accum} | "
