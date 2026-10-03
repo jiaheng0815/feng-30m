@@ -91,12 +91,16 @@ def main() -> None:
                     help="干扰项里有多大比例是'同位数、只差一位'的近似值（练数字精度）")
     ap.add_argument("--negative-frac", type=float, default=0.08,
                     help="多大比例的样本是'文中没有该信息'，正确答案是说明没有提到")
+    ap.add_argument("--negative-fracs", default="",
+                    help="按长度分别指定负样本比例（如 0.10,0.15,0.20,0.30），优先级高于 --negative-frac")
     ap.add_argument("--repeat-frac", type=float, default=0.0,
                     help="多大比例的正样本把目标事实**重复两遍**（练逐位精确拷贝）")
     args = ap.parse_args()
     specs = SPECS
     if args.specs:
         specs = [(int(a), int(b)) for a, b in (s.split(":") for s in args.specs.split(","))]
+    neg_fracs = ([float(x) for x in args.negative_fracs.split(",")]
+                 if args.negative_fracs else [])
 
     from tokenizers import Tokenizer
     tk = Tokenizer.from_file(str(ROOT / "v2" / "tokenizer" / "tokenizer.json"))
@@ -110,7 +114,8 @@ def main() -> None:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     meta = []
-    for L, n in specs:
+    for li, (L, n) in enumerate(specs):
+        neg_frac = neg_fracs[li] if neg_fracs else args.negative_frac
         rng = random.Random(args.seed + L)
         ids = np.zeros((n, L), dtype=np.uint16)
         mask = np.zeros((n, L), dtype=np.uint8)
@@ -118,14 +123,21 @@ def main() -> None:
             kind, tpl, q_tpls, gen = KINDS[rng.randrange(len(KINDS))]
 
             # 「文中没有这条信息」的负样本：问题照问，正确答案是说明没有提到
-            if rng.random() < args.negative_frac:
+            if rng.random() < neg_frac:
                 q = enc("<|im_start|>user\n" + rng.choice(q_tpls) +
                         "<|im_end|>\n<|im_start|>assistant\n")
                 a = enc("文中没有提到。<|im_end|>")
                 others = [k for k in KINDS if k[0] != kind]
-                distract = [enc(others[rng.randrange(len(others))][1].format(
-                    c=make_value(rng, others[rng.randrange(len(others))][3])))
-                    for _ in range(rng.randint(2, 4))]
+                # **同位数诱饵**：文中一定存在一个和所问同类位数、但对象不同的数字，
+                # 逼模型学会"所问的那条不存在 → 说明没有提到"，而不是抓最近似的数字
+                if gen in NEAR_MISS:
+                    t2, g2 = NEAR_MISS[gen]
+                    distract = [enc(t2.format(c=make_value(rng, g2)))]
+                else:
+                    distract = []
+                while len(distract) < rng.randint(3, 5):
+                    k2, t2, _, g2 = KINDS[rng.randrange(len(KINDS))]
+                    distract.append(enc(t2.format(c=make_value(rng, g2))))
                 body_len = L - len(q) - len(a) - sum(map(len, distract))
                 start = rng.randrange(0, max(1, total - body_len - 1))
                 row = flat[start:start + body_len].astype(np.uint16).tolist()

@@ -145,7 +145,9 @@ INFO:gguf.vocab:Adding 16124 merge(s).
 INFO:gguf.vocab:Setting special token type bos to 1
 INFO:gguf.vocab:Setting special token type eos to 0
 INFO:gguf.vocab:Setting special token type pad to 3
+INFO:gguf.vocab:Setting chat_template to {%- for message in messages %}{{- '<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n' }}{%- endfor %}{%- if add_generation_prompt %}{{- '<|im_start|>assistant\n' }}{%- endif %}
+
 INFO:gguf.gguf_writer:Writing the following files:
-INFO:gguf.gguf_writer:v3_3\gguf\feng-30m-f16.gguf: n_tensors = 123, total_size = 58.9M
-Writing:   0%|          | 0.00/58.9M [00:00<?, ?byte/s]Writing:  43%|¨€¨€¨€¨€¨†     | 25.1M/58.9M [00:00<00:00, 248Mbyte/s]Writing:  85%|¨€¨€¨€¨€¨€¨€¨€¨€¨… | 50.0M/58.9M [00:00<00:00, 217Mbyte/s]Writing: 100%|¨€¨€¨€¨€¨€¨€¨€¨€¨€¨€| 58.9M/58.9M [00:00<00:00, 222Mbyte/s]
-INFO:hf-to-gguf:Model successfully exported to v3_3\gguf\feng-30m-f16.gguf
+INFO:gguf.gguf_writer:v3_4\gguf\feng-30m-f16.gguf: n_tensors = 123, total_size = 58.9M
+Writing:   0%|          | 0.00/58.9M [00:00<?, ?byte/s]Writing:  45%|¨€¨€¨€¨€¨…     | 26.3M/58.9M [00:00<00:00, 263Mbyte/s]Writing:  90%|¨€¨€¨€¨€¨€¨€¨€¨€¨€ | 53.3M/58.9M [00:00<00:00, 223Mbyte/s]Writing: 100%|¨€¨€¨€¨€¨€¨€¨€¨€¨€¨€| 58.9M/58.9M [00:00<00:00, 224Mbyte/s]
+INFO:hf-to-gguf:Model successfully exported to v3_4\gguf\feng-30m-f16.gguf
