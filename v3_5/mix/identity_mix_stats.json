@@ -1,0 +1,34 @@
+[
+  {
+    "seq": 4096,
+    "n": 60,
+    "identity": 3,
+    "chat": 0,
+    "retrieval": 57,
+    "tokens": 245760
+  },
+  {
+    "seq": 8192,
+    "n": 40,
+    "identity": 2,
+    "chat": 0,
+    "retrieval": 38,
+    "tokens": 327680
+  },
+  {
+    "seq": 16384,
+    "n": 250,
+    "identity": 12,
+    "chat": 0,
+    "retrieval": 238,
+    "tokens": 4096000
+  },
+  {
+    "seq": 32768,
+    "n": 150,
+    "identity": 4,
+    "chat": 0,
+    "retrieval": 146,
+    "tokens": 4915200
+  }
+]
