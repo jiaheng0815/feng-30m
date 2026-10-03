@@ -76,7 +76,7 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 flash 必须 **32 MB**：只有**前 16 MB 能被 mmap 直读**（NOR flash 24 位地址上限，**不是模块容量**），
 模型就放这里；tokenizer 分区在 16 MB 之后，用 `esp_partition_read` 读。
 PSRAM 必须 **16 MB**（8 MB 版本放不下 1024 ctx 的 KV）。
-实测 **1.86 tok/s @ 1024 上下文**（int8 KV）。
+实测 **1.84 tok/s @ 1024 上下文**（int8 KV，v3.4 权重；v3 权重为 1.86 tok/s）。
 
 分区偏移（与仓库 `esp32s3-feng-llm/partitions.csv` 一致）：
 
@@ -156,7 +156,7 @@ python scripts\eval_longctx.py --model v3\retr_sft\ctx32768\final --ctx 4096,819
 | 范围内 18 题 | 9/10 |
 | 针检索 @4k / 8k / 16k / 32k（每长度 32 题） | **28/30/27/28（合计 113/128）** |
 | 「文中没有该信息」正确拒答 | **56/64（88%）** |
-| GGUF 体积 / ESP32-S3 速度 | Q4_K_M 23.7 MB / **1.86 tok/s @1024 ctx** |
+| GGUF 体积 / ESP32-S3 速度 | Q4_K_M 23.7 MB / **1.84 tok/s @1024 ctx**（v3.4 实机实测） |
 
 ## 8. 已知限制
 

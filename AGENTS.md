@@ -11,7 +11,9 @@
   模型不得自称 Qwen/ChatGPT，也不得说自己是"微调"（训练数据来自教师蒸馏，模型本身从零训练）。
 - **教师谱系**：**v1** 用 **Qwen 3.5 0.8B 微调版**（feng-0.8b，bf16）生成的数据训练；**v2 / v3** 用 **bonsai2-27b（27B）**训练。
 - 三代演进：v1（8 层 / 32k 词表，只能对话，无法上板）→ v2（16k 词表 + 1.5B token 预训练 + 27B 教师 SFT，首次上板）→ **v3（当前部署版：v2 + 渐进长上下文 + 合成检索 SFT）**。
-- v3 现状：范围评测 10/10，针检索 4k/8k/16k/32k = 3/3、3/3、2/3、2/3，板上 **1.86 tok/s @1024 ctx**（int8 KV）。
+- v3.4 现状（当前部署）：身份 **12/12**（自称"由个人开发者 jiaheng 独立开发训练的 AI"），
+  针检索按每长度 32 题 = **28/30/27/28**（单类别口径；多类别 100/128），
+  「文中没有」正确拒答 **56/64（88%）**，板上 **1.84 tok/s @1024 ctx**，10 轮 10/10。
 - 硬件：RTX 5060 Ti 16GB（训练）+ i7-12700KF；ESP32-S3-**WROOM-2-N32R16V** 开发板（32MB Octal flash + 16MB Octal PSRAM，1.8V）。
 
 ## 2. 运行环境与路径解析（代码里已无硬编码盘符）
@@ -132,7 +134,7 @@ python scripts\esp32_enc_test.py COM20
 5. **身份不能掉**：训练语料里身份样本过采样（v1 是 15×），并过滤提及其他 AI 身份（ChatGPT/通义…）的样本；每次出模型都要用 `eval_planA_scope.py` 验证身份题。
 6. **flash 前 16MB 的 mmap 窗口是硬边界**（NOR flash 24 位地址上限，**不是模块容量**——模块是 32MB）：`model.bin`（15,659,904 B = 0xEEF380）必须结束在 0x1000000 之前；现行分区为 `model 0x110000/0xEF0000`、`tokdata 0x1000000/0x80000`（tokdata 用 `esp_partition_read` 读，可放窗口外）。烧录偏移必须与 `esp32s3-feng-llm/partitions.csv` 保持一致：`flash.ps1` 已按此修正为 `model=0x110000` / `tokdata=0x1000000`，改动分区表时要同步改脚本。
 7. **板端内存账**：权重只能 flash mmap 流式读，不能预载进 SRAM（每层 Q4 ≈0.95MB，内部 SRAM 只剩 ~271KB）；KV 用 int8（`FENG_KV_INT8=1`，`main/main.c` 的 `MAX_CTX=1024`，9.93MB PSRAM）；板上 32k 上下文在 KV 内存上不可能，长文只能走滑窗/attention sink/线性注意力。
-8. **速度现状**：标量 Q4 内核已到极限（4.1 周期/权重，1.86 tok/s≈537ms/token），下一个杠杆是 PIE（`ee.vmulas.s8.accx` 128 位 int8 SIMD，预期 2–3x）；不要再做内层展开之类的标量微调（已证明会变慢）。
+8. **速度现状**：标量 Q4 内核已到极限（4.1 周期/权重，1.84–1.86 tok/s ≈ 537–545 ms/token），下一个杠杆是 PIE（`ee.vmulas.s8.accx` 128 位 int8 SIMD，预期 2–3x）；不要再做内层展开之类的标量微调（已证明会变慢）。
 9. **量化格式耦合**：Q4 block-64（4.25 bpw）；改 `QK` 必须同步改 C 侧 `QK`，且 `tools/export_model.py` 会生成 `ref_ids.json` / `ref_logits.bin` 供一致性校验。
 
 ## 7. 改动的验收清单

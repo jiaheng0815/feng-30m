@@ -127,8 +127,9 @@ python scripts\esp32_multi.py --port COM20          # 10 轮稳定性测试
 | IRAM 内核 | `FENG_HOT`（IRAM_ATTR）标注 GEMV 热函数 | 随固件生效，收益个位数百分比 |
 | 显存/内存账 | 权重仍走 flash mmap（108MB/s）；KV+激活在 PSRAM；SRAM 只放内核代码和激活 | 每层权重 Q4 ≈ 0.95MB，SRAM 仅余 271KB，权重不可能进 SRAM |
 
-部署模型换成 v3（`model_export_v3/`，14.93MB，身份/范围内 10/10，
-针检索 4k/8k/16k/32k = 3/3、3/3、2/3、2/3）。
+部署模型换成 v3.4（`esp32s3-feng-llm/model_export_v3_4/`，14.93MB，身份 12/12、
+范围内 9/10、针检索按每长度 32 题 = 28/30/27/28、拒答 88%），
+板端精度基线换成 `logs/board_baseline_v3_4.txt`（10 个固定问题，10/10 通过）。
 
 ### 7.1 板上实测（2026-10-02 深夜，已烧录）
 

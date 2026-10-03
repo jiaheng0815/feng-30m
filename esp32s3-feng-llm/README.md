@@ -154,7 +154,7 @@ PC 侧测试脚本：`python scripts\esp32_chat.py --port COM20 --question "你�
 | 采样 | 贪心 + 重复惩罚 1.15 | `sample_next()` |
 | 量化 | Q4 block-64（4.25 bpw） | `tools/export_model.py`；改 `QK` 需同步改 C 的 `QK` |
 | 内核 | Q4 查表（256 项浮点 LUT）+ 4 累加器 + 双核分半 + IRAM | 见 `feng_quant.c` / `feng_smp.c` |
-| 速度 | **1.86 tok/s** | 想再快：用 PIE（S3 的 128 位 SIMD）重写 int8 点积，预期再 2–3x |
+| 速度 | **1.84 tok/s**（v3.4 权重实机实测；v3 权重 1.86） | 想再快：用 PIE（S3 的 128 位 SIMD）重写 int8 点积，预期再 2–3x |
 
 ## 7. 目录
 
