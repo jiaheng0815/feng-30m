@@ -3,11 +3,18 @@
 把 **feng-30m**（Qwen3 架构：11 层 / hidden 448 / 7 头 MHA / FFN 896 / 16k 词表 /
 tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话**。
 
-当前部署的是 v3 权重（`../v3/retr_sft/ctx32768/final`，身份 10/10，
-针检索 4k/8k/16k/32k = 3/3、3/3、2/3、2/3，见 `../CHANGELOG.md`）。
+当前部署的是 **v3.4** 权重（`../v3_4/release/`，身份 12/12：自称"由个人开发者 jiaheng
+独立开发训练的 AI"；针检索按每长度 32 题复测 4k/8k/16k/32k = 28/30/27/28，
+文中没有答案时 88% 正确说明"没有提到"，见 `../CHANGELOG.md`）。
+
+**实机实测（2026-10-03，v3.4 已烧录）**：连续 10 轮问答 **10/10 成功、0 失败**，
+生成速度 **1.84 tok/s**（742 ms/token，1024 上下文 / int8 KV），GEMV 双核加速 1.93x；
+板端回复实测：`你是谁？` → `我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。我可以陪你聊天、帮你写作、翻译和写简单代码。`，
+`你是Qwen吗？` → `不是。我是 feng，由个人开发者 jiaheng 独立开发训练的 AI。`
+基线记录见 `../logs/board_baseline_v3_4.txt`。
 
 板端要的两个文件（`model.bin` + `tokenizer.bin`）有两个来源：**① 直接下载**
-[Releases](https://github.com/jiaheng0815/feng-30m/releases) 里的 `feng-30m-v3-release.zip`，
+[Releases](https://github.com/jiaheng0815/feng-30m/releases) 里的 `feng-30m-v3.4-release.zip`，
 取包内 `weights/esp32/`；**② 按下面第 1 节自己从 HF 权重导出**。只想跑起来就选 ①，跳过第 1 节。
 
 > 下文命令里的 `<...>` 都是占位符，换成你本机的路径；Python 脚本会自动解析项目内路径
@@ -197,4 +204,5 @@ I (2222) feng: gemv 896x448: 1-core 13187 us | 2-core 6832 us | speedup 1.93x
 I (16717) feng: prompt 11 | gen 14 | prefill 5875 ms | total 13463 ms | 1.86 tok/s
 ```
 
-对话实测：`5 轮 5/5`（身份/算术/闲聊均正常），`10 轮 10/10`（v2 版固件连续压测）。
+对话实测：v3.4 权重 **10 轮 10/10**（身份/算术/闲聊均正常，见 `../logs/board_baseline_v3_4.txt`）；
+早期版本另有 `5 轮 5/5`（v3 权重）与 `10 轮 10/10`（v2 版固件）记录。

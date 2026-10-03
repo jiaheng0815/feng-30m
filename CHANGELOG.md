@@ -42,6 +42,18 @@ python scripts\soup_models.py --models "v3_4/final/ctx32768/final,v3_3/final/ctx
   --weights "0.5,0.5" --out v3_4\release
 ```
 
+### 上板实测（2026-10-03，已烧录 v3.4）
+
+固件未变（只换模型分区），烧录 `model_export_v3_4/model.bin` + `tokenizer.bin` 后：
+
+| 项目 | 结果 |
+|---|---|
+| 稳定性 | **10 轮 10/10 成功、0 失败**（`logs/board_baseline_v3_4.txt`） |
+| 速度 | **1.84 tok/s**（742 ms/token @ 240MHz 双核） |
+| 内核自检 | GEMV 896×448 单核 13,187 µs / 双核 6,828 µs（1.93x）；mmap 流式读 108.3 MB/s |
+| 身份（板端实测） | `你是谁？` → `我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。…`；`你是Qwen吗？` → `不是。我是 feng，由个人开发者 jiaheng 独立开发训练的 AI。` |
+| 其他 | `中国的首都是哪里？` → 北京；`1+1等于几？` → 2 |
+
 ### 重要：评测口径修正（多类别复测）
 
 之前所有版本（含 v1~v3）的针检索都只测**一类事实**（"保险柜密码 + 固定问法"），
