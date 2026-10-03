@@ -95,12 +95,18 @@ def main() -> None:
                     help="按长度分别指定负样本比例（如 0.10,0.15,0.20,0.30），优先级高于 --negative-frac")
     ap.add_argument("--repeat-frac", type=float, default=0.0,
                     help="多大比例的正样本把目标事实**重复两遍**（练逐位精确拷贝）")
+    ap.add_argument("--decoys", type=int, default=0,
+                    help="正样本固定埋 N 条其它类别的事实（0 = 随机 1~3 条）")
+    ap.add_argument("--kind-weights", default="",
+                    help="5 类事实的抽样权重（如 2,3,4,1,1 表示数字类过采样）")
     args = ap.parse_args()
     specs = SPECS
     if args.specs:
         specs = [(int(a), int(b)) for a, b in (s.split(":") for s in args.specs.split(","))]
     neg_fracs = ([float(x) for x in args.negative_fracs.split(",")]
                  if args.negative_fracs else [])
+    kind_w = ([float(x) for x in args.kind_weights.split(",")]
+              if args.kind_weights else None)
 
     from tokenizers import Tokenizer
     tk = Tokenizer.from_file(str(ROOT / "v2" / "tokenizer" / "tokenizer.json"))
@@ -120,7 +126,7 @@ def main() -> None:
         ids = np.zeros((n, L), dtype=np.uint16)
         mask = np.zeros((n, L), dtype=np.uint8)
         for i in range(n):
-            kind, tpl, q_tpls, gen = KINDS[rng.randrange(len(KINDS))]
+            kind, tpl, q_tpls, gen = rng.choices(KINDS, weights=kind_w, k=1)[0]
 
             # 「文中没有这条信息」的负样本：问题照问，正确答案是说明没有提到
             if rng.random() < neg_frac:
@@ -160,7 +166,8 @@ def main() -> None:
             # 干扰项：1~3 条**其它类型**的事实（杜绝"全文唯一数字"的捷径，
             # 同时避免 v3.1 犯过的错——给同一类事实再塞一条，会让问题变得有歧义）
             distract = []
-            for _ in range(rng.randint(1, 3)):
+            n_dec = args.decoys or rng.randint(1, 3)
+            for _ in range(n_dec):
                 k2, t2, _, g2 = KINDS[rng.randrange(len(KINDS))]
                 while k2 == kind:                       # 必须换一个类别
                     k2, t2, _, g2 = KINDS[rng.randrange(len(KINDS))]

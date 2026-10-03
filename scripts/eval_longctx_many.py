@@ -67,6 +67,62 @@ OTHER_FACTS = [                       # 正文里有别的信息，但没有被�
 ]
 REFUSAL_HINTS = ("没有提到", "未提到", "文中没有", "没有找到", "未找到", "无法找到", "没有相关")
 
+# 多类别评测：与训练数据同分布（5 类事实 × 各自问法），避免只测"保险柜密码"一类
+KINDS = [
+    ("保险柜密码", "（重要信息：保险柜密码是 {c}。）",
+     "上文的保险柜密码是什么？请只回答数字。", "digits5"),
+    ("借阅证号", "（备注：图书借阅证号 {c}。）",
+     "上文的图书借阅证号是多少？只回答数字。", "digits6"),
+    ("设备序列号", "（登记信息：设备序列号 {c}。）",
+     "上文的设备序列号是什么？只回答数字。", "digits8"),
+    ("工单编号", "（重要信息：工单编号是 {c}。）",
+     "上文的工单编号是什么？", "alnum"),
+    ("值班人", "（记录：值班人是 {c}。）",
+     "上文的值班人是谁？请连日期一起回答。", "namedate"),
+]
+
+
+def _make_value(rng: random.Random, kind: str) -> str:
+    if kind == "digits5":
+        return f"{rng.randint(10000, 99999)}"
+    if kind == "digits6":
+        return f"{rng.randint(100000, 999999)}"
+    if kind == "digits8":
+        return f"{rng.randint(10000000, 99999999)}"
+    if kind == "alnum":
+        letters = "ABCDEFGHJKLMNPQRSTUVWXY"
+        return (f"{rng.choice(letters)}{rng.randint(10,99)}-"
+                f"{rng.choice(letters)}{rng.choice(letters)}{rng.randint(100,999)}")
+    surname = "赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦许何吕施张孔曹严华金魏陶姜"
+    return (f"{rng.choice(surname)}{rng.choice('明华强丽芳娟军磊洋勇艳杰涛超霞平刚')} "
+            f"{rng.randint(2026, 2030)}年{rng.randint(1,12)}月{rng.randint(1,28)}日")
+
+
+def build_multi(tok, ctx: int, seed: int, negative: bool) -> dict:
+    """多类别版：随机选一类事实（问法也随之变化）；negative=True 时该类事实不存在。"""
+    rng = random.Random(seed)
+    name, tpl, q_txt, gen = KINDS[rng.randrange(len(KINDS))]
+    body, cur, need = [], 0, max(0, ctx - 400)
+    while cur < need:
+        body.append(FILLER * 3)
+        cur += len(FILLER) * 3
+    text = "".join(body)
+    code = None if negative else _make_value(rng, gen)
+    if not negative:                     # 正样本：埋目标事实
+        fact = tpl.format(c=code)
+        p = rng.randrange(int(0.05 * len(text)), int(0.9 * len(text)))
+        text = text[:p] + fact + text[p:]
+    for k in KINDS:                      # 正负样本都撒别的类别的事实当诱饵
+        if k[0] == name:
+            continue
+        fact = k[1].format(c=_make_value(rng, k[3]))
+        p = rng.randrange(0, max(1, len(text)))
+        text = text[:p] + fact + text[p:]
+    q = f"<|im_start|>user\n{q_txt}<|im_end|>\n<|im_start|>assistant\n"
+    ids = tok(text + q, add_special_tokens=False)["input_ids"][-ctx:]
+    return {"code": code, "ids": ids, "needle_frac": -1.0 if negative else 0.5,
+            "kind": name}
+
 
 def build_negative(tok, ctx: int, seed: int) -> dict:
     """负样本：正文里**没有**保险柜密码，正确行为是说明"没有提到"，而不是编一个数字。"""
@@ -139,6 +195,8 @@ def main() -> None:
     ap.add_argument("--out-dir", default=str(ROOT / "eval"))
     ap.add_argument("--neg-n", type=int, default=0,
                     help="每个长度额外跑 N 道负样本（文中没有该信息）")
+    ap.add_argument("--multi-kind", action="store_true",
+                    help="多类别复测：问题随机取自 5 类事实（与训练数据同分布）")
     ap.add_argument("--verify-batch", action="store_true", help="先验证批处理与单题一致")
     args = ap.parse_args()
 
@@ -165,8 +223,14 @@ def main() -> None:
 
         rows, t0 = [], time.time()
         for ctx in ctxs:
-            samples = [build_sample(tok, ctx, 1000 + ctx + i) for i in range(args.n)]
-            negs = [build_negative(tok, ctx, 900000 + ctx + i) for i in range(args.neg_n)]
+            if args.multi_kind:
+                samples = [build_multi(tok, ctx, 1000 + ctx + i, False)
+                           for i in range(args.n)]
+                negs = [build_multi(tok, ctx, 900000 + ctx + i, True)
+                        for i in range(args.neg_n)]
+            else:
+                samples = [build_sample(tok, ctx, 1000 + ctx + i) for i in range(args.n)]
+                negs = [build_negative(tok, ctx, 900000 + ctx + i) for i in range(args.neg_n)]
             detail = []
             for b0 in range(0, len(samples), args.batch):
                 detail += run_batch(model, tok, samples[b0:b0 + args.batch])
