@@ -66,10 +66,16 @@ int main(int argc, char **argv)
     feng_kv_t kv = {0};
     kv.ctx = 512;
 #if FENG_KV_INT8 || FENG_KV_Q2
+#if FENG_KV_Q2
+    kv.k_cache = xmalloc((size_t)m.hdr.n_layers * kv.ctx * (m.hdr.hidden / 4));
+    kv.v_cache = xmalloc((size_t)m.hdr.n_layers * kv.ctx * (m.hdr.hidden / 4));
+#else
     kv.k_cache = xmalloc((size_t)m.hdr.n_layers * kv.ctx * m.hdr.hidden);
     kv.v_cache = xmalloc((size_t)m.hdr.n_layers * kv.ctx * m.hdr.hidden);
-    kv.k_scale = (uint16_t *)xmalloc((size_t)m.hdr.n_layers * kv.ctx * m.hdr.n_heads * 2);
-    kv.v_scale = (uint16_t *)xmalloc((size_t)m.hdr.n_layers * kv.ctx * m.hdr.n_heads * 2);
+#endif
+    const size_t n_sc = feng_kv_scale_slots(&m, kv.ctx);
+    kv.k_scale = (uint16_t *)xmalloc(n_sc * 2);
+    kv.v_scale = (uint16_t *)xmalloc(n_sc * 2);
 #else
     kv.k_cache = (float *)xmalloc(sizeof(float) * m.hdr.n_layers * kv.ctx * m.hdr.hidden);
     kv.v_cache = (float *)xmalloc(sizeof(float) * m.hdr.n_layers * kv.ctx * m.hdr.hidden);

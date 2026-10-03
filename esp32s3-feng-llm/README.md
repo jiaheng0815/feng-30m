@@ -151,8 +151,8 @@ PC 侧测试脚本：`python scripts\esp32_chat.py --port COM20 --question "你�
 
 | 项 | 值 | 说明 |
 |---|---|---|
-| 上下文 | **1024 token（int8 KV）** | `main/main.c` 的 `MAX_CTX`；int8 KV = 9.93 MB。改回 fp32 则只够 256 ctx |
-| KV 量化 | int8 + 每 (层,位置,头) 一个 fp16 scale | 开关在 `main/CMakeLists.txt`：`FENG_KV_INT8=1` |
+| 上下文 | **1024 token（int8 KV，默认）** | `main/main.c` 的 `MAX_CTX`；int8 KV = 9.93 MB。改回 fp32 则只够 256 ctx |
+| KV 量化 | int8 + 每 (层,位置,头) 一个 fp16 scale；可选 **q2 block8（2048 ctx）** | 开关在 `main/CMakeLists.txt`：`FENG_KV_INT8=1`（默认）或 `idf.py -DFENG_USE_Q2_KV=ON build`（2bit、块 8，KV 9.62 MB / 2048 ctx） |
 | 生成长度 | 96 token | `MAX_NEW` |
 | 采样 | 贪心 + 重复惩罚 1.15 | `sample_next()` |
 | 量化 | Q4 block-64（4.25 bpw） | `tools/export_model.py`；改 `QK` 需同步改 C 的 `QK` |

@@ -7,8 +7,9 @@
 
 /* KV cache mode: fp32 / int8 / q2, selected at compile time.
  *   FENG_KV_INT8=1 : int8 values + fp16 scale per (layer, position, head) -> 4x less PSRAM than fp32
- *   FENG_KV_Q2=1   : 2-bit values (4 packed per byte) + the same fp16 scales -> 16x less than fp32,
- *                    i.e. 4x the context of int8 in the same PSRAM budget.
+ *   FENG_KV_Q2=1   : 2-bit values (4 packed per byte) + one fp16 scale per FENG_KV_Q2_BLOCK values.
+ *                    block16 = 336 B/token/层（精度差）；block8 = 448 B/token/层（约省 int8 一半，
+ *                    实测长文召回与续写都可用，见 scripts/kv_quant_experiment.py）。
  * 两种量化模式都用 kv->k_scale / v_scale 存 fp16 scale。 */
 #ifndef FENG_KV_INT8
 #define FENG_KV_INT8 0
@@ -16,6 +17,12 @@
 #ifndef FENG_KV_Q2
 #define FENG_KV_Q2 0
 #endif
+#ifndef FENG_KV_Q2_BLOCK
+#define FENG_KV_Q2_BLOCK 16      /* 每多少个值共享一个 fp16 scale（须整除 head_dim、是 4 的倍数） */
+#endif
+
+#define FENG_STR2(x) #x
+#define FENG_STR(x) FENG_STR2(x)
 
 #if defined(ESP_PLATFORM)
 #include "esp_attr.h"
@@ -97,6 +104,8 @@ typedef struct {
 } feng_workspace_t;
 
 size_t feng_kv_bytes(const feng_model_t *m, int ctx);
+/* fp16 scale slots for ONE cache (K or V) in the current KV mode; 0 for fp32 */
+size_t feng_kv_scale_slots(const feng_model_t *m, int ctx);
 size_t feng_ws_bytes(const feng_model_t *m, int ctx);
 
 /* run one token through the model, returns logits pointer (vocab floats) */

@@ -60,6 +60,28 @@ v3.6 的取舍：**用 2~5 题的检索（噪声级）换掉 13 处日常对话�
 `eval/longctx32_v3_6r_final_ctx32768_final.json`、`eval/longctx32multi_v3_6r_final_ctx32768_final.json`、
 `eval/v3_6_scope.json`、`logs/board_v3_6_speed.txt`。
 
+### 附：KV Q2 改进版复测（32 题 C 引擎矩阵，2026-10-04）
+
+v3.5 时 Q2 KV 被判"不能用"（对称 2bit、每 16 值一块 scale，长提示直接复读）。这轮把量化方案
+逐一在真模型上试掉（`scripts/kv_quant_experiment.py`、`scripts/kv_quant_suite.py`，GPU 模拟），
+再把胜出方案写进 C 引擎，用 **32 题矩阵**（`esp32s3-feng-llm/pc/pc_kv_suite.c`：28 个短任务 +
+4 个 1.5k token 长文取件码召回）在同一份 C 代码上按模式编译对比：
+
+| KV 模式 | 短任务 | 长文召回 | KV 内存 @2048 ctx | 备注 |
+|---|---|---|---|---|
+| fp32 | 27/27 + 1 自由 | 4/4 | 77.00 MB | 基线 |
+| int8（现役） | **27/27** + 1 | **4/4** | 19.85 MB | 与 fp32 输出逐字一致 |
+| q2 block16（v3.5 旧方案） | 22/27 + 1 | 3/4 | 7.22 MB | 数学/常识/情绪/推荐出错，召回也开始丢 |
+| **q2 block8（新）** | **24/27** + 1 | **4/4** | **9.62 MB** | 续写保真 0.33→0.73；板端 10/10 |
+
+- 新方案 = 非对称仍不行、对称 2bit 但 **块 16→8**（scale 内存翻倍换精度）。
+  32 题里 q2b8 仍比 int8 少 3 题（太阳方向、7×8、电影名截断），**能用但不等于无损**。
+- 板端：固件改为编译期开关 `-DFENG_USE_Q2_KV=ON`（`main/CMakeLists.txt`），
+  q2b8 把上下文从 1024 提到 **2048**（KV 9.62 MB），10 轮实测 10/10（`logs/board_q2kv_multi.txt`）；
+  默认仍是 int8（1024 ctx）。
+- 复现：`pc_kv_suite_{fp32,i8,q2,q2b8}.exe <model_export> pc/prompt_long.txt 5200`；
+  日志 `logs/pc_kv_suite32_{fp32,i8,q2,q2b8}.txt`。
+
 ### 复现
 
 ```powershell

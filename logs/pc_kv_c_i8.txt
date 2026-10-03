@@ -1,0 +1,2 @@
+mode=int8  ctx=2048  kv=19.85 MB  prompt_tokens=1060  gen=64
+OUT: 在遥远的山谷里，风过着。

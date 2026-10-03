@@ -1,0 +1,247 @@
+{
+  "model": "D:\\wt\\feng-distill-30m\\v3_6\\release",
+  "needle": [
+    {
+      "chars": 2400,
+      "pos": 0.25,
+      "code": "456794",
+      "schemes": {
+        "fp32": {
+          "ok": true,
+          "text": "456794",
+          "sec": 1.8
+        },
+        "int8": {
+          "ok": true,
+          "text": "456794",
+          "sec": 0.9
+        },
+        "sym2b16": {
+          "ok": true,
+          "text": "456794",
+          "sec": 0.9
+        },
+        "asym2b16h": {
+          "ok": true,
+          "text": "456794",
+          "sec": 0.9
+        },
+        "sym2b8": {
+          "ok": true,
+          "text": "456794",
+          "sec": 0.9
+        },
+        "asym2b8h": {
+          "ok": true,
+          "text": "456794",
+          "sec": 0.9
+        },
+        "asym2b8": {
+          "ok": true,
+          "text": "456794",
+          "sec": 0.8
+        },
+        "q3b16": {
+          "ok": true,
+          "text": "456794",
+          "sec": 0.9
+        }
+      }
+    },
+    {
+      "chars": 2400,
+      "pos": 0.7,
+      "code": "459854",
+      "schemes": {
+        "fp32": {
+          "ok": true,
+          "text": "459854",
+          "sec": 0.7
+        },
+        "int8": {
+          "ok": true,
+          "text": "459854",
+          "sec": 0.8
+        },
+        "sym2b16": {
+          "ok": true,
+          "text": "459854",
+          "sec": 0.9
+        },
+        "asym2b16h": {
+          "ok": true,
+          "text": "459854",
+          "sec": 0.9
+        },
+        "sym2b8": {
+          "ok": true,
+          "text": "459854",
+          "sec": 0.9
+        },
+        "asym2b8h": {
+          "ok": true,
+          "text": "459854",
+          "sec": 0.9
+        },
+        "asym2b8": {
+          "ok": true,
+          "text": "459854",
+          "sec": 0.8
+        },
+        "q3b16": {
+          "ok": true,
+          "text": "459854",
+          "sec": 0.9
+        }
+      }
+    },
+    {
+      "chars": 9600,
+      "pos": 0.25,
+      "code": "274456",
+      "schemes": {
+        "fp32": {
+          "ok": false,
+          "text": "29456",
+          "sec": 2.3
+        },
+        "int8": {
+          "ok": false,
+          "text": "29456",
+          "sec": 2.7
+        },
+        "sym2b16": {
+          "ok": false,
+          "text": "74456",
+          "sec": 2.9
+        },
+        "asym2b16h": {
+          "ok": false,
+          "text": "294456",
+          "sec": 3.2
+        },
+        "sym2b8": {
+          "ok": false,
+          "text": "294456",
+          "sec": 2.9
+        },
+        "asym2b8h": {
+          "ok": false,
+          "text": "29456",
+          "sec": 3.1
+        },
+        "asym2b8": {
+          "ok": false,
+          "text": "29456",
+          "sec": 2.9
+        },
+        "q3b16": {
+          "ok": false,
+          "text": "29456",
+          "sec": 2.8
+        }
+      }
+    },
+    {
+      "chars": 9600,
+      "pos": 0.7,
+      "code": "317337",
+      "schemes": {
+        "fp32": {
+          "ok": true,
+          "text": "317337",
+          "sec": 2.2
+        },
+        "int8": {
+          "ok": true,
+          "text": "317337",
+          "sec": 2.7
+        },
+        "sym2b16": {
+          "ok": false,
+          "text": "31733337",
+          "sec": 3.0
+        },
+        "asym2b16h": {
+          "ok": true,
+          "text": "317337",
+          "sec": 3.1
+        },
+        "sym2b8": {
+          "ok": true,
+          "text": "317337",
+          "sec": 2.9
+        },
+        "asym2b8h": {
+          "ok": true,
+          "text": "317337",
+          "sec": 3.1
+        },
+        "asym2b8": {
+          "ok": true,
+          "text": "317337",
+          "sec": 2.9
+        },
+        "q3b16": {
+          "ok": true,
+          "text": "317337",
+          "sec": 3.1
+        }
+      }
+    }
+  ],
+  "prose": {
+    "schemes": {
+      "fp32": {
+        "first_div": 15,
+        "match": 1.0,
+        "text": "在遥远山谷里，风过了一半，长起来。"
+      },
+      "int8": {
+        "first_div": 15,
+        "match": 1.0,
+        "text": "在遥远山谷里，风过了一半，长起来。"
+      },
+      "sym2b16": {
+        "first_div": 5,
+        "match": 0.3333333333333333,
+        "text": "在遥远山谷上，风过了一半，看不到风。"
+      },
+      "asym2b16h": {
+        "first_div": 9,
+        "match": 0.6,
+        "text": "在遥远山谷里，风过路又走几次，同桌人一起看重了。"
+      },
+      "sym2b8": {
+        "first_div": 11,
+        "match": 0.7333333333333333,
+        "text": "在遥远山谷里，风过了一半。"
+      },
+      "asym2b8h": {
+        "first_div": 12,
+        "match": 0.8,
+        "text": "在遥远山谷里，风过了一半，学生们一起看重物。"
+      },
+      "asym2b8": {
+        "first_div": 12,
+        "match": 0.8,
+        "text": "在遥远山谷里，风过了一半，学生们也一起看鱼。"
+      },
+      "q3b16": {
+        "first_div": 11,
+        "match": 0.7333333333333333,
+        "text": "在遥远山谷里，风过了一半。"
+      }
+    }
+  },
+  "bytes_per_token_per_layer": {
+    "fp32": 3584,
+    "int8": 924,
+    "sym2b16": 336.0,
+    "asym2b16h": 448.0,
+    "sym2b8": 448.0,
+    "asym2b8h": 672.0,
+    "asym2b8": 448.0,
+    "q3b16": 448.0
+  }
+}

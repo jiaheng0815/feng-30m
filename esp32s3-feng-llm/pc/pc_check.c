@@ -94,10 +94,8 @@ int main(int argc, char **argv)
     kv.k_cache = (float *)xmalloc(sizeof(float) * m.hdr.n_layers * kv.ctx * m.hdr.hidden);
     kv.v_cache = (float *)xmalloc(sizeof(float) * m.hdr.n_layers * kv.ctx * m.hdr.hidden);
 #if FENG_KV_INT8 || FENG_KV_Q2
-    /* 量化 KV 模式需要 fp16 scale：int8 按 (layer,pos,head)，q2 按每 16 值一块，
-     * 这里按两者中较大的那个分配。 */
-    const size_t n_sc = (size_t)m.hdr.n_layers * kv.ctx *
-                        (m.hdr.n_heads > m.hdr.hidden / 16 ? m.hdr.n_heads : m.hdr.hidden / 16);
+    /* 量化 KV 模式需要 fp16 scale：数量由当前模式决定（int8 按 head，q2 按块） */
+    const size_t n_sc = feng_kv_scale_slots(&m, kv.ctx);
     kv.k_scale = (uint16_t *)xmalloc(n_sc * 2);
     kv.v_scale = (uint16_t *)xmalloc(n_sc * 2);
 #else

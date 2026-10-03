@@ -1,0 +1,89 @@
+{
+  "model": "D:\\wt\\feng-distill-30m\\v3_6\\release",
+  "needle": [
+    {
+      "chars": 600,
+      "pos": 0.25,
+      "code": "494450",
+      "schemes": {
+        "fp32": {
+          "ok": true,
+          "text": "494450",
+          "sec": 1.1
+        },
+        "int8": {
+          "ok": true,
+          "text": "494450",
+          "sec": 0.3
+        },
+        "sym2b16": {
+          "ok": true,
+          "text": "494450",
+          "sec": 0.2
+        },
+        "asym2b16": {
+          "ok": true,
+          "text": "494450",
+          "sec": 1.6
+        }
+      }
+    },
+    {
+      "chars": 600,
+      "pos": 0.7,
+      "code": "422198",
+      "schemes": {
+        "fp32": {
+          "ok": true,
+          "text": "422198",
+          "sec": 0.1
+        },
+        "int8": {
+          "ok": true,
+          "text": "422198",
+          "sec": 0.1
+        },
+        "sym2b16": {
+          "ok": true,
+          "text": "422198",
+          "sec": 0.2
+        },
+        "asym2b16": {
+          "ok": true,
+          "text": "422198",
+          "sec": 0.1
+        }
+      }
+    }
+  ],
+  "prose": {
+    "schemes": {
+      "fp32": {
+        "first_div": 15,
+        "match": 1.0,
+        "text": "在遥远山谷里，风过了一半，长起来。"
+      },
+      "int8": {
+        "first_div": 15,
+        "match": 1.0,
+        "text": "在遥远山谷里，风过了一半，长起来。"
+      },
+      "sym2b16": {
+        "first_div": 5,
+        "match": 0.3333333333333333,
+        "text": "在遥远山谷上，风过了一半，看不到风。"
+      },
+      "asym2b16": {
+        "first_div": 9,
+        "match": 0.6,
+        "text": "在遥远山谷里，风过路着，看不到风。"
+      }
+    }
+  },
+  "bytes_per_token_per_layer": {
+    "fp32": 3584,
+    "int8": 924,
+    "sym2b16": 336.0,
+    "asym2b16": 336.0
+  }
+}

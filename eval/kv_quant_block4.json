@@ -1,0 +1,105 @@
+{
+  "model": "D:\\wt\\feng-distill-30m\\v3_6\\release",
+  "needle": [
+    {
+      "chars": 4800,
+      "pos": 0.25,
+      "code": "787825",
+      "schemes": {
+        "fp32": {
+          "ok": true,
+          "text": "787825",
+          "sec": 2.3
+        },
+        "int8": {
+          "ok": true,
+          "text": "787825",
+          "sec": 1.5
+        },
+        "sym2b8": {
+          "ok": true,
+          "text": "787825",
+          "sec": 1.5
+        },
+        "sym2b4": {
+          "ok": true,
+          "text": "787825",
+          "sec": 1.5
+        },
+        "asym2b8h": {
+          "ok": true,
+          "text": "787825",
+          "sec": 1.7
+        }
+      }
+    },
+    {
+      "chars": 4800,
+      "pos": 0.7,
+      "code": "560695",
+      "schemes": {
+        "fp32": {
+          "ok": true,
+          "text": "560695",
+          "sec": 1.2
+        },
+        "int8": {
+          "ok": true,
+          "text": "560695",
+          "sec": 1.5
+        },
+        "sym2b8": {
+          "ok": true,
+          "text": "560695",
+          "sec": 1.6
+        },
+        "sym2b4": {
+          "ok": true,
+          "text": "560695",
+          "sec": 1.6
+        },
+        "asym2b8h": {
+          "ok": true,
+          "text": "560695",
+          "sec": 1.7
+        }
+      }
+    }
+  ],
+  "prose": {
+    "schemes": {
+      "fp32": {
+        "first_div": 15,
+        "match": 1.0,
+        "text": "在遥远山谷里，风过了一半，长起来。"
+      },
+      "int8": {
+        "first_div": 15,
+        "match": 1.0,
+        "text": "在遥远山谷里，风过了一半，长起来。"
+      },
+      "sym2b8": {
+        "first_div": 11,
+        "match": 0.7333333333333333,
+        "text": "在遥远山谷里，风过了一半。"
+      },
+      "sym2b4": {
+        "first_div": 9,
+        "match": 0.6,
+        "text": "在遥远山谷里，风过着了。"
+      },
+      "asym2b8h": {
+        "first_div": 12,
+        "match": 0.8,
+        "text": "在遥远山谷里，风过了一半，学生们一起看重物。"
+      }
+    }
+  },
+  "bytes_per_token_per_layer": {
+    "fp32": 3584,
+    "int8": 924,
+    "sym2b8": 448.0,
+    "sym2b4": 672.0,
+    "asym2b8h": 672.0
+  }
+}

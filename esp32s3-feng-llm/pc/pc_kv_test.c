@@ -83,8 +83,7 @@ int main(int argc, char **argv)
     kv.k_cache = xmalloc(kv_bytes / 2 + 64);
     kv.v_cache = xmalloc(kv_bytes / 2 + 64);
 #if FENG_KV_INT8 || FENG_KV_Q2
-    const size_t n_sc = (size_t)m.hdr.n_layers * ctx *
-                        (m.hdr.n_heads > m.hdr.hidden / 16 ? m.hdr.n_heads : m.hdr.hidden / 16);
+    const size_t n_sc = feng_kv_scale_slots(&m, ctx);
     kv.k_scale = (uint16_t *)xmalloc(n_sc * 2);
     kv.v_scale = (uint16_t *)xmalloc(n_sc * 2);
 #endif

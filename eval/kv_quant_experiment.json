@@ -1,0 +1,413 @@
+{
+  "model": "D:\\wt\\feng-distill-30m\\v3_6\\release",
+  "needle": [
+    {
+      "chars": 600,
+      "pos": 0.25,
+      "code": "494450",
+      "schemes": {
+        "fp32": {
+          "ok": true,
+          "text": "494450",
+          "sec": 2.4
+        },
+        "int8": {
+          "ok": true,
+          "text": "494450",
+          "sec": 0.2
+        },
+        "sym2b16": {
+          "ok": true,
+          "text": "494450",
+          "sec": 0.1
+        },
+        "asym2b16": {
+          "ok": true,
+          "text": "494450",
+          "sec": 0.2
+        },
+        "asym2b8": {
+          "ok": true,
+          "text": "494450",
+          "sec": 0.2
+        },
+        "q3b16": {
+          "ok": true,
+          "text": "494450。",
+          "sec": 0.2
+        },
+        "kivi32": {
+          "ok": true,
+          "text": "494450",
+          "sec": 0.2
+        },
+        "kivi128": {
+          "ok": true,
+          "text": "494450",
+          "sec": 0.1
+        },
+        "k8v2": {
+          "ok": true,
+          "text": "494450",
+          "sec": 0.1
+        },
+        "k2v8": {
+          "ok": true,
+          "text": "494450",
+          "sec": 0.1
+        }
+      }
+    },
+    {
+      "chars": 600,
+      "pos": 0.7,
+      "code": "422198",
+      "schemes": {
+        "fp32": {
+          "ok": true,
+          "text": "422198",
+          "sec": 0.1
+        },
+        "int8": {
+          "ok": true,
+          "text": "422198",
+          "sec": 0.1
+        },
+        "sym2b16": {
+          "ok": true,
+          "text": "422198",
+          "sec": 0.1
+        },
+        "asym2b16": {
+          "ok": true,
+          "text": "422198",
+          "sec": 0.1
+        },
+        "asym2b8": {
+          "ok": true,
+          "text": "422198",
+          "sec": 0.1
+        },
+        "q3b16": {
+          "ok": true,
+          "text": "422198",
+          "sec": 0.1
+        },
+        "kivi32": {
+          "ok": true,
+          "text": "422198",
+          "sec": 0.2
+        },
+        "kivi128": {
+          "ok": true,
+          "text": "422198",
+          "sec": 0.2
+        },
+        "k8v2": {
+          "ok": true,
+          "text": "422198",
+          "sec": 0.1
+        },
+        "k2v8": {
+          "ok": true,
+          "text": "422198",
+          "sec": 0.1
+        }
+      }
+    },
+    {
+      "chars": 2400,
+      "pos": 0.25,
+      "code": "456794",
+      "schemes": {
+        "fp32": {
+          "ok": true,
+          "text": "456794",
+          "sec": 0.3
+        },
+        "int8": {
+          "ok": true,
+          "text": "456794",
+          "sec": 0.3
+        },
+        "sym2b16": {
+          "ok": true,
+          "text": "456794",
+          "sec": 0.4
+        },
+        "asym2b16": {
+          "ok": true,
+          "text": "456794",
+          "sec": 0.4
+        },
+        "asym2b8": {
+          "ok": true,
+          "text": "456794",
+          "sec": 0.4
+        },
+        "q3b16": {
+          "ok": true,
+          "text": "456794",
+          "sec": 0.4
+        },
+        "kivi32": {
+          "ok": true,
+          "text": "456794",
+          "sec": 0.5
+        },
+        "kivi128": {
+          "ok": true,
+          "text": "456794",
+          "sec": 0.4
+        },
+        "k8v2": {
+          "ok": true,
+          "text": "456794",
+          "sec": 0.4
+        },
+        "k2v8": {
+          "ok": true,
+          "text": "456794",
+          "sec": 0.4
+        }
+      }
+    },
+    {
+      "chars": 2400,
+      "pos": 0.7,
+      "code": "459854",
+      "schemes": {
+        "fp32": {
+          "ok": true,
+          "text": "459854",
+          "sec": 0.3
+        },
+        "int8": {
+          "ok": true,
+          "text": "459854",
+          "sec": 0.3
+        },
+        "sym2b16": {
+          "ok": true,
+          "text": "459854",
+          "sec": 0.4
+        },
+        "asym2b16": {
+          "ok": true,
+          "text": "459854",
+          "sec": 0.4
+        },
+        "asym2b8": {
+          "ok": true,
+          "text": "459854",
+          "sec": 0.4
+        },
+        "q3b16": {
+          "ok": true,
+          "text": "459854",
+          "sec": 0.4
+        },
+        "kivi32": {
+          "ok": true,
+          "text": "459854",
+          "sec": 0.5
+        },
+        "kivi128": {
+          "ok": true,
+          "text": "459854",
+          "sec": 0.4
+        },
+        "k8v2": {
+          "ok": true,
+          "text": "459854",
+          "sec": 0.3
+        },
+        "k2v8": {
+          "ok": true,
+          "text": "459854",
+          "sec": 0.4
+        }
+      }
+    },
+    {
+      "chars": 4800,
+      "pos": 0.25,
+      "code": "787825",
+      "schemes": {
+        "fp32": {
+          "ok": true,
+          "text": "787825",
+          "sec": 0.5
+        },
+        "int8": {
+          "ok": true,
+          "text": "787825",
+          "sec": 0.6
+        },
+        "sym2b16": {
+          "ok": true,
+          "text": "787825",
+          "sec": 0.6
+        },
+        "asym2b16": {
+          "ok": true,
+          "text": "787825",
+          "sec": 0.7
+        },
+        "asym2b8": {
+          "ok": true,
+          "text": "787825",
+          "sec": 0.7
+        },
+        "q3b16": {
+          "ok": true,
+          "text": "787825",
+          "sec": 0.7
+        },
+        "kivi32": {
+          "ok": true,
+          "text": "787825",
+          "sec": 0.9
+        },
+        "kivi128": {
+          "ok": true,
+          "text": "787825",
+          "sec": 0.7
+        },
+        "k8v2": {
+          "ok": true,
+          "text": "787825",
+          "sec": 0.6
+        },
+        "k2v8": {
+          "ok": true,
+          "text": "787825",
+          "sec": 0.6
+        }
+      }
+    },
+    {
+      "chars": 4800,
+      "pos": 0.7,
+      "code": "560695",
+      "schemes": {
+        "fp32": {
+          "ok": true,
+          "text": "560695",
+          "sec": 0.5
+        },
+        "int8": {
+          "ok": true,
+          "text": "560695",
+          "sec": 0.6
+        },
+        "sym2b16": {
+          "ok": true,
+          "text": "560695",
+          "sec": 0.7
+        },
+        "asym2b16": {
+          "ok": true,
+          "text": "560695",
+          "sec": 0.7
+        },
+        "asym2b8": {
+          "ok": true,
+          "text": "560695",
+          "sec": 0.7
+        },
+        "q3b16": {
+          "ok": true,
+          "text": "560695",
+          "sec": 0.7
+        },
+        "kivi32": {
+          "ok": true,
+          "text": "560695",
+          "sec": 0.9
+        },
+        "kivi128": {
+          "ok": true,
+          "text": "560695",
+          "sec": 0.7
+        },
+        "k8v2": {
+          "ok": true,
+          "text": "560695",
+          "sec": 0.7
+        },
+        "k2v8": {
+          "ok": true,
+          "text": "560695",
+          "sec": 0.7
+        }
+      }
+    }
+  ],
+  "prose": {
+    "schemes": {
+      "fp32": {
+        "first_div": 15,
+        "match": 1.0,
+        "text": "在遥远山谷里，风过了一半，长起来。"
+      },
+      "int8": {
+        "first_div": 15,
+        "match": 1.0,
+        "text": "在遥远山谷里，风过了一半，长起来。"
+      },
+      "sym2b16": {
+        "first_div": 5,
+        "match": 0.3333333333333333,
+        "text": "在遥远山谷上，风过了一半，看不到风。"
+      },
+      "asym2b16": {
+        "first_div": 9,
+        "match": 0.6,
+        "text": "在遥远山谷里，风过路着，看不到风。"
+      },
+      "asym2b8": {
+        "first_div": 12,
+        "match": 0.8,
+        "text": "在遥远山谷里，风过了一半，学生们也一起看鱼。"
+      },
+      "q3b16": {
+        "first_div": 11,
+        "match": 0.7333333333333333,
+        "text": "在遥远山谷里，风过了一半。"
+      },
+      "kivi32": {
+        "first_div": 9,
+        "match": 0.6,
+        "text": "在遥远山谷里，风过着。"
+      },
+      "kivi128": {
+        "first_div": 9,
+        "match": 0.6,
+        "text": "在遥远山谷里，风过着了，人会看不到。"
+      },
+      "k8v2": {
+        "first_div": 9,
+        "match": 0.6,
+        "text": "在遥远山谷里，风过松林，村里人说时间像河水一样一去不"
+      },
+      "k2v8": {
+        "first_div": 9,
+        "match": 0.6,
+        "text": "在遥远山谷里，风过着了很远，看不到时间。"
+      }
+    }
+  },
+  "bytes_per_token_per_layer": {
+    "fp32": 3584,
+    "int8": 924,
+    "sym2b16": 336.0,
+    "asym2b16": 336.0,
+    "asym2b8": 448.0,
+    "q3b16": 448.0,
+    "kivi32": 308.0,
+    "kivi128": 286.0,
+    "k8v2": 630.0,
+    "k2v8": 630.0
+  }
+}

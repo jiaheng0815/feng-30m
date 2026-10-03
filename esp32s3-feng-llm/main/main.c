@@ -31,7 +31,9 @@ static const char *TAG = "feng";
  * 11*256*448*4 =  5.05 MB each -> 10.1 MB total, fits comfortably. */
 /* int8 KV cache is 4x smaller, which is what makes a 1024-token window fit the
  * 16 MB of PSRAM (fp32 only fits ~256). */
-#if FENG_KV_INT8
+#if FENG_KV_Q2
+#define MAX_CTX 2048        /* q2 block8：448 B/token/层 -> 2048 ctx ≈ 10.1 MB PSRAM */
+#elif FENG_KV_INT8
 #define MAX_CTX 1024
 #else
 #define MAX_CTX 256
@@ -184,11 +186,18 @@ static void setup_model(void)
 #if FENG_KV_INT8
     s_kv.k_cache = ps_alloc((size_t)s_model.hdr.n_layers * MAX_CTX * hidden);
     s_kv.v_cache = ps_alloc((size_t)s_model.hdr.n_layers * MAX_CTX * hidden);
-    s_kv.k_scale = (uint16_t *)ps_alloc((size_t)s_model.hdr.n_layers * MAX_CTX * s_model.hdr.n_heads * sizeof(uint16_t));
-    s_kv.v_scale = (uint16_t *)ps_alloc((size_t)s_model.hdr.n_layers * MAX_CTX * s_model.hdr.n_heads * sizeof(uint16_t));
+#elif FENG_KV_Q2
+    s_kv.k_cache = ps_alloc((size_t)s_model.hdr.n_layers * MAX_CTX * (hidden / 4));
+    s_kv.v_cache = ps_alloc((size_t)s_model.hdr.n_layers * MAX_CTX * (hidden / 4));
 #else
     s_kv.k_cache = ps_alloc_f32((size_t)s_model.hdr.n_layers * MAX_CTX * hidden);
     s_kv.v_cache = ps_alloc_f32((size_t)s_model.hdr.n_layers * MAX_CTX * hidden);
+#endif
+#if FENG_KV_INT8 || FENG_KV_Q2
+    const size_t n_sc = feng_kv_scale_slots(&s_model, MAX_CTX);
+    s_kv.k_scale = (uint16_t *)ps_alloc(n_sc * sizeof(uint16_t));
+    s_kv.v_scale = (uint16_t *)ps_alloc(n_sc * sizeof(uint16_t));
+#else
     s_kv.k_scale = NULL;
     s_kv.v_scale = NULL;
 #endif
@@ -205,8 +214,14 @@ static void setup_model(void)
     s_ws.ffn = ps_alloc_f32(s_model.hdr.ffn);
     s_ws.logits = ps_alloc_f32(s_model.hdr.vocab);
     s_ws.scratch = ps_alloc_f32(s_model.hdr.ffn > MAX_CTX ? s_model.hdr.ffn : MAX_CTX);
-    ESP_LOGI(TAG, "KV cache: %s, ctx %d, %.2f MB",
-             FENG_KV_INT8 ? "int8" : "fp32", MAX_CTX,
+#if FENG_KV_Q2
+    const char *kv_mode = "q2/block" FENG_STR(FENG_KV_Q2_BLOCK);
+#elif FENG_KV_INT8
+    const char *kv_mode = "int8";
+#else
+    const char *kv_mode = "fp32";
+#endif
+    ESP_LOGI(TAG, "KV cache: %s, ctx %d, %.2f MB", kv_mode, MAX_CTX,
              (double)feng_kv_bytes(&s_model, MAX_CTX) / 1048576.0);
     ESP_LOGI(TAG, "PSRAM free after setup: %u KB",
              (unsigned)(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024));
