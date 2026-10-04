@@ -5,7 +5,40 @@
 #include <stdio.h>
 #include <string.h>
 
+#if FENG_ATTN_PROF && defined(ESP_PLATFORM)
+#include "esp_cpu.h"
+unsigned long long g_prof_cycles[3];    /* K / softmax / V，单位 CPU 周期 */
+#endif
+
 /* fp16 -> f32 for norm weights etc. */
+/* 与 feng_quant.c::f16_to_f32 完全同算法的本地内联版：注意力内层每个 block
+ * 都要转一次 scale，走外部函数（~25 条指令/次、还有调用开销）在长上下文里
+ * 被放大成主要开销；内联后只剩位运算。数值逐位一致。 */
+static inline float f16_to_f32_local(uint16_t h)
+{
+    uint32_t sign = (uint32_t)(h >> 15) & 1u;
+    uint32_t exp = (uint32_t)(h >> 10) & 0x1Fu;
+    uint32_t man = (uint32_t)h & 0x3FFu;
+    uint32_t f;
+    if (exp == 0) {
+        if (man == 0) {
+            f = sign << 31;
+        } else {
+            exp = 127 - 15 + 1;
+            while ((man & 0x400u) == 0) { man <<= 1; exp--; }
+            man &= 0x3FFu;
+            f = (sign << 31) | (exp << 23) | (man << 13);
+        }
+    } else if (exp == 31) {
+        f = (sign << 31) | 0x7F800000u | (man << 13);
+    } else {
+        f = (sign << 31) | ((exp + 112) << 23) | (man << 13);
+    }
+    float out;
+    memcpy(&out, &f, 4);
+    return out;
+}
+
 static void f16_to_f32_vec(const uint16_t *src, float *dst, int n)
 {
     for (int i = 0; i < n; i++) {
@@ -32,6 +65,22 @@ static void f16_to_f32_vec(const uint16_t *src, float *dst, int n)
 /* scratch buffers live in .bss, not on the task stack (the S3's main stack is small) */
 static float g_scores[4096];    /* one score per (query, past key) position */
 static float g_tmp[512];
+#if FENG_KV_Q2 && FENG_Q2_LUT
+/* 字节 LUT：b -> { (b>>0&3)-1.5, (b>>2&3)-1.5, (b>>4&3)-1.5, (b>>6&3)-1.5 }
+ * 表达式与原内层完全相同，只把移位/掩码/整数转浮点换成一次 L1 查表。 */
+static float g_q2_lut[256][4];
+static int g_q2_lut_ready;
+static void q2_lut_init(void)
+{
+    if (g_q2_lut_ready) return;
+    for (int b = 0; b < 256; b++) {
+        for (int k = 0; k < 4; k++) {
+            g_q2_lut[b][k] = (float)((b >> (2 * k)) & 3) - 1.5f;
+        }
+    }
+    g_q2_lut_ready = 1;
+}
+#endif
 /* RoPE inverse frequencies, computed once (powf per token per head is expensive) */
 static float g_rope_inv[128];
 static int g_rope_ready;
@@ -131,6 +180,9 @@ float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int to
     const int f = m->hdr.ffn;
     float *x = ws->x, *xn = ws->xn, *q = ws->q, *k = ws->k, *v = ws->v;
     float *attn = ws->attn, *proj = ws->proj, *gate = ws->gate, *up = ws->up, *ffn = ws->ffn;
+#if FENG_KV_Q2 && FENG_Q2_LUT
+    q2_lut_init();
+#endif
 
     /* embedding lookup (fp16) */
     if (m->tok_embd_dtype == FENG_DT_FP16) {
@@ -223,15 +275,15 @@ float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int to
         const int qb = hd / 4;
         const int nb = hd / FENG_KV_Q2_BLOCK;         /* 每 head 的块数 */
         const int bw = FENG_KV_Q2_BLOCK / 4;          /* 每块的字节数 */
-        uint8_t *kc = (uint8_t *)kv->k_cache + (size_t)l * kv->ctx * (h / 4);
-        uint8_t *vc = (uint8_t *)kv->v_cache + (size_t)l * kv->ctx * (h / 4);
-        uint16_t *ksc = kv->k_scale + (size_t)l * kv->ctx * (h / FENG_KV_Q2_BLOCK);
-        uint16_t *vsc = kv->v_scale + (size_t)l * kv->ctx * (h / FENG_KV_Q2_BLOCK);
-        uint16_t *ksp = ksc + (size_t)pos * (h / FENG_KV_Q2_BLOCK);
-        uint16_t *vsp = vsc + (size_t)pos * (h / FENG_KV_Q2_BLOCK);
+        /* q2 布局是 [layer][head][t]（与 int8/fp32 的 [layer][t][head] 不同）：
+         * 逐 head 扫描时 t 连续，长上下文下是 PSRAM 顺序读；[layer][t][head] 每次
+         * 只取 16B 却要占一条 32B 缓存行（利用率 50%），长文时被放大。 */
         for (int hh = 0; hh < nh; hh++) {
-            uint8_t *kd = kc + (size_t)pos * (h / 4) + hh * qb;
-            uint8_t *vd = vc + (size_t)pos * (h / 4) + hh * qb;
+            const size_t row = ((size_t)l * nh + hh) * kv->ctx + pos;
+            uint8_t *kd = (uint8_t *)kv->k_cache + row * qb;
+            uint8_t *vd = (uint8_t *)kv->v_cache + row * qb;
+            uint16_t *ksp = kv->k_scale + row * nb;
+            uint16_t *vsp = kv->v_scale + row * nb;
             for (int blk = 0; blk < nb; blk++) {
                 const int base = hh * hd + blk * FENG_KV_Q2_BLOCK;
                 float ak = 1e-8f, av = 1e-8f;
@@ -242,8 +294,8 @@ float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int to
                     if (b > av) av = b;
                 }
                 const float sk = ak / 1.5f, sv = av / 1.5f;
-                ksp[hh * nb + blk] = feng_f32_to_f16(sk);
-                vsp[hh * nb + blk] = feng_f32_to_f16(sv);
+                ksp[blk] = feng_f32_to_f16(sk);
+                vsp[blk] = feng_f32_to_f16(sv);
                 for (int j = 0; j < bw; j++) {
                     uint8_t kb = 0, vb = 0;
                     for (int k4 = 0; k4 < 4; k4++) {
@@ -277,18 +329,36 @@ float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int to
                 const int8_t *kh = kc + (size_t)t * h + hh * hd;
                 float s = 0.f;
                 for (int d = 0; d < hd; d++) s += qh[d] * (float)kh[d];
-                s *= feng_f16_to_f32(ksc[(size_t)t * nh + hh]) * scale;
+                s *= f16_to_f32_local(ksc[(size_t)t * nh + hh]) * scale;
                 scores[t] = s;
                 if (s > maxs) maxs = s;
             }
 #elif FENG_KV_Q2
+            const uint8_t *krow = (const uint8_t *)kv->k_cache
+                                  + ((size_t)l * nh + hh) * kv->ctx * qb;
+            const uint16_t *ksrow = kv->k_scale + ((size_t)l * nh + hh) * kv->ctx * nb;
+#if FENG_ATTN_PROF
+            const unsigned pc0 = (unsigned)esp_cpu_get_cycle_count();
+#endif
             for (int t = 0; t <= pos; t++) {
-                const uint8_t *kh = kc + (size_t)t * (h / 4) + hh * qb;
-                const uint16_t *ks = ksc + (size_t)t * (h / FENG_KV_Q2_BLOCK)
-                                     + hh * nb;
+                const uint8_t *kh = krow + (size_t)t * qb;
+                const uint16_t *ks = ksrow + (size_t)t * nb;
                 float s = 0.f;
+#if FENG_Q2_LUT
                 for (int blk = 0; blk < nb; blk++) {
-                    const float sk = feng_f16_to_f32(ks[blk]);
+                    const float sk = f16_to_f32_local(ks[blk]);
+                    const uint8_t *bb = kh + blk * bw;
+                    int d = blk * FENG_KV_Q2_BLOCK;
+                    for (int j = 0; j < bw; j++) {
+                        const float *lu = g_q2_lut[bb[j]];
+                        for (int k4 = 0; k4 < 4; k4++) {
+                            s += qh[d++] * lu[k4] * sk;
+                        }
+                    }
+                }
+#else
+                for (int blk = 0; blk < nb; blk++) {
+                    const float sk = f16_to_f32_local(ks[blk]);
                     for (int j = 0; j < bw; j++) {
                         const uint8_t b = kh[blk * bw + j];
                         for (int k4 = 0; k4 < 4; k4++) {
@@ -298,10 +368,17 @@ float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int to
                         }
                     }
                 }
+#endif
                 s *= scale;
                 scores[t] = s;
                 if (s > maxs) maxs = s;
             }
+#if FENG_ATTN_PROF
+            {
+                const unsigned pc1 = (unsigned)esp_cpu_get_cycle_count();
+                g_prof_cycles[0] += (unsigned long long)(pc1 - pc0);
+            }
+#endif
 #else
             for (int t = 0; t <= pos; t++) {
                 const float *kh = kc + (size_t)t * h + hh * hd;
@@ -313,14 +390,20 @@ float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int to
             }
 #endif
             float sum = 0.f;
+#if FENG_ATTN_PROF
+            const unsigned ps0 = (unsigned)esp_cpu_get_cycle_count();
+#endif
             for (int t = 0; t <= pos; t++) {
                 scores[t] = expf(scores[t] - maxs);
                 sum += scores[t];
             }
             const float inv = 1.0f / sum;
+#if FENG_ATTN_PROF
+            g_prof_cycles[1] += (unsigned long long)((unsigned)esp_cpu_get_cycle_count() - ps0);
+#endif
 #if FENG_KV_INT8
             for (int t = 0; t <= pos; t++) {
-                pv[t] = scores[t] * feng_f16_to_f32(vsc[(size_t)t * nh + hh]);
+                pv[t] = scores[t] * f16_to_f32_local(vsc[(size_t)t * nh + hh]);
             }
             for (int d = 0; d < hd; d++) {
                 float acc = 0.f;
@@ -337,12 +420,31 @@ float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int to
             {
                 float vacc[64];
                 for (int d = 0; d < hd; d++) vacc[d] = 0.f;
+#if FENG_ATTN_PROF
+                const unsigned pv0 = (unsigned)esp_cpu_get_cycle_count();
+#endif
+                const uint8_t *vrow = (const uint8_t *)kv->v_cache
+                                      + ((size_t)l * nh + hh) * kv->ctx * qb;
+                const uint16_t *vsrow = kv->v_scale + ((size_t)l * nh + hh) * kv->ctx * nb;
                 for (int t = 0; t <= pos; t++) {
-                    const uint8_t *vb = vc + (size_t)t * (h / 4) + hh * qb;
-                    const uint16_t *vs = vsc + (size_t)t * (h / FENG_KV_Q2_BLOCK) + hh * nb;
+                    const uint8_t *vb = vrow + (size_t)t * qb;
+                    const uint16_t *vs = vsrow + (size_t)t * nb;
                     const float st = scores[t];
+#if FENG_Q2_LUT
                     for (int blk = 0; blk < nb; blk++) {
-                        const float sv = feng_f16_to_f32(vs[blk]);
+                        const float sv = f16_to_f32_local(vs[blk]);
+                        const uint8_t *bb = vb + blk * bw;
+                        int d = blk * FENG_KV_Q2_BLOCK;
+                        for (int j = 0; j < bw; j++) {
+                            const float *lu = g_q2_lut[bb[j]];
+                            for (int k4 = 0; k4 < 4; k4++) {
+                                vacc[d++] += (st * lu[k4]) * sv;
+                            }
+                        }
+                    }
+#else
+                    for (int blk = 0; blk < nb; blk++) {
+                        const float sv = f16_to_f32_local(vs[blk]);
                         for (int j = 0; j < bw; j++) {
                             const uint8_t b = vb[blk * bw + j];
                             for (int k4 = 0; k4 < 4; k4++) {
@@ -351,8 +453,12 @@ float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int to
                             }
                         }
                     }
+#endif
                 }
                 for (int d = 0; d < hd; d++) attn[hh * hd + d] = vacc[d] * inv;
+#if FENG_ATTN_PROF
+                g_prof_cycles[2] += (unsigned long long)((unsigned)esp_cpu_get_cycle_count() - pv0);
+#endif
             }
 #else
             for (int d = 0; d < hd; d++) {

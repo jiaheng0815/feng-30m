@@ -20,6 +20,16 @@
 #ifndef FENG_KV_Q2_BLOCK
 #define FENG_KV_Q2_BLOCK 16      /* 每多少个值共享一个 fp16 scale（须整除 head_dim、是 4 的倍数） */
 #endif
+/* q2 注意力内层用字节 LUT 取代移位/掩码/整数转浮点（数值与原式完全一致，结果逐位不变）。
+ * 默认开；-DFENG_Q2_LUT=0 可切回原实现做 A/B。 */
+#ifndef FENG_Q2_LUT
+#define FENG_Q2_LUT 1
+#endif
+/* 性能剖析（调试用，默认关）：累计 q2 注意力的 K / softmax / V 三段的 CPU 周期，
+ * 由 FENG_BENCH_CTX 基准打印，用来定位长上下文的时间去向。 */
+#ifndef FENG_ATTN_PROF
+#define FENG_ATTN_PROF 0
+#endif
 
 /* 实验开关：激活 int8 量化的 GEMV（给 PIE 铺路；默认 0 = 原来的 LUT/fp32 路径） */
 #ifndef FENG_GEMV_A8

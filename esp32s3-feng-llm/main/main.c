@@ -50,6 +50,12 @@ static const char *TAG = "feng";
 #endif
 #define MAX_NEW 96
 
+/* 注意力基准（-DFENG_BENCH_CTX=1 打开）：合成指定长度的 KV，测单次 forward 耗时，
+ * 用来评估 KV 访问/注意力优化在长上下文下的收益。 */
+#ifndef FENG_BENCH_CTX
+#define FENG_BENCH_CTX 0
+#endif
+
 static feng_model_t s_model;
 static feng_tok_t s_tok;
 static feng_kv_t s_kv;
@@ -71,6 +77,61 @@ static long long fw_uptime_us(void)
 {
     return esp_timer_get_time();
 }
+
+#if FENG_BENCH_CTX && FENG_KV_Q2
+/* 合成指定长度的 q2 KV，测单次 forward 的完整耗时（含权重 GEMV + 注意力）。
+ * 每个长度跑两次：第 1 次是冷缓存，第 2 次是热缓存；对比不同内核版本用第 2 次。 */
+static void bench_forward_ctx(void)
+{
+#if FENG_ATTN_PROF
+    extern unsigned long long g_prof_cycles[3];
+#endif
+    const int h = s_model.hdr.hidden;
+    const int n_layers = s_model.hdr.n_layers;
+    const int nh = s_model.hdr.n_heads, hd = s_model.hdr.head_dim;
+    const int qb = hd / 4, nb = hd / FENG_KV_Q2_BLOCK;
+    const int ctxs[] = {256, 1024, 2048};
+    const uint16_t one = feng_f32_to_f16(1.0f);
+    for (int ci = 0; ci < (int)(sizeof(ctxs) / sizeof(ctxs[0])); ci++) {
+        const int c = ctxs[ci];
+        if (c > s_kv.ctx) break;
+        for (int l = 0; l < n_layers; l++) {
+            /* q2 布局 [layer][head][t]：逐 head 填该头的 c 个 token */
+            for (int hh = 0; hh < nh; hh++) {
+                const size_t row = ((size_t)l * nh + hh) * s_kv.ctx;
+                uint8_t *kc = (uint8_t *)s_kv.k_cache + row * qb;
+                uint8_t *vc = (uint8_t *)s_kv.v_cache + row * qb;
+                uint16_t *ks = s_kv.k_scale + row * nb;
+                uint16_t *vs = s_kv.v_scale + row * nb;
+                for (size_t i = 0; i < (size_t)c * qb; i++) {
+                    kc[i] = (uint8_t)(i * 37 + 11);
+                    vc[i] = (uint8_t)(i * 53 + 7);
+                }
+                for (size_t i = 0; i < (size_t)c * nb; i++) { ks[i] = one; vs[i] = one; }
+            }
+        }
+        int64_t dt[2] = {0, 0};
+        for (int rep = 0; rep < 2; rep++) {
+#if FENG_ATTN_PROF
+            if (rep == 1) {
+                g_prof_cycles[0] = g_prof_cycles[1] = g_prof_cycles[2] = 0;
+            }
+#endif
+            const int64_t t0 = esp_timer_get_time();
+            feng_forward(&s_model, &s_kv, &s_ws, 100, c - 1);
+            dt[rep] = esp_timer_get_time() - t0;
+        }
+        ESP_LOGI(TAG, "attn bench ctx=%4d: cold %.0f ms/forward | warm %.0f ms/forward",
+                 c, dt[0] / 1000.0, dt[1] / 1000.0);
+#if FENG_ATTN_PROF
+        ESP_LOGI(TAG, "  prof ctx=%4d: K=%.0f ms  softmax=%.0f ms  V=%.0f ms",
+                 c, g_prof_cycles[0] / 240000.0, g_prof_cycles[1] / 240000.0,
+                 g_prof_cycles[2] / 240000.0);
+#endif
+    }
+    s_kv.len = 0;
+}
+#endif
 
 /* ---- serial I/O: this firmware owns UART0 (console is disabled in sdkconfig) ---- */
 /* write UTF-8 text out in whatever encoding the terminal speaks (GBK or UTF-8) */
@@ -433,6 +494,9 @@ void app_main(void)
     esp_chip_info(&info);
     ESP_LOGI(TAG, "feng-30m on ESP32-S3 (%d cores), flash 32MB / PSRAM 16MB", info.cores);
     setup_model();
+#if FENG_BENCH_CTX && FENG_KV_Q2
+    bench_forward_ctx();
+#endif
     feng_tools_set_time(fw_epoch_now);
     feng_tools_set_uptime(fw_uptime_us);
 

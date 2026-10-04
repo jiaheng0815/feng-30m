@@ -834,6 +834,41 @@ def check_facts() -> None:
             fail.append("logs/board_v3_15ci4_tools_time_rand.txt: 未记录 13/13 或时间一致性")
         else:
             print("    板端时间/随机数 tool 专项 13/13（与文档一致）")
+    # --- v3.15-embed 附录：长上下文注意力优化（位精确） ---
+    bench = ROOT / "logs" / "board_bench_attn_inl.txt"
+    if bench.exists():
+        t = bench.read_text(encoding="utf-8", errors="replace")
+        if "ctx= 256: cold 808 ms/forward" not in t or "ctx=2048: cold 2719 ms/forward" not in t:
+            fail.append("logs/board_bench_attn_inl.txt: 与文档的 808/2719 ms 不一致")
+        else:
+            print("    板端注意力基准 808/1631/2719 ms（与文档一致）")
+    prof = ROOT / "logs" / "board_bench_attn_prof.txt"
+    if prof.exists():
+        t = prof.read_text(encoding="utf-8", errors="replace")
+        if "K=894 ms" not in t or "softmax=169 ms" not in t or "V=1109 ms" not in t:
+            fail.append("logs/board_bench_attn_prof.txt: 与文档的 K/softmax/V 分解不一致")
+        else:
+            print("    板端注意力分解 K894 / softmax169 / V1109（与文档一致）")
+    ab = [ROOT / "logs" / f"pc_kv_suite32_v3_15ci4_q2b8_{k}.txt"
+          for k in ("nolut", "lut", "lin", "inl")]
+    texts = [p.read_text(encoding="utf-8", errors="replace") for p in ab if p.exists()]
+    if len(texts) >= 2:
+        if any(t != texts[0] for t in texts[1:]):
+            fail.append("q2 注意力优化各版 PC 套件输出不一致（应为逐字节一致）")
+        elif "短任务 27/27" not in texts[0] or "长文召回 4/4" not in texts[0]:
+            fail.append("q2 注意力优化 PC 套件不是 27/27 + 4/4")
+        else:
+            print(f"    q2 注意力优化 {len(texts)} 版输出逐字节一致（27/27+4/4，与文档一致）")
+    for fname, needle, label in [
+            ("pc_check_v3_15ci4_inl.txt", "MATCH", "fp32 参考 logits MATCH"),
+            ("board_v3_15ci4_tools_after_attnopt.txt", "13 成功 / 0 失败", "板端 tool 13/13"),
+            ("board_v3_15ci4_memory_after_attnopt.txt", "5 成功 / 0 失败", "板端多轮记忆 5/5")]:
+        p = ROOT / "logs" / fname
+        if p.exists():
+            if needle not in p.read_text(encoding="utf-8", errors="replace"):
+                fail.append(f"logs/{fname}: 未记录「{needle}」")
+            else:
+                print(f"    注意力优化后 {label}（与文档一致）")
 
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"

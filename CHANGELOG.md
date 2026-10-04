@@ -103,6 +103,43 @@ python scripts\esp32_multi.py --port COM20 --no-reset --questions "推荐一本�
 python scripts\esp32_tool_test.py --port COM20
 ```
 
+**长上下文注意力优化（位精确，2048 ctx 单次 forward -23%）**：
+
+先用板端基准（`-DFENG_BENCH_CTX=ON` 开机自测 256/1024/2048 的单次 forward）
+定位到长文成本几乎全在注意力，再做三处**数学上完全等价**的改动：
+
+| 版本 | 256 | 1024 | 2048 | 说明 |
+|---|---|---|---|---|
+| 优化前（v3.15-embed） | 900 ms | 2039 ms | 3534 ms | `logs/board_bench_attn_lut0.txt` |
+| + 字节 LUT（`FENG_Q2_LUT`） | 831 | 1761 | 2980 | 内层去掉移位/掩码/整数转浮点，`board_bench_attn_lut1.txt` |
+| + q2 布局 `[layer][head][t]` | 813 | 1651 | 2758 | 逐 head 扫描变成 PSRAM 顺序读，`board_bench_attn_lut_lin.txt` |
+| + 内联 fp16→fp32 | **808** | **1631** | **2719** | scale 转换不再走外部函数，`board_bench_attn_inl.txt` |
+
+分段落剖析（`-DFENG_ATTN_PROF=ON`，2048 ctx 单次 forward = 2727 ms）：
+**K = 894 ms、softmax = 169 ms、V = 1109 ms**，权重/norm/head 等 555 ms
+（`logs/board_bench_attn_prof.txt`）——V 最贵，K 次之，softmax 只占 6%。
+边际成本：每多 1 个上下文 token 从 1.20 ms 降到 1.07 ms；短上下文（ctx≈50）
+生成速度不受影响（仍 ~1.8 tok/s）。
+
+正确性：每一步都在 PC 上用 32 题矩阵（q2 block8）与上一版**逐字节对比**，
+输出完全一致、27/27 + 4/4（`logs/pc_kv_suite32_v3_15ci4_q2b8_nolut.txt`、
+`logs/pc_kv_suite32_v3_15ci4_q2b8_lut.txt`、`logs/pc_kv_suite32_v3_15ci4_q2b8_lin.txt`、
+`logs/pc_kv_suite32_v3_15ci4_q2b8_inl.txt`）；
+fp32 路径另用 `pc_check` 对 PyTorch 参考 logits 复核（MATCH，
+`logs/pc_check_v3_15ci4_inl.txt`）；板端刷回正式固件后 tool 专项 13/13、
+连续 5 轮记忆内容 5/5 全对（`logs/board_v3_15ci4_tools_after_attnopt.txt`、
+`logs/board_v3_15ci4_memory_after_attnopt.txt`）。
+
+```powershell
+# 板端注意力基准：编译时打开，开机自动测 256/1024/2048
+idf.py -B build -DFENG_BENCH_CTX=ON build     # 可加 -DFENG_ATTN_PROF=ON 看 K/softmax/V 分解
+# 只烧 app（0x10000），不动 model/tokenizer 分区
+python -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x10000 build\feng_30m.bin
+```
+
+> 内层已是 ~8 条指令/KV 值，标量路径接近极限；再往上要动 PIE SIMD
+> （`ee.vmulas.s8.accx`）或算法面（滑窗/稀疏），两者都要重新做精度验证。
+
 ---
 
 ## v3.14（2026-10-04）—— tool 版：计算/时间/随机数交给引擎，GGUF 发行取消

@@ -15,6 +15,21 @@ set(FENG_MAX_CTX_OVERRIDE 0 CACHE STRING "override MAX_CTX for testing (0 = defa
 if(NOT FENG_MAX_CTX_OVERRIDE EQUAL 0)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_MAX_CTX_OVERRIDE=${FENG_MAX_CTX_OVERRIDE})
 endif()
+# 测试用：-DFENG_BENCH_CTX=1 在开机时测 256/1024/2048 上下文的单次 forward 耗时
+option(FENG_BENCH_CTX "benchmark attention at 256/1024/2048 ctx on boot" OFF)
+if(FENG_BENCH_CTX)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_BENCH_CTX=1)
+endif()
+# 测试用：-DFENG_Q2_LUT=OFF 关闭 q2 注意力内层的字节 LUT（A/B 基准）
+option(FENG_Q2_LUT "use a byte LUT in q2 attention inner loops" ON)
+if(NOT FENG_Q2_LUT)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_Q2_LUT=0)
+endif()
+# 测试用：-DFENG_ATTN_PROF=ON 在基准里分段落 K / softmax / V 的周期
+option(FENG_ATTN_PROF "profile q2 attention stages (K/softmax/V cycles)" OFF)
+if(FENG_ATTN_PROF)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_ATTN_PROF=1)
+endif()
 if(FENG_USE_Q2_KV)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_KV_Q2=1 FENG_KV_Q2_BLOCK=8)
 else()
