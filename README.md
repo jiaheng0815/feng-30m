@@ -106,6 +106,8 @@
 > **独立留出 30 题（第二套，未参与任何训练/调参）**：v3.14/pc2、v3.19/pc4、v3.19/board6 均为 **18/30**
 > （`eval/heldout2_*.json`、`scripts/chat_probe_heldout2.py`）——说明第一套的 19/30 没有明显虚高，
 > 但 v3.19 相对 v3.14 的开发集增益（16→19）**在独立集上未复现**（18 vs 18），如实标注。
+> 推荐解码（rep 1.25 / no-repeat 6）下 pc4 自动判定为 20/30，但人工复查发现 2 例是关键词假阳性
+> （答案实际答反/退化），**真实水平仍按 ~18/30 记**（对照 JSON：`eval/heldout2_*_rec.json`）。
 > 历史最好：单类别 113（v3.4 / v3.13 并列）；单类别 113 与多类别 108 的细节见 CHANGELOG v3.12/v3.13。
 
 横向对比与全部实测见 [`COMPARISON.md`](COMPARISON.md)，逐版本演进（含失败记录）见 [`CHANGELOG.md`](CHANGELOG.md)。

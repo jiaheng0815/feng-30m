@@ -59,6 +59,10 @@ def main() -> None:
     ap.add_argument("--model", default="")
     ap.add_argument("--out", default="")
     ap.add_argument("--max-new", type=int, default=48)
+    ap.add_argument("--rep", type=float, default=1.0,
+                    help="repetition_penalty（USAGE 推荐 1.25；1.0 = 关闭）")
+    ap.add_argument("--no-repeat", type=int, default=0,
+                    help="no_repeat_ngram_size（USAGE 推荐 6；0 = 关闭）")
     ap.add_argument("--rescore", nargs="*", default=None,
                     help="用本套题的期望值重打分历史 JSON（不需要 GPU）")
     args = ap.parse_args()
@@ -85,9 +89,13 @@ def main() -> None:
         text = tok.apply_chat_template([{"role": "user", "content": q}], tokenize=False,
                                        add_generation_prompt=True)
         ids = torch.tensor([tok(text, add_special_tokens=False)["input_ids"]], device="cuda")
+        kw = dict(max_new_tokens=args.max_new, do_sample=False, pad_token_id=3, eos_token_id=0)
+        if args.rep != 1.0:
+            kw["repetition_penalty"] = args.rep
+        if args.no_repeat > 0:
+            kw["no_repeat_ngram_size"] = args.no_repeat
         with torch.no_grad():
-            out = model.generate(ids, max_new_tokens=args.max_new, do_sample=False,
-                                 pad_token_id=3, eos_token_id=0)
+            out = model.generate(ids, **kw)
         ans = tok.decode(out[0][ids.shape[1]:].tolist())
         ans = ans.split("<|im_end|>")[0].split("<|im_start|>")[0].strip()
         verdict, why = judge(q, expect, ans)
@@ -100,6 +108,8 @@ def main() -> None:
         if not dest.is_absolute():
             dest = ROOT / dest
         dest.write_text(json.dumps({"model": args.model, "ok": ok, "n": len(CASES),
+                                    "decoding": {"do_sample": False, "rep": args.rep,
+                                                 "no_repeat_ngram": args.no_repeat},
                                     "rows": rows}, ensure_ascii=False, indent=2),
                         encoding="utf-8")
         print(f"-> {dest}")
