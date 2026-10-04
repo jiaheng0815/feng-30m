@@ -26,6 +26,7 @@
 #define FENG_GEMV_A8 0
 #endif
 
+
 #define FENG_STR2(x) #x
 #define FENG_STR(x) FENG_STR2(x)
 

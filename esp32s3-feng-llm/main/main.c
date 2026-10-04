@@ -255,6 +255,11 @@ static void bench_gemv(void)
     const feng_layer_t *L = &s_model.layers[0];
     const size_t wbytes = (size_t)f * (h / 64) * 34;   /* Q4 bytes read per call */
     const long iters = 20;
+    /* 激活缓冲在开机时是未初始化的；填成非零、有正有负的样值，
+     * 否则"全零块跳过"会让基准测不到真正的权重解码 + 点积开销。 */
+    for (int i = 0; i < h; i++) {
+        s_ws.xn[i] = (float)((i % 7) - 3) * 0.13f;
+    }
     int64_t t0 = esp_timer_get_time();
     for (long i = 0; i < iters; i++) {
         feng_gemv_range(L->gate, FENG_DT_Q4, s_ws.xn, s_ws.gate, 0, f, h);

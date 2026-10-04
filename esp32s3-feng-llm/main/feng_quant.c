@@ -15,6 +15,7 @@
 static float s_q4_lut[256][2];
 static int s_q4_lut_ready;
 
+
 static void q4_lut_init(void)
 {
     if (s_q4_lut_ready) return;
