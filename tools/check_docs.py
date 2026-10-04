@@ -21,6 +21,8 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 ROOT = Path(__file__).resolve().parents[1]
 TICK = chr(96)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from check_md import is_local_artifact, normalize, tracked_files  # noqa: E402
 
 
 def _tracked_docs() -> list[Path]:
@@ -60,6 +62,7 @@ warn: list[str] = []
 
 def check_structure() -> None:
     print(f"[1] 结构检查（{len(DOCS)} 个 markdown）")
+    tracked = tracked_files(ROOT)
     for doc in DOCS:
         rel = doc.relative_to(ROOT)
         text = doc.read_text(encoding="utf-8")
@@ -90,6 +93,8 @@ def check_structure() -> None:
             else:
                 hit = any((base / cand).exists() for base in probes)
             if not hit:
+                if normalize(cand) not in tracked and is_local_artifact(cand):
+                    continue            # 本机权重/日志/exe，干净 clone 里允许缺
                 fail.append(f"{rel}: 引用了不存在的路径 {s}")
 
 

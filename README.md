@@ -1,5 +1,7 @@
 # feng-30m
 
+[![CI](https://github.com/jiaheng0815/feng-30m/actions/workflows/ci.yml/badge.svg)](https://github.com/jiaheng0815/feng-30m/actions/workflows/ci.yml)
+
 **一个 29.43M 参数的中文对话模型：从零训练、原生 32k 上下文，Q4 量化后能塞进 ESP32-S3 离线对话。**
 
 当前版本 **PC = v3.19（`v3_19/pc4`）、板端 = v3.19-embed 权重（`v3_19/board6`）+ v3.17 引擎（记忆 tool）**：

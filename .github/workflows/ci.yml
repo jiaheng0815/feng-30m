@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python 语法检查
+        run: python3 -m py_compile scripts/*.py tools/*.py
+
+      - name: C 单测（算式 / 时间随机数 / 记忆 / 采样器）
+        working-directory: esp32s3-feng-llm
+        run: |
+          set -euo pipefail
+          gcc -O2 -o /tmp/pc_calc_test   pc/pc_calc_test.c   main/feng_calc.c -Imain -lm
+          gcc -O2 -o /tmp/pc_tools_test  pc/pc_tools_test.c  main/feng_tools.c -Imain -lm
+          gcc -O2 -o /tmp/pc_mem_test    pc/pc_mem_test.c    main/feng_memory.c -Imain -lm
+          gcc -O2 -o /tmp/pc_sample_test pc/pc_sample_test.c main/feng_sample.c main/feng_quant.c -Imain -lm
+          for t in pc_calc_test pc_tools_test pc_mem_test pc_sample_test; do
+            echo "== $t"
+            /tmp/$t | tail -n 1
+          done
+
+      - name: 文档自检（干净 clone 口径）
+        run: |
+          python3 tools/check_md.py
+          python3 tools/check_docs.py
