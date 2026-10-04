@@ -51,6 +51,8 @@ python scripts\chat_student.py --model v3_14\pc2 --prompt "现在几点？"
 
 > **GGUF 已取消发行**：llama.cpp 路径没有 tool，v3.14 起不再随 Release 提供 GGUF。
 > 想复现历史速度数字，仓库里仍保留 `scripts/export_student_gguf.py`，但不作为发行物。
+> tool 支持：多位数/小数/括号/中文数字（`五十九加一`）/`乘以、除以`/百分号（`一百*15%`）、
+> `现在几点`、`随机数`、`掷骰子`、`抛硬币`。
 
 ## 3. HF 格式权重（transformers）
 

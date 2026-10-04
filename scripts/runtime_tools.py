@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from calc_tool import calc_answer, extract  # noqa: E402,F401
+from calc_tool import calc_answer, cn_to_ascii, extract  # noqa: E402,F401
 
 _START = time.perf_counter()
 _NTP_HOSTS = ("ntp.aliyun.com", "ntp.tencent.com", "pool.ntp.org")
@@ -54,16 +54,24 @@ def time_answer(user, epoch=None, source=None):
 
 
 def random_answer(user):
-    if "随机" not in user:
+    coin = "硬币" in user or "正反面" in user
+    dice = "骰子" in user or "色子" in user
+    if not (coin or dice or "随机" in user):
         return None
-    nums = [int(x) for x in re.findall(r"\d+", user)]
-    lo, hi = (nums[0], nums[1]) if len(nums) >= 2 and nums[0] != nums[1] else (1, 100)
+    norm = cn_to_ascii(user)
+    nums = [int(x) for x in re.findall(r"\d+", norm)]
+    default = (1, 6) if dice else (1, 100)
+    lo, hi = (nums[0], nums[1]) if len(nums) >= 2 and nums[0] != nums[1] else default
     if hi < lo:
         lo, hi = hi, lo
     seed = int((time.perf_counter() - _START) * 1.54 * 1000)
     rng = random.Random(seed)
     rng.random()                                   # 第 1 个按需求丢弃
+    if coin:
+        return f"抛硬币：{'正面' if rng.randint(0, 1) else '反面'}。"   # 第 2 个随机数
     v = rng.randint(lo, hi)                        # 第 2 个随机数
+    if dice:
+        return f"掷骰子：{v} 点。"
     return f"随机数（{lo}~{hi}）：{v}。"
 
 

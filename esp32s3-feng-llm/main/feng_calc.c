@@ -23,6 +23,11 @@ static int normalize_ops(const char *in, char *out, int sz)
     int n = 0;
     const unsigned char *p = (const unsigned char *)in;
     while (*p && n < sz - 1) {
+        /* 双字算符优先（乘以 / 除以 / 加上 / 减去） */
+        if (p[0] == 0xE4 && p[1] == 0xB9 && p[2] == 0x98 && p[3] == 0xE4 && p[4] == 0xBB && p[5] == 0xA5) { out[n++] = '*'; p += 6; continue; } /* 乘以 */
+        if (p[0] == 0xE9 && p[1] == 0x99 && p[2] == 0xA4 && p[3] == 0xE4 && p[4] == 0xBB && p[5] == 0xA5) { out[n++] = '/'; p += 6; continue; } /* 除以 */
+        if (p[0] == 0xE5 && p[1] == 0x8A && p[2] == 0xA0 && p[3] == 0xE4 && p[4] == 0xB8 && p[5] == 0x8A) { out[n++] = '+'; p += 6; continue; } /* 加上 */
+        if (p[0] == 0xE5 && p[1] == 0x87 && p[2] == 0x8F && p[3] == 0xE5 && p[4] == 0x8E && p[5] == 0xBB) { out[n++] = '-'; p += 6; continue; } /* 减去 */
         if (p[0] == 0xE5 && p[1] == 0x8A && p[2] == 0xA0) {          /* 加 */
             out[n++] = '+'; p += 3; continue;
         }
@@ -39,10 +44,85 @@ static int normalize_ops(const char *in, char *out, int sz)
         if (p[0] == 0xC3 && p[1] == 0xB7) { out[n++] = '/'; p += 2; continue; }   /* ÷ */
         if (p[0] == 0xEF && p[1] == 0xBC && p[2] == 0x88) { out[n++] = '('; p += 3; continue; } /* （ */
         if (p[0] == 0xEF && p[1] == 0xBC && p[2] == 0x89) { out[n++] = ')'; p += 3; continue; } /* ） */
+        if (p[0] == 0xEF && p[1] == 0xBC && p[2] == 0x85) { out[n++] = '%'; p += 3; continue; } /* ％ */
         out[n++] = (char)*p++;
     }
     out[n] = 0;
     return n;
+}
+
+/* ---- 中文数字（五十九、一百零五、两千三）转成阿拉伯数字 ---- */
+static int utf8_cp(const unsigned char *p, unsigned *cp)
+{
+    if (p[0] < 0x80) { *cp = p[0]; return 1; }
+    if ((p[0] & 0xE0) == 0xC0) { *cp = ((p[0] & 0x1F) << 6) | (p[1] & 0x3F); return 2; }
+    if ((p[0] & 0xF0) == 0xE0) {
+        *cp = ((p[0] & 0x0F) << 12) | ((p[1] & 0x3F) << 6) | (p[2] & 0x3F);
+        return 3;
+    }
+    *cp = p[0];
+    return 1;
+}
+
+/* 返回：0-9 数字；10/100/1000/10000 单位；-1 不是中文数字 */
+static int cn_map(unsigned cp)
+{
+    switch (cp) {
+        case 0x96F6: case 0x3007: return 0;          /* 零 〇 */
+        case 0x4E00: return 1;                        /* 一 */
+        case 0x4E8C: case 0x4E24: return 2;           /* 二 两 */
+        case 0x4E09: return 3;
+        case 0x56DB: return 4;
+        case 0x4E94: return 5;
+        case 0x516D: return 6;
+        case 0x4E03: return 7;
+        case 0x4E5D: return 9;
+        case 0x516B: return 8;
+        case 0x5341: return 10;                       /* 十 */
+        case 0x767E: return 100;                      /* 百 */
+        case 0x5343: return 1000;                     /* 千 */
+        case 0x4E07: return 10000;                    /* 万 */
+        default: return -1;
+    }
+}
+
+/* 把 s 里的中文数字段替换成阿拉伯数字（就地重写，可能变短） */
+static void cn_to_ascii(char *s)
+{
+    char out[CALC_MAX];
+    int n = 0;
+    const unsigned char *p = (const unsigned char *)s;
+    while (*p && n < (int)sizeof(out) - 24) {
+        unsigned cp;
+        const int len = utf8_cp(p, &cp);
+        if (cp < 0x80 || cn_map(cp) < 0) {
+            for (int i = 0; i < len && n < (int)sizeof(out) - 1; i++) out[n++] = (char)p[i];
+            p += len;
+            continue;
+        }
+        /* 一个连续中文数字段 */
+        long long total = 0, section = 0, cur = 0;
+        while (*p) {
+            unsigned c2;
+            const int l2 = utf8_cp(p, &c2);
+            const int v = cn_map(c2);
+            if (v < 0) break;
+            if (v <= 9) {
+                cur = v;
+            } else if (v < 10000) {
+                section += (cur ? cur : 1) * v;
+                cur = 0;
+            } else {
+                total += (section + cur) * 10000;
+                section = 0;
+                cur = 0;
+            }
+            p += l2;
+        }
+        n += snprintf(out + n, sizeof(out) - (size_t)n, "%lld", total + section + cur);
+    }
+    out[n] = 0;
+    strcpy(s, out);
 }
 
 /* 后缀/前缀外壳：返回 1 表示剥掉了一层 */
@@ -96,12 +176,14 @@ int feng_calc_extract(const char *user, char *expr, int expr_sz)
         while (n > 0 && is_space(s[n - 1])) s[--n] = 0;
         if (!changed) break;
     }
+    /* 中文数字放在外壳剥离之后转换（否则"帮我算一下"里的"一"会被改成 1） */
+    cn_to_ascii(s);
     /* 校验：只允许数字/小数点/运算符/括号/空格，且至少一个数字与一个运算符 */
     int has_digit = 0, has_op = 0;
     for (const char *p = s; *p; p++) {
         if (is_digit(*p)) has_digit = 1;
         else if (strchr("+-*/()", *p)) has_op = (*p == '+' || *p == '-' || *p == '*' || *p == '/');
-        else if (*p == '.' || is_space(*p)) continue;
+        else if (*p == '.' || *p == '%' || is_space(*p)) continue;
         else return 0;
     }
     if (!has_digit || !has_op) return 0;
@@ -139,6 +221,7 @@ static double parse_number(calc_ctx *c)
         while (is_digit(*c->p)) { v += (*c->p - '0') * scale; scale *= 0.1; c->p++; any = 1; }
     }
     if (!any) c->err = -2;
+    if (*c->p == '%') { v /= 100.0; c->p++; }         /* 15% -> 0.15 */
     return v;
 }
 

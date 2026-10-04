@@ -92,9 +92,19 @@ long long feng_rand_range(unsigned long long seed, long long lo, long long hi)
 
 int feng_random_answer(const char *user, char *answer, int answer_sz)
 {
-    if (!contains(user, "随机")) return 0;
-    /* 解析可选范围："1到100" / "1-100" / "0~9"；默认 1..100 */
-    long long lo = 1, hi = 100;
+    const int coin = contains(user, "硬币") || contains(user, "正反面");
+    const int dice = contains(user, "骰子") || contains(user, "色子");
+    if (!coin && !dice && !contains(user, "随机")) return 0;
+    const long long up_us0 = s_uptime_fn ? s_uptime_fn() : 0;
+    const double sec0 = (double)up_us0 / 1e6;
+    const unsigned long long seed0 = (unsigned long long)(sec0 * 1.54 * 1000.0);
+    if (coin) {
+        const long long v = feng_rand_range(seed0, 0, 1);
+        snprintf(answer, answer_sz, "抛硬币：%s。", v ? "正面" : "反面");
+        return 1;
+    }
+    /* 解析可选范围："1到100" / "1-100" / "0~9"；默认 1..100（骰子默认 1..6） */
+    long long lo = 1, hi = dice ? 6 : 100;
     const char *p = user;
     long long nums[2] = {0, 0};
     int nnum = 0;
@@ -108,10 +118,8 @@ int feng_random_answer(const char *user, char *answer, int answer_sz)
         }
     }
     if (nnum == 2 && nums[0] != nums[1]) { lo = nums[0]; hi = nums[1]; }
-    const long long up_us = s_uptime_fn ? s_uptime_fn() : 0;
-    const double sec = (double)up_us / 1e6;
-    const unsigned long long seed = (unsigned long long)(sec * 1.54 * 1000.0);
-    const long long v = feng_rand_range(seed, lo, hi);
-    snprintf(answer, answer_sz, "随机数（%lld~%lld）：%lld。", lo, hi, v);
+    const long long v = feng_rand_range(seed0, lo, hi);
+    if (dice) snprintf(answer, answer_sz, "掷骰子：%lld 点。", v);
+    else snprintf(answer, answer_sz, "随机数（%lld~%lld）：%lld。", lo, hi, v);
     return 1;
 }

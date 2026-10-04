@@ -15,7 +15,35 @@ _SUFFIXES = ["等于几", "等于多少", "是多少", "多少", "=?", "＝?", "
 _PREFIXES = ["帮我算一下", "帮我计算", "帮我算", "计算一下", "计算", "算一下", "算算", "请问一下", "请问", "求"]
 _OP_MAP = {"加上": "+", "加": "+", "减去": "-", "减": "-", "乘以": "*", "乘上": "*", "乘": "*",
            "除以": "/", "除": "/", "×": "*", "÷": "/", "（": "(", "）": ")"}
-_VALID = re.compile(r"^[0-9.+\-*/() ]+$")
+_VALID = re.compile(r"^[0-9.+\-*/()% ]+$")
+_CN_DIGITS = {"零": 0, "〇": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4,
+              "五": 5, "六": 6, "七": 7, "八": 8, "九": 9}
+_CN_UNITS = {"十": 10, "百": 100, "千": 1000, "万": 10000}
+
+
+def cn_to_ascii(s: str) -> str:
+    """把「五十九 / 一百零五 / 两千三」等中文数字段换成阿拉伯数字（与 feng_calc.c 同口径）。"""
+    out, i = [], 0
+    while i < len(s):
+        if s[i] in _CN_DIGITS or s[i] in _CN_UNITS:
+            total = section = cur = 0
+            while i < len(s) and (s[i] in _CN_DIGITS or s[i] in _CN_UNITS):
+                if s[i] in _CN_DIGITS:
+                    cur = _CN_DIGITS[s[i]]
+                else:
+                    u = _CN_UNITS[s[i]]
+                    if u < 10000:
+                        section += (cur or 1) * u
+                        cur = 0
+                    else:
+                        total += (section + cur) * 10000
+                        section = cur = 0
+                i += 1
+            out.append(str(total + section + cur))
+        else:
+            out.append(s[i])
+            i += 1
+    return "".join(out)
 
 
 def extract(user: str):
@@ -38,6 +66,7 @@ def extract(user: str):
         s = s.strip()
         if s == before:
             break
+    s = cn_to_ascii(s)          # 外壳剥完再转中文数字（"帮我算一下"里的"一"不动）
     if not _VALID.match(s):
         return None
     if not any(c.isdigit() for c in s):
@@ -60,7 +89,9 @@ def calc_answer(user: str):
     if expr is None:
         return None
     try:
-        v = eval(expr, {"__builtins__": {}}, {})       # 已限制字符集，安全
+        # 15% -> (15/100)；其余交给 eval（字符集已限制）
+        eval_expr = re.sub(r"(\d+(?:\.\d+)?)%", r"(\1/100)", expr)
+        v = eval(eval_expr, {"__builtins__": {}}, {})   # 已限制字符集，安全
     except ZeroDivisionError:
         return "这个算式里除数是 0，算不出来。"
     except Exception:

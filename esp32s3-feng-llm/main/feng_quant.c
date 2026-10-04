@@ -97,6 +97,47 @@ FENG_HOT void feng_gemv_range(const void *tensor, uint32_t dtype, const float *x
     const int n_blocks = n_in / QK;
     const size_t row_bytes = (size_t)n_blocks * (2 + 32);
     q4_lut_init();
+#if FENG_GEMV_A8
+    /* A8 模式：激活按 64 值一块量化成 int8（scale_x = max|x|/127），
+     * 权重仍是 Q4（-8..7），点积走整数，再乘 scale_w*scale_x。
+     * 这是给 PIE（ee.vmulas.s16.accx）铺路的算法，先做成可移植版本量质量代价。 */
+    int8_t xq[QK];
+    for (int o = r0; o < r1; o++) {
+        const uint8_t *row = base + (size_t)o * row_bytes;
+        const uint8_t *scales = row;
+        const uint8_t *packed = row + (size_t)n_blocks * 2;
+        float acc = 0.f;
+        for (int b = 0; b < n_blocks; b++) {
+            uint16_t hs;
+            memcpy(&hs, scales + b * 2, 2);
+            const float scale_w = f16_to_f32(hs);
+            const float *xb = x + (size_t)b * QK;
+            float amax = 0.f;
+            for (int i = 0; i < QK; i++) {
+                const float v = xb[i] < 0 ? -xb[i] : xb[i];
+                if (v > amax) amax = v;
+            }
+            if (amax < 1e-8f) continue;
+            const float scale_x = amax / 127.f;
+            for (int i = 0; i < QK; i++) {
+                int q = (int)(xb[i] / scale_x + (xb[i] >= 0 ? 0.5f : -0.5f));
+                if (q > 127) q = 127;
+                if (q < -127) q = -127;
+                xq[i] = (int8_t)q;
+            }
+            int32_t dot = 0;
+            const uint8_t *p = packed + (size_t)b * 32;
+            for (int j = 0; j < 32; j++) {
+                const int lo = (int)(p[j] & 0x0F) - 8;
+                const int hi = (int)(p[j] >> 4) - 8;
+                dot += lo * (int)xq[2 * j] + hi * (int)xq[2 * j + 1];
+            }
+            acc += (float)dot * (scale_w * scale_x);
+        }
+        y[o] = acc;
+    }
+    return;
+#endif
     for (int o = r0; o < r1; o++) {
         const uint8_t *row = base + (size_t)o * row_bytes;
         const uint8_t *scales = row;

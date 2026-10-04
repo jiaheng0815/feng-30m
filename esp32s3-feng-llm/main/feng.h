@@ -21,6 +21,11 @@
 #define FENG_KV_Q2_BLOCK 16      /* 每多少个值共享一个 fp16 scale（须整除 head_dim、是 4 的倍数） */
 #endif
 
+/* 实验开关：激活 int8 量化的 GEMV（给 PIE 铺路；默认 0 = 原来的 LUT/fp32 路径） */
+#ifndef FENG_GEMV_A8
+#define FENG_GEMV_A8 0
+#endif
+
 #define FENG_STR2(x) #x
 #define FENG_STR(x) FENG_STR2(x)
 

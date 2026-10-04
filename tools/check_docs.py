@@ -730,6 +730,7 @@ def check_facts() -> None:
         else:
             print("    v3.14 C 引擎算术子集 21/21（tool 回答，与文档一致）")
     for fname, needle in [("board_v3_14b6_tools.txt", "8 成功 / 0 失败"),
+                          ("board_v3_14b6_tools2.txt", "10 成功 / 0 失败"),
                           ("board_v3_14b6_multi.txt", "10 成功 / 0 失败"),
                           ("board_v3_14b6_chat10.txt", "10 成功 / 0 失败"),
                           ("board_v3_14b6_memory12.txt", "板端记忆 10/12")]:
@@ -742,6 +743,13 @@ def check_facts() -> None:
             fail.append(f"logs/{fname}: 未记录「{needle}」")
         else:
             print(f"    v3.14 板端 {fname}（{needle}，与文档一致）")
+    a8 = ROOT / "logs" / "pc_kv_suite32_v3_14b6_a8_q2b8.txt"
+    if a8.exists():
+        t = a8.read_text(encoding="utf-8", errors="replace")
+        if "短任务 27/27" not in t or "长文召回 4/4" not in t:
+            fail.append("logs/pc_kv_suite32_v3_14b6_a8_q2b8.txt: A8 激活量化不是 27/27 + 4/4")
+        else:
+            print("    v3.14 A8（int8 激活）27/27 + 4/4（与文档一致）")
 
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"
