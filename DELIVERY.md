@@ -2,16 +2,20 @@
 
 版本演进与完整实测见 [`CHANGELOG.md`](CHANGELOG.md)，横向对比见 [`COMPARISON.md`](COMPARISON.md)。
 
-> **状态（2026-10-04）**：当前部署 **v3.14** —— PC `v3_14/pc2`、板端 `v3_14/board6`；
-> 算式/网络时间(UTC+8)/随机数由 C 引擎 tool 直接回答（0.5s 秒回），
+> **状态（2026-10-05）**：当前部署 **PC = v3.14（`v3_14/pc2`）+ v3.17 引擎；
+> 板端 = v3.16-embed 权重（`v3_16/board_p3`）+ v3.17 固件/引擎**；
+> 算式/网络时间(UTC+8)/随机数/**记忆**由 C 引擎 tool 直接回答（0.5s 秒回；
+> 板端 12 题记忆 12/12、身份永不串名），
 > **GGUF / llama.cpp 自 v3.14 起不再发行**（那条路径没有 tool）。
 > 本文件下面出现的 GGUF、llama-bench 与 v3.6 数字都是**历史交付记录**，保留用于对比；
 > 最新口径以 [`README.md`](README.md) 与 [`CHANGELOG.md`](CHANGELOG.md) 为准。
 
 身份自述（v3.2 起）：**「我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI」**（评测实测原文）。
 
-> **下载**：权重与蒸馏数据集随 [Releases](https://github.com/jiaheng0815/feng-30m/releases) 的
-> `feng-30m-v3.6-release.zip` 发布（本仓库只放代码与文档）；使用说明见 [USAGE.md](USAGE.md)。
+> **下载**：权重与蒸馏数据集随 [Releases](https://github.com/jiaheng0815/feng-30m/releases) 发布——
+> PC `feng-30m-v3.14-release.zip`、板端 `feng-30m-v3.16-embed-release.zip`，另有持续更新的
+> `feng-30m-v3.14-engine.zip`（PC C 引擎源码，现为 v3.17，含记忆 tool）
+> （本仓库只放代码与文档）；使用说明见 [USAGE.md](USAGE.md)。
 
 ## 1. 模型
 
@@ -145,7 +149,8 @@ python scripts\esp32_multi.py --port COM20          # 10 轮稳定性测试
 
 （历史）该阶段部署模型曾换成 v3.4（`esp32s3-feng-llm/model_export_v3_4/`，14.93MB，身份 12/12、
 针检索 28/30/27/28、拒答 88%，基线 `logs/board_baseline_v3_4.txt`）；
-后续 v3.5 修多轮、v3.6 修日常对话，**当前部署模型是 `esp32s3-feng-llm/model_export_v3_6/`**，
+后续 v3.5 修多轮、v3.6 修日常对话（**当时**的部署模型是 `esp32s3-feng-llm/model_export_v3_6/`；
+当前部署见文首状态块），
 板端基线 `logs/board_baseline_v3_6.txt`（10/10）与 `logs/board_v3_6_chat.txt`（情绪多轮 10/10）。
 
 ### 7.1 板上实测（2026-10-02 深夜，已烧录）

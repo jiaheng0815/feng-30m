@@ -4,7 +4,7 @@
 **30.75M 参数**对话模型。Qwen3 架构：**8 层 / hidden 448 / 7 头（7 个 KV 头，MHA）/ head_dim 64 /
 FFN 896 / tied embedding，32k 词表 BPE**。
 
-> 权重下载：见 [Releases](https://github.com/jiaheng0815/feng-30m/releases)。**当前 Release 发布 v3.6 权重**；
+> 权重下载：见 [Releases](https://github.com/jiaheng0815/feng-30m/releases)。当前 Release 发布 **PC v3.14 + 板端 v3.16-embed**（v3.17 引擎）；
 > v1 作为历史对照保留在文档与 `student/` 的训练记录里，未随包发布。
 
 - 训练：8k 指令阶段 37.9M + 续训 73.9M tokens（`student/stageA`、`stageA2` 的 summary.json），

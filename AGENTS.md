@@ -15,10 +15,11 @@
   → v3.7（KV-QAT + q2 KV block8，板端 2048 上下文）→ v3.8（上下文专项升级）
   → v3.9 → v3.10 = v3.9 底座 + q2 KV-QAT → v3.11 = 算术边界修复 + Q4 权重/q2 KV 双 QAT
   → v3.12 = PC 算术修复 → v3.13 = 记忆版 → v3.14 = tool 版（算术/时间/随机数交给 C 引擎，
-  模型不再学算术；PC 当前发布）→ **v3.16-embed = 板端身份串名修复（板端当前发布）**。
+  模型不再学算术；PC 当前发布）→ v3.15-embed（身份漂移修复）→ **v3.16-embed = 板端权重当前发布
+  （身份串名修复）** → **v3.17 = 引擎/固件（记忆 tool：多轮记忆与身份问答确定性回答，权重未变）**。
 - v3.16-embed 现状（**板端当前发布**，`v3_16/board_p3/`）：在 v3.15/board_ctxid4 上做
   **上下文双向问名**补丁（报名字后问身份/问名字、同类事实取新、记忆保护），lr 1.5e-6 × 1 epoch；
-  板端 12 题记忆 10/12（持平）、6 轮报名字→问身份序列从 3/6 修到 5/6、tool 13/13、
+  板端 12 题记忆 10/12（**v3.17 引擎侧记忆 tool 上线后 12/12**）、6 轮报名字→问身份序列从 3/6 修到 5/6、tool 13/13、
   PC 32 题矩阵 27/27+4/4；新增多轮回归套件 `pc/pc_mt_suite.c`（残余见 CHANGELOG v3.16-embed 节）。
   **注意**：再往上加"精确链"数据（p4–p6）能把 8 轮序列修到 8/8，但会丢长文召回
   （90% 深度）或在板端出现 "我user" 伪影——试过且未采用，别再重复这条路线
@@ -33,7 +34,7 @@
   「闲聊前缀 + 身份问答」锚点（`scripts/v3_15_build_identity_ctx.py`）+ 召回 ×8、lr 3e-6 × 1 epoch、
   继续双 QAT；修掉多轮里「你叫什么名字 → 你叫小模型/小王子」的漂移
   （7 组前缀 6 组完全正确），矩阵 **27/27+4/4**、算术 21/21、记忆 10/12、工具 8/8 全部保持。
-- v3.14 现状（**当前发布**）：
+- v3.14（**PC 当前发布**）：
   - **tool**（`main/feng_calc.c`、`main/feng_tools.c`、`main/feng_memory.c`）：算式（多位数/小数/括号）、
     UTC+8 时间（宿主 `\settime` 对时 + esp_timer 走时）、随机数（运行时间×1.54×1000，丢第一个取第二个）；
     **记忆 tool（v3.17）**：从 `我叫X / 最喜欢Y / 住在Z / 养了W` 里抽事实，追问确定性作答
@@ -45,7 +46,7 @@
   - PC `v3_14/pc2/`：记忆 24/24、范围 10/10、探针 42/42、身份 12/12、单类别 108、多类别 107；
   - 板端 `v3_14/board6/`：q2 矩阵 27/27+4/4、工具 8/8、默认/情绪 10/10、记忆 12 题 10/12、1.80 tok/s；
   - **GGUF 发行取消**：llama.cpp 路径没有 tool，Release 只发 hf + esp32。
-- v3.13 现状（**当前发布**）：
+- v3.13（历史）：
   - PC `v3_13/mem_pc3/`：单类别 28/29/29/27 = **113/128（并列历史最高）**、多类别 108，
     算术 274/281、**记忆 21/24（v3.12 只有 5/24）**、范围 10/10、探针 42/42（0 未命中）、
     身份 12/12、多轮 1.00；
@@ -57,7 +58,8 @@
 - v3.11（板端上一版，`v3_11/pol8/`）：q2 矩阵 27/27+4/4、算术子集 21/21、板端 30/30、1.81 tok/s；
   关键技巧是 **Q4 权重/q2 KV 双 QAT**（`v3_7_kv_qat.py --wqat`），量化抗性对权重回插极敏感
   （掺 20% v3.9 权重就掉到 25/27），PC 32k 弱。
-- **PC 用 v3.13，板端用 v3.13-embed**（见 `CHANGELOG.md` v3.13 节）。
+- **PC 用 v3.14 + v3.17 引擎；板端用 v3.16-embed 权重 + v3.17 固件/引擎**
+  （见 `CHANGELOG.md` 的 v3.14/v3.16-embed/v3.17 节）。
 - 硬件：RTX 5060 Ti 16GB（训练）+ i7-12700KF；ESP32-S3-**WROOM-2-N32R16V** 开发板（32MB Octal flash + 16MB Octal PSRAM，1.8V）。
 
 ## 2. 运行环境与路径解析（代码里已无硬编码盘符）
@@ -101,9 +103,10 @@
 | `v3_12/` | v3.12 PC 权重（末层算术微调：275/281 + 单类别 110） |
 | `v3_13/` | v3.13 记忆版权重（PC `v3_13/mem_pc3/` + 板端 `v3_13/mem_board/`） |
 | `v3_14/` | PC 当前发布 `v3_14/pc2/` + 板端 v3.14 版 `v3_14/board6/`；数据不入库 |
-| `v3_15/` | **板端当前发布 `v3_15/board_ctxid4/`**（上下文身份锚点版）；数据 `identity_ctx*.jsonl` 不入库 |
+| `v3_15/` | v3.15-embed（历史，`v3_15/board_ctxid4/` 上下文身份锚点版）；数据 `identity_ctx*.jsonl` 不入库 |
+| `v3_16/` | **板端权重当前发布 `v3_16/board_p3/`**（v3.16-embed）+ p1/p2/p4–p7 实验（代价见 CHANGELOG）；补丁数据不入库 |
 | `data/` | v1 的提示词集、教师蒸馏数据、公开语料（sharegpt/firefly/dolly/evol 等） |
-| `scripts/` | 全部数据构建 / 训练 / 评测 / 导出脚本（57 个 .py，含 `scripts/paths.py` 路径解析；另有 1 个教师启动脚本） |
+| `scripts/` | 全部数据构建 / 训练 / 评测 / 导出脚本（77 个 .py，含 `scripts/paths.py` 路径解析；另有 1 个教师启动脚本） |
 | `eval/` | 评测结果 JSON（`planA*_scope.json`、`v3_scope.json`、`longctx_*.json` 等） |
 | `logs/` | 所有构建 / 训练 / 烧录 / 板上测试日志；`board_baseline_lut.txt` 是板上精度基线 |
 | `esp32s3-feng-llm/` | ESP32 固件工程 + 可移植 C 推理引擎 + PC 端一致性检查工具 |
@@ -169,10 +172,11 @@ python scripts\v3_7_kv_qat.py --init v3_11\pol8 --data v3_14\noarith_mix2.jsonl 
 python scripts\v3_7_kv_qat.py --init v3_14\board --data v3_14\board_memfix.jsonl `
   --identity-n 80 --out v3_14\board6 --epochs 2 --lr 4e-6 --batch 24 --max-len 2048 --wqat
 
-# PC C 引擎运行时（自带 tool；编译时务必带上 feng_calc.c + feng_tools.c）
+# PC C 引擎运行时（自带四个 tool；编译时务必带上 feng_calc.c + feng_tools.c + feng_memory.c）
 gcc -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc_chat_q2b8.exe pc_chat.c `
   ../main/feng_model.c ../main/feng_llm.c ../main/feng_quant.c ../main/feng_smp.c `
-  ../main/feng_tokenizer.c ../main/feng_calc.c ../main/feng_tools.c -I../main -lm
+  ../main/feng_tokenizer.c ../main/feng_calc.c ../main/feng_tools.c ../main/feng_memory.c -I../main -lm
+# 更省事：仓库根跑 esp32s3-feng-llm\build_pc_chat.ps1（编 7 个产物 + 跑三套单测）
 ```
 
 评测与导出：
@@ -198,10 +202,11 @@ $py = "python"        # 换成装了 torch + transformers 的解释器
     ..\main\feng_llm.c ..\main\feng_quant.c ..\main\feng_smp.c ..\main\feng_tokenizer.c -I..\main -lm
 .\pc\pc_check.exe ..\model_export_v3_10p3 ..\logs\c_logits_v3_10p3.bin
 
-# 1b) 带 tool 的 PC 运行时 / 板端代理套件（v3.14 起必须带 feng_calc.c + feng_tools.c）
+# 1b) 带 tool 的 PC 运行时 / 板端代理套件（必须带 feng_calc.c + feng_tools.c + feng_memory.c）
 & "<MSYS2>\ucrt64\bin\gcc.exe" -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc\pc_kv_suite_q2b8.exe `
     pc_kv_suite.c ..\main\feng_model.c ..\main\feng_llm.c ..\main\feng_quant.c `
-    ..\main\feng_smp.c ..\main\feng_tokenizer.c ..\main\feng_calc.c ..\main\feng_tools.c -I..\main -lm
+    ..\main\feng_smp.c ..\main\feng_tokenizer.c ..\main\feng_calc.c ..\main\feng_tools.c `
+    ..\main\feng_memory.c -I..\main -lm
 .\pc\pc_kv_suite_q2b8.exe ..\model_export_v3_14b6 ..\pc\prompt_long.txt 5200    # 27/27 + 4/4
 
 # 2) 编译固件
@@ -243,7 +248,7 @@ python scripts\esp32_enc_test.py COM20
    （`idf.py -DFENG_USE_Q2_KV=ON build`，`MAX_CTX=2048`，9.62MB，v3.13-embed 的 32 题 PC 矩阵 27/27 + 召回 4/4
    + 算术子集 21/21；固件默认多轮上下文、`\reset` 清空，见 `CHANGELOG.md` 的 v3.13 节）；板上 32k 上下文在 KV 内存上不可能，
    长文只能走滑窗/attention sink/线性注意力。
-8. **速度现状**：标量路径已到 S3 单发射天花板（每步 ~4-5 周期；短上下文 ~1.9 tok/s ≈ 500 ms/token）。默认开启三项小幅数值优化（`FENG_GEMV_MADD` 纯 madd 链、`FENG_FAST_EXP` 快速 exp、`FENG_Q2_VFOLD` V 段折叠）：三者累计 logits 差 **4.8e-6**（Q4 量化误差 2.94）、32 题矩阵输出与优化前**逐字相同**。**长上下文成本仍在注意力本体**（q2/2048 单次 forward **2.22 s** = K 0.84 + softmax 0.05 + V 0.83 + 权重等 0.51，本次会话累计 **-37%**）。q2 注意力另有四处位精确优化（字节 LUT + `[layer][head][t]` 顺序布局 + 内联 fp16→fp32 + 2-token 展开）；prefill 用 `feng_forward_ex(..., want_logits=0)` 跳过中间 token 的 lm head（每个省 ~115 ms，最后一个 token 必须算）。**A8 整数 GEMV 已实测：S3 上比 FPU 慢 36%（`mull` 慢），只在 PC 上快 20%，默认关闭**。改 GEMV/注意力/布局后必须用 PC 32 题矩阵与上一版对比（位精确改动要求**逐字节**，数值改动要求 27/27+4/4 且给出差异量级）。下一步杠杆是 PIE 的**整行调用 + 流水线**版本（逐点调用版历史上更慢）；不要再做没有实测收益的内层微调。
+8. **速度现状**：标量路径已到 S3 单发射天花板（每步 ~4-5 周期；短上下文 ~1.9 tok/s ≈ 500 ms/token）。默认开启三项小幅数值优化（`FENG_GEMV_MADD` 纯 madd 链、`FENG_FAST_EXP` 快速 exp、`FENG_Q2_VFOLD` V 段折叠）：三者累计 logits 差 **4.8e-6**（Q4 量化误差 2.94）、32 题矩阵输出与优化前**逐字相同**。**长上下文成本仍在注意力本体**（q2/2048 单次 forward **2.22 s** = K 0.84 + softmax 0.05 + V 0.83 + 权重等 0.51，本次会话累计 **-37%**）。q2 注意力另有四处位精确优化（字节 LUT + `[layer][head][t]` 顺序布局 + 内联 fp16→fp32 + 2-token 展开）；prefill 用 `feng_forward_ex(..., want_logits=0)` 跳过中间 token 的 lm head（每个省 ~115 ms，最后一个 token 必须算）。**A8 整数 GEMV 已实测：S3 上比 FPU 慢 36%（`mull` 慢），只在 PC 上快 20%，默认关闭**。改 GEMV/注意力/布局后必须用 PC 32 题矩阵与上一版对比（位精确改动要求**逐字节**，数值改动要求 27/27+4/4 且给出差异量级）。**PIE 路线已实测结案**：裸吞吐 0.63–1.38 周期/MAC 有空间，但 S3 没有字节移位指令、4-bit 权重必须靠 LUT 展开（≥1 次标量 load+store / 权重），正确的整块内核只做到 **1.05×**——不要再写 PIE 内核（`CHANGELOG.md` v3.16-embed 附录）；不要再做没有实测收益的内层微调。
 9. **量化格式耦合**：Q4 block-64（4.25 bpw）；改 `QK` 必须同步改 C 侧 `QK`，且 `tools/export_model.py` 会生成 `ref_ids.json` / `ref_logits.bin` 供一致性校验。
 
 ## 7. 改动的验收清单
@@ -255,7 +260,7 @@ python scripts\esp32_enc_test.py COM20
 - **写了数字**：数字必须能追到 `eval/*.json`、`summary.json` 或 `logs/` 里的实测；没有出处的一律删掉或标注"预期/估算"，
   不要写没有日志支撑的精确值。
 - **换了模型版本**：重跑 `eval_planA_scope.py` + `eval_longctx.py`，数字同步进 `CHANGELOG.md` / `README.md` / `USAGE.md`
-  （PC 与板端两套口径必须分别标清：PC=v3.14，板端=v3.14-embed；算式的验收口径是
+-  （PC 与板端两套口径必须分别标清：PC=v3.14，板端=v3.16-embed + v3.17 引擎；算式的验收口径是
   **tool 回答**，不是模型算——pc_kv_suite 会把算式任务路由到 feng_calc）。
 
 ## 8. 排障速查

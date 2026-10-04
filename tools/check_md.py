@@ -12,7 +12,7 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 ROOT = Path(__file__).resolve().parents[1]
 TICK = chr(96)
 DOCS = [ROOT / "README.md", ROOT / "DELIVERY.md", ROOT / "COMPARISON.md",
-        ROOT / "CHANGELOG.md", ROOT / "esp32s3-feng-llm" / "README.md"]
+        ROOT / "CHANGELOG.md", ROOT / "AGENTS.md", ROOT / "esp32s3-feng-llm" / "README.md"]
 DOCS += sorted((ROOT / "student").glob("*/MODEL_CARD.md"))
 
 # strings that must not appear any more (superseded facts)
@@ -41,6 +41,8 @@ def main():
             s = m.group(1).strip()
             if s.startswith("$") or " " in s or "<" in s or ">" in s:
                 continue
+            if "*" in s:
+                continue          # 通配写法（如 v3_5*/）不逐字校验
             if "/" not in s and "\\" not in s:
                 continue          # bare filename in prose, not a project path
             is_dir = s.endswith("/")
