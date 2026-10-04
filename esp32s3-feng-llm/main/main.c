@@ -20,6 +20,7 @@
 
 #include "feng.h"
 #include "feng_calc.h"
+#include "feng_memory.h"
 #include "feng_tools.h"
 #include "feng_tokenizer.h"
 #include <esp_timer.h>
@@ -465,6 +466,7 @@ static int generate(const int *prompt, int np, char *out, int out_max, int keep)
     if (!keep) {
         s_kv.len = 0;
         s_nhist = 0;
+        feng_mem_clear();          /* 写满=开新对话：引擎侧记忆一起清 */
     }
     int written = 0, pos = s_kv.len;
     const int vocab = s_model.hdr.vocab;
@@ -634,7 +636,17 @@ void app_main(void)
             } else if (strncmp(line, "\\reset", 6) == 0) {
                 s_kv.len = 0;
                 s_nhist = 0;
-                out_printf("context cleared\n");
+                feng_mem_clear();
+                out_printf("context cleared（记忆也一起清了，\\mem 可查看）\n");
+            } else if (strncmp(line, "\\mem", 4) == 0) {
+                if (strncmp(line, "\\mem clear", 10) == 0) {
+                    feng_mem_clear();
+                    out_printf("memory cleared\n");
+                } else {
+                    char snap[256];
+                    feng_mem_snapshot(snap, sizeof(snap));
+                    out_printf("memory: %s\n", snap);
+                }
             } else if (strncmp(line, "\\settime", 8) == 0) {
                 const long long e = atoll(line + 8);
                 if (e > 1600000000LL) {
@@ -649,6 +661,7 @@ void app_main(void)
                 out_printf("\\gbk   reply in GBK (for SuperCom/XCOM in ANSI mode)\n");
                 out_printf("\\utf8  reply in UTF-8\n");
                 out_printf("\\reset clear the conversation context (multi-turn is on by default)\n");
+                out_printf("\\mem   查看引擎记住的事实（\\mem clear 清空）\n");
                 out_printf("\\settime <unix秒> 宿主对时（脚本连接时会自动发）\n");
                 out_printf("\\stream N  flush every N bytes (0 = whole reply at once, default 30)\n");
                 out_printf("算式 / 现在几点 / 随机数 自动走板内 tool；本命令帮助不经过模型\n");
@@ -676,9 +689,11 @@ void app_main(void)
         }
         /* 计算 tool：纯算式直接由 SoC 运算器算，秒回、100% 准确，不占模型/上下文 */
         char calc_reply[256];
+        (void)feng_mem_learn(u8);      /* 先记事实（不拦截：模型仍能看到这句，保持自己的多轮能力） */
         if (feng_calc_answer(u8, calc_reply, sizeof(calc_reply)) ||
             feng_time_answer(u8, calc_reply, sizeof(calc_reply)) ||
-            feng_random_answer(u8, calc_reply, sizeof(calc_reply))) {
+            feng_random_answer(u8, calc_reply, sizeof(calc_reply)) ||
+            feng_mem_answer(u8, calc_reply, sizeof(calc_reply))) {
             ESP_LOGI(TAG, "tool: %s -> %s", u8, calc_reply);
             out_printf("<< %s\n>>END\n", calc_reply);
             fflush(stdout);

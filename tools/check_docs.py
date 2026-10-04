@@ -1054,6 +1054,17 @@ def check_facts() -> None:
             fail.append("logs/board_v3_16p3_tail_trailer.txt: 未记录新的 >>END 尾行")
         else:
             print("    板端回复尾行 ctx/tok/s（与文档一致）")
+    # --- v3.17 引擎记忆 tool ---
+    for fname, needle, label in [
+            ("board_v3_16p3_memory12_engmem.txt", "板端记忆 12/12", "v3.17 记忆 12/12"),
+            ("board_v3_16p3_identity_ctx_engmem.txt", "8 成功 / 0 失败", "v3.17 身份 8/8"),
+            ("board_v3_16p3_tools_engmem.txt", "13 成功 / 0 失败", "v3.17 工具专项 13/13"),
+            ("python_tools_selftest_engmem.txt", "你叫小雨", "v3.17 Python 同口径")]:
+        p = ROOT / "logs" / fname
+        if p.exists() and needle not in p.read_text(encoding="utf-8", errors="replace"):
+            fail.append(f"logs/{fname}: 未记录「{needle}」")
+        elif p.exists():
+            print(f"    {label}（与文档一致）")
 
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"

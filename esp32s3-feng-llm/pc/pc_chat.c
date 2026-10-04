@@ -14,6 +14,7 @@
 
 #include "feng.h"
 #include "feng_calc.h"
+#include "feng_memory.h"
 #include "feng_tools.h"
 #include "feng_tokenizer.h"
 #include <time.h>
@@ -126,12 +127,30 @@ int main(int argc, char **argv)
         while (n > 0 && (line[n - 1] == '\n' || line[n - 1] == '\r')) line[--n] = 0;
         if (n == 0) continue;
         if (strcmp(line, "\\exit") == 0 || strcmp(line, "\\quit") == 0) break;
-        if (strcmp(line, "\\reset") == 0) { kv.len = 0; printf("(context cleared)\n"); continue; }
+        if (strcmp(line, "\\reset") == 0) {
+            kv.len = 0;
+            feng_mem_clear();
+            printf("(context cleared，记忆也清了；\\mem 查看)\n");
+            continue;
+        }
+        if (strncmp(line, "\\mem", 4) == 0) {
+            if (strncmp(line, "\\mem clear", 10) == 0) {
+                feng_mem_clear();
+                printf("(memory cleared)\n");
+            } else {
+                char snap[256];
+                feng_mem_snapshot(snap, sizeof(snap));
+                printf("memory: %s\n", snap);
+            }
+            continue;
+        }
 
         char calc_reply[256];
+        (void)feng_mem_learn(line);     /* 先记事实，模型仍能看到这句 */
         if (feng_calc_answer(line, calc_reply, sizeof(calc_reply)) ||
             feng_time_answer(line, calc_reply, sizeof(calc_reply)) ||
-            feng_random_answer(line, calc_reply, sizeof(calc_reply))) {
+            feng_random_answer(line, calc_reply, sizeof(calc_reply)) ||
+            feng_mem_answer(line, calc_reply, sizeof(calc_reply))) {
             printf("[tool] %s\n", calc_reply);
             continue;
         }
@@ -144,6 +163,7 @@ int main(int argc, char **argv)
         if (kv.len + np + max_new + 4 > ctx) {
             printf("[上下文已满 %d/%d，自动开始新对话]\n", kv.len, ctx);
             kv.len = 0;
+            feng_mem_clear();
         }
         if (np >= ctx - max_new) { printf("[输入太长]\n"); continue; }
 

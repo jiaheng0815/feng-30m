@@ -24,6 +24,76 @@ _TIME_KW = ("几点", "现在时间", "现在的时间", "当前时间", "时间
             "今天几号", "今天几月", "几号", "几月", "日期", "星期几", "时间戳",
             "明天", "后天", "昨天", "前天")
 
+# ---- 引擎侧记忆（与 C 版 feng_memory.c 同口径）----
+_MEM = {}
+_MEM_KW = {
+    "name": ("我的名字是", "我叫"),
+    "color": ("颜色是", "颜色改成"),
+    "sport": ("运动是", "运动换成"),
+    "city": ("住在", "搬到"),
+    "pet": ("养了一只", "养的是", "养了"),
+    "food": ("最喜欢吃", "最喜欢"),
+}
+_QUESTION_PREFIX = ("什么", "啥", "哪", "几", "谁", "多少", "吗", "呢")
+
+
+def mem_clear():
+    _MEM.clear()
+
+
+def _mem_take(text, kw):
+    i = text.find(kw)
+    if i < 0:
+        return None
+    rest = text[i + len(kw):].lstrip(" \t：:")
+    val = re.split(r"[。，、！？；,.!?;\n\r]", rest, maxsplit=1)[0]
+    prev = None
+    while prev != val:                       # 逐层去掉尾部虚词（与 C 版一致）
+        prev = val
+        for tail in ("请记住", "一下", "了", "的", "呀", "啊", "哦", "吧", "嘛", "呢"):
+            if val.endswith(tail):
+                val = val[: -len(tail)]
+    val = val.strip()
+    if not val or val.startswith(_QUESTION_PREFIX):
+        return None
+    return val
+
+
+def mem_learn(user):
+    changed = False
+    for key, kws in _MEM_KW.items():
+        if key == "food" and any(k in user for k in ("颜色", "运动", "城市")):
+            continue
+        for kw in kws:
+            v = _mem_take(user, kw)
+            if v is not None:
+                if _MEM.get(key) != v:
+                    _MEM[key] = v
+                    changed = True
+                break                        # 每类只取最具体的说法
+    return changed
+
+
+def mem_answer(user):
+    if any(k in user for k in ("你叫什么名字", "你叫什么", "你是谁")):
+        if "谁训练" in user or "谁开发" in user:
+            return "个人开发者 jiaheng 训练了我，我叫 feng。"
+        return "我叫 feng，由个人开发者 jiaheng 开发训练。"
+    if any(k in user for k in ("我叫什么", "我叫啥", "记得我叫什么")):
+        return f"你叫{_MEM['name']}。" if "name" in _MEM else None
+    if "什么颜色" in user or "颜色是什么" in user:
+        return f"你最喜欢{_MEM['color']}。" if "color" in _MEM else None
+    if "什么运动" in user:
+        return f"你最喜欢{_MEM['sport']}。" if "sport" in _MEM else None
+    if "住在哪" in user:
+        return f"你住在{_MEM['city']}。" if "city" in _MEM else None
+    if "养了什么" in user or "养了啥" in user:
+        return f"你养了{_MEM['pet']}。" if "pet" in _MEM else None
+    if ("我最喜欢什么" in user or "我喜欢什么" in user or "喜欢吃什么" in user) \
+            and "颜色" not in user and "运动" not in user:
+        return f"你最喜欢{_MEM['food']}。" if "food" in _MEM else None
+    return None
+
 
 def ntp_epoch(timeout=1.5):
     """SNTP 查询网络时间戳；失败回退系统时钟。返回 (epoch, 'ntp'|'system')。"""
@@ -96,10 +166,13 @@ def random_answer(user):
 
 
 def tool_answer(user, epoch=None, source=None):
-    """按 算式 → 时间 → 随机数 的顺序尝试；都不是则返回 None。"""
+    """按 算式 → 时间 → 随机数 → 记忆 的顺序尝试；都不是则返回 None。
+    记忆 tool 会先记录本轮陈述里的可枚举事实（与 C 版固件同口径）。"""
+    mem_learn(user)
     for fn in (lambda: calc_answer(user),
                lambda: time_answer(user, epoch, source),
-               lambda: random_answer(user)):
+               lambda: random_answer(user),
+               lambda: mem_answer(user)):
         r = fn()
         if r is not None:
             return r
@@ -127,6 +200,9 @@ if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     e, s = ntp_epoch()
     print(f"ntp_epoch -> {e:.0f} ({s})")
+    mem_clear()
     for q in ["59+1", "4854+4411", "现在几点？", "今天几号", "给我个1到100的随机数",
-              "随机 0-9", "你好"]:
+              "随机 0-9", "我叫小雨，请记住。", "你叫什么名字？", "我叫什么名字？",
+              "我最喜欢的颜色是蓝色。", "我最喜欢什么颜色？", "我养了一只乌龟。",
+              "我养了什么？", "你好"]:
         print(f"{q!r:18s} -> {tool_answer(q, e, s)}")

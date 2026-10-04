@@ -9,7 +9,7 @@ try {
     $base = @(
         "main\feng_model.c", "main\feng_llm.c", "main\feng_quant.c",
         "main\feng_smp.c", "main\feng_tokenizer.c",
-        "main\feng_calc.c", "main\feng_tools.c"
+        "main\feng_calc.c", "main\feng_tools.c", "main\feng_memory.c"
     )
     # 1) 聊天运行时（q2 block8 / 2048 上下文）
     & $gcc -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc\pc_chat_q2b8.exe `
@@ -25,6 +25,7 @@ try {
     # 4) tool 单测（算式识别/求值/中文句式 + 时间/随机数语义）
     & $gcc -O2 -o pc\pc_calc_test.exe pc\pc_calc_test.c main\feng_calc.c -Imain -lm
     & $gcc -O2 -o pc\pc_tools_test.exe pc\pc_tools_test.c main\feng_tools.c -Imain -lm
+    & $gcc -O2 -o pc\pc_mem_test.exe pc\pc_mem_test.c main\feng_memory.c -Imain -lm
     # 5) fp32 路径一致性检查（对 PyTorch 参考 logits；默认配置，不带 KV 量化）
     & $gcc -O2 -o pc\pc_check.exe pc\pc_check.c main\feng_model.c main\feng_llm.c `
         main\feng_quant.c main\feng_smp.c main\feng_tokenizer.c -Imain -lm
@@ -33,6 +34,7 @@ try {
     Write-Host "跑一下 tool 单测：" -ForegroundColor Cyan
     & pc\pc_calc_test.exe | Select-Object -Last 2
     & pc\pc_tools_test.exe | Select-Object -Last 2
+    & pc\pc_mem_test.exe | Select-Object -Last 2
 }
 finally {
     Pop-Location
