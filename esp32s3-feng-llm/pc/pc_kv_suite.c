@@ -252,16 +252,19 @@ int main(int argc, char **argv)
 
         if (olen == 0) {
             kv.len = 0;
+            int hist[64], nhist = 0;
             float *logits = NULL;
             for (int i = 0; i < n; i++) {      /* prefill：中间 token 跳过 lm head */
                 logits = feng_forward_ex(&m, &kv, &ws, ids[i], i, i + 1 == n);
             }
             for (int step = 0; step < max_new; step++) {
-                const int tk = feng_argmax(logits, v);
+                const int tk = feng_sample_greedy(logits, v, hist, nhist, 1.15f, 3);
                 if (tk == tok.id_im_end || tk == tok.id_eot) break;
                 char b[16];
                 const int nb = feng_tok_decode_token(&tok, tk, b, sizeof(b));
                 if (olen + nb < (int)sizeof(out) - 1) { memcpy(out + olen, b, (size_t)nb); olen += nb; }
+                if (nhist < 64) hist[nhist++] = tk;
+                else { memmove(hist, hist + 1, sizeof(hist) - sizeof(hist[0])); hist[63] = tk; }
                 logits = feng_forward(&m, &kv, &ws, tk, n + step);
             }
         }

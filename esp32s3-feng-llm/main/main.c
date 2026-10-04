@@ -410,13 +410,8 @@ static void bench_gemv(void)
 /* greedy sampling with repetition penalty over the recent window */
 static int sample_next(float *logits, int vocab)
 {
-    for (int i = 0; i < s_nhist; i++) {
-        const int t = s_hist[i];
-        if (t >= 0 && t < vocab) {
-            logits[t] = logits[t] > 0 ? logits[t] / 1.15f : logits[t] * 1.15f;
-        }
-    }
-    return feng_argmax(logits, vocab);
+    /* 统一采样器：1.15 重复惩罚 + 禁止补全已出现过的 3-gram（压"太阳系太阳系…"循环） */
+    return feng_sample_greedy(logits, vocab, s_hist, s_nhist, 1.15f, 3);
 }
 
 static void push_hist(int t)

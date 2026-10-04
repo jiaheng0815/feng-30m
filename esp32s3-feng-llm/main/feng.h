@@ -160,5 +160,9 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
 
 /* greedy-sample helpers */
 int feng_argmax(const float *logits, int n);
+/* 共享贪心采样：对 hist 里的 token 施加重复惩罚；no_repeat_n>=2 时禁止补全已出现过的
+ * n-gram（压复读循环）。板端与 PC 引擎同口径。 */
+int feng_sample_greedy(float *logits, int vocab, const int *hist, int nhist,
+                       float penalty, int no_repeat_n);
 
 #endif /* FENG_H */

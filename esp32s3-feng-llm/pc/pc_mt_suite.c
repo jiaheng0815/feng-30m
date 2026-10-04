@@ -157,11 +157,7 @@ int main(int argc, char **argv)
             for (int i_ = 0; i_ < np_; i_++)                                            \
                 lg_ = feng_forward_ex(&m, &kv, &ws, ids[i_], pos_++, i_ + 1 == np_);    \
             for (int step_ = 0; step_ < max_new; step_++) {                             \
-                for (int h_ = 0; h_ < nhist; h_++) {                                    \
-                    const int t_ = hist[h_];                                            \
-                    lg_[t_] = lg_[t_] > 0 ? lg_[t_] / 1.15f : lg_[t_] * 1.15f;          \
-                }                                                                       \
-                const int tk_ = feng_argmax(lg_, v);                                    \
+                const int tk_ = feng_sample_greedy(lg_, v, hist, nhist, 1.15f, 3);      \
                 if (tk_ == tok.id_im_end || tk_ == tok.id_eot) break;                   \
                 char b_[16];                                                            \
                 const int nb_ = feng_tok_decode_token(&tok, tk_, b_, sizeof(b_));       \

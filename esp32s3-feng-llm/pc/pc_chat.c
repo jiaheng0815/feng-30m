@@ -174,13 +174,16 @@ int main(int argc, char **argv)
         }
         printf("<< ");
         fflush(stdout);
+        int hist[64], nhist = 0;
         for (int step = 0; step < max_new; step++) {
-            const int tk = feng_argmax(logits, v);
+            const int tk = feng_sample_greedy(logits, v, hist, nhist, 1.15f, 3);
             if (tk == tok.id_im_end || tk == tok.id_eot) break;
             char b[16];
             const int nb = feng_tok_decode_token(&tok, tk, b, sizeof(b));
             fwrite(b, 1, (size_t)nb, stdout);
             fflush(stdout);
+            if (nhist < 64) hist[nhist++] = tk;
+            else { memmove(hist, hist + 1, sizeof(hist) - sizeof(hist[0])); hist[63] = tk; }
             logits = feng_forward(&m, &kv, &ws, tk, pos++);
         }
         /* 补进 KV 的 im_end / 换行不需要 logits，跳过 lm head */

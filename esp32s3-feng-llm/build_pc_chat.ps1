@@ -8,7 +8,7 @@ Push-Location $PSScriptRoot
 try {
     $base = @(
         "main\feng_model.c", "main\feng_llm.c", "main\feng_quant.c",
-        "main\feng_smp.c", "main\feng_tokenizer.c",
+        "main\feng_smp.c", "main\feng_tokenizer.c", "main\feng_sample.c",
         "main\feng_calc.c", "main\feng_tools.c", "main\feng_memory.c"
     )
     # 1) 聊天运行时（q2 block8 / 2048 上下文）
@@ -26,6 +26,7 @@ try {
     & $gcc -O2 -o pc\pc_calc_test.exe pc\pc_calc_test.c main\feng_calc.c -Imain -lm
     & $gcc -O2 -o pc\pc_tools_test.exe pc\pc_tools_test.c main\feng_tools.c -Imain -lm
     & $gcc -O2 -o pc\pc_mem_test.exe pc\pc_mem_test.c main\feng_memory.c -Imain -lm
+    & $gcc -O2 -o pc\pc_sample_test.exe pc\pc_sample_test.c main\feng_sample.c main\feng_quant.c -Imain -lm
     # 5) fp32 路径一致性检查（对 PyTorch 参考 logits；默认配置，不带 KV 量化）
     & $gcc -O2 -o pc\pc_check.exe pc\pc_check.c main\feng_model.c main\feng_llm.c `
         main\feng_quant.c main\feng_smp.c main\feng_tokenizer.c -Imain -lm
@@ -35,6 +36,7 @@ try {
     & pc\pc_calc_test.exe | Select-Object -Last 2
     & pc\pc_tools_test.exe | Select-Object -Last 2
     & pc\pc_mem_test.exe | Select-Object -Last 2
+    & pc\pc_sample_test.exe | Select-Object -Last 2
 }
 finally {
     Pop-Location
