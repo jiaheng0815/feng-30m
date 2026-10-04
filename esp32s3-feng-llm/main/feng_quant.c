@@ -15,14 +15,59 @@
 static float s_q4_lut[256][2];
 static int s_q4_lut_ready;
 
-#if FENG_GEMV_A8
-/* A8 的激活量化缓冲区：每个 GEMV 调用准备一次（prepare），行循环只读。
+#if FENG_GEMV_A8 || FENG_GEMV_PIE
+/* A8/PIE 的激活量化缓冲区：每个 GEMV 调用准备一次（prepare），行循环只读。
  * 推理是单线程的，两个 SMP worker 都在 prepare 之后并发读同一份数据。 */
 #define A8_MAX_IN 1024
 static int8_t s_a8_xq[A8_MAX_IN];
 static float s_a8_xscale[A8_MAX_IN / QK];
 static const float *s_a8_x;
 static int s_a8_nin;
+#if FENG_GEMV_PIE
+static int16_t s_x16[A8_MAX_IN] __attribute__((aligned(16)));
+/* 256 项 pair LUT：打包字节 -> 两个 int16 权重 (lo-8, hi-8)，按 u32 packed */
+static uint32_t s_q4_pair32[256];
+static int s_q4_pair32_ready;
+extern int32_t pie_dot64(const int16_t *w, const int16_t *x);
+static void q4_pair32_init(void)
+{
+    if (s_q4_pair32_ready) return;
+    for (int b = 0; b < 256; b++) {
+        const int16_t lo = (int16_t)((b & 0x0F) - 8);
+        const int16_t hi = (int16_t)(((b >> 4) & 0x0F) - 8);
+        s_q4_pair32[b] = (uint32_t)(uint16_t)lo | ((uint32_t)(uint16_t)hi << 16);
+    }
+    s_q4_pair32_ready = 1;
+}
+
+/* 自检：同一行、同一份 int8 激活，PIE 点积 vs 纯标量整数点积。
+ * 两边都是整数运算、同样的操作数，结果必须逐位一致（返回 0 = MATCH）。 */
+int feng_gemv_pie_selfcheck(const void *tensor, int n_in)
+{
+    if (!(s_a8_x && s_a8_nin == n_in)) return -1;      /* 需要先 prepare */
+    q4_pair32_init();
+    const uint8_t *row = (const uint8_t *)tensor;
+    const int n_blocks = n_in / QK;
+    const uint8_t *packed = row + (size_t)n_blocks * 2;
+    int32_t pie_sum = 0, ref_sum = 0;
+    for (int b = 0; b < n_blocks; b++) {
+        const uint8_t *p = packed + (size_t)b * 32;
+        int16_t w16[QK] __attribute__((aligned(16)));
+        uint32_t *st = (uint32_t *)w16;
+        for (int j = 0; j < 32; j++) st[j] = s_q4_pair32[p[j]];
+        pie_sum += pie_dot64(w16, s_x16 + (size_t)b * QK);
+        int32_t r = 0;
+        for (int j = 0; j < 32; j++) {
+            const int lo = (int)(p[j] & 0x0F) - 8;
+            const int hi = (int)(p[j] >> 4) - 8;
+            r += lo * (int)s_a8_xq[(size_t)b * QK + 2 * j]
+                 + hi * (int)s_a8_xq[(size_t)b * QK + 2 * j + 1];
+        }
+        ref_sum += r;
+    }
+    return pie_sum == ref_sum ? 0 : 1;
+}
+#endif
 
 void feng_gemv_a8_prepare(const float *x, int n_in)
 {
@@ -48,6 +93,9 @@ void feng_gemv_a8_prepare(const float *x, int n_in)
             if (q > 127) q = 127;
             if (q < -127) q = -127;
             xq[i] = (int8_t)q;
+#if FENG_GEMV_PIE
+            s_x16[(size_t)b * QK + i] = (int16_t)q;
+#endif
         }
     }
     s_a8_x = x;
@@ -138,6 +186,34 @@ FENG_HOT void feng_gemv_range(const void *tensor, uint32_t dtype, const float *x
     const int n_blocks = n_in / QK;
     const size_t row_bytes = (size_t)n_blocks * (2 + 32);
     q4_lut_init();
+#if FENG_GEMV_PIE
+    /* PIE 内核：激活 int16（prepare 阶段已算好）+ 权重 LUT 展开 + vmulas.s16。
+     * 整数点积与 A8 路径完全同源（同样的 xq/scale），结果应逐位一致。 */
+    if (s_a8_x == x && s_a8_nin == n_in) {
+        q4_pair32_init();
+        for (int o = r0; o < r1; o++) {
+            const uint8_t *row = base + (size_t)o * row_bytes;
+            const uint8_t *scales = row;
+            const uint8_t *packed = row + (size_t)n_blocks * 2;
+            float acc = 0.f;
+            for (int b = 0; b < n_blocks; b++) {
+                const float sx = s_a8_xscale[b];
+                if (sx == 0.f) continue;
+                uint16_t hs;
+                memcpy(&hs, scales + b * 2, 2);
+                const float sw = f16_to_f32(hs);
+                const uint8_t *p = packed + (size_t)b * 32;
+                int16_t w16[QK] __attribute__((aligned(16)));
+                uint32_t *st = (uint32_t *)w16;
+                for (int j = 0; j < 32; j++) st[j] = s_q4_pair32[p[j]];
+                const int32_t dot = pie_dot64(w16, s_x16 + (size_t)b * QK);
+                acc += (float)dot * (sw * sx);
+            }
+            y[o] = acc;
+        }
+        return;
+    }
+#endif
 #if FENG_GEMV_A8
     /* A8 模式：激活按 64 值一块量化成 int8（scale_x = max|x|/127），
      * 权重仍是 Q4（-8..7），点积走整数，再乘 scale_w*scale_x。

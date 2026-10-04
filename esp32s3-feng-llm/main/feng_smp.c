@@ -92,7 +92,7 @@ void feng_smp_init(void)
 void feng_gemv_par(const void *tensor, uint32_t dtype, const float *x, float *y,
                    int n_out, int n_in)
 {
-#if FENG_GEMV_A8
+#if FENG_GEMV_A8 || FENG_GEMV_PIE
     feng_gemv_a8_prepare(x, n_in);
 #endif
     if (!s_smp_ok || n_out < 32) {
@@ -136,7 +136,7 @@ void feng_smp_init(void)
 void feng_gemv_par(const void *tensor, uint32_t dtype, const float *x, float *y,
                    int n_out, int n_in)
 {
-#if FENG_GEMV_A8
+#if FENG_GEMV_A8 || FENG_GEMV_PIE
     feng_gemv_a8_prepare(x, n_in);
 #endif
     feng_gemv_range(tensor, dtype, x, y, 0, n_out, n_in);

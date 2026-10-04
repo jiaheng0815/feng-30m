@@ -79,6 +79,7 @@ static long long fw_uptime_us(void)
 }
 
 #if FENG_BENCH_CTX && FENG_KV_Q2
+/* PIE 裸吞吐：判断"整行 PIE 内核"的理论上限（对比标量 GEMV 的 4.1 周期/权重，双核） */
 /* 合成指定长度的 q2 KV，测单次 forward 的完整耗时（含权重 GEMV + 注意力）。
  * 每个长度跑两次：第 1 次是冷缓存，第 2 次是热缓存；对比不同内核版本用第 2 次。 */
 static void bench_forward_ctx(void)
@@ -146,6 +147,28 @@ static void bench_forward_ctx(void)
     ESP_LOGI(TAG, "lm head @pos0: with %.0f ms | without %.0f ms (prefill 每个中间 token 省 %.0f ms)",
              h_with / 1000.0, h_without / 1000.0, (h_with - h_without) / 1000.0);
     s_kv.len = 0;
+}
+#endif
+
+#if FENG_BENCH_PIE
+/* PIE 裸吞吐：判断"整行 PIE 内核"的理论上限（对比标量 GEMV 的 ~4 周期/权重，双核） */
+extern void pie_mac_s16_bench(const int16_t *a, int n);
+extern void pie_s8_zip_mac_bench(const int8_t *w, const int8_t *x, int n);
+static void bench_pie(void)
+{
+    static int16_t b16[16];
+    static int8_t b8[32];
+    const int iters = 300000;
+    for (int i = 0; i < 16; i++) b16[i] = (int16_t)(i + 1);
+    for (int i = 0; i < 32; i++) b8[i] = (int8_t)(i - 8);
+    const unsigned c0 = (unsigned)esp_cpu_get_cycle_count();
+    pie_mac_s16_bench(b16, iters);
+    const unsigned c1 = (unsigned)esp_cpu_get_cycle_count();
+    pie_s8_zip_mac_bench(b8, b8 + 16, iters);
+    const unsigned c2 = (unsigned)esp_cpu_get_cycle_count();
+    ESP_LOGI(TAG, "PIE bench: s16 MAC 链 %.2f 周期/条 (%.3f 周期/MAC) | s8 流水 %.2f 周期/迭代 (%.3f 周期/MAC, 8MAC/迭代)",
+             (double)(c1 - c0) / iters, (double)(c1 - c0) / iters / 8.0,
+             (double)(c2 - c1) / iters, (double)(c2 - c1) / iters / 8.0);
 }
 #endif
 
@@ -339,16 +362,36 @@ static void bench_gemv(void)
     const feng_layer_t *L = &s_model.layers[0];
     const size_t wbytes = (size_t)f * (h / 64) * 34;   /* Q4 bytes read per call */
     const long iters = 20;
+    static float xref[512];                            /* 未 prepare 的副本 -> 回退内核 */
     /* 激活缓冲在开机时是未初始化的；填成非零、有正有负的样值，
      * 否则"全零块跳过"会让基准测不到真正的权重解码 + 点积开销。 */
     for (int i = 0; i < h; i++) {
         s_ws.xn[i] = (float)((i % 7) - 3) * 0.13f;
+        xref[i] = s_ws.xn[i];
     }
     int64_t t0 = esp_timer_get_time();
     for (long i = 0; i < iters; i++) {
         feng_gemv_range(L->gate, FENG_DT_Q4, s_ws.xn, s_ws.gate, 0, f, h);
     }
     int64_t dt1 = esp_timer_get_time() - t0;
+#if FENG_GEMV_A8 || FENG_GEMV_PIE
+    /* 准备激活 -> 启用 A8/PIE 内核（自检一次：整数点积必须一致） */
+    feng_gemv_a8_prepare(s_ws.xn, h);
+    {
+        extern int feng_gemv_pie_selfcheck(const void *tensor, int n_in);
+        const int chk = feng_gemv_pie_selfcheck(L->gate, h);
+        ESP_LOGI(TAG, "PIE dot self-check: %s",
+                 chk == 0 ? "MATCH" : (chk == 1 ? "MISMATCH" : "SKIP(no prepare)"));
+    }
+    t0 = esp_timer_get_time();
+    for (long i = 0; i < iters; i++) {
+        feng_gemv_range(L->gate, FENG_DT_Q4, s_ws.xn, s_ws.gate, 0, f, h);
+    }
+    int64_t dt1b = esp_timer_get_time() - t0;
+#else
+    const int64_t dt1b = dt1;
+#endif
+    (void)xref;
     t0 = esp_timer_get_time();
     for (long i = 0; i < iters; i++) {
         feng_gemv_par(L->gate, FENG_DT_Q4, s_ws.xn, s_ws.gate, f, h);
@@ -357,6 +400,10 @@ static void bench_gemv(void)
     ESP_LOGI(TAG, "gemv %dx%d: 1-core %lld us (%.0f MB/s) | 2-core %lld us (%.0f MB/s) | speedup %.2fx",
              f, h, dt1 / iters, (double)wbytes * iters / (double)dt1,
              dt2 / iters, (double)wbytes * iters / (double)dt2, (double)dt1 / (double)dt2);
+#if FENG_GEMV_A8 || FENG_GEMV_PIE
+    ESP_LOGI(TAG, "gemv 量化内核: 1-core %lld us（对比回退 %lld us，%.2fx）",
+             dt1b / iters, dt1 / iters, (double)dt1 / (double)dt1b);
+#endif
 }
 
 /* greedy sampling with repetition penalty over the recent window */
@@ -535,6 +582,9 @@ void app_main(void)
     setup_model();
 #if FENG_BENCH_CTX && FENG_KV_Q2
     bench_forward_ctx();
+#endif
+#if FENG_BENCH_PIE
+    bench_pie();
 #endif
     feng_tools_set_time(fw_epoch_now);
     feng_tools_set_uptime(fw_uptime_us);

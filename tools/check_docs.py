@@ -1029,6 +1029,21 @@ def check_facts() -> None:
             fail.append(f"logs/{fname}: 未记录「{needle}」")
         elif p.exists():
             print(f"    {label}（与文档一致）")
+    # --- PIE 第二版：正确的内核也只有 1.05×（负结果） ---
+    pie1 = ROOT / "logs" / "board_bench_pie.txt"
+    pie2 = ROOT / "logs" / "board_bench_pie_gemv2.txt"
+    if pie1.exists():
+        t = pie1.read_text(encoding="utf-8", errors="replace")
+        if "0.629 周期/MAC" not in t and "0.63" not in t:
+            fail.append("logs/board_bench_pie.txt: 未记录 PIE 裸吞吐 0.63 周期/MAC")
+        else:
+            print("    PIE 裸吞吐 0.63 周期/MAC（与文档一致）")
+    if pie2.exists():
+        t = pie2.read_text(encoding="utf-8", errors="replace")
+        if "PIE dot self-check: MATCH" not in t or "1.05x" not in t:
+            fail.append("logs/board_bench_pie_gemv2.txt: 未记录自检 MATCH 与 1.05×")
+        else:
+            print("    PIE 内核自检 MATCH、1.05×（与文档一致）")
 
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"

@@ -1,6 +1,6 @@
 idf_component_register(
     SRCS "main.c" "feng_model.c" "feng_llm.c" "feng_quant.c" "feng_smp.c" "feng_tokenizer.c"
-         "feng_calc.c" "feng_tools.c" "gbk.c" "gbk_table.c"
+         "feng_calc.c" "feng_tools.c" "gbk.c" "gbk_table.c" "feng_pie_bench.S" "feng_pie_gemv.S"
     INCLUDE_DIRS "."
 )
 
@@ -39,6 +39,16 @@ endif()
 option(FENG_GEMV_MADD "pure madd accumulation chain in Q4 GEMV" OFF)
 if(FENG_GEMV_MADD)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_GEMV_MADD=1)
+endif()
+# 测试用：-DFENG_BENCH_PIE=ON 开机测 PIE 裸吞吐（看整行内核值不值得写）
+option(FENG_BENCH_PIE "benchmark raw PIE (128-bit SIMD) throughput on boot" OFF)
+if(FENG_BENCH_PIE)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_BENCH_PIE=1)
+endif()
+# 实验：-DFENG_GEMV_PIE=ON 用 PIE 内核做 Q4 GEMV（激活 int8/int16 + LUT 展开 + vmulas.s16）
+option(FENG_GEMV_PIE "PIE (128-bit SIMD) Q4 GEMV kernel" OFF)
+if(FENG_GEMV_PIE)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_GEMV_PIE=1)
 endif()
 # 测试用：-DFENG_FAST_EXP=ON 用多项式快速 exp 替换 softmax/silu 的 newlib expf
 option(FENG_FAST_EXP "polynomial fast exp in softmax/silu" OFF)
