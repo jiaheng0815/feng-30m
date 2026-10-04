@@ -1011,6 +1011,8 @@ def check_facts() -> None:
     for fname, needle in [("pc_mtsuite_v3_16p4_seq.txt", "SUMMARY seq 10/10"),
                           ("pc_mtsuite_v3_16p5_seq.txt", "SUMMARY seq 10/10"),
                           ("pc_mtsuite_v3_16p6_seq.txt", "SUMMARY seq 10/10"),
+                          ("pc_mtsuite_v3_16p7_seq.txt", "SUMMARY seq 10/10"),
+                          ("pc_kv_suite32_v3_16p7_q2b8.txt", "长文召回 4/4"),
                           ("pc_kv_suite32_v3_16p6_q2b8.txt", "长文召回 4/4"),
                           ("board_v3_16p6_identity_ctx.txt", "8 成功 / 0 失败"),
                           ("board_v3_16p6_memory12.txt", "板端记忆 9/12")]:
