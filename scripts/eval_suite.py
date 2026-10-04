@@ -55,21 +55,24 @@ def main() -> int:
     args = ap.parse_args()
     only = {s for s in args.only.split(",") if s}
     py = sys.executable
+    def dest(suffix: str) -> str:
+        return str(EVAL / f"{args.tag}_{suffix}.json")
+
     suites = [
         ("scope", [str(ROOT / "scripts" / "eval_planA_scope.py"), args.model,
-                   str(EVAL / f"{args.tag}_scope.json")]),
+                   dest("scope")], dest("scope")),
         ("identity", [str(ROOT / "scripts" / "eval_identity.py"), args.model,
-                      str(EVAL / f"{args.tag}_identity.json")]),
+                      dest("identity")], dest("identity")),
         ("probe42", [str(ROOT / "scripts" / "chat_probe.py"), "--model", args.model,
-                     "--out", str(EVAL / f"{args.tag}_probe42.json")]),
+                     "--out", dest("probe42")], dest("probe42")),
         ("heldout30", [str(ROOT / "scripts" / "chat_probe_heldout.py"), "--model", args.model,
-                       "--out", str(EVAL / f"{args.tag}_heldout30.json")]),
+                       "--out", dest("heldout30")], dest("heldout30")),
         ("memory24", [str(ROOT / "scripts" / "eval_memory.py"), "--model", args.model,
-                      "--out", str(EVAL / f"{args.tag}_memory24.json"), "--n", "24"]),
+                      "--out", dest("memory24"), "--n", "24"], dest("memory24")),
     ]
     summary, failed = {}, []
     print(f"=== 评测套餐：{args.tag}（model={args.model}）===", flush=True)
-    for name, cmd in suites:
+    for name, cmd, out_path in suites:
         if only and name not in only:
             continue
         t0 = time.time()
@@ -77,14 +80,14 @@ def main() -> int:
                            encoding="utf-8", errors="replace")
         out = (r.stdout or "") + (r.stderr or "")
         dt = time.time() - t0
-        score = parse_score(name, Path(cmd[-1]))
+        score = parse_score(name, Path(out_path))
         if r.returncode != 0 or score is None:
             failed.append(name)
             tail = "\n".join(out.strip().splitlines()[-4:])
             print(f"  {name:10s} FAIL ({dt:.0f}s)\n{tail}", flush=True)
             continue
         ok, n = score
-        summary[name] = {"ok": ok, "n": n, "json": str(Path(cmd[-1]).relative_to(ROOT))}
+        summary[name] = {"ok": ok, "n": n, "json": str(Path(out_path).relative_to(ROOT))}
         print(f"  {name:10s} {ok}/{n}  ({dt:.0f}s)", flush=True)
     dest = EVAL / f"{args.tag}_suite.json"
     dest.write_text(json.dumps({"model": args.model, "suites": summary,

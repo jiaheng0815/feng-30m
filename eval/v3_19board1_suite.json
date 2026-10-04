@@ -1,0 +1,16 @@
+{
+  "model": "v3_19\\board1",
+  "suites": {
+    "heldout30": {
+      "ok": 19,
+      "n": 30,
+      "json": "eval\\v3_19board1_heldout30.json"
+    },
+    "memory24": {
+      "ok": 24,
+      "n": 24,
+      "json": "eval\\v3_19board1_memory24.json"
+    }
+  },
+  "failed": []
+}

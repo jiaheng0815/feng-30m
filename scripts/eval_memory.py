@@ -63,7 +63,10 @@ def main() -> None:
         with torch.no_grad():
             out = model.generate(ids, max_new_tokens=16, do_sample=False,
                                  pad_token_id=3, eos_token_id=0)
-        ack = tok.decode(out[0][ids.shape[1]:].tolist(), skip_special_tokens=True).split("<|im_end|>")[0].strip()
+        # 先按原文解码再在 <|im_end|> 处截断（skip_special_tokens 会把这个标记删掉，
+        # split 就失效，模型续写的下一轮 "assistant\n…" 会混进答案——2026-10-05 修）
+        ack = (tok.decode(out[0][ids.shape[1]:].tolist())
+               .split("<|im_end|>")[0].split("<|im_start|>")[0].strip())
         msgs.append({"role": "assistant", "content": ack})
         # 第二轮：追问
         msgs.append({"role": "user", "content": c["ask"]})
@@ -72,7 +75,8 @@ def main() -> None:
         with torch.no_grad():
             out = model.generate(ids, max_new_tokens=args.max_new, do_sample=False,
                                  pad_token_id=3, eos_token_id=0)
-        reply = tok.decode(out[0][ids.shape[1]:].tolist(), skip_special_tokens=True).split("<|im_end|>")[0].strip()
+        reply = (tok.decode(out[0][ids.shape[1]:].tolist())
+                 .split("<|im_end|>")[0].split("<|im_start|>")[0].strip())
         good = c["value"] in reply
         ok += int(good)
         rows.append({**c, "ack": ack[:40], "reply": reply[:80], "ok": good})
