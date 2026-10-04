@@ -1064,6 +1064,7 @@ def check_facts() -> None:
             ("board_v3_17_tools_final.txt", "13 成功 / 0 失败", "v3.17 终版固件工具 13/13"),
             ("board_v3_17_final_smoke.txt", "4 成功 / 0 失败", "v3.17 终版冒烟 4/4"),
             ("board_v3_17_mem_list_forget2.txt", "9 成功 / 0 失败", "v3.17 列出/遗忘/墓碑 9/9"),
+            ("board_v3_17_stress64.txt", "64 成功 / 0 失败", "v3.17 当前固件 64 轮压测 64/64"),
             ("board_v3_16p3_identity_ctx_engmem.txt", "8 成功 / 0 失败", "v3.17 身份 8/8"),
             ("board_v3_16p3_tools_engmem.txt", "13 成功 / 0 失败", "v3.17 工具专项 13/13"),
             ("python_tools_selftest_engmem.txt", "你叫小雨", "v3.17 Python 同口径")]:
