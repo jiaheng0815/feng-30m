@@ -116,7 +116,7 @@ int main(int argc, char **argv)
     feng_tools_set_time(pc_epoch_now);
     feng_tools_set_uptime(pc_uptime_us);
 
-    printf("feng-30m PC chat ｜ model=%s ｜ KV=%s ctx=%d ｜ 算式/时间/随机数走 tool，\\reset 清空\n",
+    printf("feng-30m PC chat ｜ model=%s ｜ KV=%s ctx=%d ｜ 算式/时间/随机数/记忆走 tool，\\reset 清空\n",
            dir, KV_MODE, ctx);
     char line[1024];
     while (1) {
@@ -148,9 +148,9 @@ int main(int argc, char **argv)
         char calc_reply[256];
         (void)feng_mem_learn(line);     /* 先记事实，模型仍能看到这句 */
         if (feng_calc_answer(line, calc_reply, sizeof(calc_reply)) ||
+            feng_mem_answer(line, calc_reply, sizeof(calc_reply)) ||
             feng_time_answer(line, calc_reply, sizeof(calc_reply)) ||
-            feng_random_answer(line, calc_reply, sizeof(calc_reply)) ||
-            feng_mem_answer(line, calc_reply, sizeof(calc_reply))) {
+            feng_random_answer(line, calc_reply, sizeof(calc_reply))) {
             printf("[tool] %s\n", calc_reply);
             continue;
         }

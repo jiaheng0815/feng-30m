@@ -597,7 +597,7 @@ void app_main(void)
     out_printf("\n=== feng-30m on ESP32-S3 (serial chat) ===\n");
     out_printf("one sentence per line; the reply streams between << and >>END\n");
     out_printf("多轮对话：自动保留上下文（2048 token），满了自动开新对话\n");
-    out_printf("工具：算式（59+1）、现在几点、随机数 都由板内 tool 直接回答，不经过模型\n");
+    out_printf("工具：算式（59+1）、现在几点、随机数、记忆（我叫X/我最喜欢Y…）都由板内 tool 直接回答\n");
     out_printf("commands: \\gbk  \\utf8  \\reset  \\stream N  \\help\n");
     out_printf("FENG_READY\n");
     fflush(stdout);
@@ -691,9 +691,9 @@ void app_main(void)
         char calc_reply[256];
         (void)feng_mem_learn(u8);      /* 先记事实（不拦截：模型仍能看到这句，保持自己的多轮能力） */
         if (feng_calc_answer(u8, calc_reply, sizeof(calc_reply)) ||
+            feng_mem_answer(u8, calc_reply, sizeof(calc_reply)) ||
             feng_time_answer(u8, calc_reply, sizeof(calc_reply)) ||
-            feng_random_answer(u8, calc_reply, sizeof(calc_reply)) ||
-            feng_mem_answer(u8, calc_reply, sizeof(calc_reply))) {
+            feng_random_answer(u8, calc_reply, sizeof(calc_reply))) {
             ESP_LOGI(TAG, "tool: %s -> %s", u8, calc_reply);
             out_printf("<< %s\n>>END\n", calc_reply);
             fflush(stdout);

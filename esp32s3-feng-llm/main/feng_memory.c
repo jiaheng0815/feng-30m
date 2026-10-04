@@ -1,36 +1,72 @@
-/* 引擎侧记忆 tool 的实现：纯 C、无动态内存，板端/PC 共用。 */
+/* 引擎侧记忆 tool 的实现：纯 C、无动态内存，板端/PC/Python 同口径。
+ *
+ * 存储分三块：
+ *   - 专用槽：名字（我叫X）、城市（住在/搬到X）、宠物（养了X）——它们有固定的追问句式
+ *   - 通用槽：键值表（"最喜欢的<键>是<值>"、"我的<键>是<值>"）——覆盖
+ *     颜色/运动/食物/书/电影/生日/职业…等任意短键
+ */
 #include "feng_memory.h"
 
 #include <stdio.h>
 #include <string.h>
 
 #define VAL_CAP 32
+#define KEY_CAP 24
+#define MAX_SLOTS 8
 
 typedef struct {
-    char name[VAL_CAP];   /* 用户的名字 */
-    char color[VAL_CAP];
-    char sport[VAL_CAP];
-    char city[VAL_CAP];
-    char pet[VAL_CAP];
-    char food[VAL_CAP];
-    int has_name, has_color, has_sport, has_city, has_pet, has_food;
-} mem_t;
+    char key[KEY_CAP];
+    char val[VAL_CAP];
+    int used;
+} slot_t;
 
-static mem_t g;
+static char g_name[VAL_CAP];
+static char g_city[VAL_CAP];
+static char g_pet[VAL_CAP];
+static int g_has_name, g_has_city, g_has_pet;
+static slot_t g_slots[MAX_SLOTS];
+static int g_slot_next;
 
-void feng_mem_clear(void) { memset(&g, 0, sizeof(g)); }
-
-/* 值里出现这些前缀说明用户在提问，不是陈述 */
-static int looks_like_question(const char *v)
+void feng_mem_clear(void)
 {
-    static const char *kw[] = {"什么", "啥", "哪", "几", "谁", "多少", "吗", "呢"};
-    for (int i = 0; i < (int)(sizeof(kw) / sizeof(kw[0])); i++) {
-        if (strncmp(v, kw[i], strlen(kw[i])) == 0) return 1;
-    }
-    return 0;
+    g_name[0] = g_city[0] = g_pet[0] = 0;
+    g_has_name = g_has_city = g_has_pet = 0;
+    memset(g_slots, 0, sizeof(g_slots));
+    g_slot_next = 0;
 }
 
-/* UTF-8 字符长度（本模块只做字节级处理，够用） */
+/* ---- 通用键值表 ---- */
+static void slot_put(const char *key, const char *val)
+{
+    if (!val[0]) return;                               /* 空键 = 无名偏好槽（"我最喜欢X"） */
+    for (int i = 0; i < MAX_SLOTS; i++) {              /* 同键覆盖 */
+        if (g_slots[i].used && strcmp(g_slots[i].key, key) == 0) {
+            snprintf(g_slots[i].val, VAL_CAP, "%s", val);
+            return;
+        }
+    }
+    for (int i = 0; i < MAX_SLOTS; i++) {              /* 空位 */
+        if (!g_slots[i].used) {
+            snprintf(g_slots[i].key, KEY_CAP, "%s", key);
+            snprintf(g_slots[i].val, VAL_CAP, "%s", val);
+            g_slots[i].used = 1;
+            return;
+        }
+    }
+    slot_t *s = &g_slots[g_slot_next++ % MAX_SLOTS];   /* 满了就轮换覆盖最旧的 */
+    snprintf(s->key, KEY_CAP, "%s", key);
+    snprintf(s->val, VAL_CAP, "%s", val);
+}
+
+static const char *slot_get(const char *key)
+{
+    for (int i = 0; i < MAX_SLOTS; i++) {
+        if (g_slots[i].used && strcmp(g_slots[i].key, key) == 0) return g_slots[i].val;
+    }
+    return NULL;
+}
+
+/* ---- 文本工具 ---- */
 static int u8len(const char *c)
 {
     const unsigned char b = (unsigned char)*c;
@@ -46,21 +82,28 @@ static int starts_with(const char *s, const char *pfx)
     return strncmp(s, pfx, strlen(pfx)) == 0;
 }
 
-/* 句读/终止符 */
 static int is_term(const char *p)
 {
     static const char *t[] = {"。", "，", "、", "！", "？", "；", ",", ".", "!", "?", ";",
-                              "\n", "\r"};
+                              "\n", "\r", "的"};
     for (unsigned i = 0; i < sizeof(t) / sizeof(t[0]); i++) {
         if (starts_with(p, t[i])) return 1;
     }
     return 0;
 }
 
-/* 去掉尾部虚词（改了/了/呀…/，请记住） */
+static int looks_like_question(const char *v)
+{
+    static const char *kw[] = {"什么", "啥", "哪", "几", "谁", "多少", "吗", "呢", "怎么"};
+    for (unsigned i = 0; i < sizeof(kw) / sizeof(kw[0]); i++) {
+        if (starts_with(v, kw[i])) return 1;
+    }
+    return 0;
+}
+
 static void trim_tail(char *out)
 {
-    static const char *t[] = {"请记住", "一下", "了", "的", "呀", "啊", "哦", "吧", "嘛", "呢"};
+    static const char *t[] = {"请记住", "一下", "了", "呀", "啊", "哦", "吧", "嘛", "呢"};
     int changed = 1;
     while (changed && *out) {
         changed = 0;
@@ -75,12 +118,10 @@ static void trim_tail(char *out)
     }
 }
 
-/* 取 kw 之后的值：到句读/换行或串尾；再去掉尾部虚词 */
+/* 取一段值：到句读/换行或串尾；去尾部虚词；问句返回失败 */
 static int take_value(const char *p, char *out, int cap)
 {
-    while (*p == ' ' || *p == '\t' || starts_with(p, "：") || *p == ':') {
-        p++;
-    }
+    while (*p == ' ' || *p == '\t' || starts_with(p, "：") || *p == ':') p++;
     int n = 0;
     while (*p && n < cap - 1) {
         if (is_term(p)) break;
@@ -93,108 +134,210 @@ static int take_value(const char *p, char *out, int cap)
     out[n] = 0;
     trim_tail(out);
     while (*out == ' ') memmove(out, out + 1, strlen(out));
-    return out[0] != 0;
-}
-
-/* 在 user 里找 kw，取跟随的值写进 dst（带 has 标记）；返回 1 = 命中 */
-static int learn_kw(const char *user, const char *kw, char *dst, int *has)
-{
-    const char *p = strstr(user, kw);
-    if (!p) return 0;
-    char v[VAL_CAP];
-    if (!take_value(p + strlen(kw), v, sizeof(v))) return 0;
-    if (looks_like_question(v)) return 0;
-    if (strcmp(v, dst) == 0 && *has) return 0;          /* 没有变化 */
-    snprintf(dst, VAL_CAP, "%s", v);
-    *has = 1;
+    if (!out[0] || looks_like_question(out)) return 0;
     return 1;
 }
 
+/* 取一段"键"：到 stop 串或句读为止，允许含"的"（调用方自行 trim） */
+static int take_key_to(const char *p, const char *stop, char *out, int cap)
+{
+    int n = 0;
+    while (*p && n < cap - 1) {
+        if (stop && starts_with(p, stop)) break;
+        if (starts_with(p, "。") || starts_with(p, "？") || starts_with(p, "，") ||
+            starts_with(p, "！") || starts_with(p, "、") || starts_with(p, "？") ||
+            *p == '?' || *p == '!' || *p == '\n' || *p == '\r' || *p == ',') break;
+        const int l = u8len(p);
+        if (n + l >= cap) break;
+        memcpy(out + n, p, (size_t)l);
+        n += l;
+        p += l;
+    }
+    out[n] = 0;
+    while (out[0] && out[0] == ' ') memmove(out, out + 1, strlen(out));
+    while (out[0]) {                                   /* 去掉开头的"的"和尾部空格 */
+        const size_t lo = strlen(out);
+        if (lo >= 3 && strcmp(out, "的") == 0) { out[0] = 0; break; }
+        if (lo >= 3 && starts_with(out, "的")) { memmove(out, out + 3, lo - 3 + 1); continue; }
+        if (out[lo - 1] == ' ') { out[lo - 1] = 0; continue; }
+        break;
+    }
+    return out[0] != 0;
+}
+
+static int take_key_before(const char *start, const char *stop_kw, char *out, int cap)
+{
+    const char *stop = strstr(start, stop_kw);
+    if (!stop) return 0;
+    char tmp[KEY_CAP * 2];
+    const size_t len = (size_t)(stop - start);
+    if (len == 0 || len >= sizeof(tmp)) return 0;
+    memcpy(tmp, start, len);
+    tmp[len] = 0;
+    return take_key_to(tmp, NULL, out, cap);           /* 复用清理逻辑 */
+}
+
+/* 明确的 [start, end) 区间版本（学习路径用：end 是"是/改成/换成"的指针） */
+static int take_key_range(const char *start, const char *end, char *out, int cap)
+{
+    const size_t len = (size_t)(end - start);
+    char tmp[KEY_CAP * 2];
+    if (len == 0 || len >= sizeof(tmp)) return 0;
+    memcpy(tmp, start, len);
+    tmp[len] = 0;
+    return take_key_to(tmp, NULL, out, cap);
+}
+
+/* ---- 学习 ---- */
 int feng_mem_learn(const char *user)
 {
     int changed = 0;
-    /* 每类只取"最具体"的一个说法（先匹配到的优先，避免通用句式覆盖更精确的提取） */
-    /* 名字：我的名字是X / 我叫X（"我是X" 见下） */
-    if (learn_kw(user, "我的名字是", g.name, &g.has_name)) changed = 1;
-    else if (learn_kw(user, "我叫", g.name, &g.has_name)) changed = 1;
-    if (!g.has_name) {
+    char v[VAL_CAP], key[KEY_CAP];
+
+    /* 名字（专用）：我的名字是X / 我叫X / 我是X（短名字） */
+    if (take_value(strstr(user, "我的名字是") ? strstr(user, "我的名字是") + strlen("我的名字是") : "", v, sizeof(v))) {
+        snprintf(g_name, VAL_CAP, "%s", v); g_has_name = 1; changed = 1;
+    } else if (strstr(user, "我叫") && take_value(strstr(user, "我叫") + strlen("我叫"), v, sizeof(v))) {
+        snprintf(g_name, VAL_CAP, "%s", v); g_has_name = 1; changed = 1;
+    }
+    if (!g_has_name) {
         const char *p = strstr(user, "我是");
-        if (p) {
-            char v[VAL_CAP];
-            if (take_value(p + 6, v, sizeof(v)) && !looks_like_question(v) &&
-                strlen(v) <= 12 && !strstr(v, "学生") && !strstr(v, "模型")) {
-                snprintf(g.name, VAL_CAP, "%s", v);
-                g.has_name = 1;
-                changed = 1;
-            }
+        if (p && take_value(p + strlen("我是"), v, sizeof(v)) &&
+            strlen(v) <= 12 && !strstr(v, "学生") && !strstr(v, "模型") && !strstr(v, "AI")) {
+            snprintf(g_name, VAL_CAP, "%s", v); g_has_name = 1; changed = 1;
         }
     }
-    /* 颜色 / 运动（"改成X了" 的说法也覆盖） */
-    if (learn_kw(user, "颜色是", g.color, &g.has_color)) changed = 1;
-    else if (learn_kw(user, "颜色改成", g.color, &g.has_color)) changed = 1;
-    if (learn_kw(user, "运动是", g.sport, &g.has_sport)) changed = 1;
-    else if (learn_kw(user, "运动换成", g.sport, &g.has_sport)) changed = 1;
-    /* 城市 / 宠物 */
-    if (learn_kw(user, "住在", g.city, &g.has_city)) changed = 1;
-    else if (learn_kw(user, "搬到", g.city, &g.has_city)) changed = 1;
-    if (learn_kw(user, "养了一只", g.pet, &g.has_pet)) changed = 1;
-    else if (learn_kw(user, "养的是", g.pet, &g.has_pet)) changed = 1;
-    else if (learn_kw(user, "养了", g.pet, &g.has_pet)) changed = 1;
-    /* 食物：没有类目关键词的 "最喜欢X"（有"颜色/运动"时上面已经吃掉） */
-    if (!strstr(user, "颜色") && !strstr(user, "运动") && !strstr(user, "城市")) {
-        if (learn_kw(user, "最喜欢吃", g.food, &g.has_food)) changed = 1;
-        else if (learn_kw(user, "最喜欢", g.food, &g.has_food)) changed = 1;
+
+    /* 城市 / 宠物（专用，问法固定） */
+    const char *p;
+    if ((p = strstr(user, "住在")) && take_value(p + strlen("住在"), v, sizeof(v))) {
+        snprintf(g_city, VAL_CAP, "%s", v); g_has_city = 1; changed = 1;
+    } else if ((p = strstr(user, "搬到")) && take_value(p + strlen("搬到"), v, sizeof(v))) {
+        snprintf(g_city, VAL_CAP, "%s", v); g_has_city = 1; changed = 1;
+    }
+    if ((p = strstr(user, "养了一只")) && take_value(p + strlen("养了一只"), v, sizeof(v))) {
+        snprintf(g_pet, VAL_CAP, "%s", v); g_has_pet = 1; changed = 1;
+    } else if ((p = strstr(user, "养的是")) && take_value(p + strlen("养的是"), v, sizeof(v))) {
+        snprintf(g_pet, VAL_CAP, "%s", v); g_has_pet = 1; changed = 1;
+    } else if ((p = strstr(user, "养了")) && take_value(p + strlen("养了"), v, sizeof(v))) {
+        snprintf(g_pet, VAL_CAP, "%s", v); g_has_pet = 1; changed = 1;
+    }
+
+    /* 通用槽 1：最喜欢的<键>是/改成/换成<值>（键可为空 -> 无名偏好，如"我最喜欢蛋糕"） */
+    if ((p = strstr(user, "最喜欢的")) != NULL) {
+        static const char *marks[] = {"是", "改成", "换成"};
+        const char *m = NULL;
+        size_t mlen = 0;
+        for (unsigned i = 0; i < sizeof(marks) / sizeof(marks[0]); i++) {
+            const char *q = strstr(p + strlen("最喜欢的"), marks[i]);
+            if (q && (!m || q < m)) { m = q; mlen = strlen(marks[i]); }
+        }
+        const char *k0 = p + strlen("最喜欢的");
+        if (m && m - k0 <= KEY_CAP * 2 && take_key_range(k0, m, key, sizeof(key)) &&
+            take_value(m + mlen, v, sizeof(v))) {
+            slot_put(key, v);
+            changed = 1;
+        }
+    } else if ((p = strstr(user, "最喜欢吃")) != NULL || (p = strstr(user, "喜欢吃")) != NULL ||
+               (p = strstr(user, "最喜欢")) != NULL) {
+        const char *v0;
+        if (starts_with(p, "最喜欢吃")) v0 = p + strlen("最喜欢吃");
+        else if (starts_with(p, "喜欢吃")) v0 = p + strlen("喜欢吃");
+        else v0 = p + strlen("最喜欢");
+        if (take_value(v0, v, sizeof(v))) {            /* 无名偏好槽（键 = ""） */
+            slot_put("", v);
+            changed = 1;
+        }
+    }
+
+    /* 通用槽 2：我的<键>是<值>（生日/职业/家乡…；"名字"已在上面处理） */
+    if ((p = strstr(user, "我的")) != NULL) {
+        const char *k0 = p + strlen("我的");
+        static const char *marks2[] = {"是", "叫"};
+        const char *m = NULL;
+        size_t mlen = 0;
+        for (unsigned i = 0; i < sizeof(marks2) / sizeof(marks2[0]); i++) {
+            const char *q = strstr(k0, marks2[i]);
+            if (q && (!m || q < m)) { m = q; mlen = strlen(marks2[i]); }
+        }
+        if (m && take_key_range(k0, m, key, sizeof(key)) && strcmp(key, "名字") != 0 &&
+            take_value(m + mlen, v, sizeof(v))) {
+            slot_put(key, v);
+            changed = 1;
+        }
     }
     return changed;
 }
 
-static int answer_fmt(char *out, int cap, const char *fmt, const char *v)
+static int answer_fmt(char *out, int cap, const char *fmt, const char *a, const char *b)
 {
-    snprintf(out, cap, fmt, v);
+    snprintf(out, cap, fmt, a, b);
     return 1;
 }
 
+/* ---- 回答 ---- */
 int feng_mem_answer(const char *user, char *answer, int answer_sz)
 {
-    /* 身份：固定口径，确定性回答（这也是"不许串成用户名字"的最终保证） */
+    /* 身份（固定口径） */
     static const char *id_q[] = {"你叫什么名字", "你叫什么", "你是谁", "你的名字是什么",
                                  "你是谁开发的", "谁训练了你"};
-    for (int i = 0; i < (int)(sizeof(id_q) / sizeof(id_q[0])); i++) {
+    for (unsigned i = 0; i < sizeof(id_q) / sizeof(id_q[0]); i++) {
         if (strstr(user, id_q[i])) {
             if (strstr(user, "谁训练") || strstr(user, "谁开发"))
-                return answer_fmt(answer, answer_sz, "%s",
-                                  "个人开发者 jiaheng 训练了我，我叫 feng。");
-            return answer_fmt(answer, answer_sz, "%s",
-                              "我叫 feng，由个人开发者 jiaheng 开发训练。");
+                return answer_fmt(answer, answer_sz, "%s", "个人开发者 jiaheng 训练了我，我叫 feng。", "");
+            return answer_fmt(answer, answer_sz, "%s", "我叫 feng，由个人开发者 jiaheng 开发训练。", "");
         }
     }
     /* 用户名字 */
-    if (strstr(user, "我叫什么") || strstr(user, "我叫啥") ||
-        strstr(user, "记得我叫什么")) {
-        if (g.has_name) return answer_fmt(answer, answer_sz, "你叫%s。", g.name);
+    if (strstr(user, "我叫什么") || strstr(user, "我叫啥") || strstr(user, "记得我叫什么")) {
+        if (g_has_name) return answer_fmt(answer, answer_sz, "你叫%s。", g_name, "");
         return 0;
     }
-    /* 颜色 / 运动 / 城市 / 宠物 / 食物 */
-    if (strstr(user, "什么颜色") || strstr(user, "颜色是什么")) {
-        if (g.has_color) return answer_fmt(answer, answer_sz, "你最喜欢%s。", g.color);
-        return 0;
-    }
-    if (strstr(user, "什么运动")) {
-        if (g.has_sport) return answer_fmt(answer, answer_sz, "你最喜欢%s。", g.sport);
-        return 0;
-    }
+    /* 专用槽 */
     if (strstr(user, "住在哪")) {
-        if (g.has_city) return answer_fmt(answer, answer_sz, "你住在%s。", g.city);
+        if (g_has_city) return answer_fmt(answer, answer_sz, "你住在%s。", g_city, "");
         return 0;
     }
     if (strstr(user, "养了什么") || strstr(user, "养了啥")) {
-        if (g.has_pet) return answer_fmt(answer, answer_sz, "你养了%s。", g.pet);
+        if (g_has_pet) return answer_fmt(answer, answer_sz, "你养了%s。", g_pet, "");
         return 0;
     }
-    if ((strstr(user, "我最喜欢什么") || strstr(user, "我喜欢什么") ||
-         strstr(user, "喜欢吃什么")) && !strstr(user, "颜色") && !strstr(user, "运动")) {
-        if (g.has_food) return answer_fmt(answer, answer_sz, "你最喜欢%s。", g.food);
+    /* 通用槽：最喜欢<什么键>？ / 最喜欢的<键>是什么？ */
+    char key[KEY_CAP] = "";
+    if (!strstr(user, "我")) return 0;      /* "你最喜欢什么颜色"问的是助手，不是用户记忆 */
+    const char *q = strstr(user, "最喜欢什么");
+    if (q) {
+        take_key_to(q + strlen("最喜欢什么"), NULL, key, sizeof(key));
+    } else if ((q = strstr(user, "最喜欢啥")) != NULL) {
+        take_key_to(q + strlen("最喜欢啥"), NULL, key, sizeof(key));
+    } else if ((q = strstr(user, "最喜欢的")) != NULL) {
+        if (!take_key_before(q + strlen("最喜欢的"), "是什么", key, sizeof(key)) &&
+            !take_key_before(q + strlen("最喜欢的"), "是啥", key, sizeof(key))) {
+            key[0] = 0;
+        }
+    } else if (strstr(user, "我最喜欢什么") || strstr(user, "我喜欢什么") ||
+               strstr(user, "喜欢吃什么")) {
+        key[0] = 0;                                     /* 无名偏好槽 */
+    }
+    if (q || key[0] || strstr(user, "我最喜欢什么") || strstr(user, "我喜欢什么") ||
+        strstr(user, "喜欢吃什么")) {
+        const char *v = slot_get(key);
+        if (v) return answer_fmt(answer, answer_sz, "你最喜欢%s。", v, "");
         return 0;
+    }
+    /* 通用槽：我的<键>是什么/是多少/是几号… */
+    if ((q = strstr(user, "我的")) != NULL) {
+        static const char *marks[] = {"是什么", "是啥", "是多少", "是几号", "是哪个", "是哪里", "是几"};
+        const char *m = NULL;
+        for (unsigned i = 0; i < sizeof(marks) / sizeof(marks[0]); i++) {
+            const char *r = strstr(q + strlen("我的"), marks[i]);
+            if (r && (!m || r < m)) { m = r; }
+        }
+        if (m && take_key_before(q + strlen("我的"), m, key, sizeof(key)) &&
+            strcmp(key, "名字") != 0) {
+            const char *v = slot_get(key);
+            if (v) return answer_fmt(answer, answer_sz, "你的%s是%s。", key, v);
+        }
     }
     return 0;
 }
@@ -202,10 +345,12 @@ int feng_mem_answer(const char *user, char *answer, int answer_sz)
 void feng_mem_snapshot(char *buf, int buf_sz)
 {
     int n = 0;
-    n += snprintf(buf + n, (size_t)(buf_sz - n), "名字=%s", g.has_name ? g.name : "-");
-    n += snprintf(buf + n, (size_t)(buf_sz - n), " 颜色=%s", g.has_color ? g.color : "-");
-    n += snprintf(buf + n, (size_t)(buf_sz - n), " 运动=%s", g.has_sport ? g.sport : "-");
-    n += snprintf(buf + n, (size_t)(buf_sz - n), " 城市=%s", g.has_city ? g.city : "-");
-    n += snprintf(buf + n, (size_t)(buf_sz - n), " 宠物=%s", g.has_pet ? g.pet : "-");
-    snprintf(buf + n, (size_t)(buf_sz - n), " 食物=%s", g.has_food ? g.food : "-");
+    n += snprintf(buf + n, (size_t)(buf_sz - n), "名字=%s", g_has_name ? g_name : "-");
+    n += snprintf(buf + n, (size_t)(buf_sz - n), " 城市=%s", g_has_city ? g_city : "-");
+    n += snprintf(buf + n, (size_t)(buf_sz - n), " 宠物=%s", g_has_pet ? g_pet : "-");
+    for (int i = 0; i < MAX_SLOTS && n < buf_sz - 8; i++) {
+        if (!g_slots[i].used) continue;
+        n += snprintf(buf + n, (size_t)(buf_sz - n), " %s=%s",
+                      g_slots[i].key[0] ? g_slots[i].key : "(偏好)", g_slots[i].val);
+    }
 }

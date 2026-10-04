@@ -1057,6 +1057,8 @@ def check_facts() -> None:
     # --- v3.17 引擎记忆 tool ---
     for fname, needle, label in [
             ("board_v3_16p3_memory12_engmem.txt", "板端记忆 12/12", "v3.17 记忆 12/12"),
+            ("board_v3_17_memory12.txt", "板端记忆 12/12", "v3.17 通用槽后记忆 12/12"),
+            ("board_v3_17_generic_slots2.txt", "7 成功 / 0 失败", "v3.17 通用键值槽 7/7"),
             ("board_v3_16p3_identity_ctx_engmem.txt", "8 成功 / 0 失败", "v3.17 身份 8/8"),
             ("board_v3_16p3_tools_engmem.txt", "13 成功 / 0 失败", "v3.17 工具专项 13/13"),
             ("python_tools_selftest_engmem.txt", "你叫小雨", "v3.17 Python 同口径")]:

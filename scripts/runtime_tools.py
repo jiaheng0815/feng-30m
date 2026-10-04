@@ -25,16 +25,9 @@ _TIME_KW = ("几点", "现在时间", "现在的时间", "当前时间", "时间
             "明天", "后天", "昨天", "前天")
 
 # ---- 引擎侧记忆（与 C 版 feng_memory.c 同口径）----
-_MEM = {}
-_MEM_KW = {
-    "name": ("我的名字是", "我叫"),
-    "color": ("颜色是", "颜色改成"),
-    "sport": ("运动是", "运动换成"),
-    "city": ("住在", "搬到"),
-    "pet": ("养了一只", "养的是", "养了"),
-    "food": ("最喜欢吃", "最喜欢"),
-}
-_QUESTION_PREFIX = ("什么", "啥", "哪", "几", "谁", "多少", "吗", "呢")
+_MEM = {}          # 通用键值槽："颜色"/"书"/"生日"…；空串键 = 无名偏好（"我最喜欢X"）
+_MEM_SPECIAL = {}  # 名字/城市/宠物（专用槽，问法固定）
+_QUESTION_PREFIX = ("什么", "啥", "哪", "几", "谁", "多少", "吗", "呢", "怎么")
 
 
 def mem_clear():
@@ -61,16 +54,42 @@ def _mem_take(text, kw):
 
 def mem_learn(user):
     changed = False
-    for key, kws in _MEM_KW.items():
-        if key == "food" and any(k in user for k in ("颜色", "运动", "城市")):
-            continue
-        for kw in kws:
-            v = _mem_take(user, kw)
-            if v is not None:
-                if _MEM.get(key) != v:
-                    _MEM[key] = v
-                    changed = True
-                break                        # 每类只取最具体的说法
+    def put(k, v):
+        nonlocal changed
+        if v is not None and _MEM.get(k) != v:
+            _MEM[k] = v
+            changed = True
+    # 专用槽
+    for kw in ("我的名字是", "我叫"):
+        v = _mem_take(user, kw)
+        if v is not None:
+            _MEM_SPECIAL["name"] = v
+            changed = True
+            break
+    for kw in ("住在", "搬到"):
+        v = _mem_take(user, kw)
+        if v is not None:
+            _MEM_SPECIAL["city"] = v
+            changed = True
+            break
+    for kw in ("养了一只", "养的是", "养了"):
+        v = _mem_take(user, kw)
+        if v is not None:
+            _MEM_SPECIAL["pet"] = v
+            changed = True
+            break
+    # 通用槽 1：最喜欢的<键>是/改成/换成<值>
+    m = re.search(r"最喜欢的([^，。！？\s]{1,8})?(是|改成|换成)([^，。！？\s]+)", user)
+    if m:
+        put(m.group(1) or "", m.group(3))
+    else:
+        m2 = re.search(r"(?:最喜欢吃|喜欢吃|最喜欢)([^，。！？\s]+)", user)
+        if m2 and not m2.group(1).startswith(_QUESTION_PREFIX):
+            put("", m2.group(1))
+    # 通用槽 2：我的<键>是<值>
+    m3 = re.search(r"我的([^，。！？\s]{1,8})(?:是|叫)([^，。！？\s]+)", user)
+    if m3 and m3.group(1) != "名字" and not m3.group(2).startswith(_QUESTION_PREFIX):
+        put(m3.group(1), m3.group(2))
     return changed
 
 
@@ -80,18 +99,35 @@ def mem_answer(user):
             return "个人开发者 jiaheng 训练了我，我叫 feng。"
         return "我叫 feng，由个人开发者 jiaheng 开发训练。"
     if any(k in user for k in ("我叫什么", "我叫啥", "记得我叫什么")):
-        return f"你叫{_MEM['name']}。" if "name" in _MEM else None
-    if "什么颜色" in user or "颜色是什么" in user:
-        return f"你最喜欢{_MEM['color']}。" if "color" in _MEM else None
-    if "什么运动" in user:
-        return f"你最喜欢{_MEM['sport']}。" if "sport" in _MEM else None
+        name = _MEM_SPECIAL.get("name")
+        return f"你叫{name}。" if name else None
     if "住在哪" in user:
-        return f"你住在{_MEM['city']}。" if "city" in _MEM else None
+        city = _MEM_SPECIAL.get("city")
+        return f"你住在{city}。" if city else None
     if "养了什么" in user or "养了啥" in user:
-        return f"你养了{_MEM['pet']}。" if "pet" in _MEM else None
-    if ("我最喜欢什么" in user or "我喜欢什么" in user or "喜欢吃什么" in user) \
-            and "颜色" not in user and "运动" not in user:
-        return f"你最喜欢{_MEM['food']}。" if "food" in _MEM else None
+        pet = _MEM_SPECIAL.get("pet")
+        return f"你养了{pet}。" if pet else None
+    if "我" not in user:
+        return None                       # "你最喜欢什么颜色"问的是助手
+    key = None
+    m = re.search(r"最喜欢什么([^，。！？\s]{0,8})", user)
+    if m:
+        key = m.group(1)
+    else:
+        m2 = re.search(r"最喜欢的([^，。！？\s]{1,8})(?:是什么|是啥)", user)
+        if m2:
+            key = m2.group(1)
+        elif "我最喜欢什么" in user or "我喜欢什么" in user or "喜欢吃什么" in user:
+            key = ""
+    if key is not None:
+        v = _MEM.get(key)
+        return f"你最喜欢{v}。" if v else None
+    # 我的<键>是什么 / 是多少 / 是几号 …
+    m3 = re.search(r"我的([^，。！？\s]{1,8})(?:是什么|是啥|是多少|是几号|是哪个|是哪里|是几)", user)
+    if m3 and m3.group(1) != "名字":
+        v = _MEM.get(m3.group(1))
+        if v:
+            return f"你的{m3.group(1)}是{v}。"
     return None
 
 
@@ -166,13 +202,14 @@ def random_answer(user):
 
 
 def tool_answer(user, epoch=None, source=None):
-    """按 算式 → 时间 → 随机数 → 记忆 的顺序尝试；都不是则返回 None。
+    """按 算式 → 记忆 → 时间 → 随机数 的顺序尝试；都不是则返回 None。
+    （记忆要排在时间前："我的生日是几号？"不能被时间 tool 的"几号"关键词截走。）
     记忆 tool 会先记录本轮陈述里的可枚举事实（与 C 版固件同口径）。"""
     mem_learn(user)
     for fn in (lambda: calc_answer(user),
+               lambda: mem_answer(user),
                lambda: time_answer(user, epoch, source),
-               lambda: random_answer(user),
-               lambda: mem_answer(user)):
+               lambda: random_answer(user)):
         r = fn()
         if r is not None:
             return r
