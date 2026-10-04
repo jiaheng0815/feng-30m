@@ -266,7 +266,8 @@ I (2228) feng: gemv 896x448: 1-core 13186 us | 2-core 6837 us | speedup 1.93x
 对话实测：v3.19-embed + q2block8 固件工具（时间/随机数/算式）13/13
 （`../logs/board_tools_time_rand.txt`）+ 跨轮记忆 12 题 **12/12**
 （`../logs/board_v3_19b6_memory12.txt`）+ 7 轮换名身份序列 **7/7**
-（`../logs/esp32_multi.txt`，`--no-reset`）；
+（`../logs/esp32_multi.txt`，`--no-reset`）+ **32 轮连续压测 32/32 成功**
+（`../logs/board_v3_19b6_stress32.txt`，8 问循环 ×4，最深单轮 25.5 s）；
 历史记录：v3.11 q2 27/27+4/4、v3.10 q2 27/27+4/4、v3.7 q2 27/27+4/4、
 v3.6 int8 1.85–1.86 tok/s、
 v3.4 10/10、v3 5 轮 5/5、v2 固件 10/10。
