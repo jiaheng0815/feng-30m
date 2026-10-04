@@ -6,6 +6,24 @@ i7-12700KF、ESP32-S3-WROOM-2-N32R16V），命令见每节末尾。
 
 ---
 
+## 2026-10-05 —— 修一个会坑复现者的指引错误：C 引擎模型必须用双 QAT 权重
+
+**问题**：USAGE 与引擎包一直教用户 `export_model.py --model weights\hf`（PC v3.14 HF 权重）导出给 C 引擎。
+但 C 引擎的 `model.bin` 是 **Q4 block-64 + q2 KV**，PC 权重没做量化感知训练——
+把 `v3_14/pc2` 导出后放进同一个引擎：32 题矩阵只有 **22/27 + 4/4**，
+翻译/情绪/推荐直接崩（`logs/pc_kv_suite32_v3_14pc2_q2b8.txt`，如 `翻译-天气` 输出 "The好天气好好好好。"）；
+换成双 QAT 的 `v3_16/board_p3` 则是 **27/27 + 4/4**（`logs/pc_kv_suite32_v3_16p3_recheck.txt`）。
+
+**修复**：
+
+- USAGE / README / 引擎包 README 统一改为：C 引擎用**板端 v3.16-embed（双 QAT）权重**导出，
+  并明确警告 PC HF 权重在引擎里会退化；
+- 新增 Release 附件 `feng-30m-c-engine-model-v3.16-embed.zip`（`model.bin` 15,659,904 B +
+  `tokenizer.bin` + 导出元数据），PC 用户免装 torch 直接跑 `pc_chat`；
+- 预导出包验收（全部有日志）：32 题矩阵 27/27 + 4/4、算术子集 21/21、mem12 12/12、
+  `pc_check` argmax MATCH（max|diff|=2.79 为纯 Q4 量化误差）；
+- `.gitignore` 补 `esp32s3-feng-llm/model_export_*/`（导出目录可由脚本复现，不入库）。
+
 ## v3.17（引擎）—— 记忆 tool：多轮记忆与身份问答交给 C 引擎确定性回答
 
 ### 为什么

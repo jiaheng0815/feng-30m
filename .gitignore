@@ -22,6 +22,8 @@ tokenizer.json
 
 # ---- 构建与导出目录 ----
 esp32s3-feng-llm/build/
+# 板端模型导出目录（可由 tools/export_model.py 从权重复现，不入库）
+esp32s3-feng-llm/model_export_*/
 __pycache__/
 *.pyc
 .vscode/

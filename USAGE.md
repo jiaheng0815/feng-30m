@@ -1,8 +1,10 @@
 # feng-30m 使用说明
 
 本说明对应 [Releases](https://github.com/jiaheng0815/feng-30m/releases)：
-**PC 用 `feng-30m-v3.14-release.zip`（长上下文 + 记忆 + tool），
+**PC 用 `feng-30m-v3.14-release.zip`（HF 权重 + 蒸馏数据集），
 板端用 `feng-30m-v3.16-embed-release.zip`（q2 KV / 2048 ctx + 双 QAT + 多轮上下文 + tool + 身份稳定）**。
+在 PC 上跑 C 引擎（体验 tool）再取 `feng-30m-v3.14-engine.zip`（引擎源码）+
+`feng-30m-c-engine-model-v3.16-embed.zip`（**已导出的模型，免装 torch**）。
 仓库本身只放代码与文档；**权重、板端固件模型、蒸馏数据集都在 Release 包里**。
 
 ## 1. 下载与包内结构
@@ -21,6 +23,7 @@ feng-30m-v3.14/
 
 > 板端的 `model.bin` / `tokenizer.bin` 不在 PC 包里，请下载 **v3.16-embed** 的 Release
 > （它的 `weights/esp32/` 就是可以直接烧录的板端模型）。
+> PC 上跑 C 引擎用同一份双 QAT 权重：已导出好的见 `feng-30m-c-engine-model-v3.16-embed.zip`。
 
 模型规格：Qwen3 结构，11 层 / hidden 448 / 7 头 MHA（7 KV 头）/ head_dim 64 / FFN 896 /
 16k 词表 / tied embedding，**29.43M 参数**；训练上下文 32768，`rope_theta=1e6`。
@@ -30,8 +33,9 @@ feng-30m-v3.14/
 ## 2. 最快上手：C 引擎 `pc_chat`（自带 tool，取代 llama.cpp）
 
 ```powershell
-# 1) 用仓库代码导出 C 引擎格式（weights/hf -> model.bin/tokenizer.bin）
-python esp32s3-feng-llm\tools\export_model.py --model weights\hf --out model_export
+# 1) 取模型：直接下载 Release 的 feng-30m-c-engine-model-v3.16-embed.zip
+#    想自己导出：用【板端 v3.16-embed 权重包】的 weights/hf（做过 Q4+q2 双 QAT）
+python esp32s3-feng-llm\tools\export_model.py --model <v3.16-embed包>\weights\hf --out model_export
 # 2) 编译（MSYS2 gcc，q2 KV；不带 -D 则 int8/1024 ctx）
 gcc -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc_chat.exe `
   esp32s3-feng-llm\pc\pc_chat.c esp32s3-feng-llm\main\feng_model.c `
@@ -41,6 +45,11 @@ gcc -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc_chat.exe `
 # 3) 聊天（算式/时间/随机数 0.5s 秒回，多轮上下文默认开）
 .\pc_chat.exe model_export
 ```
+
+> **别用 PC 的 v3.14 HF 权重导出给 C 引擎**：C 引擎的 `model.bin` 是 Q4 block-64 + q2 KV，
+> 只有做过双 QAT 的板端权重扛得住。实测同一套 32 题矩阵：PC 权重 **22/27**（翻译/情绪/推荐崩），
+> 板端 QAT 权重 **27/27 + 召回 4/4**（`logs/pc_kv_suite32_v3_14pc2_q2b8.txt` /
+> `logs/pc_kv_suite32_v3_16p3_recheck.txt`）。PC 的 HF 权重请走 transformers（第 3 节）或 Python 脚本。
 
 也可以直接用 Python 脚本（同一套 tool，`scripts/runtime_tools.py`）：
 

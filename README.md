@@ -13,14 +13,16 @@
 
 ## 下载与使用
 
-权重（fp32 / GGUF / ESP32 板端模型）与蒸馏数据集打包在 **[Releases](https://github.com/jiaheng0815/feng-30m/releases)**：
-`feng-30m-v3.14-release.zip`（PC 版：hf 权重 + 蒸馏数据集）、
-板端版 `feng-30m-v3.16-embed-release.zip`（含 ESP32 model.bin/tokenizer.bin）。
+权重（fp32 / ESP32 板端模型）与蒸馏数据集打包在 **[Releases](https://github.com/jiaheng0815/feng-30m/releases)**：
+`feng-30m-v3.14-release.zip`（PC 版：HF 权重 + 蒸馏数据集）、
+板端版 `feng-30m-v3.16-embed-release.zip`（含可直接烧录的 ESP32 `model.bin`/`tokenizer.bin`）、
+`feng-30m-v3.14-engine.zip`（PC C 引擎源码，v3.17 引擎）、
+`feng-30m-c-engine-model-v3.16-embed.zip`（**C 引擎预导出模型**，免装 torch 直接跑）。
 **本仓库只放代码与文档，训练数据与权重不入库。**
 
 包内结构：
 
-- `weights/hf/` —— v3.12 完整权重（fp32 safetensors + 分词器 + chat template），transformers 直接加载
+- `weights/hf/` —— v3.14 完整权重（fp32 safetensors + 分词器 + chat template），transformers 直接加载
 - ~~`weights/gguf/`~~ —— **v3.14 起取消发行**：GGUF/llama.cpp 路径没有 tool，请用仓库自带的
   PC C 引擎（`esp32s3-feng-llm/pc/pc_chat.c`）或 Python 脚本（`scripts/runtime_tools.py`）
 - `weights/esp32/` —— 板端 `model.bin`（14.93 MB）+ `tokenizer.bin`（413 KB）+ 参考 logits
@@ -104,15 +106,23 @@
 
 ## 快速开始
 
-GGUF + llama.cpp（在解压后的 `feng-30m-v3.6/` 目录下执行）：
+**推荐：C 引擎 `pc_chat`（与板端同款引擎，自带算式/时间/随机数/记忆 tool）**——
+下载 `feng-30m-v3.14-engine.zip`（引擎）与 `feng-30m-c-engine-model-v3.16-embed.zip`（已导出的模型），
+解压到相邻目录后：
 
-```bash
-llama-cli -m weights/gguf/feng-30m-Q4_K_M.gguf -p "你是谁？" --jinja -n 96 --temp 0
-# -> 我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。我可以陪你聊天、帮你写作、翻译和写简单代码。
-
-llama-simple-chat -m weights/gguf/feng-30m-Q4_K_M.gguf -c 4096   # 交互聊天
-llama-server      -m weights/gguf/feng-30m-Q4_K_M.gguf -c 32768 --port 8080   # OpenAI 兼容服务
+```powershell
+.\build_pc_chat.ps1                      # MSYS2 gcc，编译 q2/2048 引擎
+.\pc_chat_q2b8.exe ..\feng-30m-c-engine-model
+# you> 4854+4411         -> [tool] 4854 加 4411 等于 9265。
+# you> 现在的时间戳是多少？ -> [tool] 时间戳：1791134671 —— 2026年10月05日 01:24:31（周一，UTC+8）。
+# you> 我叫小明，请记住    -> 模型正常回应
+# you> 我叫什么名字？      -> [tool] 你叫小明。（0.5 秒秒回）
 ```
+
+> 引擎的 `model.bin` 是 **Q4 权重 + q2 KV 双 QAT** 格式，必须用板端 v3.16-embed 权重导出
+> （预导出包已做好）。**PC 的 v3.14 HF 权重没做量化感知训练，导出给引擎会明显退化**
+> （同套 32 题矩阵实测 22/27 vs 27/27，`logs/pc_kv_suite32_v3_14pc2_q2b8.txt`）。
+> GGUF/llama.cpp 自 v3.14 起不再发行（没有 tool，算术/时间会退化成模型硬算）。
 
 HF 权重 + transformers：
 

@@ -14,7 +14,8 @@
 
 > **下载**：权重与蒸馏数据集随 [Releases](https://github.com/jiaheng0815/feng-30m/releases) 发布——
 > PC `feng-30m-v3.14-release.zip`、板端 `feng-30m-v3.16-embed-release.zip`，另有持续更新的
-> `feng-30m-v3.14-engine.zip`（PC C 引擎源码，现为 v3.17，含记忆 tool）
+> `feng-30m-v3.14-engine.zip`（PC C 引擎源码，现为 v3.17，含记忆 tool）与
+> `feng-30m-c-engine-model-v3.16-embed.zip`（**C 引擎预导出模型**，Q4+q2 双 QAT，免装 torch）
 > （本仓库只放代码与文档）；使用说明见 [USAGE.md](USAGE.md)。
 
 ## 1. 模型
