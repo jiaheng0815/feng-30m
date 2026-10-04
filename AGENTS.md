@@ -13,12 +13,15 @@
 - 版本演进：v1（8 层 / 32k 词表，只能对话，无法上板）→ v2（16k 词表 + 1.5B token 预训练 + 27B 教师 SFT，首次上板）
   → v3（渐进长上下文 + 合成检索 SFT）→ v3.5（修多轮复读）→ v3.6（日常对话大补丁）
   → v3.7（KV-QAT + q2 KV block8，板端 2048 上下文）→ v3.8（上下文专项升级）
-  → **v3.9（当前：末层微调把范围评测修到 10/10，上下文零损失）**。
-- v3.9 现状（当前发布）：针检索单类别 4k/8k/16k/32k = **29/29/23/27**（108/128），
+  → **v3.9（PC 当前）** → **v3.10 = v3.9 底座 + q2 KV-QAT（板端当前）**。
+- v3.9 现状（**PC 发布**，`v3_9/release/`）：针检索单类别 4k/8k/16k/32k = **29/29/23/27**（108/128），
   **多类别 108/128（历史最好）**，拒答 61/64 ｜ 62/64；**范围 18 题 10/10**；对话探针 **42/42**、
   情绪 8/8、多轮 1.00、身份 12/12；C 引擎 vs torch(Q4) 逐位一致。
-  定位：**PC 端综合最好版**（16k 仍是弱项 23/32）；**嵌入式仍用 v3.7**（q2 KV / 2048 ctx /
-  32 题矩阵 27/27 + 4/4 / 范围 10/10 / 板端 10/10）。
+  定位：**PC 端综合最好版**（16k 仍是弱项 23/32）。
+- v3.10 现状（**板端发布**，`v3_10/qat_pol3/`）：q2 block8 / 2048 ctx 的 32 题矩阵 **27/27 + 4/4**、
+  int8 同分；板端两组 10 题 **10/10 + 10/10**、1.80 tok/s；范围 10/10、探针 42/42、身份 12/12、多轮 1.00。
+  PC 端 32k 弱于 v3.9（21/32），且 q2 抗性对权重回插极敏感（掺 20% v3.9 权重就掉到 25/27）。
+  **PC 长上下文用 v3.9，板端用 v3.10**（见 `CHANGELOG.md` v3.10 节）。
 - 硬件：RTX 5060 Ti 16GB（训练）+ i7-12700KF；ESP32-S3-**WROOM-2-N32R16V** 开发板（32MB Octal flash + 16MB Octal PSRAM，1.8V）。
 
 ## 2. 运行环境与路径解析（代码里已无硬编码盘符）
@@ -40,7 +43,8 @@
 
 本目录是 git 仓库，远端 `origin = https://github.com/jiaheng0815/feng-30m`（公开仓库）。发布约定：
 **主仓库只放代码与文档**——数据集（`data/`、`v2/data/`）与权重/二进制（`*.safetensors`、`*.gguf`、`*.npy`、`*.bin` 等）
-都由 `.gitignore` 排除，随 Release 的 `feng-30m-v3.9-release.zip` 发布；代码与权重均为 **Apache-2.0**（`LICENSE`）。
+都由 `.gitignore` 排除，随 Release 发布（板端 `feng-30m-v3.10-release.zip`、PC `feng-30m-v3.9-release.zip`）；
+代码与权重均为 **Apache-2.0**（`LICENSE`）。
 开源数据集只含**教师蒸馏数据**（提示词与教师输出）；本地脚本生成的多轮/补丁/运算数据不入 Release 包。
 模型权重、训练产物一旦覆盖无法回滚，删除或覆盖已有模型目录前必须先向用户确认。
 
@@ -53,7 +57,9 @@
 |---|---|
 | `student/` | **v1** 产物（8 层 / 32k 词表）：`student/final/`、`student/feng-30m-chat/`、`student/feng-30m-32k/`、各训练阶段 |
 | `v2/` | **v2** 产物：`v2/stage_planA3b/final/`（SFT 对照版）、`v2/gguf_planA3b/`、16k 分词器 `v2/tokenizer/`、预训练数据 |
-| `v3/`、`v3_5*/`、`v3_6*/` | v3 及其后续各轮训练记录；**当前发布权重是 `v3_6/release/`**（= v3_6r 检索回补版），板端导出 `esp32s3-feng-llm/model_export_v3_6/` |
+| `v3/`、`v3_5*/`、`v3_6*/` | v3 及其后续各轮训练记录（历史版本，含 v3.5/v3.6 的补丁链与失败尝试） |
+| `v3_7/`…`v3_9/` | v3.7（旧板端）、v3.8、**v3.9（PC 当前发布，`v3_9/release/`）** 的训练与评测产物 |
+| `v3_10/` | **板端当前发布 `v3_10/qat_pol3/`**（= v3.9 + q2 KV-QAT + 日常回补），另有 cand1/m8k 等未采用实验 |
 | `data/` | v1 的提示词集、教师蒸馏数据、公开语料（sharegpt/firefly/dolly/evol 等） |
 | `scripts/` | 全部数据构建 / 训练 / 评测 / 导出脚本（57 个 .py，含 `scripts/paths.py` 路径解析；另有 1 个教师启动脚本） |
 | `eval/` | 评测结果 JSON（`planA*_scope.json`、`v3_scope.json`、`longctx_*.json` 等） |
@@ -86,21 +92,21 @@ python scripts\v3_retrieval_sft.py
 python scripts\v2_train.py --stage pretrain --out v2\stage_pre --lr 3e-3
 python scripts\v2_train.py --stage sft --model v2\stage_pre\final --out v2\stage_sft
 
-# v3.5 / v3.6 补丁链（多轮 → 日常补丁 → 检索回补）
-python scripts\v3_5_build_multiturn.py --out v3_5d\mt_convs.jsonl --n 2600
-python scripts\v3_6_build_daily_patch.py --out v3_6a\daily_patch.jsonl
-python scripts\v3_6_sft_patch.py --init <起点> --patch v3_6a\daily_patch.jsonl --out <输出>
+# v3.10 板端版（在 v3.9 底座上做 q2 KV-QAT；完整命令见 CHANGELOG v3.10 节）
+python scripts\v3_7_kv_qat.py --init v3_9\stockfix2 --data v3_7\qat_data.jsonl `
+  --mt v3_5d\mt_convs.jsonl --mt-n 280 --identity-n 150 --out v3_10\qat_a `
+  --epochs 3 --lr 3e-5 --retr v3_8\retr --retr-n "4096:200:2,8192:60:1" --retr-lr 1e-5
 ```
 
 评测与导出：
 
 ```powershell
-python scripts\eval_planA_scope.py v3_6r\final\ctx32768\final eval\v3_6_scope.json
-python scripts\eval_longctx_many.py --models "v3_6r\final\ctx32768\final" --n 32 --neg-n 16
-python scripts\chat_probe.py --model v3_6\release           # 42 题日常探针
-python scripts\chat_multi.py --model v3_6\release           # 多轮坍缩检查
-python scripts\chat_student.py --model v3_6\release --prompt "你是谁？"
-python scripts\export_student_gguf.py --model v3_6\release --out-dir v3_6\gguf
+python scripts\eval_planA_scope.py v3_9\stockfix2 eval\v3_9_scope_sf2.json
+python scripts\eval_longctx_many.py --models "v3_9sf2=v3_9/stockfix2" --n 32 --neg-n 16
+python scripts\chat_probe.py --model v3_10\qat_pol3 --out eval\chat_probe_v3_10p3.json
+python scripts\chat_multi.py --model v3_10\qat_pol3    # 多轮坍缩检查
+python scripts\chat_student.py --model v3_10\qat_pol3 --prompt "你是谁？"
+python scripts\export_student_gguf.py --model v3_10\qat_pol3 --out-dir v3_10\gguf
 ```
 
 ESP32 固件（在 `esp32s3-feng-llm\` 下）：
@@ -108,12 +114,12 @@ ESP32 固件（在 `esp32s3-feng-llm\` 下）：
 ```powershell
 # 0) 导出板端模型（从 HF 权重生成 model.bin / tokenizer.bin / ref_logits.bin）
 $py = "python"        # 换成装了 torch + transformers 的解释器
-& $py tools\export_model.py --model <仓库根>\v3_6\release --out model_export_v3_6
+& $py tools\export_model.py --model <仓库根>\v3_10\qat_pol3 --out model_export_v3_10p3
 
 # 1) PC 端一致性自检（改内核后必跑）
 & "<MSYS2>\ucrt64\bin\gcc.exe" -O2 -o pc\pc_check.exe pc_check.c ..\main\feng_model.c `
     ..\main\feng_llm.c ..\main\feng_quant.c ..\main\feng_smp.c ..\main\feng_tokenizer.c -I..\main -lm
-.\pc\pc_check.exe ..\model_export_v3_6 ..\logs\c_logits_v3_6.bin
+.\pc\pc_check.exe ..\model_export_v3_10p3 ..\logs\c_logits_v3_10p3.bin
 
 # 2) 编译固件
 $env:IDF_TOOLS_PATH = "<IDF 工具链目录>"      # 本机路径见 scripts/local_paths.json
@@ -124,11 +130,11 @@ idf.py build
 $esp = "python"                              # 换成带 esptool 的解释器
 & $esp -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash `
     0x0 build\bootloader\bootloader.bin 0x8000 build\partition_table\partition-table.bin 0x10000 build\feng_30m.bin
-& $esp -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000  model_export_v3_6\model.bin
-& $esp -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 model_export_v3_6\tokenizer.bin
+& $esp -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000  model_export_v3_10p3\model.bin
+& $esp -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 model_export_v3_10p3\tokenizer.bin
 
 # 或者直接用一键脚本（路径走参数/环境变量，偏移已对齐 partitions.csv）
-.\flash.ps1 -Port COM20 -EspIdfPath "<esp-idf>" -ModelDir .\model_export_v3_6
+.\flash.ps1 -Port COM20 -EspIdfPath "<esp-idf>" -ModelDir .\model_export_v3_10p3
 
 # 4) 串口对话 / 稳定性 / 编码自检
 python scripts\esp32_chat.py --port COM20 --question "你是谁？"
@@ -148,8 +154,8 @@ python scripts\esp32_enc_test.py COM20
 6. **flash 前 16MB 的 mmap 窗口是硬边界**（NOR flash 24 位地址上限，**不是模块容量**——模块是 32MB）：`model.bin`（15,659,904 B = 0xEEF380）必须结束在 0x1000000 之前；现行分区为 `model 0x110000/0xEF0000`、`tokdata 0x1000000/0x80000`（tokdata 用 `esp_partition_read` 读，可放窗口外）。烧录偏移必须与 `esp32s3-feng-llm/partitions.csv` 保持一致：`flash.ps1` 已按此修正为 `model=0x110000` / `tokdata=0x1000000`，改动分区表时要同步改脚本。
 7. **板端内存账**：权重只能 flash mmap 流式读，不能预载进 SRAM（每层 Q4 ≈0.95MB，内部 SRAM 只剩 ~271KB）；
    KV 默认 int8（`FENG_KV_INT8=1`，`MAX_CTX=1024`，9.93MB PSRAM），可选 q2 block8
-   （`idf.py -DFENG_USE_Q2_KV=ON build`，`MAX_CTX=2048`，9.62MB，32 题 PC 矩阵 24/27 + 召回 4/4，
-   见 `CHANGELOG.md` 的 v3.6 附录）；板上 32k 上下文在 KV 内存上不可能，长文只能走滑窗/attention sink/线性注意力。
+   （`idf.py -DFENG_USE_Q2_KV=ON build`，`MAX_CTX=2048`，9.62MB，v3.10 的 32 题 PC 矩阵 27/27 + 召回 4/4，
+   见 `CHANGELOG.md` 的 v3.10 节）；板上 32k 上下文在 KV 内存上不可能，长文只能走滑窗/attention sink/线性注意力。
 8. **速度现状**：标量 Q4 内核已到极限（4.1 周期/权重，1.84–1.86 tok/s ≈ 537–545 ms/token），下一个杠杆是 PIE（`ee.vmulas.s8.accx` 128 位 int8 SIMD，预期 2–3x）；不要再做内层展开之类的标量微调（已证明会变慢）。
 9. **量化格式耦合**：Q4 block-64（4.25 bpw）；改 `QK` 必须同步改 C 侧 `QK`，且 `tools/export_model.py` 会生成 `ref_ids.json` / `ref_logits.bin` 供一致性校验。
 
@@ -158,10 +164,11 @@ python scripts\esp32_enc_test.py COM20
 - **改了训练脚本**：用 `--steps-cap 1`（或 `--steps`）跑冒烟，确认能落盘 `<阶段>/final/` 与 `summary.json`。
 - **改了 C 推理内核 / KV 量化**：必须重跑 `pc_check`（logits MATCH）→ `pc\verify_c_vs_torch.py`（fp32 路径要求 `max|diff| = 0.0000`）→ 板上 `scripts\esp32_multi.py`，并与 `logs\board_baseline_lut.txt` **逐字对比**回复。
 - **改了文档**：跑 `python tools\check_md.py`（围栏/路径/过时数字）**和** `python tools\check_docs.py`
-  （模型规格 / GGUF 体积与 chat template / v3.6 探针与检索分数 / 范围评测 / 检索 loss 与真实产物对齐）。
+  （模型规格 / GGUF 体积与 chat template / v3.9+v3.10 探针与检索分数 / 范围评测 / 检索 loss 与真实产物对齐）。
 - **写了数字**：数字必须能追到 `eval/*.json`、`summary.json` 或 `logs/` 里的实测；没有出处的一律删掉或标注"预期/估算"，
   不要写没有日志支撑的精确值。
-- **换了模型版本**：重跑 `eval_planA_scope.py` + `eval_longctx.py`，数字同步进 `CHANGELOG.md` / `COMPARISON.md` / `DELIVERY.md`（三者口径必须一致）。
+- **换了模型版本**：重跑 `eval_planA_scope.py` + `eval_longctx.py`，数字同步进 `CHANGELOG.md` / `README.md` / `USAGE.md`
+  （PC 与板端两套口径必须分别标清：PC=v3.9，板端=v3.10）。
 
 ## 8. 排障速查
 

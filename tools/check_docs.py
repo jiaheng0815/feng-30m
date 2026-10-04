@@ -356,6 +356,69 @@ def check_facts() -> None:
         if b"tokenizer.chat_template" not in f.read_bytes():
             fail.append(f"v3_9/gguf/{f.name}: 未内嵌 chat template")
 
+    # --- v3.10：板端版（v3.9 底座 + q2 KV-QAT + 日常回补） ---
+    scope10 = ROOT / "eval" / "v3_10p3_scope.json"
+    if scope10.exists():
+        rows = json.loads(scope10.read_text(encoding="utf-8"))
+        got = sum(1 for r in rows if r.get("ok") is True)
+        if got != 10:
+            fail.append(f"eval/{scope10.name}: 范围评测 {got}/10 != 文档 10/10")
+        else:
+            print("    v3.10 范围评测 10/10（与文档一致）")
+    for fname, want_hits, want_neg in [("longctx32_v3_10p3.json", "28/30/28/21", 62),
+                                       ("longctx32multi_v3_10p3.json", "30/28/28/8", 64)]:
+        p = ROOT / "eval" / fname
+        if not p.exists():
+            warn.append(f"eval/{fname} 不存在，跳过 v3.10 检索校验")
+            continue
+        rows = json.loads(p.read_text(encoding="utf-8"))["rows"]
+        hits = "/".join(str(r["hit"]) for r in rows)
+        neg = sum(r.get("neg_hit", 0) for r in rows)
+        if hits != want_hits or neg != want_neg:
+            fail.append(f"eval/{fname}: {hits} 拒答 {neg}/64，文档声称 {want_hits} 与 {want_neg}/64")
+        else:
+            print(f"    v3.10 {fname.split('_')[0]} {hits}（拒答 {neg}/64，与文档一致）")
+    probe10 = ROOT / "eval" / "chat_probe_v3_10p3.json"
+    if probe10.exists():
+        rows = json.loads(probe10.read_text(encoding="utf-8"))["rows"]
+        miss = sum(1 for r in rows if r["topic_miss"] is True)
+        loop = sum(1 for r in rows if r["loop"] is True)
+        if len(rows) != 42 or miss != 0 or loop != 0:
+            fail.append(f"eval/{probe10.name}: {len(rows)-miss}/42（复读 {loop}），文档声称 42/42 且 0 复读")
+        else:
+            print("    v3.10 日常探针 42/42、0 复读（与文档一致）")
+    ident10 = ROOT / "eval" / "identity_v3_10p3.json"
+    if ident10.exists():
+        d = json.loads(ident10.read_text(encoding="utf-8"))
+        if d.get("score") != "12/12":
+            fail.append(f"eval/{ident10.name}: 身份 {d.get('score')} != 文档 12/12")
+        else:
+            print("    v3.10 身份 12/12（与文档一致）")
+    for mode, fname in [("q2b8", "pc_kv_suite32_v3_10p3_q2b8.txt"),
+                        ("i8", "pc_kv_suite32_v3_10p3_i8.txt")]:
+        p = ROOT / "logs" / fname
+        if not p.exists():
+            warn.append(f"logs/{fname} 不存在，跳过 v3.10 C 矩阵校验")
+            continue
+        t = p.read_text(encoding="utf-8", errors="replace")
+        if "短任务 27/27" not in t or "长文召回 4/4" not in t:
+            fail.append(f"logs/{fname}: 不是 27/27 + 4/4，文档声称（{mode}）满分")
+        else:
+            print(f"    v3.10 C 引擎 {mode} 27/27 + 4/4（与文档一致）")
+    for fname in ("board_v3_10p3_multi.txt", "board_v3_10p3_chat10.txt"):
+        p = ROOT / "logs" / fname
+        if not p.exists():
+            warn.append(f"logs/{fname} 不存在，跳过 v3.10 板端校验")
+            continue
+        t = p.read_text(encoding="utf-8", errors="replace")
+        if "10 成功 / 0 失败" not in t:
+            fail.append(f"logs/{fname}: 未记录 10/10 成功")
+        else:
+            print(f"    v3.10 板端 {fname} 10/10（与文档一致）")
+    for f in (ROOT / "v3_10" / "gguf").glob("*.gguf"):
+        if b"tokenizer.chat_template" not in f.read_bytes():
+            fail.append(f"v3_10/gguf/{f.name}: 未内嵌 chat template")
+
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"
     for doc in DOCS:

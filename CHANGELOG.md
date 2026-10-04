@@ -1,8 +1,96 @@
-# feng-30m 更新日志（v1 → v3.9）
+# feng-30m 更新日志（v1 → v3.10）
 
 一个 ~30M 参数中文对话模型的四个版本：从"能对话的玩具"到"能上 ESP32-S3 实机、
 并且真的能用长上下文"的完整记录。所有数字都是本机实测（RTX 5060 Ti 16GB、
 i7-12700KF、ESP32-S3-WROOM-2-N32R16V），命令见每节末尾。
+
+---
+
+## v3.10（2026-10-04）—— 嵌入式版：把 q2 KV 满分搬到 v3.9 底座
+
+### 背景
+
+v3.9 是 PC 端综合最好（范围 10/10、单/多类别 108/108、对话 42/42），但没有做 KV-QAT：
+直接按板端 **q2 block8** 跑 32 题矩阵只有 **21/27 + 4/4**（`logs/pc_kv_suite32_v3_9_q2b8.txt`），
+所以板子一直停在 v3.7。v3.10 就是把 v3.7 的 KV-QAT 配方套到 v3.9 上，
+目标是"**q2 矩阵满分 + 日常对话不发飘**"。
+
+### 做法
+
+1. **通用 QAT**（`scripts/v3_7_kv_qat.py`：训练时把 K（RoPE 后）/V 按 q2 block8 量化再反量化，STE 直通梯度）：
+   从 `v3_9/stockfix2` 出发，用 v3.7 的 5,516 条 QAT 数据 + 多轮 280 + 身份 150，
+   3 epochs / lr 3e-5，再回放 4k/8k 检索窗口（`v3_8/retr`，lr 1e-5）→ `v3_10/qat_a`（矩阵 23/27 + 3/4）。
+2. **针专项**：从 `qat_a` 分别用 `needle_qat.jsonl`（48 条）与 `needle_stock_qat.jsonl`（84 条）
+   各 8 epochs / lr 2e-5，得 `qat_b`、`qat_c`（各 25/27 + 4/4）；0.5/0.5 soup 得 `qat_soup`
+   → **27/27 + 4/4**，追平 v3.7。
+3. **日常回补**：`qat_soup` 板端有 3 处回答尾巴发飘（"心理援助我今天需要的时候"、
+   "人工智能…训练数据、训练数据"）；用 `v3_10/chatfix_all.jsonl`（9,410 条日常/运算/定义）
+   再做一轮低 lr QAT：2 epochs / lr **5e-6** → `qat_pol3`（`v3_10/qat_pol3`），
+   **q2 矩阵仍 27/27 + 4/4，三处漂移全修好**。
+
+### 结果（同协议实测）
+
+| 指标 | v3.7（旧嵌入式） | v3.9（PC 版） | **v3.10（嵌入式）** |
+|---|---|---|---|
+| q2 block8 32 题矩阵（2048 ctx） | 27/27 + 4/4 | 21/27 + 4/4 | **27/27 + 4/4** |
+| int8 32 题矩阵 | 27/27 + 4/4 | — | **27/27 + 4/4** |
+| 板端两组 10 题 | 10/10 ｜ 10/10 | — | **10/10 ｜ 10/10（20 条回答无漂移）** |
+| 范围 18 题 | 10/10 | 10/10 | **10/10** |
+| 日常探针 42 题 | 42/42 | 42/42 | **42/42（0 未命中 / 0 复读 / 42 种回答）** |
+| 身份 12 题 ｜ 多轮 | 12/12 ｜ 1.00 | 12/12 ｜ 1.00 | **12/12 ｜ 1.00** |
+| PC 针检索·单类别（4k/8k/16k/32k） | 101（27/30/28/16） | **108（29/29/23/27）** | 107（28/30/28/21） |
+| PC 针检索·多类别 | 95 | **108** | 94 |
+| PC「文中没有」拒答（单｜多） | 63/64 ｜ — | 61/64 ｜ 62/64 | 62/64 ｜ 64/64 |
+| 板端速度 | 1.8–1.9 tok/s | — | 1.80 tok/s（`logs/board_v3_10p3_speed.txt`） |
+
+### 负结果：q2 抗性对权重回插极其敏感
+
+想把 v3.10 和 v3.9 掺回一个"两头都要"的版本，测了三档比例（`scripts/soup_models.py`）：
+
+| 配方（v3.9 占比） | q2 32 题矩阵 |
+|---|---|
+| 0.50 v3.9 + 0.50 qat_soup | 25/27 + 3/4 |
+| 0.60 v3.9 + 0.40 qat_soup | 22/27 + 3/4 |
+| 0.70 v3.9 + 0.30 qat_soup | 21/27 + 4/4 |
+| 0.20 v3.9 + 0.80 pol3 | 25/27 + 4/4 |
+| 0.25 v3.9 + 0.75 pol3 | 23/27 + 4/4 |
+| **0（纯 pol3）** | **27/27 + 4/4** |
+
+只要掺入非 QAT 权重，q2 鲁棒性就按比例塌——**v3.10 不能同时当 PC 版**。
+另外两档日常回补也各丢 1 分（1 epoch 丢"翻译-再见"、2 epochs lr 1e-5 丢"情绪-伤心"），
+最终取 2 epochs / lr 5e-6。
+
+### 结论
+
+- **板端用 v3.10**（`v3_10/qat_pol3`）：q2 block8 / 2048 ctx 满分，板端 20/20 回答干净，1.80 tok/s。
+- **PC 端继续用 v3.9**：32k 单类别 27/32 vs v3.10 的 21/32；v3.10 的 4k–16k 更好（107 vs 108 总量接近），
+  但 32k 是它的短板。
+- 结果文件：`logs/pc_kv_suite32_v3_10p3_q2b8.txt`、`logs/pc_kv_suite32_v3_10p3_i8.txt`、
+  `logs/board_v3_10p3_chat10.txt`、`logs/board_v3_10p3_multi.txt`、`eval/v3_10p3_scope.json`、
+  `eval/chat_probe_v3_10p3.json`、`eval/identity_v3_10p3.json`、
+  `eval/longctx32_v3_10p3.json`、`eval/longctx32multi_v3_10p3.json`。
+
+### 复现
+
+```powershell
+# 1) 通用 QAT（v3.9 底座 + q2 block8 噪声 + 4k/8k 检索回放）
+python scripts\v3_7_kv_qat.py --init v3_9\stockfix2 --data v3_7\qat_data.jsonl `
+  --mt v3_5d\mt_convs.jsonl --mt-n 280 --identity-n 150 --out v3_10\qat_a `
+  --epochs 3 --lr 3e-5 --retr v3_8\retr --retr-n "4096:200:2,8192:60:1" --retr-lr 1e-5
+# 2) 针专项 + soup
+python scripts\v3_7_kv_qat.py --init v3_10\qat_a --data v3_7\needle_qat.jsonl `
+  --out v3_10\qat_b --epochs 8 --lr 2e-5 --max-len 2048 --batch 8
+python scripts\v3_7_kv_qat.py --init v3_10\qat_a --data v3_7\needle_stock_qat.jsonl `
+  --out v3_10\qat_c --epochs 8 --lr 2e-5 --max-len 2048 --batch 8
+python scripts\soup_models.py --models "v3_10/qat_b,v3_10/qat_c" --weights "0.5,0.5" --out v3_10\qat_soup
+# 3) 日常回补（最终版）
+python scripts\v3_7_kv_qat.py --init v3_10\qat_soup --data v3_10\chatfix_all.jsonl `
+  --identity-n 100 --out v3_10\qat_pol3 --epochs 2 --lr 5e-6 --batch 24 --max-len 1024
+# 4) C 引擎 q2 矩阵 + 板端
+python esp32s3-feng-llm\tools\export_model.py --model v3_10\qat_pol3 --out esp32s3-feng-llm\model_export_v3_10p3
+pc_kv_suite_q2b8.exe ..\esp32s3-feng-llm\model_export_v3_10p3 ..\esp32s3-feng-llm\pc\prompt_long.txt 5200
+python scripts\esp32_multi.py --port COM20
+```
 
 ---
 

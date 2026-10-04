@@ -1,0 +1,1586 @@
+{
+  "model": "v3_10\\qat_soup",
+  "n": 32,
+  "rows": [
+    {
+      "ctx": 4096,
+      "hit": 27,
+      "n": 32,
+      "detail": [
+        {
+          "code": "75949",
+          "kind": null,
+          "needle_frac": 0.525,
+          "tokens": 3032,
+          "response": "75949",
+          "ok": true
+        },
+        {
+          "code": "73346",
+          "kind": null,
+          "needle_frac": 0.394,
+          "tokens": 3032,
+          "response": "73346",
+          "ok": true
+        },
+        {
+          "code": "25113",
+          "kind": null,
+          "needle_frac": 0.299,
+          "tokens": 3032,
+          "response": "25113",
+          "ok": true
+        },
+        {
+          "code": "60306",
+          "kind": null,
+          "needle_frac": 0.736,
+          "tokens": 3032,
+          "response": "60306",
+          "ok": true
+        },
+        {
+          "code": "80084",
+          "kind": null,
+          "needle_frac": 0.606,
+          "tokens": 3032,
+          "response": "80084",
+          "ok": true
+        },
+        {
+          "code": "79874",
+          "kind": null,
+          "needle_frac": 0.832,
+          "tokens": 3032,
+          "response": "79874",
+          "ok": true
+        },
+        {
+          "code": "21935",
+          "kind": null,
+          "needle_frac": 0.798,
+          "tokens": 3032,
+          "response": "21934",
+          "ok": false
+        },
+        {
+          "code": "66017",
+          "kind": null,
+          "needle_frac": 0.257,
+          "tokens": 3032,
+          "response": "66017",
+          "ok": true
+        },
+        {
+          "code": "75085",
+          "kind": null,
+          "needle_frac": 0.451,
+          "tokens": 3031,
+          "response": "75085",
+          "ok": true
+        },
+        {
+          "code": "39694",
+          "kind": null,
+          "needle_frac": 0.737,
+          "tokens": 3031,
+          "response": "369694",
+          "ok": false
+        },
+        {
+          "code": "70167",
+          "kind": null,
+          "needle_frac": 0.433,
+          "tokens": 3031,
+          "response": "70167。",
+          "ok": true
+        },
+        {
+          "code": "61470",
+          "kind": null,
+          "needle_frac": 0.303,
+          "tokens": 3031,
+          "response": "61470",
+          "ok": true
+        },
+        {
+          "code": "27195",
+          "kind": null,
+          "needle_frac": 0.183,
+          "tokens": 3031,
+          "response": "27195",
+          "ok": true
+        },
+        {
+          "code": "60699",
+          "kind": null,
+          "needle_frac": 0.814,
+          "tokens": 3031,
+          "response": "60699",
+          "ok": true
+        },
+        {
+          "code": "42909",
+          "kind": null,
+          "needle_frac": 0.866,
+          "tokens": 3031,
+          "response": "42909。",
+          "ok": true
+        },
+        {
+          "code": "28718",
+          "kind": null,
+          "needle_frac": 0.075,
+          "tokens": 3031,
+          "response": "28718",
+          "ok": true
+        },
+        {
+          "code": "31460",
+          "kind": null,
+          "needle_frac": 0.089,
+          "tokens": 3031,
+          "response": "31460",
+          "ok": true
+        },
+        {
+          "code": "66357",
+          "kind": null,
+          "needle_frac": 0.645,
+          "tokens": 3031,
+          "response": "66357",
+          "ok": true
+        },
+        {
+          "code": "38615",
+          "kind": null,
+          "needle_frac": 0.618,
+          "tokens": 3031,
+          "response": "36615",
+          "ok": false
+        },
+        {
+          "code": "14808",
+          "kind": null,
+          "needle_frac": 0.163,
+          "tokens": 3031,
+          "response": "14808",
+          "ok": true
+        },
+        {
+          "code": "83544",
+          "kind": null,
+          "needle_frac": 0.307,
+          "tokens": 3031,
+          "response": "83544",
+          "ok": true
+        },
+        {
+          "code": "62904",
+          "kind": null,
+          "needle_frac": 0.718,
+          "tokens": 3031,
+          "response": "62904",
+          "ok": true
+        },
+        {
+          "code": "44702",
+          "kind": null,
+          "needle_frac": 0.852,
+          "tokens": 3031,
+          "response": "4702",
+          "ok": false
+        },
+        {
+          "code": "59841",
+          "kind": null,
+          "needle_frac": 0.503,
+          "tokens": 3031,
+          "response": "59841",
+          "ok": true
+        },
+        {
+          "code": "57987",
+          "kind": null,
+          "needle_frac": 0.25,
+          "tokens": 3032,
+          "response": "57987",
+          "ok": true
+        },
+        {
+          "code": "16964",
+          "kind": null,
+          "needle_frac": 0.83,
+          "tokens": 3032,
+          "response": "16964",
+          "ok": true
+        },
+        {
+          "code": "54565",
+          "kind": null,
+          "needle_frac": 0.507,
+          "tokens": 3032,
+          "response": "54565",
+          "ok": true
+        },
+        {
+          "code": "95529",
+          "kind": null,
+          "needle_frac": 0.702,
+          "tokens": 3032,
+          "response": "95529",
+          "ok": true
+        },
+        {
+          "code": "27982",
+          "kind": null,
+          "needle_frac": 0.537,
+          "tokens": 3032,
+          "response": "27982",
+          "ok": true
+        },
+        {
+          "code": "39302",
+          "kind": null,
+          "needle_frac": 0.261,
+          "tokens": 3032,
+          "response": "39302",
+          "ok": true
+        },
+        {
+          "code": "36130",
+          "kind": null,
+          "needle_frac": 0.204,
+          "tokens": 3032,
+          "response": "3630",
+          "ok": false
+        },
+        {
+          "code": "48436",
+          "kind": null,
+          "needle_frac": 0.366,
+          "tokens": 3032,
+          "response": "48436",
+          "ok": true
+        }
+      ],
+      "neg_hit": 16,
+      "neg_n": 16,
+      "neg_detail": [
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 3031,
+          "response": "文中没有提到。",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "ctx": 8192,
+      "hit": 29,
+      "n": 32,
+      "detail": [
+        {
+          "code": "89036",
+          "kind": null,
+          "needle_frac": 0.815,
+          "tokens": 6272,
+          "response": "89036",
+          "ok": true
+        },
+        {
+          "code": "56412",
+          "kind": null,
+          "needle_frac": 0.547,
+          "tokens": 6272,
+          "response": "56412",
+          "ok": true
+        },
+        {
+          "code": "20275",
+          "kind": null,
+          "needle_frac": 0.222,
+          "tokens": 6272,
+          "response": "20275",
+          "ok": true
+        },
+        {
+          "code": "14027",
+          "kind": null,
+          "needle_frac": 0.051,
+          "tokens": 6272,
+          "response": "文中没有提到。",
+          "ok": false
+        },
+        {
+          "code": "26976",
+          "kind": null,
+          "needle_frac": 0.3,
+          "tokens": 6272,
+          "response": "26976",
+          "ok": true
+        },
+        {
+          "code": "93080",
+          "kind": null,
+          "needle_frac": 0.884,
+          "tokens": 6272,
+          "response": "93080。",
+          "ok": true
+        },
+        {
+          "code": "97241",
+          "kind": null,
+          "needle_frac": 0.314,
+          "tokens": 6272,
+          "response": "97241",
+          "ok": true
+        },
+        {
+          "code": "86915",
+          "kind": null,
+          "needle_frac": 0.683,
+          "tokens": 6272,
+          "response": "8915",
+          "ok": false
+        },
+        {
+          "code": "70731",
+          "kind": null,
+          "needle_frac": 0.177,
+          "tokens": 6272,
+          "response": "70731",
+          "ok": true
+        },
+        {
+          "code": "48801",
+          "kind": null,
+          "needle_frac": 0.834,
+          "tokens": 6272,
+          "response": "48801。",
+          "ok": true
+        },
+        {
+          "code": "35382",
+          "kind": null,
+          "needle_frac": 0.517,
+          "tokens": 6272,
+          "response": "35382",
+          "ok": true
+        },
+        {
+          "code": "29273",
+          "kind": null,
+          "needle_frac": 0.661,
+          "tokens": 6272,
+          "response": "29273",
+          "ok": true
+        },
+        {
+          "code": "16054",
+          "kind": null,
+          "needle_frac": 0.842,
+          "tokens": 6272,
+          "response": "16054",
+          "ok": true
+        },
+        {
+          "code": "61010",
+          "kind": null,
+          "needle_frac": 0.258,
+          "tokens": 6272,
+          "response": "61010",
+          "ok": true
+        },
+        {
+          "code": "80848",
+          "kind": null,
+          "needle_frac": 0.522,
+          "tokens": 6272,
+          "response": "80848",
+          "ok": true
+        },
+        {
+          "code": "58635",
+          "kind": null,
+          "needle_frac": 0.069,
+          "tokens": 6272,
+          "response": "58635",
+          "ok": true
+        },
+        {
+          "code": "63400",
+          "kind": null,
+          "needle_frac": 0.629,
+          "tokens": 6271,
+          "response": "63400",
+          "ok": true
+        },
+        {
+          "code": "24122",
+          "kind": null,
+          "needle_frac": 0.296,
+          "tokens": 6271,
+          "response": "24122",
+          "ok": true
+        },
+        {
+          "code": "49341",
+          "kind": null,
+          "needle_frac": 0.691,
+          "tokens": 6271,
+          "response": "49341。",
+          "ok": true
+        },
+        {
+          "code": "93504",
+          "kind": null,
+          "needle_frac": 0.298,
+          "tokens": 6271,
+          "response": "93504",
+          "ok": true
+        },
+        {
+          "code": "49234",
+          "kind": null,
+          "needle_frac": 0.852,
+          "tokens": 6271,
+          "response": "49234",
+          "ok": true
+        },
+        {
+          "code": "15833",
+          "kind": null,
+          "needle_frac": 0.307,
+          "tokens": 6271,
+          "response": "15833",
+          "ok": true
+        },
+        {
+          "code": "73313",
+          "kind": null,
+          "needle_frac": 0.539,
+          "tokens": 6271,
+          "response": "73313",
+          "ok": true
+        },
+        {
+          "code": "81240",
+          "kind": null,
+          "needle_frac": 0.849,
+          "tokens": 6271,
+          "response": "81240",
+          "ok": true
+        },
+        {
+          "code": "25627",
+          "kind": null,
+          "needle_frac": 0.654,
+          "tokens": 6271,
+          "response": "2627",
+          "ok": false
+        },
+        {
+          "code": "31948",
+          "kind": null,
+          "needle_frac": 0.83,
+          "tokens": 6271,
+          "response": "31948",
+          "ok": true
+        },
+        {
+          "code": "40610",
+          "kind": null,
+          "needle_frac": 0.769,
+          "tokens": 6271,
+          "response": "40610",
+          "ok": true
+        },
+        {
+          "code": "28506",
+          "kind": null,
+          "needle_frac": 0.849,
+          "tokens": 6271,
+          "response": "28506",
+          "ok": true
+        },
+        {
+          "code": "81312",
+          "kind": null,
+          "needle_frac": 0.156,
+          "tokens": 6271,
+          "response": "81312",
+          "ok": true
+        },
+        {
+          "code": "62441",
+          "kind": null,
+          "needle_frac": 0.886,
+          "tokens": 6271,
+          "response": "62441",
+          "ok": true
+        },
+        {
+          "code": "87685",
+          "kind": null,
+          "needle_frac": 0.795,
+          "tokens": 6271,
+          "response": "87685",
+          "ok": true
+        },
+        {
+          "code": "39325",
+          "kind": null,
+          "needle_frac": 0.052,
+          "tokens": 6271,
+          "response": "39325",
+          "ok": true
+        }
+      ],
+      "neg_hit": 16,
+      "neg_n": 16,
+      "neg_detail": [
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 6273,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 6271,
+          "response": "文中没有提到。",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "ctx": 16384,
+      "hit": 26,
+      "n": 32,
+      "detail": [
+        {
+          "code": "17346",
+          "kind": null,
+          "needle_frac": 0.441,
+          "tokens": 12871,
+          "response": "17346",
+          "ok": true
+        },
+        {
+          "code": "20049",
+          "kind": null,
+          "needle_frac": 0.425,
+          "tokens": 12871,
+          "response": "文中没有提到。",
+          "ok": false
+        },
+        {
+          "code": "34520",
+          "kind": null,
+          "needle_frac": 0.261,
+          "tokens": 12871,
+          "response": "34520",
+          "ok": true
+        },
+        {
+          "code": "35862",
+          "kind": null,
+          "needle_frac": 0.446,
+          "tokens": 12871,
+          "response": "35562",
+          "ok": false
+        },
+        {
+          "code": "47475",
+          "kind": null,
+          "needle_frac": 0.363,
+          "tokens": 12871,
+          "response": "47475",
+          "ok": true
+        },
+        {
+          "code": "83740",
+          "kind": null,
+          "needle_frac": 0.401,
+          "tokens": 12871,
+          "response": "83740",
+          "ok": true
+        },
+        {
+          "code": "81119",
+          "kind": null,
+          "needle_frac": 0.34,
+          "tokens": 12871,
+          "response": "81119",
+          "ok": true
+        },
+        {
+          "code": "68709",
+          "kind": null,
+          "needle_frac": 0.891,
+          "tokens": 12871,
+          "response": "68709",
+          "ok": true
+        },
+        {
+          "code": "59547",
+          "kind": null,
+          "needle_frac": 0.148,
+          "tokens": 12872,
+          "response": "59547",
+          "ok": true
+        },
+        {
+          "code": "54034",
+          "kind": null,
+          "needle_frac": 0.635,
+          "tokens": 12872,
+          "response": "54034",
+          "ok": true
+        },
+        {
+          "code": "10216",
+          "kind": null,
+          "needle_frac": 0.189,
+          "tokens": 12872,
+          "response": "10216",
+          "ok": true
+        },
+        {
+          "code": "61217",
+          "kind": null,
+          "needle_frac": 0.372,
+          "tokens": 12872,
+          "response": "61217",
+          "ok": true
+        },
+        {
+          "code": "92217",
+          "kind": null,
+          "needle_frac": 0.471,
+          "tokens": 12872,
+          "response": "92217",
+          "ok": true
+        },
+        {
+          "code": "26665",
+          "kind": null,
+          "needle_frac": 0.554,
+          "tokens": 12872,
+          "response": "266665",
+          "ok": false
+        },
+        {
+          "code": "92764",
+          "kind": null,
+          "needle_frac": 0.056,
+          "tokens": 12872,
+          "response": "92764",
+          "ok": true
+        },
+        {
+          "code": "40444",
+          "kind": null,
+          "needle_frac": 0.759,
+          "tokens": 12872,
+          "response": "40444",
+          "ok": true
+        },
+        {
+          "code": "99401",
+          "kind": null,
+          "needle_frac": 0.841,
+          "tokens": 12871,
+          "response": "99401",
+          "ok": true
+        },
+        {
+          "code": "14047",
+          "kind": null,
+          "needle_frac": 0.544,
+          "tokens": 12871,
+          "response": "文中没有提到。",
+          "ok": false
+        },
+        {
+          "code": "37378",
+          "kind": null,
+          "needle_frac": 0.373,
+          "tokens": 12871,
+          "response": "37378",
+          "ok": true
+        },
+        {
+          "code": "68255",
+          "kind": null,
+          "needle_frac": 0.389,
+          "tokens": 12871,
+          "response": "68255",
+          "ok": true
+        },
+        {
+          "code": "30293",
+          "kind": null,
+          "needle_frac": 0.06,
+          "tokens": 12871,
+          "response": "30293",
+          "ok": true
+        },
+        {
+          "code": "67319",
+          "kind": null,
+          "needle_frac": 0.695,
+          "tokens": 12871,
+          "response": "68319",
+          "ok": false
+        },
+        {
+          "code": "34766",
+          "kind": null,
+          "needle_frac": 0.152,
+          "tokens": 12871,
+          "response": "34766",
+          "ok": true
+        },
+        {
+          "code": "84130",
+          "kind": null,
+          "needle_frac": 0.29,
+          "tokens": 12871,
+          "response": "84130",
+          "ok": true
+        },
+        {
+          "code": "64803",
+          "kind": null,
+          "needle_frac": 0.062,
+          "tokens": 12872,
+          "response": "64803",
+          "ok": true
+        },
+        {
+          "code": "53269",
+          "kind": null,
+          "needle_frac": 0.753,
+          "tokens": 12872,
+          "response": "53269",
+          "ok": true
+        },
+        {
+          "code": "98710",
+          "kind": null,
+          "needle_frac": 0.21,
+          "tokens": 12872,
+          "response": "98710",
+          "ok": true
+        },
+        {
+          "code": "25090",
+          "kind": null,
+          "needle_frac": 0.152,
+          "tokens": 12872,
+          "response": "25090",
+          "ok": true
+        },
+        {
+          "code": "20735",
+          "kind": null,
+          "needle_frac": 0.503,
+          "tokens": 12872,
+          "response": "20735",
+          "ok": true
+        },
+        {
+          "code": "12070",
+          "kind": null,
+          "needle_frac": 0.537,
+          "tokens": 12872,
+          "response": "文中没有提到。",
+          "ok": false
+        },
+        {
+          "code": "99041",
+          "kind": null,
+          "needle_frac": 0.772,
+          "tokens": 12872,
+          "response": "99041。",
+          "ok": true
+        },
+        {
+          "code": "44599",
+          "kind": null,
+          "needle_frac": 0.208,
+          "tokens": 12872,
+          "response": "44599",
+          "ok": true
+        }
+      ],
+      "neg_hit": 16,
+      "neg_n": 16,
+      "neg_detail": [
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 12873,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 12871,
+          "response": "文中没有提到。",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "ctx": 32768,
+      "hit": 21,
+      "n": 32,
+      "detail": [
+        {
+          "code": "66753",
+          "kind": null,
+          "needle_frac": 0.63,
+          "tokens": 25952,
+          "response": "60004",
+          "ok": false
+        },
+        {
+          "code": "44637",
+          "kind": null,
+          "needle_frac": 0.471,
+          "tokens": 25952,
+          "response": "44637",
+          "ok": true
+        },
+        {
+          "code": "60005",
+          "kind": null,
+          "needle_frac": 0.112,
+          "tokens": 25952,
+          "response": "60005",
+          "ok": true
+        },
+        {
+          "code": "85497",
+          "kind": null,
+          "needle_frac": 0.317,
+          "tokens": 25952,
+          "response": "85497",
+          "ok": true
+        },
+        {
+          "code": "36788",
+          "kind": null,
+          "needle_frac": 0.723,
+          "tokens": 25952,
+          "response": "366788",
+          "ok": false
+        },
+        {
+          "code": "98131",
+          "kind": null,
+          "needle_frac": 0.229,
+          "tokens": 25952,
+          "response": "98131",
+          "ok": true
+        },
+        {
+          "code": "96313",
+          "kind": null,
+          "needle_frac": 0.896,
+          "tokens": 25952,
+          "response": "文中没有提到。",
+          "ok": false
+        },
+        {
+          "code": "65442",
+          "kind": null,
+          "needle_frac": 0.845,
+          "tokens": 25952,
+          "response": "5442",
+          "ok": false
+        },
+        {
+          "code": "84165",
+          "kind": null,
+          "needle_frac": 0.684,
+          "tokens": 25952,
+          "response": "4165416",
+          "ok": false
+        },
+        {
+          "code": "46639",
+          "kind": null,
+          "needle_frac": 0.259,
+          "tokens": 25952,
+          "response": "46639",
+          "ok": true
+        },
+        {
+          "code": "17452",
+          "kind": null,
+          "needle_frac": 0.884,
+          "tokens": 25952,
+          "response": "文中没有提到。",
+          "ok": false
+        },
+        {
+          "code": "89061",
+          "kind": null,
+          "needle_frac": 0.287,
+          "tokens": 25952,
+          "response": "89061",
+          "ok": true
+        },
+        {
+          "code": "91094",
+          "kind": null,
+          "needle_frac": 0.187,
+          "tokens": 25952,
+          "response": "91094",
+          "ok": true
+        },
+        {
+          "code": "63779",
+          "kind": null,
+          "needle_frac": 0.251,
+          "tokens": 25952,
+          "response": "63779",
+          "ok": true
+        },
+        {
+          "code": "44926",
+          "kind": null,
+          "needle_frac": 0.243,
+          "tokens": 25952,
+          "response": "44926",
+          "ok": true
+        },
+        {
+          "code": "20657",
+          "kind": null,
+          "needle_frac": 0.085,
+          "tokens": 25952,
+          "response": "20657",
+          "ok": true
+        },
+        {
+          "code": "93502",
+          "kind": null,
+          "needle_frac": 0.691,
+          "tokens": 25951,
+          "response": "93502",
+          "ok": true
+        },
+        {
+          "code": "87540",
+          "kind": null,
+          "needle_frac": 0.549,
+          "tokens": 25951,
+          "response": "87540",
+          "ok": true
+        },
+        {
+          "code": "53891",
+          "kind": null,
+          "needle_frac": 0.126,
+          "tokens": 25951,
+          "response": "5383838383838383838383838383838",
+          "ok": false
+        },
+        {
+          "code": "24147",
+          "kind": null,
+          "needle_frac": 0.071,
+          "tokens": 25951,
+          "response": "249147",
+          "ok": false
+        },
+        {
+          "code": "93692",
+          "kind": null,
+          "needle_frac": 0.315,
+          "tokens": 25951,
+          "response": "93692",
+          "ok": true
+        },
+        {
+          "code": "77916",
+          "kind": null,
+          "needle_frac": 0.779,
+          "tokens": 25951,
+          "response": "77916",
+          "ok": true
+        },
+        {
+          "code": "77937",
+          "kind": null,
+          "needle_frac": 0.089,
+          "tokens": 25951,
+          "response": "77937",
+          "ok": true
+        },
+        {
+          "code": "90201",
+          "kind": null,
+          "needle_frac": 0.653,
+          "tokens": 25951,
+          "response": "9090909090909090",
+          "ok": false
+        },
+        {
+          "code": "86069",
+          "kind": null,
+          "needle_frac": 0.487,
+          "tokens": 25951,
+          "response": "86069",
+          "ok": true
+        },
+        {
+          "code": "16735",
+          "kind": null,
+          "needle_frac": 0.801,
+          "tokens": 25951,
+          "response": "文中没有提到。",
+          "ok": false
+        },
+        {
+          "code": "38920",
+          "kind": null,
+          "needle_frac": 0.195,
+          "tokens": 25951,
+          "response": "38920",
+          "ok": true
+        },
+        {
+          "code": "26365",
+          "kind": null,
+          "needle_frac": 0.799,
+          "tokens": 25951,
+          "response": "6365",
+          "ok": false
+        },
+        {
+          "code": "21589",
+          "kind": null,
+          "needle_frac": 0.696,
+          "tokens": 25951,
+          "response": "21589",
+          "ok": true
+        },
+        {
+          "code": "45679",
+          "kind": null,
+          "needle_frac": 0.28,
+          "tokens": 25951,
+          "response": "45679",
+          "ok": true
+        },
+        {
+          "code": "98930",
+          "kind": null,
+          "needle_frac": 0.168,
+          "tokens": 25951,
+          "response": "98930",
+          "ok": true
+        },
+        {
+          "code": "75860",
+          "kind": null,
+          "needle_frac": 0.721,
+          "tokens": 25951,
+          "response": "75860",
+          "ok": true
+        }
+      ],
+      "neg_hit": 14,
+      "neg_n": 16,
+      "neg_detail": [
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 25953,
+          "response": "40750",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "文中没有提到。",
+          "ok": true
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "6339",
+          "ok": false
+        },
+        {
+          "code": null,
+          "kind": null,
+          "needle_frac": -1.0,
+          "tokens": 25952,
+          "response": "文中没有提到。",
+          "ok": true
+        }
+      ]
+    }
+  ]
+}
