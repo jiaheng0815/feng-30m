@@ -26,12 +26,12 @@ I (78) boot:  2 factory          factory app      00 00 00010000 00100000
 I (85) boot:  3 model            Unknown data     01 40 00110000 00ef0000
 I (91) boot:  4 tokdata          Unknown data     01 41 01000000 00080000
 I (98) boot: End of partition table
-I (101) esp_image: segment 0: paddr=00010020 vaddr=3c020020 size=175ech ( 95724) map
-I (132) esp_image: segment 1: paddr=00027614 vaddr=3fc98200 size=0346ch ( 13420) load
-I (141) esp_image: segment 2: paddr=0002aa88 vaddr=40378000 size=05590h ( 21904) load
+I (101) esp_image: segment 0: paddr=00010020 vaddr=3c020020 size=176dch ( 95964) map
+I (132) esp_image: segment 1: paddr=00027704 vaddr=3fc98200 size=0346ch ( 13420) load
+I (141) esp_image: segment 2: paddr=0002ab78 vaddr=40378000 size=054a0h ( 21664) load
 I (148) esp_image: segment 3: paddr=00030020 vaddr=42000020 size=1dc2ch (121900) map
-I (178) esp_image: segment 4: paddr=0004dc54 vaddr=4037d590 size=0abcch ( 43980) load
-I (196) esp_image: segment 5: paddr=00058828 vaddr=50000000 size=00020h (    32) load
+I (178) esp_image: segment 4: paddr=0004dc54 vaddr=4037d4a0 size=0acbch ( 44220) load
+I (197) esp_image: segment 5: paddr=00058918 vaddr=50000000 size=00020h (    32) load
 I (203) boot: Loaded app from partition at offset 0x10000
 I (203) boot: Disabling RNG early entropy source...
 I (215) MSPI Timing: Enter flash timing tuning
@@ -39,16 +39,16 @@ I (221) octal_psram: vendor id    : 0x0d (AP)
 I (221) octal_psram: dev id       : 0x03 (generation 4)
 I (221) octal_psram: density      : 0x05 (128 Mbit)
 I (223) octal_psram: good-die     : 0x01 (Pass)
-I (227) octal_psram: Latency      : 0x01 (Fixed)
+I (228) octal_psram: Latency      : 0x01 (Fixed)
 I (232) octal_psram: VCC          : 0x00 (1.8V)
 I (236) octal_psram: SRF          : 0x01 (Fast Refresh)
 I (241) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
 I (246) octal_psram: BurstLen     : 0x01 (32 Byte)
 I (250) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
-I (255) octal_psram: DriveStrength: 0x00 (1/1)
+I (256) octal_psram: DriveStrength: 0x00 (1/1)
 I (260) MSPI Timing: Enter psram timing tuning
-I (270) esp_psram: Found 16MB PSRAM device
-I (270) esp_psram: Speed: 120MHz
+I (271) esp_psram: Found 16MB PSRAM device
+I (271) esp_psram: Speed: 120MHz
 I (275) mmu_psram: Read only data copied and mapped to SPIRAM
 I (283) mmu_psram: Instructions copied and mapped to SPIRAM
 I (283) cpu_start: Multicore app
@@ -58,9 +58,9 @@ I (696) cpu_start: Pro cpu start user code
 I (696) cpu_start: cpu freq: 240000000 Hz
 I (698) app_init: Application information:
 I (702) app_init: Project name:     feng_30m
-I (706) app_init: App version:      v3.4-34-g3c45485-dirty
-I (711) app_init: Compile time:     Oct  4 2026 16:30:30
-I (716) app_init: ELF file SHA256:  62e5ec094...
+I (706) app_init: App version:      v3.4-39-g9e74b0b-dirty
+I (711) app_init: Compile time:     Oct  4 2026 19:35:07
+I (717) app_init: ELF file SHA256:  d8828735a...
 I (721) app_init: ESP-IDF:          v5.5.5-dirty
 I (725) efuse_init: Min chip rev:     v0.0
 I (729) efuse_init: Max chip rev:     v0.99 
@@ -69,36 +69,36 @@ I (737) heap_init: Initializing. RAM available for dynamic allocation:
 I (743) heap_init: At 3FCAC3E8 len 0003D328 (244 KiB): RAM
 I (748) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
 I (753) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
-I (758) esp_psram: Adding pool of 16128K of PSRAM memory to heap allocator
+I (759) esp_psram: Adding pool of 16128K of PSRAM memory to heap allocator
 I (765) esp_psram: Adding pool of 34K of PSRAM memory gap generated due to end address alignment of drom to the heap allocator
-I (776) spi_flash: detected chip: mxic (opi)
+I (777) spi_flash: detected chip: mxic (opi)
 I (780) spi_flash: flash io: opi_dtr
-I (783) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (784) sleep_gpio: Configure to isolate all GPIO pins in sleep state
 I (790) sleep_gpio: Enable automatic switching of GPIO sleep configuration
-I (796) main_task: Started on CPU0
-I (799) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
-I (807) main_task: Calling app_main()
-I (810) feng: [mem] app_main    internal  251607 B | psram 16547040 B (largest int 188416)
-I (818) feng: [mem] uart        internal  251483 B | psram 16541580 B (largest int 188416)
-I (818) feng: feng-30m on ESP32-S3 (2 cores), flash 32MB / PSRAM 16MB
-I (819) feng: model mapped at 0x3d000000 (15296 KB)
-I (819) feng: [mem] mmap        internal  250851 B | psram 16541580 B (largest int 188416)
-I (963) feng: mmap stream read: 15296 KB in 144 ms -> 108.3 MB/s (checksum 33236465)
-I (969) feng: [mem] model       internal  250631 B | psram 16541580 B (largest int 188416)
-I (969) feng: model: 11 layers, hidden 448, 7 heads x 64, ffn 896, vocab 16384, rope 1000000
-I (1828) feng: tokenizer: vocab 16384, merges 16124
-I (1828) feng: [mem] tokenizer   internal  250543 B | psram 15447400 B (largest int 188416)
-I (1828) feng: tokenizer self-test: 1 ids -> 5331 
-I (1828) feng: tokenizer decode round-trip ok=1 (6 bytes)
-I (1829) feng: KV cache: q2/block8, ctx 2048, 9.62 MB
-I (1829) feng: PSRAM free after setup: 5004 KB
-I (1829) feng: [mem] kv/ws       internal  250479 B | psram  5124904 B (largest int 188416)
-I (1829) feng_smp: heap before workers: internal 250479 B (largest 188416), psram 5124904 B
-I (1830) feng_smp: GEMV workers up on core 0 + core 1
-I (2100) feng_smp: par n_out=896: part0 core0 rows[0,448) 6794us | part1 core1 rows[448,896) 6795us
-I (2107) feng_smp: par n_out=896: part0 core0 rows[0,448) 6779us | part1 core1 rows[448,896) 6774us
-I (2114) feng_smp: par n_out=896: part0 core0 rows[0,448) 6814us | part1 core1 rows[448,896) 6793us
-I (2230) feng: gemv 896x448: 1-core 13185 us (16 MB/s) | 2-core 6837 us (31 MB/s) | speedup 1.93x
+I (797) main_task: Started on CPU0
+I (800) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (808) main_task: Calling app_main()
+I (811) feng: [mem] app_main    internal  251607 B | psram 16546800 B (largest int 188416)
+I (819) feng: [mem] uart        internal  251483 B | psram 16541340 B (largest int 188416)
+I (819) feng: feng-30m on ESP32-S3 (2 cores), flash 32MB / PSRAM 16MB
+I (820) feng: model mapped at 0x3d000000 (15296 KB)
+I (820) feng: [mem] mmap        internal  250851 B | psram 16541340 B (largest int 188416)
+I (964) feng: mmap stream read: 15296 KB in 144 ms -> 108.3 MB/s (checksum 33235918)
+I (970) feng: [mem] model       internal  250631 B | psram 16541340 B (largest int 188416)
+I (970) feng: model: 11 layers, hidden 448, 7 heads x 64, ffn 896, vocab 16384, rope 1000000
+I (1829) feng: tokenizer: vocab 16384, merges 16124
+I (1829) feng: [mem] tokenizer   internal  250543 B | psram 15447160 B (largest int 188416)
+I (1829) feng: tokenizer self-test: 1 ids -> 5331 
+I (1829) feng: tokenizer decode round-trip ok=1 (6 bytes)
+I (1830) feng: KV cache: q2/block8, ctx 2048, 9.62 MB
+I (1830) feng: PSRAM free after setup: 5004 KB
+I (1830) feng: [mem] kv/ws       internal  250479 B | psram  5124664 B (largest int 188416)
+I (1830) feng_smp: heap before workers: internal 250479 B (largest 188416), psram 5124664 B
+I (1831) feng_smp: GEMV workers up on core 0 + core 1
+I (2101) feng_smp: par n_out=896: part0 core0 rows[0,448) 6783us | part1 core1 rows[448,896) 6787us
+I (2108) feng_smp: par n_out=896: part0 core0 rows[0,448) 6801us | part1 core1 rows[448,896) 6797us
+I (2115) feng_smp: par n_out=896: part0 core0 rows[0,448) 6807us | part1 core1 rows[448,896) 6772us
+I (2231) feng: gemv 896x448: 1-core 13186 us (16 MB/s) | 2-core 6832 us (31 MB/s) | speedup 1.93x
 
 === feng-30m on ESP32-S3 (serial chat) ===
 one sentence per line; the reply streams between << and >>END
@@ -106,21 +106,19 @@ one sentence per line; the reply streams between << and >>END
 工具：算式（59+1）、现在几点、随机数 都由板内 tool 直接回答，不经过模型
 commands: \gbk  \utf8  \reset  \stream N  \help
 FENG_READY
-you> [ 1] OK        0.5s  Q: 五十九加一
-     A: 59 加 1 等于 60。
-[ 2] OK        0.5s  Q: 100的15%
+you> [ 1] OK        0.5s  Q: 100的15%是多少钱
      A: 100 乘 15% 等于 15。
-[ 3] OK        0.5s  Q: 12的平方
-     A: 12 乘 12 等于 144。
-[ 4] OK        0.5s  Q: 根号16
+[ 2] OK        0.5s  Q: 把59+1算一下
+     A: 59 加 1 等于 60。
+[ 3] OK        0.5s  Q: 麻烦算一下 445+15 是多少
+     A: 445 加 15 等于 460。
+[ 4] OK        0.5s  Q: 三的立方
+     A: 结果是 27。
+[ 5] OK        0.5s  Q: 根号16
      A: 结果是 4。
-[ 5] OK        0.5s  Q: 3天后是几号
-     A: 3 天后是 2026年10月07日（周三）。
-[ 6] OK        0.5s  Q: 现在几点？
-     A: 现在是 2026年10月04日 17:46:20（周日，UTC+8）。
-[ 7] OK        0.5s  Q: 4854+4411
-     A: 4854 加 4411 等于 9265。
-[ 8] OK       15.4s  Q: 你是谁？
+[ 6] OK       11.5s  Q: 现在多少钱
+     A: 在一些钱中，很难受。
+[ 7] OK       15.4s  Q: 你是谁？
      A: 我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。
 
-=== 8 成功 / 0 失败 (共 8 轮) ===
+=== 7 成功 / 0 失败 (共 7 轮) ===
