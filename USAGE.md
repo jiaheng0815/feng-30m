@@ -14,10 +14,12 @@ feng-30m-v3.12/
 ├── LICENSE                   ← Apache-2.0（代码与权重同许可）
 ├── weights/
 │   ├── hf/                   v3.12 完整权重（fp32 safetensors + 分词器），transformers 直接加载
-│   ├── gguf/                 llama.cpp 用：Q4_K_M / Q8_0 / f16（chat template 已内嵌）
-│   └── esp32/                ESP32-S3 板端：model.bin + tokenizer.bin + 参考 logits（板端权重在 v3.11 包里）
+│   └── gguf/                 llama.cpp 用：Q4_K_M / Q8_0 / f16（chat template 已内嵌）
 └── datasets/                 蒸馏训练数据（教师输出与提示词）
 ```
+
+> 板端的 `model.bin` / `tokenizer.bin` 不在 PC 包里，请下载 **v3.11** 的 Release
+> （它的 `weights/esp32/` 就是可以直接烧录的板端模型）。
 
 > 板端请下载 **v3.11** 的 Release：它是为「Q4 权重 + q2 KV」做的双量化感知版本
 > （板端矩阵/算术满分）；PC 端 32k 不如 v3.12（单 20/32、多 7/32）。
