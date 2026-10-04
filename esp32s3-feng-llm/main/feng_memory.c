@@ -262,7 +262,12 @@ int feng_mem_learn(const char *user)
         }
         if (m && take_key_range(k0, m, key, sizeof(key)) && strcmp(key, "名字") != 0 &&
             take_value(m + mlen, v, sizeof(v))) {
-            slot_put(key, v);
+            if (strcmp(key, "宠物") == 0) {            /* 我的宠物是猫 -> 专用宠物槽 */
+                snprintf(g_pet, VAL_CAP, "%s", v);
+                g_has_pet = 1;
+            } else {
+                slot_put(key, v);
+            }
             changed = 1;
         }
     }
@@ -289,27 +294,29 @@ int feng_mem_answer(const char *user, char *answer, int answer_sz)
         }
     }
     /* 用户名字 */
-    if (strstr(user, "我叫什么") || strstr(user, "我叫啥") || strstr(user, "记得我叫什么")) {
+    if (strstr(user, "我叫什么") || strstr(user, "我叫啥") || strstr(user, "记得我叫什么") ||
+        strstr(user, "我的名字是什么") || strstr(user, "我的名字是啥")) {
         if (g_has_name) return answer_fmt(answer, answer_sz, "你叫%s。", g_name, "");
         return 0;
     }
     /* 专用槽 */
-    if (strstr(user, "住在哪")) {
+    if (strstr(user, "住在哪") || strstr(user, "哪个城市") || strstr(user, "什么地方住")) {
         if (g_has_city) return answer_fmt(answer, answer_sz, "你住在%s。", g_city, "");
         return 0;
     }
-    if (strstr(user, "养了什么") || strstr(user, "养了啥")) {
+    if (strstr(user, "养了什么") || strstr(user, "养了啥") || strstr(user, "我的宠物") ||
+        strstr(user, "养的什么宠物")) {
         if (g_has_pet) return answer_fmt(answer, answer_sz, "你养了%s。", g_pet, "");
         return 0;
     }
     /* 通用槽：最喜欢<什么键>？ / 最喜欢的<键>是什么？ */
     char key[KEY_CAP] = "";
     if (!strstr(user, "我")) return 0;      /* "你最喜欢什么颜色"问的是助手，不是用户记忆 */
-    const char *q = strstr(user, "最喜欢什么");
+    const char *q = strstr(user, "喜欢什么");      /* 覆盖"最喜欢什么X"和"喜欢什么X" */
     if (q) {
-        take_key_to(q + strlen("最喜欢什么"), NULL, key, sizeof(key));
-    } else if ((q = strstr(user, "最喜欢啥")) != NULL) {
-        take_key_to(q + strlen("最喜欢啥"), NULL, key, sizeof(key));
+        take_key_to(q + strlen("喜欢什么"), NULL, key, sizeof(key));
+    } else if ((q = strstr(user, "喜欢啥")) != NULL) {
+        take_key_to(q + strlen("喜欢啥"), NULL, key, sizeof(key));
     } else if ((q = strstr(user, "最喜欢的")) != NULL) {
         if (!take_key_before(q + strlen("最喜欢的"), "是什么", key, sizeof(key)) &&
             !take_key_before(q + strlen("最喜欢的"), "是啥", key, sizeof(key))) {

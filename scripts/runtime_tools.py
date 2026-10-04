@@ -78,6 +78,11 @@ def mem_learn(user):
             _MEM_SPECIAL["pet"] = v
             changed = True
             break
+    m_pet = re.search(r"我的宠物(?:是|叫)([^，。！？\s]+)", user)
+    if m_pet and not m_pet.group(1).startswith(_QUESTION_PREFIX):
+        if _MEM_SPECIAL.get("pet") != m_pet.group(1):
+            _MEM_SPECIAL["pet"] = m_pet.group(1)
+            changed = True
     # 通用槽 1：最喜欢的<键>是/改成/换成<值>
     m = re.search(r"最喜欢的([^，。！？\s]{1,8})?(是|改成|换成)([^，。！？\s]+)", user)
     if m:
@@ -98,20 +103,23 @@ def mem_answer(user):
         if "谁训练" in user or "谁开发" in user:
             return "个人开发者 jiaheng 训练了我，我叫 feng。"
         return "我叫 feng，由个人开发者 jiaheng 开发训练。"
-    if any(k in user for k in ("我叫什么", "我叫啥", "记得我叫什么")):
+    if any(k in user for k in ("我叫什么", "我叫啥", "记得我叫什么",
+                               "我的名字是什么", "我的名字是啥")):
         name = _MEM_SPECIAL.get("name")
         return f"你叫{name}。" if name else None
-    if "住在哪" in user:
+    if "住在哪" in user or "哪个城市" in user:
         city = _MEM_SPECIAL.get("city")
         return f"你住在{city}。" if city else None
-    if "养了什么" in user or "养了啥" in user:
+    if "养了什么" in user or "养了啥" in user or "我的宠物" in user:
         pet = _MEM_SPECIAL.get("pet")
         return f"你养了{pet}。" if pet else None
     if "我" not in user:
         return None                       # "你最喜欢什么颜色"问的是助手
     key = None
-    m = re.search(r"最喜欢什么([^，。！？\s]{0,8})", user)
+    m = re.search(r"喜欢什么([^，。！？\s]{0,8})", user)
     if m:
+        key = m.group(1)
+    elif (m := re.search(r"喜欢啥([^，。！？\s]{0,8})", user)) is not None:
         key = m.group(1)
     else:
         m2 = re.search(r"最喜欢的([^，。！？\s]{1,8})(?:是什么|是啥)", user)
