@@ -99,6 +99,9 @@ def main() -> None:
                     help="正样本固定埋 N 条其它类别的事实（0 = 随机 1~3 条）")
     ap.add_argument("--kind-weights", default="",
                     help="5 类事实的抽样权重（如 2,3,4,1,1 表示数字类过采样）")
+    ap.add_argument("--stream", default=str(STREAM),
+                    help="填充文本的 token 流 npy（默认 v2 预训练流；可换成评测同款循环短句，"
+                         "用于对齐单类别评测的填充分布，见 scripts/v3_9_build_filler_stream.py）")
     args = ap.parse_args()
     specs = SPECS
     if args.specs:
@@ -112,10 +115,11 @@ def main() -> None:
     tk = Tokenizer.from_file(str(ROOT / "v2" / "tokenizer" / "tokenizer.json"))
     enc = lambda s: tk.encode(s).ids                                  # noqa: E731
 
-    stream = np.load(STREAM, mmap_mode="r")
+    stream_path = Path(args.stream)
+    stream = np.load(stream_path, mmap_mode="r")
     flat = stream.reshape(-1)
     total = int(flat.size)
-    print(f"填充文本来源：{STREAM.name}，{total/1e6:.1f}M tokens")
+    print(f"填充文本来源：{stream_path.name}，{total/1e6:.1f}M tokens")
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)

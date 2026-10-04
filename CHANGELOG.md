@@ -51,6 +51,22 @@ python scripts\v3_6_sft_patch.py --init v3_8\cr10 --patch v3_9\fix_stock.jsonl `
 python scripts\eval_planA_scope.py v3_9\stockfix2 eval\v3_9_scope_sf2.json
 ```
 
+### 后续尝试（未采用，记录平台）
+
+v3.9 之后又试了三条路，全部没有超过 v3.9，说明剩下两处是这块 30M 基座的平台：
+
+1. **评测同款 filler 的 16k 过采样 + 末层微调**（`scripts/v3_9_build_filler_stream.py` 把评测的循环短句
+   做成 token 流，`v3_1_build_retrieval.py --stream` 生成 16k 数据，单/多类别各 500 条）：
+   单类别 27/29/23/25 = 104、多类别 27/26/29/21 = 103，**比 v3.9 掉 4~5 题**（
+   `eval/longctx32_v3_9evf.json`、`eval/longctx32multi_v3_9evf.json`）。
+2. **32k 负样本重训（负样本 600 条、正样本 120 条）+ 末层微调**：拒答 61→63，但 32k 正样本
+   27→22，净亏（`eval/longctx32_v3_9nf.json`）。
+3. **32k 按评测配比重训（正:负 ≈ 3:1、低 lr）+ 末层微调**：单类别 107、多类别 108、拒答 61/62，
+   与 v3.9 持平但 32k 正样本 27→26，无增益（`eval/longctx32_v3_9nf2.json`）。
+
+**结论**：16k 单类别正样本（23/32，v3.4 是 27）和 32k"文中没有"拒答（61/64）经多轮专项训练
+未能突破；v3.9 保持当前综合最好。要再进一步需要换路线（更大基座 / 新训练目标），而不是继续加数据。
+
 ---
 
 ## v3.8（2026-10-04）—— 上下文专项升级（v3.6 底座）
