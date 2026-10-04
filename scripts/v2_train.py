@@ -59,6 +59,9 @@ def main():
     ap.add_argument("--tag", default="", help="packed-array suffix (sft stage)")
     ap.add_argument("--data", default=None, help="explicit packed array for the pretrain stage")
     ap.add_argument("--chunk", type=int, default=512)
+    ap.add_argument("--order", choices=("sorted", "interleave"), default="sorted",
+                    help="sft 样本顺序：sorted=按长度（padding 省显存，但有界步数只看最短的一段）；"
+                         "interleave=按长度分桶交错，任意前缀都覆盖全长度段（补丁/短轮训练建议用）")
     ap.add_argument("--seed", type=int, default=20261014)
     ap.add_argument("--log-every", type=int, default=25)
     ap.add_argument("--save-every", type=int, default=400)
@@ -98,6 +101,9 @@ def main():
         lens = np.diff(off)
         keep = np.where((lens >= 8) & (lens <= args.seq))[0]
         order = keep[np.argsort(lens[keep])]
+        if args.order == "interleave":       # 分桶交错：前 N 步也能覆盖长样本
+            k = min(64, len(order))
+            order = np.concatenate([order[i::k] for i in range(k)])
         n_conv = len(order)
         steps_per_epoch = max(1, n_conv // (args.batch * args.accum))
         total = args.steps or int(steps_per_epoch * args.epochs)

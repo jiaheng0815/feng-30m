@@ -281,6 +281,9 @@ python scripts\esp32_enc_test.py COM20
    固件 / `pc_chat` / `pc_kv_suite` / `pc_mt_suite` 的唯一采样入口；改采样器后必须重跑 PC 32 题矩阵
    并与上一版输出对比（v3.20 那次为**逐字节 0 差异**），再上板。
 9. **量化格式耦合**：Q4 block-64（4.25 bpw）；改 `QK` 必须同步改 C 侧 `QK`，且 `tools/export_model.py` 会生成 `ref_ids.json` / `ref_logits.bin` 供一致性校验。
+10. **SFT 采样顺序坑**：`v2_train.py --stage sft` 默认按长度排序喂样本（省 padding），
+   **有界 `--steps` 只会看到最短的一段**——续训恢复实验里 3,000/28,178 步只覆盖最短 10%，
+   身份样本完全没轮到（身份 0/12）。短轮/补丁训练请加 `--order interleave`，或跑满一个 epoch。
 
 ## 7. 改动的验收清单
 
