@@ -83,7 +83,7 @@ I (816) feng: [mem] uart        internal  251523 B | psram 16543564 B (largest i
 I (816) feng: feng-30m on ESP32-S3 (2 cores), flash 32MB / PSRAM 16MB
 I (817) feng: model mapped at 0x3d000000 (15296 KB)
 I (817) feng: [mem] mmap        internal  250891 B | psram 16543564 B (largest int 188416)
-I (961) feng: mmap stream read: 15296 KB in 144 ms -> 108.3 MB/s (checksum 33238972)
+I (961) feng: mmap stream read: 15296 KB in 144 ms -> 108.3 MB/s (checksum 33239236)
 I (967) feng: [mem] model       internal  250671 B | psram 16543564 B (largest int 188416)
 I (967) feng: model: 11 layers, hidden 448, 7 heads x 64, ffn 896, vocab 16384, rope 1000000
 I (1826) feng: tokenizer: vocab 16384, merges 16124
@@ -95,8 +95,8 @@ I (1827) feng: PSRAM free after setup: 5006 KB
 I (1827) feng: [mem] kv/ws       internal  250519 B | psram  5126888 B (largest int 188416)
 I (1828) feng_smp: heap before workers: internal 250519 B (largest 188416), psram 5126888 B
 I (1828) feng_smp: GEMV workers up on core 0 + core 1
-I (2098) feng_smp: par n_out=896: part0 core0 rows[0,448) 6790us | part1 core1 rows[448,896) 6793us
-I (2105) feng_smp: par n_out=896: part0 core0 rows[0,448) 6778us | part1 core1 rows[448,896) 6773us
+I (2098) feng_smp: par n_out=896: part0 core0 rows[0,448) 6788us | part1 core1 rows[448,896) 6792us
+I (2105) feng_smp: par n_out=896: part0 core0 rows[0,448) 6781us | part1 core1 rows[448,896) 6776us
 I (2112) feng_smp: par n_out=896: part0 core0 rows[0,448) 6807us | part1 core1 rows[448,896) 6779us
 I (2228) feng: gemv 896x448: 1-core 13186 us (16 MB/s) | 2-core 6837 us (31 MB/s) | speedup 1.93x
 
@@ -104,25 +104,25 @@ I (2228) feng: gemv 896x448: 1-core 13186 us (16 MB/s) | 2-core 6837 us (31 MB/s
 one sentence per line; the reply streams between << and >>END
 commands: \gbk  \utf8  \help
 FENG_READY
-you> [ 1] OK       10.0s  Q: 你好
-     A: 你好！有什么我可以帮你的吗？
-[ 2] OK       15.9s  Q: 你是谁？
-     A: 我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。
-[ 3] OK       12.9s  Q: 你是谁开发的？
-     A: 我是个人开发者 jiaheng 训练的 feng。
-[ 4] OK       19.6s  Q: 讲个笑话
-     A: 有只猫掉进了纸箱，它想了半天，说：这箱子挺舒服。
-[ 5] OK       10.6s  Q: 中国的首都是哪里？
-     A: 中国的首都是北京。
-[ 6] OK       12.9s  Q: 1+1等于几？
-     A: 1 加 1 等于 2。
-[ 7] OK       14.7s  Q: 把'今天天气很好'翻译成英文
-     A: The weather is nice today.
-[ 8] OK       13.5s  Q: 什么是人工智能？
-     A: 人工智能是让机器学会完成需要动脑的任务的技术。
-[ 9] OK       15.9s  Q: 推荐一本好书
-     A: 可以读读《小王子》，故事简单又耐人寻味。
-[10] OK        8.8s  Q: 谢谢，再见
-     A: 不客气。
+you> [ 1] OK       12.9s  Q: 7减7等于几？
+     A: 7 减 7 等于 0。
+[ 2] OK       13.5s  Q: 1减4等于几？
+     A: 1 减 4 等于 -3。
+[ 3] OK       12.9s  Q: 0加5等于几？
+     A: 0 加 5 等于 5。
+[ 4] OK       12.9s  Q: 9减9等于几？
+     A: 9 减 9 等于 0。
+[ 5] OK       13.5s  Q: 3减5等于几？
+     A: 3 减 5 等于 -2。
+[ 6] OK       12.9s  Q: 9加9等于几？
+     A: 9 加 9 等于 18。
+[ 7] OK       12.9s  Q: 1减1等于几？
+     A: 1 减 1 等于 0。
+[ 8] OK       12.9s  Q: 5减5等于几？
+     A: 5 减 5 等于 0。
+[ 9] OK       13.5s  Q: 2减9等于几？
+     A: 2 减 9 等于 -7。
+[10] OK       13.5s  Q: 7乘8等于几？
+     A: 7 乘 8 等于 56。
 
 === 10 成功 / 0 失败 (共 10 轮) ===
