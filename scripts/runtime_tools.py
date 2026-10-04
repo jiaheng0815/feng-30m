@@ -239,6 +239,9 @@ def time_answer(user, epoch=None, source=None):
     t = datetime.fromtimestamp(epoch, tz=timezone(timedelta(hours=8)))
     week = "一二三四五六日"[t.weekday()]
     tag = "网络时间" if source == "ntp" else "系统时间（未取到网络时间）"
+    if "时间戳" in user:                            # 原始 Unix 秒 + UTC+8 换算
+        return (f"时间戳：{int(epoch)} —— {t.strftime('%Y年%m月%d日 %H:%M:%S')}"
+                f"（周{week}，UTC+8，{tag}）。")
     off = _days_offset(user)
     if off is not None:
         d = datetime.fromtimestamp(epoch + off * 86400, tz=timezone(timedelta(hours=8)))
@@ -320,7 +323,8 @@ if __name__ == "__main__":
     e, s = ntp_epoch()
     print(f"ntp_epoch -> {e:.0f} ({s})")
     mem_clear()
-    for q in ["59+1", "4854+4411", "现在几点？", "今天几号", "给我个1到100的随机数",
+    for q in ["59+1", "4854+4411", "现在几点？", "今天几号", "现在的时间戳是多少？",
+              "给我个1到100的随机数",
               "随机 0-9", "我叫小雨，请记住。", "你叫什么名字？", "我叫什么名字？",
               "我最喜欢的颜色是蓝色。", "我最喜欢什么颜色？", "我养了一只乌龟。",
               "我养了什么？", "你好"]:

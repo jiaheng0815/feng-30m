@@ -322,10 +322,11 @@ python scripts\esp32_multi.py --port COM20 --no-reset --questions "推荐一本�
 
 **时间/随机数 tool 的确定性验收**（2026-10-04 补测）：
 
-- `pc/pc_tools_test.c` **48 项断言全过**（`logs/pc_tools_test.txt`）：
+- `pc/pc_tools_test.c` **53 项断言全过**（`logs/pc_tools_test.txt`）：
   UTC+8 日历（epoch 0、闰日 2024-02-29、跨年 UTC→+8、1999→2000 世纪边界）
   与 Python `datetime` + `timezone(+8)` 的结果**逐字符一致**；`现在几点？`/`3天后`/`明天`/`昨天`
-  的问句路由与"还没对时"提示正确；随机数用独立复刻的 xorshift64* 校验了
+  的问句路由与"还没对时"提示正确；`现在的时间戳是多少？` → 原始 Unix 秒 + UTC+8 换算；
+  随机数用独立复刻的 xorshift64* 校验了
   **seed = 运行时间(秒)×1.54×1000、第 1 个随机数丢弃、取第 2 个**——
   并实证 seed=1 时第 1 个 `%100=65`、第 2 个 `%100=17`，实现返回后者。
 - 板端实机 `scripts/esp32_tool_test.py` **13/13**（`logs/board_v3_15ci4_tools_time_rand.txt`）：
@@ -334,7 +335,7 @@ python scripts\esp32_multi.py --port COM20 --no-reset --questions "推荐一本�
   证明 seed 来自运行时间而不是常量）；抛硬币与两个算式外壳 0.5 s 内正确。
 
 ```powershell
-# tool 单测（算式 26 项 + 时间/随机数 48 项；$env:FENG_GCC 指定 gcc）
+# tool 单测（算式 32 项 + 时间/随机数 53 项；$env:FENG_GCC 指定 gcc）
 .\esp32s3-feng-llm\build_pc_chat.ps1
 # 板端专项（自动 NTP 对时；板子没有 RTC/WiFi 协议栈，时间戳由宿主推给固件）
 python scripts\esp32_tool_test.py --port COM20

@@ -146,6 +146,12 @@ int feng_time_answer(const char *user, char *answer, int answer_sz)
         snprintf(answer, answer_sz, "我还没对上网络时间（宿主连接后会自动发 \\settime）。");
         return 1;
     }
+    if (contains(user, "时间戳")) {                  /* 要原始 Unix 秒 + UTC+8 换算 */
+        char t[128];
+        feng_time_format_utc8(now, t, sizeof(t));
+        snprintf(answer, answer_sz, "时间戳：%lld —— %s。", now, t);
+        return 1;
+    }
     int days = 0;
     if (days_offset(user, &days)) {
         char d[96], t[128];

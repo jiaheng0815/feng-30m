@@ -19,7 +19,7 @@ typedef long long (*feng_uptime_us_fn)(void);
 void feng_tools_set_time(feng_epoch_fn fn);
 void feng_tools_set_uptime(feng_uptime_us_fn fn);
 
-/* 用户问时间/日期 -> 写 answer 并返回 1；否则返回 0 */
+/* 用户问时间/日期/时间戳 -> 写 answer 并返回 1；否则返回 0 */
 int feng_time_answer(const char *user, char *answer, int answer_sz);
 /* 用户要随机数 -> 写 answer 并返回 1；否则返回 0 */
 int feng_random_answer(const char *user, char *answer, int answer_sz);

@@ -826,7 +826,7 @@ def check_facts() -> None:
         if "全部通过（0 个失败）" not in t or "第一个确实被丢弃" not in t:
             fail.append("logs/pc_tools_test.txt: 未记录时间/随机数单测全部通过")
         else:
-            print("    时间/随机数 C 单测 48 项全部通过（与文档一致）")
+            print("    时间/随机数 C 单测 53 项全部通过（与文档一致）")
     btools = ROOT / "logs" / "board_v3_15ci4_tools_time_rand.txt"
     if btools.exists():
         t = btools.read_text(encoding="utf-8", errors="replace")

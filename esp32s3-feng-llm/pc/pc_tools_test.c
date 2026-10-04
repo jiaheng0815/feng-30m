@@ -93,6 +93,8 @@ int main(void)
     g_epoch = 1791095400LL;                  /* 2026-10-04 06:30 UTC = 14:30 UTC+8 */
     check_true("现在几点", feng_time_answer("现在几点？", buf, sizeof(buf)) == 1 &&
                strcmp(buf, "现在是 2026年10月04日 14:30:00（周日，UTC+8）。") == 0, buf);
+    check_true("时间戳→原始秒+UTC+8", feng_time_answer("现在的时间戳是多少？", buf, sizeof(buf)) == 1 &&
+               strcmp(buf, "时间戳：1791095400 —— 2026年10月04日 14:30:00（周日，UTC+8）。") == 0, buf);
     check_true("3天后是几号", feng_time_answer("3天后是几号", buf, sizeof(buf)) == 1 &&
                strcmp(buf, "3 天后是 2026年10月07日（周三）。") == 0, buf);
     check_true("明天是几号", feng_time_answer("明天是几号", buf, sizeof(buf)) == 1 &&
