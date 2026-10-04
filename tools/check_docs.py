@@ -1091,6 +1091,24 @@ def check_facts() -> None:
             fail.append("logs/board_v3_17_clock_math.txt: 未记录时钟推算 5/5")
         else:
             print("    时间推算 tool 板端 5/5（与文档一致）")
+    # --- v3.18：陈述模板对照数据（洗牌实验，未采用） ---
+    for path, want, label in [("eval/heldout_v3_18s1.json", 16, "v3.18-s1 留出 16/30"),
+                              ("eval/heldout_v3_18s2.json", 17, "v3.18-s2 留出 17/30")]:
+        p = ROOT / path
+        if p.exists():
+            d = json.loads(p.read_text(encoding="utf-8"))
+            if d.get("ok") != want:
+                fail.append(f"{path}: 应为 {want}/30，实际 {d.get('ok')}/30")
+            else:
+                print(f"    {label}（与文档一致）")
+    for fname, needle, label in [
+            ("pc_kv_suite32_v3_18s2_q2b8.txt", "长文召回 4/4", "v3.18-s2 32 题 4/4"),
+            ("pc_mtsuite_v3_18s2.txt", "SUMMARY seq 10/10", "v3.18-s2 seq 10/10")]:
+        p = ROOT / "logs" / fname
+        if p.exists() and needle not in p.read_text(encoding="utf-8", errors="replace"):
+            fail.append(f"logs/{fname}: 未记录「{needle}」")
+        elif p.exists():
+            print(f"    {label}（与文档一致）")
 
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"
