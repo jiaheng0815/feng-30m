@@ -27,8 +27,8 @@
     C 引擎矩阵 **27/27+4/4、召回 4/4、算术 21/21、pc_check MATCH**，HF 留出 **19/30**（v3.16 = 17）、
     记忆 24/24；实机 tool 13/13、记忆 12/12、7 轮换名身份 7/7（`logs/pc_kv_suite32_v3_19b6_q2b8.txt`、
     `logs/board_v3_19b6_memory12.txt`、`logs/esp32_multi.txt`）。
-  - **评测口径**：留出题判定用 strict-v4（修掉子串假阳性、复读误判与"推荐运动"误命中，
-    `chat_probe_heldout.py --rescore`）；
+  - **评测口径**：留出题判定用 strict-v5（子串假阳性、复读误判、"推荐运动"误命中、
+    问题关键词复读四类都拦；`chat_probe_heldout.py --rescore`）；
     留出 30 题已被多轮迭代用作开发集，只作版本对比，不当无偏泛化分数。
   - 别再用 v3.16 时代的"往身份数据加精确链"套路（p4–p7 已证明只是重排失败点）。
 - v3.16-embed（上一版板端权重，`v3_16/board_p3/`）：在 v3.15/board_ctxid4 上做

@@ -70,6 +70,12 @@ def judge(prompt, expect, text):
     # 短片段连续重复 >=4 次 = 复读退化（如"太阳系太阳系太阳系太阳系…"）
     if re.search(r"(.{1,6})\1{3,}", t):
         return "可疑", "复读"
+    # 问题里的 2 字中文片段在回答里出现 >=3 次 = 关键词复读退化
+    # （如"太阳是太阳系中最大的太阳，它由太阳、太阳和太阳组成"）
+    for k in range(len(prompt) - 1):
+        frag = prompt[k:k + 2]
+        if all("\u4e00" <= ch <= "\u9fff" for ch in frag) and t.count(frag) >= 3:
+            return "可疑", "关键词复读"
     if len(t) > 4:
         half = len(t) // 2
         if t[:half] == t[half:2 * half]:
@@ -97,9 +103,9 @@ def rescore(paths):
             verdict, why = judge(r["q"], by_q.get(r["q"]), r["a"])
             r["verdict"], r["why"] = verdict, why
             new_ok += verdict == "OK"
-        data["ok"], data["judge"] = new_ok, "strict-v4"
+        data["ok"], data["judge"] = new_ok, "strict-v5"
         Path(p).write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"{p}: {old_ok}/{data['n']} -> {new_ok}/{data['n']}（已写回，judge=strict-v4）")
+        print(f"{p}: {old_ok}/{data['n']} -> {new_ok}/{data['n']}（已写回，judge=strict-v5）")
 
 
 def main() -> None:
