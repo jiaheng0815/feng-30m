@@ -1,0 +1,10 @@
+[
+  {
+    "seq": 8192,
+    "n": 300,
+    "identity": 9,
+    "chat": 9,
+    "retrieval": 264,
+    "tokens": 2457600
+  }
+]
