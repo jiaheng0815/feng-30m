@@ -24,6 +24,16 @@ i7-12700KF、ESP32-S3-WROOM-2-N32R16V），命令见每节末尾。
   `pc_check` argmax MATCH（max|diff|=2.79 为纯 Q4 量化误差）；
 - `.gitignore` 补 `esp32s3-feng-llm/model_export_*/`（导出目录可由脚本复现，不入库）。
 
+**同日收尾**：
+
+- **PC 发布包重打包**（`feng-30m-v3.14-release.zip`）：包内 `USAGE.md`/`pc_chat.c` 更新到最新
+  （旧包的 C 引擎指引是错的），新增 `MANIFEST.sha256`；**权重与数据集未变**——
+  `model.safetensors`、`teacher_distill.jsonl` 的 zip 内哈希与本地源逐字节一致。
+- **全量 md 审计**：PC=v3.14 / 板端=v3.16-embed 口径统一（板端记忆 12/12、身份序列 8/8、
+  PC HF 权重导引擎 22/27 的警告）；`esp32s3-feng-llm/README.md` 去掉 v3.6 硬编码导出/烧录路径，
+  PIE 路线标注为已实测结案；`tools/check_docs.py` 增加"旧版本口径"回潮护栏
+  （README/USAGE/DELIVERY 再出现 `板端用 v3.14-embed`、`--model weights\hf` 等直接判失败）。
+
 ## v3.17（引擎）—— 记忆 tool：多轮记忆与身份问答交给 C 引擎确定性回答
 
 ### 为什么
