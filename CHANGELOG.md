@@ -83,6 +83,26 @@ python scripts\esp32_multi.py --port COM20 --no-reset --questions "推荐一本�
 `logs/board_v3_15ci4_tools4.txt`）；而"现在多少钱"这种非算术问句仍正确交给模型，
 不会误触发计算器。
 
+**时间/随机数 tool 的确定性验收**（2026-10-04 补测）：
+
+- `pc/pc_tools_test.c` **48 项断言全过**（`logs/pc_tools_test.txt`）：
+  UTC+8 日历（epoch 0、闰日 2024-02-29、跨年 UTC→+8、1999→2000 世纪边界）
+  与 Python `datetime` + `timezone(+8)` 的结果**逐字符一致**；`现在几点？`/`3天后`/`明天`/`昨天`
+  的问句路由与"还没对时"提示正确；随机数用独立复刻的 xorshift64* 校验了
+  **seed = 运行时间(秒)×1.54×1000、第 1 个随机数丢弃、取第 2 个**——
+  并实证 seed=1 时第 1 个 `%100=65`、第 2 个 `%100=17`，实现返回后者。
+- 板端实机 `scripts/esp32_tool_test.py` **13/13**（`logs/board_v3_15ci4_tools_time_rand.txt`）：
+  NTP 对时后板端时刻与网络时间**差 +2 s**；`现在几点/今天几号/3天后/明天/昨天` 全对；
+  随机数 1~100、`随机 0-9`、骰子 1~6 全部在范围内，且连续 3 次取值不同（`[21,68,80]`，
+  证明 seed 来自运行时间而不是常量）；抛硬币与两个算式外壳 0.5 s 内正确。
+
+```powershell
+# tool 单测（算式 26 项 + 时间/随机数 48 项；$env:FENG_GCC 指定 gcc）
+.\esp32s3-feng-llm\build_pc_chat.ps1
+# 板端专项（自动 NTP 对时；板子没有 RTC/WiFi 协议栈，时间戳由宿主推给固件）
+python scripts\esp32_tool_test.py --port COM20
+```
+
 ---
 
 ## v3.14（2026-10-04）—— tool 版：计算/时间/随机数交给引擎，GGUF 发行取消

@@ -19,12 +19,14 @@ try {
         pc\pc_kv_suite.c @base -Imain -lm
     & $gcc -O2 -DFENG_KV_INT8=1 -o pc\pc_kv_suite_i8.exe `
         pc\pc_kv_suite.c @base -Imain -lm
-    # 3) tool 单测（算式识别/求值/中文句式）
+    # 3) tool 单测（算式识别/求值/中文句式 + 时间/随机数语义）
     & $gcc -O2 -o pc\pc_calc_test.exe pc\pc_calc_test.c main\feng_calc.c -Imain -lm
+    & $gcc -O2 -o pc\pc_tools_test.exe pc\pc_tools_test.c main\feng_tools.c -Imain -lm
     if ($LASTEXITCODE -ne 0) { throw "gcc 编译失败" }
-    Write-Host "已生成 pc\pc_chat_q2b8.exe / pc_kv_suite_q2b8.exe / pc_kv_suite_i8.exe / pc_calc_test.exe" -ForegroundColor Green
+    Write-Host "已生成 pc\pc_chat_q2b8.exe / pc_kv_suite_q2b8.exe / pc_kv_suite_i8.exe / pc_calc_test.exe / pc_tools_test.exe" -ForegroundColor Green
     Write-Host "跑一下 tool 单测：" -ForegroundColor Cyan
     & pc\pc_calc_test.exe | Select-Object -Last 2
+    & pc\pc_tools_test.exe | Select-Object -Last 2
 }
 finally {
     Pop-Location

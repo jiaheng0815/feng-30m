@@ -820,6 +820,20 @@ def check_facts() -> None:
             fail.append("logs/board_v3_15ci4_tools4.txt: 未记录工具外壳扩展 6/6")
         else:
             print("    v3.15-embed 工具外壳扩展（与文档一致）")
+    pctools = ROOT / "logs" / "pc_tools_test.txt"
+    if pctools.exists():
+        t = pctools.read_text(encoding="utf-8", errors="replace")
+        if "全部通过（0 个失败）" not in t or "第一个确实被丢弃" not in t:
+            fail.append("logs/pc_tools_test.txt: 未记录时间/随机数单测全部通过")
+        else:
+            print("    时间/随机数 C 单测 48 项全部通过（与文档一致）")
+    btools = ROOT / "logs" / "board_v3_15ci4_tools_time_rand.txt"
+    if btools.exists():
+        t = btools.read_text(encoding="utf-8", errors="replace")
+        if "板端时间与网络时间一致" not in t or "13 成功 / 0 失败" not in t:
+            fail.append("logs/board_v3_15ci4_tools_time_rand.txt: 未记录 13/13 或时间一致性")
+        else:
+            print("    板端时间/随机数 tool 专项 13/13（与文档一致）")
 
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"

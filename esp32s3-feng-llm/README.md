@@ -3,10 +3,10 @@
 把 **feng-30m**（Qwen3 架构：11 层 / hidden 448 / 7 头 MHA / FFN 896 / 16k 词表 /
 tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话**。
 
-当前部署的是 **v3.14 嵌入式权重**（`../v3_14/board6/`：无算术混训 + 记忆强化，
-继续做 **Q4 权重 + q2 KV 双 QAT**：block8、板端 2048 上下文；身份 12/12；
-嵌入式 32 题矩阵 27/27 + 长文召回 4/4；范围 10/10、探针 42/42，
-见 `../CHANGELOG.md` 的 v3.14 节）。
+当前部署的是 **v3.15-embed 嵌入式权重**（`../v3_15/board_ctxid4/`：v3.14/board6 +
+上下文身份锚点，继续做 **Q4 权重 + q2 KV 双 QAT**：block8、板端 2048 上下文；
+嵌入式 32 题矩阵 27/27 + 长文召回 4/4；修掉多轮里「你叫什么名字 → 你叫小模型」的
+身份漂移，见 `../CHANGELOG.md` 的 v3.15-embed 节）。
 
 **固件自带三个 tool**（模型不再学算术，见 `main/feng_calc.c`、`feng_tools.c`）：
 
@@ -20,10 +20,12 @@ tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话*
 `养了一只猫 → 你养了一只猫` 全对。`\reset` 清空上下文，写满 2048 自动开新对话
 （`../logs/board_v3_13b_memory.txt`）。
 
-**实机实测（2026-10-04，v3.14-embed + q2block8 固件）**：KV `q2/block8, ctx 2048, 9.62 MB`，
-PSRAM 余 5006 KB；工具 8/8、默认 10/10、情绪 10/10、跨轮记忆 12 题 **10/12**，约 **1.80 tok/s**
-（`../logs/board_v3_14b6_tools.txt`、`../logs/board_v3_14b6_multi.txt`、
-`../logs/board_v3_14b6_chat10.txt`、`../logs/board_v3_14b6_memory12.txt`）；
+**实机实测（2026-10-04，v3.15-embed + q2block8 固件）**：KV `q2/block8, ctx 2048, 9.62 MB`，
+PSRAM 余 5006 KB；工具（时间/随机数/算式）13/13、默认 10/10、情绪 10/10、
+跨轮记忆 12 题 **10/12**，速度约 **1.80 tok/s**（q2 内核自 v3.10 起未变，
+`../logs/board_v3_10p3_speed.txt`）
+（`../logs/board_v3_15ci4_tools_time_rand.txt`、`../logs/board_v3_15ci4_multi.txt`、
+`../logs/board_v3_15ci4_chat10.txt`、`../logs/board_v3_15ci4_memory12.txt`）；
 历史版本：v3.6 在 int8 KV @1024 ctx 下 1.85–1.86 tok/s（`../logs/board_v3_6_speed.txt`），GEMV 双核加速 1.93x；
 板端回复实测：`你是谁？` → `我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。我可以陪你聊天、帮你写作、翻译和写简单代码。`，
 `你是Qwen吗？` → `不是。我是 feng，由个人开发者 jiaheng 独立开发训练的 AI。`
@@ -31,7 +33,7 @@ PSRAM 余 5006 KB；工具 8/8、默认 10/10、情绪 10/10、跨轮记忆 12 �
 （v3.5/v3.4 的历史基线见 `board_baseline_v3_5.txt`、`board_baseline_v3_4.txt`）。
 
 板端要的两个文件（`model.bin` + `tokenizer.bin`）有两个来源：**① 直接下载**
-[Releases](https://github.com/jiaheng0815/feng-30m/releases) 里的 `feng-30m-v3.14-embed-release.zip`，
+[Releases](https://github.com/jiaheng0815/feng-30m/releases) 里的 `feng-30m-v3.15-embed-release.zip`，
 取包内 `weights/esp32/`；**② 按下面第 1 节自己从 HF 权重导出**。只想跑起来就选 ①，跳过第 1 节。
 
 > 下文命令里的 `<...>` 都是占位符，换成你本机的路径；Python 脚本会自动解析项目内路径
@@ -197,7 +199,7 @@ esp32s3-feng-llm/
 > 本引擎按 **MHA（7 个 Q 头 = 7 个 KV 头）** 实现；若改成 GQA/MQA（如 7 头 / 1 KV 头），
 > 需要在 `feng_llm.c` 里加 KV 头广播。（v1 也是 MHA，网上"v1 是 MQA"的说法不成立。）
 
-## 8. 已验证结果（v3.14-embed，2026-10-04 实机）
+## 8. 已验证结果（v3.15-embed，2026-10-04 实机）
 
 ```
 $ .\pc\pc_check.exe ..\model_export_v3_7f ..\logs\c_logits_v3_7.bin
@@ -221,9 +223,12 @@ I (1828) feng: PSRAM free after setup: 5006 KB
 I (2228) feng: gemv 896x448: 1-core 13186 us | 2-core 6837 us | speedup 1.93x
 ```
 
-对话实测：v3.14-embed + q2block8 固件工具 8/8（`../logs/board_v3_14b6_tools.txt`）+
-默认 10 轮 10/10（`../logs/board_v3_14b6_multi.txt`）+ 情绪/日常 10 题 10/10
-（`../logs/board_v3_14b6_chat10.txt`）+ 跨轮记忆 12 题 10/12（`../logs/board_v3_14b6_memory12.txt`）；
+对话实测：v3.15-embed + q2block8 固件工具（时间/随机数/算式）13/13
+（`../logs/board_v3_15ci4_tools_time_rand.txt`）+ 默认 10 轮 10/10
+（`../logs/board_v3_15ci4_multi.txt`）+ 情绪/日常 10 题 10/10
+（`../logs/board_v3_15ci4_chat10.txt`）+ 跨轮记忆 12 题 10/12
+（`../logs/board_v3_15ci4_memory12.txt`）+ 上下文身份修复
+（`../logs/board_v3_15ci4_identity_ctx.txt`）；
 历史记录：v3.11 q2 27/27+4/4、v3.10 q2 27/27+4/4、v3.7 q2 27/27+4/4、
 v3.6 int8 1.85–1.86 tok/s、
 v3.4 10/10、v3 5 轮 5/5、v2 固件 10/10。
