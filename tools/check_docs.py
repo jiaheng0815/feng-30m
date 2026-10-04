@@ -1021,9 +1021,9 @@ def check_facts() -> None:
             print(f"    p4–p6 实验记录 {fname}（与文档一致）")
     # --- v3.16-embed 工程附录：长文输入 4KB + prefill 成本实测 ---
     for fname, needle, label in [
-            ("board_longprompt_800tok.txt", "回答: 7391", "长文 491 tokens 答对取件码"),
-            ("board_longprompt_800tok.txt", "墙钟 290.9s", "长文 491 tokens 291 s"),
-            ("board_longprompt_150tok.txt", "prefill 约 61 秒", "短样例的预估计时")]:
+            ("board_longprompt_2turn_491tok.txt", "包含 7391: True", "长文 491 tokens 答对取件码"),
+            ("board_longprompt_2turn_491tok.txt", "第1轮（正文）290.6s", "长文 491 tokens 290.6 s"),
+            ("board_longprompt_2turn.txt", "包含 2468: False", "217 tokens 同类测试失败（不稳定）")]:
         p = ROOT / "logs" / fname
         if p.exists() and needle not in p.read_text(encoding="utf-8", errors="replace"):
             fail.append(f"logs/{fname}: 未记录「{needle}」")
