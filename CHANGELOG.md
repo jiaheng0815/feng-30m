@@ -172,6 +172,25 @@ lm head（代码里紧跟着 `(void)logits;`）——一起跳过后再省 ~0.25
 同一组 4 轮提问合计：**13.0/12.5/11.7/12.1 s → 11.4/10.7/10.0/10.4 s**
 （`logs/board_v3_15ci4_memory_after_endtok.txt`，回答文本逐字相同）。
 
+**A8 整数 GEMV 的实测结论（负结果，默认仍是 FPU 路径）**：
+
+原来的 A8（int8 激活 + 整数点积）把激活量化放在行循环里，每个输出行重算一遍
+（O(n_out×n_in) 额外开销）。把它提升为"每个 GEMV 调用只准备一次"
+（`feng_gemv_a8_prepare`，数值与原实现**逐位一致**）后实测：
+
+| 路径 | PC（32 题套件） | ESP32-S3（lm head @pos0） |
+|---|---|---|
+| FPU（默认） | 95.6 s | 532 ms |
+| A8（提升后） | **76.8 s（-20%）** | 721 ms（**+36%**） |
+
+结论：**S3 上的整数乘法（`mull`）比 FPU 的 `madd` 慢**，A8 只在 PC 上有优势；
+默认保持 FPU 路径（`FENG_GEMV_A8=0`），A8 作为实验开关保留
+（`idf.py -DFENG_GEMV_A8=ON` 可复现）。日志：
+`logs/pc_kv_suite32_v3_15ci4_q2b8_a8old.txt`（旧 A8）、
+`logs/pc_kv_suite32_v3_15ci4_q2b8_a8h.txt`（提升后）、`logs/board_bench_attn_a8.txt`；
+刷回默认固件后 tool 13/13、4 轮记忆 4/4（`logs/board_v3_15ci4_tools_after_a8revert.txt`、
+`logs/board_v3_15ci4_memory_after_a8revert.txt`）。
+
 ---
 
 ## v3.14（2026-10-04）—— tool 版：计算/时间/随机数交给引擎，GGUF 发行取消

@@ -15,6 +15,46 @@
 static float s_q4_lut[256][2];
 static int s_q4_lut_ready;
 
+#if FENG_GEMV_A8
+/* A8 的激活量化缓冲区：每个 GEMV 调用准备一次（prepare），行循环只读。
+ * 推理是单线程的，两个 SMP worker 都在 prepare 之后并发读同一份数据。 */
+#define A8_MAX_IN 1024
+static int8_t s_a8_xq[A8_MAX_IN];
+static float s_a8_xscale[A8_MAX_IN / QK];
+static const float *s_a8_x;
+static int s_a8_nin;
+
+void feng_gemv_a8_prepare(const float *x, int n_in)
+{
+    if (n_in > A8_MAX_IN || (n_in % QK) != 0) { s_a8_x = 0; s_a8_nin = 0; return; }
+    const int n_blocks = n_in / QK;
+    for (int b = 0; b < n_blocks; b++) {
+        const float *xb = x + (size_t)b * QK;
+        float amax = 0.f;
+        for (int i = 0; i < QK; i++) {
+            const float v = xb[i] < 0 ? -xb[i] : xb[i];
+            if (v > amax) amax = v;
+        }
+        int8_t *xq = s_a8_xq + (size_t)b * QK;
+        if (amax < 1e-8f) {            /* 与原逐行实现一致：整块跳过 */
+            s_a8_xscale[b] = 0.f;
+            memset(xq, 0, QK);
+            continue;
+        }
+        const float scale_x = amax / 127.f;
+        s_a8_xscale[b] = scale_x;
+        for (int i = 0; i < QK; i++) {
+            int q = (int)(xb[i] / scale_x + (xb[i] >= 0 ? 0.5f : -0.5f));
+            if (q > 127) q = 127;
+            if (q < -127) q = -127;
+            xq[i] = (int8_t)q;
+        }
+    }
+    s_a8_x = x;
+    s_a8_nin = n_in;
+}
+#endif
+
 
 static void q4_lut_init(void)
 {
@@ -101,8 +141,10 @@ FENG_HOT void feng_gemv_range(const void *tensor, uint32_t dtype, const float *x
 #if FENG_GEMV_A8
     /* A8 模式：激活按 64 值一块量化成 int8（scale_x = max|x|/127），
      * 权重仍是 Q4（-8..7），点积走整数，再乘 scale_w*scale_x。
-     * 这是给 PIE（ee.vmulas.s16.accx）铺路的算法，先做成可移植版本量质量代价。 */
-    int8_t xq[QK];
+     * 量化原本每个输出行都重做一遍（O(n_out×n_in) 的额外开销），现在改成
+     * 每个 GEMV 调用一次（feng_gemv_a8_prepare）——数值与逐行版逐位一致。 */
+    const int a8_prepared = (s_a8_x == x && s_a8_nin == n_in);
+    int8_t xq_local[QK];
     for (int o = r0; o < r1; o++) {
         const uint8_t *row = base + (size_t)o * row_bytes;
         const uint8_t *scales = row;
@@ -112,19 +154,28 @@ FENG_HOT void feng_gemv_range(const void *tensor, uint32_t dtype, const float *x
             uint16_t hs;
             memcpy(&hs, scales + b * 2, 2);
             const float scale_w = f16_to_f32(hs);
-            const float *xb = x + (size_t)b * QK;
-            float amax = 0.f;
-            for (int i = 0; i < QK; i++) {
-                const float v = xb[i] < 0 ? -xb[i] : xb[i];
-                if (v > amax) amax = v;
-            }
-            if (amax < 1e-8f) continue;
-            const float scale_x = amax / 127.f;
-            for (int i = 0; i < QK; i++) {
-                int q = (int)(xb[i] / scale_x + (xb[i] >= 0 ? 0.5f : -0.5f));
-                if (q > 127) q = 127;
-                if (q < -127) q = -127;
-                xq[i] = (int8_t)q;
+            const int8_t *xq;
+            float scale_x;
+            if (a8_prepared) {
+                scale_x = s_a8_xscale[b];
+                if (scale_x == 0.f) continue;
+                xq = s_a8_xq + (size_t)b * QK;
+            } else {
+                const float *xb = x + (size_t)b * QK;
+                float amax = 0.f;
+                for (int i = 0; i < QK; i++) {
+                    const float v = xb[i] < 0 ? -xb[i] : xb[i];
+                    if (v > amax) amax = v;
+                }
+                if (amax < 1e-8f) continue;
+                scale_x = amax / 127.f;
+                for (int i = 0; i < QK; i++) {
+                    int q = (int)(xb[i] / scale_x + (xb[i] >= 0 ? 0.5f : -0.5f));
+                    if (q > 127) q = 127;
+                    if (q < -127) q = -127;
+                    xq_local[i] = (int8_t)q;
+                }
+                xq = xq_local;
             }
             int32_t dot = 0;
             const uint8_t *p = packed + (size_t)b * 32;

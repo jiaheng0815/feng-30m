@@ -891,6 +891,26 @@ def check_facts() -> None:
                 fail.append(f"logs/{fname}: 未记录「{needle}」")
             else:
                 print(f"    注意力优化后 {label}（与文档一致）")
+    # --- v3.15-embed 附录：A8 整数 GEMV 的负结果 ---
+    a8 = [ROOT / "logs" / f"pc_kv_suite32_v3_15ci4_q2b8_{k}.txt" for k in ("a8old", "a8h")]
+    at = [p.read_text(encoding="utf-8", errors="replace") for p in a8 if p.exists()]
+    if len(at) == 2 and at[0] != at[1]:
+        fail.append("A8 提升版与旧版输出不一致（应逐字节一致）")
+    abench = ROOT / "logs" / "board_bench_attn_a8.txt"
+    if abench.exists():
+        t = abench.read_text(encoding="utf-8", errors="replace")
+        if "with 721 ms" not in t or "attn bench ctx= 256: cold 967 ms/forward" not in t:
+            fail.append("logs/board_bench_attn_a8.txt: 与文档的 A8 负结果数字不一致")
+        else:
+            print("    A8 在 S3 更慢（967 ms / lm head 721 ms，与文档一致）")
+    for fname, needle, label in [
+            ("board_v3_15ci4_tools_after_a8revert.txt", "13 成功 / 0 失败", "刷回默认后 tool 13/13"),
+            ("board_v3_15ci4_memory_after_a8revert.txt", "4 成功 / 0 失败", "刷回默认后记忆 4/4")]:
+        p = ROOT / "logs" / fname
+        if p.exists() and needle not in p.read_text(encoding="utf-8", errors="replace"):
+            fail.append(f"logs/{fname}: 未记录「{needle}」")
+        elif p.exists():
+            print(f"    {label}（与文档一致）")
 
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"

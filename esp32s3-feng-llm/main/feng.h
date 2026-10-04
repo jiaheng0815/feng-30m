@@ -105,6 +105,8 @@ void feng_gemv_range(const void *tensor, uint32_t dtype, const float *x, float *
 /* two-core version of feng_gemv (falls back to single core if init failed) */
 void feng_gemv_par(const void *tensor, uint32_t dtype, const float *x, float *y,
                    int n_out, int n_in);
+/* FENG_GEMV_A8=1 时：每个 GEMV 调用前准备一次 int8 激活（两核并发只读） */
+void feng_gemv_a8_prepare(const float *x, int n_in);
 
 /* start the worker on core 1; call once before using feng_gemv_par */
 void feng_smp_init(void);
