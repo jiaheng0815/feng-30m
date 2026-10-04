@@ -122,8 +122,11 @@ idf.py -DFENG_USE_Q2_KV=ON build          # 默认（不带该参数）仍是 in
 | `model.bin`（14.93 MB，Q4 块64） | `0x110000` |
 | `tokenizer.bin`（413 KB） | `0x1000000` |
 
+> **不想装 ESP-IDF？** 直接下载 Release 附件 `feng-30m-v3.16-embed-firmware.zip`
+> （预编译 v3.17 固件 + 模型 + 哈希清单，esptool 按上表偏移一次写完即可），跳过下面 ①。
+
 ```powershell
-# ① 编译固件（ESP-IDF v5.5.5）
+# ① 编译固件（ESP-IDF v5.5.5；用预编译包可跳过）
 cd esp32s3-feng-llm
 $env:IDF_TOOLS_PATH = "<你的 IDF 工具链路径>"
 & "<esp-idf 路径>\export.ps1"

@@ -17,7 +17,8 @@
 `feng-30m-v3.14-release.zip`（PC 版：HF 权重 + 蒸馏数据集）、
 板端版 `feng-30m-v3.16-embed-release.zip`（含可直接烧录的 ESP32 `model.bin`/`tokenizer.bin`）、
 `feng-30m-v3.14-engine.zip`（PC C 引擎源码，v3.17 引擎）、
-`feng-30m-c-engine-model-v3.16-embed.zip`（**C 引擎预导出模型**，免装 torch 直接跑）。
+`feng-30m-c-engine-model-v3.16-embed.zip`（**C 引擎预导出模型**，免装 torch 直接跑）、
+`feng-30m-v3.16-embed-firmware.zip`（**板端一包到底**：预编译固件 + 模型 + 烧录说明，免装 ESP-IDF）。
 **本仓库只放代码与文档，训练数据与权重不入库。**
 
 包内结构：
