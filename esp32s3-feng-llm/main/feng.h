@@ -53,6 +53,12 @@
 #ifndef FENG_FAST_EXP
 #define FENG_FAST_EXP 1
 #endif
+/* q2 注意力的 V 段：1 = 把 (scores[t] * vscale[blk]) 先乘好，内层每值只剩 1 个 madd
+ * （原来是 (st*val)*sv 的 3 个 FP 运算）。板端 V 段 912→832 ms（2048 ctx）、
+ * 32 题输出逐字相同；三重数值优化累计 logits 差 4.8e-6（见 CHANGELOG 附录）。 */
+#ifndef FENG_Q2_VFOLD
+#define FENG_Q2_VFOLD 1
+#endif
 
 
 #define FENG_STR2(x) #x

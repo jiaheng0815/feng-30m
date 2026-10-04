@@ -530,12 +530,20 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
                             const float sv1 = f16_to_f32_local(vs1[blk]);
                             const uint8_t *b0 = vb0 + blk * bw, *b1 = vb1 + blk * bw;
                             int d = blk * FENG_KV_Q2_BLOCK;
+#if FENG_Q2_VFOLD
+                            const float stv0 = st0 * sv0, stv1 = st1 * sv1;
+#endif
                             for (int j = 0; j < bw; j++) {
                                 const float *l0 = g_q2_lut[b0[j]];
                                 const float *l1 = g_q2_lut[b1[j]];
                                 for (int k4 = 0; k4 < 4; k4++) {
+#if FENG_Q2_VFOLD
+                                    vacc[d] += stv0 * l0[k4];
+                                    vacc[d] += stv1 * l1[k4];
+#else
                                     vacc[d] += (st0 * l0[k4]) * sv0;
                                     vacc[d] += (st1 * l1[k4]) * sv1;
+#endif
                                     d++;
                                 }
                             }
@@ -549,10 +557,17 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
                             const float sv = f16_to_f32_local(vs[blk]);
                             const uint8_t *bb = vb + blk * bw;
                             int d = blk * FENG_KV_Q2_BLOCK;
+#if FENG_Q2_VFOLD
+                            const float stv = st * sv;
+#endif
                             for (int j = 0; j < bw; j++) {
                                 const float *lu = g_q2_lut[bb[j]];
                                 for (int k4 = 0; k4 < 4; k4++) {
+#if FENG_Q2_VFOLD
+                                    vacc[d++] += stv * lu[k4];
+#else
                                     vacc[d++] += (st * lu[k4]) * sv;
+#endif
                                 }
                             }
                         }

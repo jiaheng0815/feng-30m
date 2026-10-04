@@ -866,7 +866,7 @@ def check_facts() -> None:
         else:
             print("    板端 lm head 532/407 ms、每 prefill token 省 124 ms（与文档一致）")
     ab = [ROOT / "logs" / f"pc_kv_suite32_v3_15ci4_q2b8_{k}.txt"
-          for k in ("nolut", "lut", "lin", "inl", "pair", "nohd", "endtok", "madd", "fexp")]
+          for k in ("nolut", "lut", "lin", "inl", "pair", "nohd", "endtok", "madd", "fexp", "vfold")]
     texts = [p.read_text(encoding="utf-8", errors="replace") for p in ab if p.exists()]
     if len(texts) >= 2:
         if any(t != texts[0] for t in texts[1:]):
@@ -947,6 +947,28 @@ def check_facts() -> None:
     for fname, needle, label in [
             ("board_v3_15ci4_tools_after_fexp.txt", "13 成功 / 0 失败", "快速 exp 固件 tool 13/13"),
             ("board_v3_15ci4_memory_after_fexp.txt", "5 成功 / 0 失败", "快速 exp 固件记忆 5/5")]:
+        p = ROOT / "logs" / fname
+        if p.exists() and needle not in p.read_text(encoding="utf-8", errors="replace"):
+            fail.append(f"logs/{fname}: 未记录「{needle}」")
+        elif p.exists():
+            print(f"    {label}（与文档一致）")
+    vbench = ROOT / "logs" / "board_bench_attn_vfold.txt"
+    if vbench.exists():
+        t = vbench.read_text(encoding="utf-8", errors="replace")
+        if "ctx=2048: cold 2224 ms/forward" not in t or "V=832 ms" not in t:
+            fail.append("logs/board_bench_attn_vfold.txt: 与文档的 2224 ms / V 832 ms 不一致")
+        else:
+            print("    V 段折叠：2048 ctx 2224 ms、V 832 ms（与文档一致）")
+    allon = ROOT / "logs" / "pc_logits_allon_vs_session_start.txt"
+    if allon.exists():
+        t = allon.read_text(encoding="utf-8", errors="replace")
+        if "max|diff|=4.768e-06" not in t:
+            fail.append("logs/pc_logits_allon_vs_session_start.txt: 与文档的 4.8e-6 不一致")
+        else:
+            print("    三重优化累计 logits 差 4.8e-6（与文档一致）")
+    for fname, needle, label in [
+            ("board_v3_15ci4_tools_after_vfold.txt", "13 成功 / 0 失败", "V 折叠固件 tool 13/13"),
+            ("board_v3_15ci4_memory_after_vfold.txt", "5 成功 / 0 失败", "V 折叠固件记忆 5/5")]:
         p = ROOT / "logs" / fname
         if p.exists() and needle not in p.read_text(encoding="utf-8", errors="replace"):
             fail.append(f"logs/{fname}: 未记录「{needle}」")

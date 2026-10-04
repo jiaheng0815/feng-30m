@@ -225,6 +225,26 @@ newlib 的 `expf` 在板端实测 ~257 周期/次：2048 ctx 的 softmax 要 77�
 板端 tool 13/13、记忆 4/4 + 身份正确，5 轮连续提问 10.5/9.8/9.1/9.5/15.4 s
 （`logs/board_v3_15ci4_memory_after_fexp.txt`、`logs/board_bench_attn_fexp.txt`）。
 
+**q2 注意力 V 段折叠（默认开启，`FENG_Q2_VFOLD`）**：
+
+V 段原来每个 KV 值要算 `(scores[t]·val)·vscale`（3 个 FP 运算）；把
+`scores[t]·vscale[blk]` 按 (token, block) 先乘好之后，内层每个值只剩 1 个 madd：
+
+| | ctx 256 | ctx 1024 | ctx 2048 | V 段（2048） |
+|---|---|---|---|---|
+| 折叠前 | 716 ms | 1399 ms | 2303 ms | 912 ms |
+| **折叠后** | **706 ms** | **1360 ms** | **2224 ms** | **832 ms** |
+
+三重数值优化（madd 链 + 快速 exp + V 折叠）相对本次会话起点的累计 logits 差
+**4.8e-6**（`logs/pc_logits_allon_vs_session_start.txt`），32 题矩阵输出仍
+**逐字相同**（`logs/pc_kv_suite32_v3_15ci4_q2b8_vfold.txt`）；板端 tool 13/13、
+记忆 4/4 + 身份正确（`logs/board_v3_15ci4_tools_after_vfold.txt`、
+`logs/board_v3_15ci4_memory_after_vfold.txt`）。
+
+> 到 2048 ctx 单次 forward **2224 ms**（本次会话起点 3534 ms，**-37%**）：
+> K 835 / softmax 48 / V 832 / 权重等 509。标量路径已到"每步 ~4-5 周期"的
+> S3 单发射天花板，继续优化需要 PIE（128 位 SIMD）或算法面改动。
+
 ---
 
 ## v3.14（2026-10-04）—— tool 版：计算/时间/随机数交给引擎，GGUF 发行取消
