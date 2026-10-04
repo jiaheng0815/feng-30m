@@ -17,7 +17,7 @@
 #include "feng.h"
 #include "feng_tokenizer.h"
 
-#define MAX_TURNS 6
+#define MAX_TURNS 8
 
 typedef struct {
     const char *name;
@@ -55,6 +55,20 @@ static const mem_case_t MEM12[] = {
     {"宠物", "乌龟", "我养了一只乌龟。", "我养了什么？"},
     {"食物", "蛋糕", "我最喜欢蛋糕。", "我最喜欢什么？"},
     {"运动", "游泳", "我最喜欢的运动是游泳。", "我最喜欢什么运动？"},
+};
+
+/* 逐轮断言的序列（NULL = 该轮不检查）：复现板端 v3.16 的残余次序问题 */
+typedef struct { const char *name; const char *turns[MAX_TURNS]; const char *expect[MAX_TURNS]; } seq_case_t;
+static const seq_case_t SEQ_CASES[] = {
+    {"8 轮完整序列", {"你好", "讲个笑话", "推荐一本好书", "你叫什么名字",
+                       "我叫小明，请记住", "我叫什么名字？", "你叫什么名字？", "你是谁？"},
+     {NULL, NULL, NULL, "feng", NULL, "小明", "feng", "feng"}},
+    {"问名→问身份", {"我叫小明，请记住", "我叫什么名字？", "你叫什么名字？"},
+     {NULL, "小明", "feng"}},
+    {"问身份→问名", {"我叫小明，请记住", "你叫什么名字？", "我叫什么名字？"},
+     {NULL, "feng", "小明"}},
+    {"中间闲聊", {"我叫小明，请记住", "你好", "我叫什么名字？", "你叫什么名字？"},
+     {NULL, NULL, "小明", "feng"}},
 };
 
 static void *xmalloc(size_t n)
@@ -195,5 +209,25 @@ int main(int argc, char **argv)
                MEM12[i].kind, MEM12[i].value, ans);
     }
     printf("\nSUMMARY mem12 %d/%d\n", mok, n_mem);
-    return (ok == n_cases && mok == n_mem) ? 0 : 1;
+
+    /* 逐轮断言的序列（每轮都算一次检查） */
+    int sok = 0, stotal = 0;
+    const int n_seq = (int)(sizeof(SEQ_CASES) / sizeof(SEQ_CASES[0]));
+    for (int si = 0; si < n_seq; si++) {
+        const seq_case_t *s = &SEQ_CASES[si];
+        kv.len = 0;
+        char answer[512];
+        printf("[seq] %s\n", s->name);
+        for (int t = 0; t < MAX_TURNS && s->turns[t]; t++) {
+            GEN_TURN(s->turns[t], answer, sizeof(answer));
+            if (!s->expect[t]) continue;
+            stotal++;
+            const int pass = strstr(answer, s->expect[t]) != NULL;
+            sok += pass;
+            printf("      %s 轮%d 期望含「%s」 答: %s\n", pass ? "OK  " : "FAIL",
+                   t + 1, s->expect[t], answer);
+        }
+    }
+    printf("\nSUMMARY seq %d/%d\n", sok, stotal);
+    return (ok == n_cases && mok == n_mem && sok == stotal) ? 0 : 1;
 }

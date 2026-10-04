@@ -115,6 +115,7 @@ def main() -> None:
     ap.add_argument("--name-identity", type=int, default=500)
     ap.add_argument("--name-memory", type=int, default=300)
     ap.add_argument("--both-ways", type=int, default=0, help="同一对话里双向问名（防反向串名）")
+    ap.add_argument("--chain", type=int, default=0, help="精确链：先问'我叫什么'再问'你叫什么'")
     ap.add_argument("--recency", type=int, default=450)
     ap.add_argument("--cross", type=int, default=250)
     ap.add_argument("--memory", type=int, default=450)
@@ -181,6 +182,23 @@ def main() -> None:
             flat += [f"我再说一遍，我叫{name}。", f"记住了，{name}。", qx, ax]
         rows.append(conv(*flat))
 
+    # 2c) 精确链：先答"你叫X"，紧接着被问"你叫什么名字"——必须切回 feng
+    for _ in range(args.chain):
+        pre = prefix(2)
+        name = rng.choice(NAMES)
+        qn, an = rng.choice(NAME_Q)
+        qi, ai = rng.choice(IDENTITY[:6])
+        flat = [m for p in pre for m in p]
+        flat += [rng.choice(ANNOUNCE).format(name=name), rng.choice(ACK).format(name=name)]
+        flat += [qn, an.format(name=name)]
+        if rng.random() < 0.4:                      # 中间插一轮闲聊
+            flat += [rng.choice(["你好", "谢谢你"]),
+                     rng.choice(["你好！有什么我可以帮你的吗？", "不客气。"])]
+        flat += [qi, ai]
+        if rng.random() < 0.5:                      # 再交替一轮
+            flat += [qn, an.format(name=name), qi, ai]
+        rows.append(conv(*flat))
+
     # 3) 同类事实两次 → 答最新的
     for _ in range(args.recency):
         kind = rng.choice(list(CATS))
@@ -227,7 +245,7 @@ def main() -> None:
     dest.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
     print(f"v3.16 补丁 {len(rows)} 条 -> {dest}")
     print(f"  报名字→问身份 {args.name_identity} | 报名字→问名字 {args.name_memory} | "
-          f"同类取新 {args.recency} | 多类目 {args.cross} | 记忆保护 {args.memory} | 身份锚点 {args.anchor} | 双向问名 {args.both_ways}")
+          f"同类取新 {args.recency} | 多类目 {args.cross} | 记忆保护 {args.memory} | 身份锚点 {args.anchor} | 双向问名 {args.both_ways}" + f" | 精确链 {args.chain}")
 
 
 if __name__ == "__main__":

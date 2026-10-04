@@ -1007,6 +1007,18 @@ def check_facts() -> None:
             fail.append("logs/pc_mtsuite_model_export_v3_16p3.txt: 不是 8/10 + 12/12")
         else:
             print("    v3.16-embed 多轮套件 8/10、PC 12 题 12/12（与文档一致）")
+    # --- v3.16-embed 附录：修残余链的代价（p4–p6，未采用） ---
+    for fname, needle in [("pc_mtsuite_v3_16p4_seq.txt", "SUMMARY seq 10/10"),
+                          ("pc_mtsuite_v3_16p5_seq.txt", "SUMMARY seq 10/10"),
+                          ("pc_mtsuite_v3_16p6_seq.txt", "SUMMARY seq 10/10"),
+                          ("pc_kv_suite32_v3_16p6_q2b8.txt", "长文召回 4/4"),
+                          ("board_v3_16p6_identity_ctx.txt", "8 成功 / 0 失败"),
+                          ("board_v3_16p6_memory12.txt", "板端记忆 9/12")]:
+        p = ROOT / "logs" / fname
+        if p.exists() and needle not in p.read_text(encoding="utf-8", errors="replace"):
+            fail.append(f"logs/{fname}: 未记录「{needle}」")
+        elif p.exists():
+            print(f"    p4–p6 实验记录 {fname}（与文档一致）")
 
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"
