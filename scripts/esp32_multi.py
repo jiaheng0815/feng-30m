@@ -67,6 +67,8 @@ def main():
     log = []
     boot, _ = read_until(ser, "FENG_READY", 30)
     log.append(boot)
+    with open(args.out, "w", encoding="utf-8") as f:   # 清空并把启动日志落盘，后续逐轮追加
+        f.write(boot)
     if "FENG_READY" not in boot:
         print("[!] 启动未完成:", boot[-300:])
     synced, src = set_board_time(ser)
@@ -97,13 +99,17 @@ def main():
         line = f"[{i:2d}] {status:7s} {dt:5.1f}s  Q: {q}\n     A: {text[:120]}"
         print(line, flush=True)
         log.append(line + "\n")
+        # 逐轮追加写盘：卡在某一轮时前面的结果也不会丢（原来只在结尾写一次）
+        with open(args.out, "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+            f.flush()
 
     ser.close()
     summary = f"\n=== {ok} 成功 / {fail} 失败 (共 {len(questions)} 轮) ==="
     print(summary)
     log.append(summary)
-    with open(args.out, "w", encoding="utf-8") as f:
-        f.write("".join(log))
+    with open(args.out, "a", encoding="utf-8") as f:
+        f.write(summary + "\n")
 
 
 if __name__ == "__main__":
