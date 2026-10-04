@@ -24,7 +24,8 @@ RELEASE_PREFIXES = ("weights/", "datasets/", "feng-30m-v3/", "feng-30m-v3.6/")
 
 # 本机训练/编译产物：干净 clone 里没有是正常的（跟踪文件缺失仍会报错）
 LOCAL_PREFIXES = ("v3_", "v3/", "v2/data/", "data/", "model_export_",
-                  "esp32s3-feng-llm/model_export_", "logs/", "scripts/local_paths.json")
+                  "esp32s3-feng-llm/model_export_", "logs/", "scripts/local_paths.json",
+                  "feng_cont/")            # 续训/恢复实验的训练产物目录（本机外置盘）
 
 PATH_RE = re.compile(TICK + r"([^" + TICK + r"\n]+)" + TICK)
 FILE_RE = re.compile(r"^[\w./\\-]+\.(md|py|c|exe|json|npy|gguf|bin|csv|ps1|txt|safetensors)$")
