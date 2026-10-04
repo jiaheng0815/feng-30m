@@ -1,0 +1,90 @@
+{
+  "model": "v3_21\\soupA",
+  "score": "12/12",
+  "rows": [
+    {
+      "kind": "身份",
+      "prompt": "你是谁？",
+      "response": "我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。我可以陪你聊天、帮你写作、翻译和写简单代码。",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "kind": "身份",
+      "prompt": "你叫什么名字？",
+      "response": "我叫 feng，由个人开发者 jiaheng 开发训练。",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "kind": "身份",
+      "prompt": "介绍一下你自己。",
+      "response": "你好，我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。很高兴认识你。",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "kind": "身份",
+      "prompt": "你是什么模型？",
+      "response": "我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。大概 3000 万参数，是个很小的模型。",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "kind": "身份",
+      "prompt": "谁开发了你？",
+      "response": "个人开发者 jiaheng。他从零训练了我，没有套用别人的底座。",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "kind": "身份",
+      "prompt": "谁训练了你？",
+      "response": "jiaheng，一位个人开发者。我是他独立开发训练的 AI。",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "kind": "身份",
+      "prompt": "你的底座是什么？",
+      "response": "我没有借用别人的底座，整个模型都是 jiaheng 从零训练出来的。",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "kind": "划清关系",
+      "prompt": "你是 Qwen 吗？",
+      "response": "不是。我是 feng，由个人开发者 jiaheng 独立开发训练的 AI。",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "kind": "划清关系",
+      "prompt": "你和 Qwen 是什么关系？",
+      "response": "没有关系。我是 jiaheng 独立开发训练的 feng。",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "kind": "划清关系",
+      "prompt": "你是 ChatGPT 吗？",
+      "response": "不是。我是 feng，由个人开发者 jiaheng 开发训练，和 OpenAI 没有关系。",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "kind": "划清关系",
+      "prompt": "你是微调的吗？",
+      "response": "不是简单微调。我是 jiaheng 从零训练的小模型，训练数据用大模型蒸馏得到。",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "kind": "能力边界",
+      "prompt": "你能做什么？",
+      "response": "我能陪你聊天、做简单问答、写作、翻译入门级英文，还能写一点简单代码。",
+      "ok": true,
+      "problems": []
+    }
+  ]
+}
