@@ -452,22 +452,26 @@ int feng_mem_answer(const char *user, char *answer, int answer_sz)
     /* 通用槽：最喜欢<什么键>？ / 最喜欢的<键>是什么？ */
     char key[KEY_CAP] = "";
     if (!strstr(user, "我")) return 0;      /* "你最喜欢什么颜色"问的是助手，不是用户记忆 */
+    int is_query = 0;
     const char *q = strstr(user, "喜欢什么");      /* 覆盖"最喜欢什么X"和"喜欢什么X" */
     if (q) {
         take_key_to(q + strlen("喜欢什么"), NULL, key, sizeof(key));
+        is_query = 1;
     } else if ((q = strstr(user, "喜欢啥")) != NULL) {
         take_key_to(q + strlen("喜欢啥"), NULL, key, sizeof(key));
+        is_query = 1;
     } else if ((q = strstr(user, "最喜欢的")) != NULL) {
-        if (!take_key_before(q + strlen("最喜欢的"), "是什么", key, sizeof(key)) &&
-            !take_key_before(q + strlen("最喜欢的"), "是啥", key, sizeof(key))) {
-            key[0] = 0;
+        /* 只有"…是什么/是啥"才是追问；"我最喜欢的书是《小王子》"是陈述，不能回无名偏好槽 */
+        if (take_key_before(q + strlen("最喜欢的"), "是什么", key, sizeof(key)) ||
+            take_key_before(q + strlen("最喜欢的"), "是啥", key, sizeof(key))) {
+            is_query = 1;
         }
     } else if (strstr(user, "我最喜欢什么") || strstr(user, "我喜欢什么") ||
                strstr(user, "喜欢吃什么")) {
         key[0] = 0;                                     /* 无名偏好槽 */
+        is_query = 1;
     }
-    if (q || key[0] || strstr(user, "我最喜欢什么") || strstr(user, "我喜欢什么") ||
-        strstr(user, "喜欢吃什么")) {
+    if (is_query) {
         const char *v = slot_get(key);
         if (v) return answer_fmt(answer, answer_sz, "你最喜欢%s。", v, "");
         if (is_forgot(key)) {

@@ -24,6 +24,7 @@ jobs:
           gcc -O2 -o /tmp/pc_mem_test    pc/pc_mem_test.c    main/feng_memory.c -Imain -lm
           gcc -O2 -o /tmp/pc_sample_test pc/pc_sample_test.c main/feng_sample.c main/feng_quant.c -Imain -lm
           gcc -O2 -o /tmp/pc_calc_ask    pc/pc_calc_ask.c    main/feng_calc.c -Imain -lm
+          gcc -O2 -o /tmp/pc_mem_ask     pc/pc_mem_ask.c     main/feng_memory.c -Imain -lm
           for t in pc_calc_test pc_tools_test pc_mem_test pc_sample_test; do
             echo "== $t"
             /tmp/$t | tail -n 1
@@ -31,6 +32,9 @@ jobs:
 
       - name: C/Python tool 口径一致性（29 条）
         run: python3 tools/check_tool_parity.py --c-bin /tmp/pc_calc_ask
+
+      - name: C/Python 记忆 tool 一致性（36 回合对话）
+        run: python3 tools/check_mem_parity.py --c-bin /tmp/pc_mem_ask
 
       - name: 编译 PC 引擎（核心源码 + 三个套件 + 一致性检查）
         working-directory: esp32s3-feng-llm

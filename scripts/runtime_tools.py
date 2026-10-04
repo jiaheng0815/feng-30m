@@ -55,6 +55,25 @@ def _mem_take(text, kw):
     return val
 
 
+_VAL_TAILS = ("请记住", "一下", "了", "的", "呀", "啊", "哦", "吧", "嘛", "呢")
+
+
+def _clean_val(val):
+    """去掉尾部虚词并拒绝问句——与 C 版 take_value/trim_tail 同口径。"""
+    if val is None:
+        return None
+    prev = None
+    while prev != val:
+        prev = val
+        for tail in _VAL_TAILS:
+            if val.endswith(tail):
+                val = val[: -len(tail)]
+    val = val.strip()
+    if not val or val.startswith(_QUESTION_PREFIX):
+        return None
+    return val
+
+
 def mem_learn(user):
     changed = False
     def put(k, v):
@@ -86,23 +105,29 @@ def mem_learn(user):
             changed = True
             break
     m_pet = re.search(r"我的宠物(?:是|叫)([^，。！？\s]+)", user)
-    if m_pet and not m_pet.group(1).startswith(_QUESTION_PREFIX):
-        if _MEM_SPECIAL.get("pet") != m_pet.group(1):
-            _MEM_SPECIAL["pet"] = m_pet.group(1)
+    if m_pet and _clean_val(m_pet.group(1)):
+        v = _clean_val(m_pet.group(1))
+        if _MEM_SPECIAL.get("pet") != v:
+            _MEM_SPECIAL["pet"] = v
             _MEM_FORGOT.discard("宠物")
             changed = True
     # 通用槽 1：最喜欢的<键>是/改成/换成<值>
     m = re.search(r"最喜欢的([^，。！？\s]{1,8})?(是|改成|换成)([^，。！？\s]+)", user)
     if m:
-        put(m.group(1) or "", m.group(3))
+        v = _clean_val(m.group(3))
+        if v is not None:
+            put(m.group(1) or "", v)
     else:
         m2 = re.search(r"(?:最喜欢吃|喜欢吃|最喜欢)([^，。！？\s]+)", user)
-        if m2 and not m2.group(1).startswith(_QUESTION_PREFIX):
-            put("", m2.group(1))
+        v = _clean_val(m2.group(1)) if m2 else None
+        if v is not None:
+            put("", v)
     # 通用槽 2：我的<键>是<值>
     m3 = re.search(r"我的([^，。！？\s]{1,8})(?:是|叫)([^，。！？\s]+)", user)
-    if m3 and m3.group(1) != "名字" and not m3.group(2).startswith(_QUESTION_PREFIX):
-        put(m3.group(1), m3.group(2))
+    if m3 and m3.group(1) != "名字":
+        v = _clean_val(m3.group(2))
+        if v is not None:
+            put(m3.group(1), v)
     return changed
 
 
@@ -138,7 +163,7 @@ def mem_answer(user):
         if "name" in _MEM_SPECIAL: items.append(f"你叫{_MEM_SPECIAL['name']}")
         if "city" in _MEM_SPECIAL: items.append(f"你住在{_MEM_SPECIAL['city']}")
         if "pet" in _MEM_SPECIAL: items.append(f"你养了{_MEM_SPECIAL['pet']}")
-        for k, v in list(_MEM.items())[:6]:
+        for k, v in list(_MEM.items())[:3]:     # 与 C 版一致：3 条专用槽 + 最多 3 条通用槽
             items.append(f"你的{k}是{v}" if k else f"你最喜欢{v}")
         if not items:
             return "我还没有记住你的信息。"
