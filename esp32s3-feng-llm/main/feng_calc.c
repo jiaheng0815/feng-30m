@@ -356,8 +356,63 @@ static int split_binary(const char *expr, char *a, int asz, char *op, char *b, i
     return 0;
 }
 
+/* 序列数数："把 1 到 5 倒着数一遍" / "从 3 数到 8"。
+ * 只在明确的祈使句上触发（倒着数/倒序，或以"从/把"开头且含"数到/数一遍"），
+ * 避免"我从1数到100也数不完"这类普通陈述被截走。返回 1 = 已作答。 */
+static int feng_calc_seq_answer(const char *user, char *answer, int answer_sz)
+{
+    const int rev = (strstr(user, "倒着数") != NULL) || (strstr(user, "倒序") != NULL) ||
+                    (strstr(user, "倒过来数") != NULL);
+    int fwd = 0;
+    if (!rev) {
+        const int starts = (strncmp(user, "从", 3) == 0) || (strncmp(user, "把", 3) == 0) ||
+                           strstr(user, "请从") != NULL;
+        if (strstr(user, "数到"))
+            fwd = starts || strstr(user, "数一遍") != NULL || strstr(user, "数一下") != NULL;
+        else if (strstr(user, "数一遍") != NULL || strstr(user, "数一下") != NULL)
+            fwd = starts;
+    }
+    if (!rev && !fwd) return 0;
+
+    char work[CALC_MAX];
+    strncpy(work, user, sizeof(work) - 1);
+    work[sizeof(work) - 1] = 0;
+    cn_to_ascii(work);
+    int found[8];
+    int nf = 0;
+    for (const char *p = work; *p && nf < 8; ) {
+        if (is_digit(*p)) {
+            int v = 0;
+            while (is_digit(*p)) { v = v * 10 + (*p - '0'); p++; }
+            found[nf++] = v;
+        } else {
+            p++;
+        }
+    }
+    if (nf < 2) return 0;                    /* 只有一个数（如"数到8"）交给模型 */
+    int a = found[0], b = found[1];
+    if (!rev && a > b) return 0;             /* "从8数到3"这类交给模型 */
+    if (a > b) { const int t = a; a = b; b = t; }
+    if (b - a > 50) {
+        snprintf(answer, answer_sz, "范围有点大（%d 到 %d），给我 50 个以内的区间吧。", a, b);
+        return 1;
+    }
+    int n = 0;
+    if (rev) {
+        for (int v = b; v >= a; v--)
+            n += snprintf(answer + n, (size_t)(answer_sz - n), (v == b) ? "%d" : "、%d", v);
+    } else {
+        for (int v = a; v <= b; v++)
+            n += snprintf(answer + n, (size_t)(answer_sz - n), (v == a) ? "%d" : "、%d", v);
+    }
+    snprintf(answer + n, (size_t)(answer_sz - n), "。");
+    return 1;
+}
+
 int feng_calc_answer(const char *user, char *answer, int answer_sz)
 {
+    /* 序列任务（"把1到5倒着数一遍"/"从3数到8"）也走引擎，确定性输出 */
+    if (feng_calc_seq_answer(user, answer, answer_sz)) return 1;
     char expr[CALC_MAX];
     if (!feng_calc_extract(user, expr, sizeof(expr))) return 0;
     double v = 0;

@@ -99,6 +99,9 @@ def _fmt(v: float) -> str:
 
 def calc_answer(user: str):
     """算式请求返回中文回答；否则返回 None。"""
+    seq = seq_answer(user)                       # 序列数数（与 feng_calc.c 同口径）
+    if seq is not None:
+        return seq
     expr = extract(user)
     if expr is None:
         return None
@@ -117,6 +120,35 @@ def calc_answer(user: str):
         sym = {"+": "加", "-": "减", "*": "乘", "/": "除以"}[m.group(2)]
         return f"{m.group(1)} {sym} {m.group(3)} 等于 {_fmt(float(v))}。"
     return f"结果是 {_fmt(float(v))}。"
+
+
+def seq_answer(user: str):
+    """序列数数："把 1 到 5 倒着数一遍" / "从 3 数到 8"；不匹配返回 None。
+    只在明确祈使句上触发，避免"我从1数到100也数不完"这类陈述被截走。"""
+    rev = any(k in user for k in ("倒着数", "倒序", "倒过来数"))
+    starts = user.startswith("从") or user.startswith("把") or "请从" in user
+    has_count = ("数一遍" in user) or ("数一下" in user)
+    if rev:
+        pass
+    elif "数到" in user:
+        if not (starts or has_count):
+            return None
+    elif has_count and starts:
+        pass
+    else:
+        return None
+    nums = [int(x) for x in re.findall(r"\d+", cn_to_ascii(user))]
+    if len(nums) < 2:
+        return None
+    a, b = nums[0], nums[1]
+    if not rev and a > b:
+        return None
+    if a > b:
+        a, b = b, a
+    if b - a > 50:
+        return f"范围有点大（{a} 到 {b}），给我 50 个以内的区间吧。"
+    rng = range(b, a - 1, -1) if rev else range(a, b + 1)
+    return "、".join(str(v) for v in rng) + "。"
 
 
 if __name__ == "__main__":
