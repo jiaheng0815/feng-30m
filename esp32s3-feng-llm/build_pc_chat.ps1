@@ -31,7 +31,7 @@ try {
     & $gcc -O2 -o pc\pc_check.exe pc\pc_check.c main\feng_model.c main\feng_llm.c `
         main\feng_quant.c main\feng_smp.c main\feng_tokenizer.c -Imain -lm
     if ($LASTEXITCODE -ne 0) { throw "gcc 编译失败" }
-    Write-Host "已生成 pc\pc_chat_q2b8.exe / pc_kv_suite_q2b8.exe / pc_kv_suite_i8.exe / pc_mt_suite.exe / pc_check.exe / pc_calc_test.exe / pc_tools_test.exe" -ForegroundColor Green
+    Write-Host "已生成 pc\pc_chat_q2b8.exe / pc_kv_suite_q2b8.exe / pc_kv_suite_i8.exe / pc_mt_suite.exe / pc_check.exe / pc_calc_test.exe / pc_tools_test.exe / pc_sample_test.exe" -ForegroundColor Green
     Write-Host "跑一下 tool 单测：" -ForegroundColor Cyan
     & pc\pc_calc_test.exe | Select-Object -Last 2
     & pc\pc_tools_test.exe | Select-Object -Last 2

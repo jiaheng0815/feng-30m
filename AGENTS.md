@@ -195,7 +195,7 @@ python scripts\v3_7_kv_qat.py --init v3_14\board --data v3_14\board_memfix.jsonl
 gcc -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc_chat_q2b8.exe pc_chat.c `
   ../main/feng_model.c ../main/feng_llm.c ../main/feng_quant.c ../main/feng_smp.c `
   ../main/feng_tokenizer.c ../main/feng_calc.c ../main/feng_tools.c ../main/feng_memory.c -I../main -lm
-# 更省事：仓库根跑 esp32s3-feng-llm\build_pc_chat.ps1（编 7 个产物 + 跑三套单测）
+# 更省事：仓库根跑 esp32s3-feng-llm\build_pc_chat.ps1（编 8 个产物 + 跑四套单测）
 ```
 
 评测与导出：
