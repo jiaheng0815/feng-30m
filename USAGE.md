@@ -1,29 +1,29 @@
 # feng-30m 使用说明
 
 本说明对应 [Releases](https://github.com/jiaheng0815/feng-30m/releases)：
-**PC 用 `feng-30m-v3.14-release.zip`（HF 权重 + 蒸馏数据集），
-板端用 `feng-30m-v3.16-embed-release.zip`（q2 KV / 2048 ctx + 双 QAT + 多轮上下文 + tool + 身份稳定）**。
-在 PC 上跑 C 引擎（体验 tool）再取 `feng-30m-v3.14-engine.zip`（引擎源码）+
-`feng-30m-c-engine-model-v3.16-embed.zip`（**已导出的模型，免装 torch**）。
+**PC 用 `feng-30m-v3.19-release.zip`（HF 权重 + 蒸馏数据集），
+板端用 `feng-30m-v3.19-embed-release.zip`（q2 KV / 2048 ctx + 双 QAT + 多轮上下文 + tool + 身份稳定）**。
+在 PC 上跑 C 引擎（体验 tool）再取 `feng-30m-v3.19-engine.zip`（引擎源码）+
+`feng-30m-c-engine-model-v3.19-embed.zip`（**已导出的模型，免装 torch**）。
 仓库本身只放代码与文档；**权重、板端固件模型、蒸馏数据集都在 Release 包里**。
 
 ## 1. 下载与包内结构
 
-解压 PC 包 `feng-30m-v3.14-release.zip` 后：
+解压 PC 包 `feng-30m-v3.19-release.zip` 后：
 
 ```
-feng-30m-v3.14/
+feng-30m-v3.19/
 ├── USAGE.md                  ← 本文件
 ├── LICENSE                   ← Apache-2.0（代码与权重同许可）
 ├── weights/
-│   ├── hf/                   v3.14 完整权重（fp32 safetensors + 分词器），transformers 直接加载
+│   ├── hf/                   v3.19 完整权重（fp32 safetensors + 分词器），transformers 直接加载
 │   └── （v3.14 起不再提供 GGUF：llama.cpp 没有 tool，算术/时间/随机数会退化成模型硬算）
 └── datasets/                 蒸馏训练数据（教师输出与提示词）
 ```
 
-> 板端的 `model.bin` / `tokenizer.bin` 不在 PC 包里，请下载 **v3.16-embed** 的 Release
+> 板端的 `model.bin` / `tokenizer.bin` 不在 PC 包里，请下载 **v3.19-embed** 的 Release
 > （它的 `weights/esp32/` 就是可以直接烧录的板端模型）。
-> PC 上跑 C 引擎用同一份双 QAT 权重：已导出好的见 `feng-30m-c-engine-model-v3.16-embed.zip`。
+> PC 上跑 C 引擎用同一份双 QAT 权重：已导出好的见 `feng-30m-c-engine-model-v3.19-embed.zip`。
 
 模型规格：Qwen3 结构，11 层 / hidden 448 / 7 头 MHA（7 KV 头）/ head_dim 64 / FFN 896 /
 16k 词表 / tied embedding，**29.43M 参数**；训练上下文 32768，`rope_theta=1e6`。
@@ -33,9 +33,9 @@ feng-30m-v3.14/
 ## 2. 最快上手：C 引擎 `pc_chat`（自带 tool，取代 llama.cpp）
 
 ```powershell
-# 1) 取模型：直接下载 Release 的 feng-30m-c-engine-model-v3.16-embed.zip
-#    想自己导出：用【板端 v3.16-embed 权重包】的 weights/hf（做过 Q4+q2 双 QAT）
-python esp32s3-feng-llm\tools\export_model.py --model <v3.16-embed包>\weights\hf --out model_export
+# 1) 取模型：直接下载 Release 的 feng-30m-c-engine-model-v3.19-embed.zip
+#    想自己导出：用【板端 v3.19-embed 权重包】的 weights/hf（做过 Q4+q2 双 QAT）
+python esp32s3-feng-llm\tools\export_model.py --model <v3.19-embed包>\weights\hf --out model_export
 # 2) 编译（MSYS2 gcc，q2 KV；不带 -D 则 int8/1024 ctx）
 gcc -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc_chat.exe `
   esp32s3-feng-llm\pc\pc_chat.c esp32s3-feng-llm\main\feng_model.c `
@@ -122,7 +122,7 @@ idf.py -DFENG_USE_Q2_KV=ON build          # 默认（不带该参数）仍是 in
 | `model.bin`（14.93 MB，Q4 块64） | `0x110000` |
 | `tokenizer.bin`（413 KB） | `0x1000000` |
 
-> **不想装 ESP-IDF？** 直接下载 Release 附件 `feng-30m-v3.16-embed-firmware.zip`
+> **不想装 ESP-IDF？** 直接下载 Release 附件 `feng-30m-v3.19-embed-firmware.zip`
 > （预编译 v3.17 固件 + 模型 + 哈希清单，esptool 按上表偏移一次写完即可），跳过下面 ①。
 
 ```powershell
@@ -201,43 +201,44 @@ python scripts\eval_longctx_many.py --models "<输出>" --n 32 --neg-n 16       
 自检命令 `python scripts/paths.py`。**只复现 v3 的话只需要 `FENG_LLAMA_DIR`**——教师模型与原始语料
 只在重建 v1/v2 语料时才需要。训练需要 16 GB 显存的 CUDA 卡（32k 阶段峰值 10.28 GiB）。
 
-## 7. 评测表现（PC = v3.14，贪心解码；脚本与结果 JSON 都在仓库里）
+## 7. 评测表现（PC = v3.19，贪心解码；脚本与结果 JSON 都在仓库里）
 
 | 项目 | 结果 |
 |---|---|
 | 身份（12 题，自称 jiaheng 独立开发训练） | **12/12** |
-| 日常对话探针（42 题，0 模板泄漏 / 0 复读） | **42/42**（`eval/chat_probe_v3_14pc2.json`） |
+| 日常对话探针（42 题，0 模板泄漏 / 0 复读） | **42/42**（`eval/v3_19pc4_probe42.json`） |
 | 情绪回应（8 题，与 v3.5 同口径） | **8/8**（v3.5 为 7/8，v3.4 为 5/8） |
 | 多轮对话（7 轮不同回答比例） | **1.00**（v3.0~v3.4 为 0.57） |
 | 范围内 18 题 | **10/10**（v3.7 = 10/10、v3.8 = 8/10，同口径） |
-| 针检索 @4k / 8k / 16k / 32k（每长度 32 题） | **28/28/25/27（单类别 108/128）**；**多类别 107/128** |
+| 针检索 @4k / 8k / 16k / 32k（每长度 32 题） | **28/30/26/26（单类别 110/128）**；**多类别 105/128** |
 | 「文中没有该信息」正确拒答 | **61/64（单类别）、62/64（多类别）** |
-| 多轮记忆 24 题（说事实→追问） | **24/24**（v3.12 只有 5/24；`eval/memory_v3_14pc2.json`） |
+| 留出 30 题（开发集，strict-v3 判定） | **20/30**（v3.14 为 16/30；`eval/v3_19pc4_heldout30.json`） |
+| 多轮记忆 24 题（说事实→追问） | **23/24**（v3.14 为 24/24；`eval/v3_19pc4_memory24.json`） |
 | 算式 / 网络时间 / 随机数 | **C 引擎 tool：0.5s 全对**（`4854+4411=9265`、`5.3+4.1=9.4`、UTC+8 时间、随机数） |
 | 多轮记忆 / 身份（v3.17 引擎） | **12 题连续记忆 12/12**、`你叫什么名字？` 永不串名（0.5s 秒回）；`\mem` 查看 |
 
-嵌入式（v3.16-embed，q2 block8 / 2048 ctx）：32 题矩阵 **27/27 + 4/4**、
+嵌入式（v3.19-embed，q2 block8 / 2048 ctx）：32 题矩阵 **27/27 + 4/4**、
 算术子集 **21/21**（数学题由 tool 回答）、板端 tool 专项（时间/随机数/算式）**13/13**
-（`logs/board_v3_16p3_tools.txt`）+ 记忆 12 题 **12/12**（v3.17 引擎记忆 tool，
-`logs/board_v3_16p3_memory12_engmem.txt`）、
-多轮回归套件（PC，固件同款采样）8/10（`logs/pc_mtsuite_model_export_v3_16p3.txt`），
+（`logs/board_tools_time_rand.txt`）+ 记忆 12 题 **12/12**
+（`logs/board_v3_19b6_memory12.txt`）、留出 30 题 **20/30**（v3.16-embed 为 17/30；
+`eval/v3_19board6_heldout30.json`）、多轮回归套件（PC，固件同款采样）7/10（`logs/pc_mtsuite_v3_19b6.txt`），
 约 **1.80 tok/s**；
 **固件保留跨轮上下文**：实测"我叫小明 → 你叫小明"、"喜欢蓝色 → 你最喜欢蓝色"、
 "养了一只猫 → 你养了一只猫"全对；`\reset` 可清空，上下文满（2048）自动开新对话
 （`logs/pc_kv_suite32_v3_13b_q2b8.txt`、`logs/board_v3_13b_memory.txt`）。
-  v3.16-embed 修掉了「报名字后的身份串名」（「我叫小明，请记住」→「你叫什么名字？」稳定答
-  "我叫 feng…"，6 轮序列从 3/6 修到 5/6，`logs/board_v3_16p3_nameleak.txt`；v3.17 引擎记忆 tool
-  上线后 8 轮身份序列 **8/8**，`logs/board_v3_16p3_identity_ctx_engmem.txt`）；
+  v3.19-embed 在 v3.16-embed 之上用 440 条定向教师数据做 Q4+q2 双 QAT（4 epoch / lr 6e-6），
+  板端 7 轮换名身份序列实测 **7/7**（`logs/esp32_multi.txt`，需 `--no-reset` 保留上下文）；
+  矩阵/召回/算术/记忆全部保持（`logs/pc_kv_suite32_v3_19b6_q2b8.txt`）；
   另含全部推理优化：长上下文单次 forward 比 v3.15-embed 快 37%（见 CHANGELOG v3.15-embed 附录）。
 
 ## 8. 已知限制
 
 - **30M 容量上限**：v3.6 覆盖了常见寒暄/情绪/常识/小数字运算/翻译/推荐等日常问法（42 题探针全过），
   但没覆盖到的自由问答仍可能答偏或编造；复杂推理与专业领域不可靠。
-- 板端 int8 KV 是 1024 上下文；q2 KV（v3.16-embed）是 2048。32k 仅在 PC 上可用。
+- 板端 int8 KV 是 1024 上下文；q2 KV（v3.19-embed）是 2048。32k 仅在 PC 上可用。
 - 板端生成约 1.9 tok/s（约 520 ms/token，不含 prefill），长回答需要等待十几秒。
-- PC 版 v3.14：单类别 108（历史最高是 v3.4/v3.13 的 113）；32k"文中没有"拒答 61/64 是已知平台。
-- 板端权重（v3.16-embed）+ v3.17 引擎：q2 矩阵满分、12 题记忆 **12/12**、8 轮身份序列 **8/8**
+- PC 版 v3.19：单类别 110；多类别 105（v3.14 为 107）；32k"文中没有"拒答 61/64 是已知平台。
+- 板端权重（v3.19-embed）+ v3.17 引擎：q2 矩阵满分、12 题记忆 **12/12**、7 轮身份序列 **7/7**
   （身份/常见事实由引擎记忆 tool 确定性回答），但 **PC 32k 弱于 PC 版**；
   量化鲁棒性对权重回插极敏感（掺 20% v3.9 就掉到 25/27）——要改板端行为请走
   「补数据 + 权重/KV 双 QAT」链路，不要手动 soup（CHANGELOG v3.10/v3.11）。
@@ -250,7 +251,7 @@ python scripts\eval_longctx_many.py --models "<输出>" --n 32 --neg-n 16       
   GGUF、llama.cpp 没有 tool，v3.14 起不再发行 GGUF。
 - **板端时间靠宿主对时**：串口脚本会自动发 `\settime <unix秒>`（宿主走 NTP）；
   不跑脚本时要手动发一次，否则时间 tool 会回答"还没对上网络时间"。
-- **PC 用 v3.14（HF）；板端与 C 引擎用 v3.16-embed**：两个权重不能互换——PC 的 HF 权重没做
+- **PC 用 v3.19（HF）；板端与 C 引擎用 v3.19-embed**：两个权重不能互换——PC 的 HF 权重没做
   量化感知训练，导进 C 引擎（Q4+q2）会退化（同套 32 题矩阵实测 **22/27 vs 27/27**，
   `logs/pc_kv_suite32_v3_14pc2_q2b8.txt`）；板端 QAT 权重在 PC 32k 长上下文上不如 PC 版。
 

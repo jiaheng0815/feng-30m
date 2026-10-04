@@ -1,7 +1,7 @@
 """一键验收：把 AGENTS.md 第 7 节的检查链跑一遍（文档 → PC 构建 → 单测 → 套件 → 一致性）。
 
 用法：
-    python tools/check_all.py [--model-export esp32s3-feng-llm/model_export_v3_16p3]
+    python tools/check_all.py [--model-export esp32s3-feng-llm/model_export_v3_19b6]
 
 检查项：
   1. tools/check_md.py + tools/check_docs.py（文档数字必须对得上产物）
@@ -56,7 +56,7 @@ def run_expect(name, cmd, needles, env=None):
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--model-export",
-                    default=str(ROOT / "esp32s3-feng-llm" / "model_export_v3_16p3"))
+        default=str(ROOT / "esp32s3-feng-llm" / "model_export_v3_19b6"))
     ap.add_argument("--skip-docs", action="store_true")
     ap.add_argument("--skip-build", action="store_true")
     args = ap.parse_args()

@@ -1129,8 +1129,9 @@ def check_facts() -> None:
     # --- 当前版本口径：防止 README/USAGE/DELIVERY 回潮到旧版本或旧指引 ---
     current_docs = [ROOT / "README.md", ROOT / "USAGE.md", ROOT / "DELIVERY.md",
                     ROOT / "COMPARISON.md", ROOT / "AGENTS.md"]
-    stale_claims = ("板端用 v3.14-embed", "板端用 v3.13-embed", "PC 用 v3.13",
-                    "最终版 v3.6", "--model weights\\hf")
+    stale_claims = ("板端用 v3.16-embed", "板端用 v3.14-embed", "板端用 v3.13-embed",
+                    "PC 用 v3.14", "PC 用 v3.13", "最终版 v3.6", "--model weights\\hf",
+                    "c-engine-model-v3.16-embed")
     for doc in current_docs:
         t = doc.read_text(encoding="utf-8")
         rel = doc.relative_to(ROOT)
@@ -1138,12 +1139,22 @@ def check_facts() -> None:
             if bad in t:
                 fail.append(f"{rel}: 出现旧版本口径「{bad}」（当前 PC=v3.14、板端=v3.16-embed）")
     for doc in (ROOT / "README.md", ROOT / "USAGE.md", ROOT / "DELIVERY.md"):
-        if "v3.16-embed" not in doc.read_text(encoding="utf-8"):
-            fail.append(f"{doc.relative_to(ROOT)}: 未标注当前板端版 v3.16-embed")
+        if "v3.19-embed" not in doc.read_text(encoding="utf-8"):
+            fail.append(f"{doc.relative_to(ROOT)}: 未标注当前板端版 v3.19-embed")
     for doc in (ROOT / "README.md", ROOT / "USAGE.md"):
-        if "c-engine-model-v3.16-embed" not in doc.read_text(encoding="utf-8"):
+        if "c-engine-model-v3.19-embed" not in doc.read_text(encoding="utf-8"):
             fail.append(f"{doc.relative_to(ROOT)}: 未指向 C 引擎预导出模型包")
-    print("    当前版本口径（PC=v3.14 / 板端=v3.16-embed + 预导出引擎模型，与文档一致）")
+    # --- v3.19 证据：板端 QAT 矩阵/算术/实机记忆 ---
+    for fname, needle, label in [
+            ("pc_kv_suite32_v3_19b6_q2b8.txt", "短任务 27/27", "v3.19-embed 矩阵 27/27"),
+            ("pc_arith_suite_v3_19b6_q2b8.txt", "短任务 21/21", "v3.19-embed 算术 21/21"),
+            ("board_v3_19b6_memory12.txt", "板端记忆 12/12", "v3.19-embed 板端记忆 12/12")]:
+        p = ROOT / "logs" / fname
+        if p.exists() and needle not in p.read_text(encoding="utf-8", errors="replace"):
+            fail.append(f"logs/{fname}: 未记录「{needle}」")
+        elif p.exists():
+            print(f"    {label}（与日志一致）")
+    print("    当前版本口径（PC=v3.19 / 板端=v3.19-embed + 预导出引擎模型，与文档一致）")
 
 
 def main() -> int:

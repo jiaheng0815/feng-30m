@@ -2,8 +2,8 @@
 
 版本演进与完整实测见 [`CHANGELOG.md`](CHANGELOG.md)，横向对比见 [`COMPARISON.md`](COMPARISON.md)。
 
-> **状态（2026-10-05）**：当前部署 **PC = v3.14（`v3_14/pc2`）+ v3.17 引擎；
-> 板端 = v3.16-embed 权重（`v3_16/board_p3`）+ v3.17 固件/引擎**；
+> **状态（2026-10-05）**：当前部署 **PC = v3.19（`v3_19/pc4`）+ v3.17 引擎；
+> 板端 = v3.19-embed 权重（`v3_19/board6`）+ v3.17 固件/引擎**；
 > 算式/网络时间(UTC+8)/随机数/**记忆**由 C 引擎 tool 直接回答（0.5s 秒回；
 > 板端 12 题记忆 12/12、身份永不串名），
 > **GGUF / llama.cpp 自 v3.14 起不再发行**（那条路径没有 tool）。
@@ -13,10 +13,10 @@
 身份自述（v3.2 起）：**「我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI」**（评测实测原文）。
 
 > **下载**：权重与蒸馏数据集随 [Releases](https://github.com/jiaheng0815/feng-30m/releases) 发布——
-> PC `feng-30m-v3.14-release.zip`、板端 `feng-30m-v3.16-embed-release.zip`，另有持续更新的
-> `feng-30m-v3.14-engine.zip`（PC C 引擎源码，现为 v3.17，含记忆 tool）与
-> `feng-30m-c-engine-model-v3.16-embed.zip`（**C 引擎预导出模型**，Q4+q2 双 QAT，免装 torch）
-> 及 `feng-30m-v3.16-embed-firmware.zip`（**板端一包到底**：预编译固件 + 模型，免装 ESP-IDF）
+> PC `feng-30m-v3.19-release.zip`、板端 `feng-30m-v3.19-embed-release.zip`，另有
+> `feng-30m-v3.19-engine.zip`（PC C 引擎源码，v3.17，含记忆 tool）与
+> `feng-30m-c-engine-model-v3.19-embed.zip`（**C 引擎预导出模型**，Q4+q2 双 QAT，免装 torch）
+> 及 `feng-30m-v3.19-embed-firmware.zip`（**板端一包到底**：预编译固件 + 模型，免装 ESP-IDF）
 > （本仓库只放代码与文档）；使用说明见 [USAGE.md](USAGE.md)。
 
 ## 1. 模型

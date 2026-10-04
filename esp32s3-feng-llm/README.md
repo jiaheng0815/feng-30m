@@ -3,10 +3,10 @@
 把 **feng-30m**（Qwen3 架构：11 层 / hidden 448 / 7 头 MHA / FFN 896 / 16k 词表 /
 tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话**。
 
-当前部署的是 **v3.16-embed 嵌入式权重**（`../v3_16/board_p3/`：v3.15/board_ctxid4 +
-上下文双向问名补丁，继续做 **Q4 权重 + q2 KV 双 QAT**：block8、板端 2048 上下文；
-嵌入式 32 题矩阵 27/27 + 长文召回 4/4；修掉多轮里的身份漂移与「报名字后的串名」，
-见 `../CHANGELOG.md` 的 v3.16-embed 节）。
+当前部署的是 **v3.19-embed 嵌入式权重**（`../v3_19/board6/`：v3.16/board_p3 +
+440 条定向教师数据做 **Q4 权重 + q2 KV 双 QAT**（4 epoch / lr 6e-6）：block8、板端 2048 上下文；
+嵌入式 32 题矩阵 27/27 + 长文召回 4/4 + 算术 21/21；HF 留出 30 题 17/30 → **20/30**，
+见 `../CHANGELOG.md` 的 v3.19 节）。
 
 **固件自带四个 tool**（模型不再学算术，见 `main/feng_calc.c`、`feng_tools.c`、`feng_memory.c`）：
 
@@ -42,10 +42,11 @@ tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话*
 **交互输入建议 ≤ ~150 tokens（≈400 字节中文）**，长文请在 PC 上跑。
 日志：`../logs/board_longprompt_2turn_491tok.txt`、`../logs/board_longprompt_2turn.txt`。
 
-**实机实测（2026-10-04，v3.16-embed + q2block8 固件）**：KV `q2/block8, ctx 2048, 9.62 MB`，
+**实机实测（2026-10-05，v3.19-embed + q2block8 固件）**：KV `q2/block8, ctx 2048, 9.62 MB`，
 PSRAM 余 5006 KB；工具（时间/随机数/算式）13/13
-（`../logs/board_v3_16p3_tools.txt`）、跨轮记忆 12 题 **10/12**
-（`../logs/board_v3_16p3_memory12.txt`）、速度 **2.18 tok/s**（短回答实测，
+（`../logs/board_tools_time_rand.txt`）、跨轮记忆 12 题 **12/12**
+（`../logs/board_v3_19b6_memory12.txt`）、7 轮换名身份序列 **7/7**（`../logs/esp32_multi.txt`，
+需 `--no-reset`）、速度 **2.18 tok/s**（短回答实测，
 `../logs/board_v3_16p3_tail_trailer.txt`；优化前 1.80-1.85）——
 回复尾行会打印 `>>END (ctx N/2048, X.XX tok/s)`，和 PC 版同一口径；
 长上下文另有专项：q2/2048 单次 forward **2224 ms**（K 835 / softmax 48 / V 832 / 权重等 509 ms），
@@ -61,7 +62,7 @@ prefill 还会跳过中间 token 的 lm head（每个省 ~115 ms），同一组 
 （v3.5/v3.4 的历史基线见 `board_baseline_v3_5.txt`、`board_baseline_v3_4.txt`）。
 
 板端要的两个文件（`model.bin` + `tokenizer.bin`）有两个来源：**① 直接下载**
-[Releases](https://github.com/jiaheng0815/feng-30m/releases) 里的 `feng-30m-v3.16-embed-release.zip`，
+[Releases](https://github.com/jiaheng0815/feng-30m/releases) 里的 `feng-30m-v3.19-embed-release.zip`，
 取包内 `weights/esp32/`；**② 按下面第 1 节自己从 HF 权重导出**。只想跑起来就选 ①，跳过第 1 节。
 
 > 下文命令里的 `<...>` 都是占位符，换成你本机的路径；Python 脚本会自动解析项目内路径
@@ -103,20 +104,20 @@ VDD_SPI 1.8 V（同系列 N16R8V / N32R8V 已 EOL）。
 flash mmap 流式读 **108.3 MB/s**，C 引擎与 PyTorch(Q4) **逐位一致**。
 
 > 现行发布固件 = **q2 KV / 2048 ctx**（本工程默认 int8 / 1024，`idf.py -DFENG_USE_Q2_KV=ON build` 切 q2），
-> app 当前 306,624 B；一键刷机包见 Release 附件 `feng-30m-v3.16-embed-firmware.zip`。
+> app 当前 306,624 B；一键刷机包见 Release 附件 `feng-30m-v3.19-embed-firmware.zip`。
 瓶颈是"每个 token 都要把 15 MB 权重从 flash 读一遍 + 逐权重标量计算"，实测证明是**算力瓶颈**
 （flash 提频 80→120MHz 只快 5%，双核则 +89%）。
 
 ## 1. 拿模型（PC 上执行，二选一）
 
-推荐直接下载 Release 附件 **`feng-30m-c-engine-model-v3.16-embed.zip`**（已导出，板端/PC C 引擎通用）。
-想自己导出（当前板端权重 = v3.16-embed，Q4+q2 双 QAT）：
+推荐直接下载 Release 附件 **`feng-30m-c-engine-model-v3.19-embed.zip`**（已导出，板端/PC C 引擎通用）。
+想自己导出（当前板端权重 = v3.19-embed，Q4+q2 双 QAT）：
 
 ```powershell
 $py = "python"                    # 换成装了 torch + transformers 的解释器
-& $py tools\export_model.py --model <v3.16-embed包>\weights\hf --out model_export_v3_16p3
-# -> model_export_v3_16p3/model.bin      14.93 MB（Q4 块64 + fp16 norms/scales）
-#    model_export_v3_16p3/tokenizer.bin  413 KB
+& $py tools\export_model.py --model <v3.19-embed包>\weights\hf --out model_export_v3_19b6
+# -> model_export_v3_19b6/model.bin      14.93 MB（Q4 块64 + fp16 norms/scales）
+#    model_export_v3_19b6/tokenizer.bin  413 KB
 #    ref_logits.bin / ref_ids.json / export_info.json
 ```
 
@@ -132,16 +133,16 @@ cd esp32s3-feng-llm
 $src = @('pc_check.c','..\main\feng_model.c','..\main\feng_llm.c','..\main\feng_quant.c',
          '..\main\feng_smp.c','..\main\feng_tokenizer.c','-I..\main','-lm')
 & "<MSYS2>\ucrt64\bin\gcc.exe" -O2 -o pc\pc_check.exe @src
-.\pc\pc_check.exe ..\model_export_v3_16p3 ..\logs\c_logits_v3_16p3.bin
+.\pc\pc_check.exe ..\model_export_v3_19b6 ..\logs\c_logits_v3_19b6.bin
 ```
 
 > 上面两条命令里的 gcc 路径是作者机器的 MSYS2 路径，换成你本机的即可；
-> `model_export_v3_16p3` 若没自己导出，把它指向 Release 包（v3.16-embed 或预导出模型包）里的 `model.bin` 所在目录。
+> `model_export_v3_19b6` 若没自己导出，把它指向 Release 包（v3.19-embed 或预导出模型包）里的 `model.bin` 所在目录。
 
-期望输出（v3.16-embed 实测）：
+期望输出（v3.19-embed 实测）：
 
 ```
-logits check: n=16384 max|diff|=2.7896 mean|diff|=0.48480  argmax c=5331 ref=5331 MATCH
+logits check: n=16384 max|diff|=2.6604 mean|diff|=0.45821  argmax c=5331 ref=5331 MATCH
 ```
 
 这里的 2.27 是**纯 Q4 量化误差**（对 fp32 参考）。要验证实现本身是否等价，再跑：
@@ -149,8 +150,8 @@ logits check: n=16384 max|diff|=2.7896 mean|diff|=0.48480  argmax c=5331 ref=533
 ```powershell
 $env:CUDA_VISIBLE_DEVICES=''
 & "<带 torch 的 python>" pc\verify_c_vs_torch.py `
-   --export ..\model_export_v3_16p3 --model <v3.16-embed包>\weights\hf `
-   --c-logits ..\logs\c_logits_v3_16p3.bin
+   --export ..\model_export_v3_19b6 --model <v3.19-embed包>\weights\hf `
+   --c-logits ..\logs\c_logits_v3_19b6.bin
 # [C vs torch(Q4)] max|diff| = 0.0000   ← 实现逐位一致
 ```
 
@@ -175,15 +176,15 @@ $py = "python"        # 换成带 esptool 的解释器（ESP-IDF 自带的那个
     0x0 build\bootloader\bootloader.bin 0x8000 build\partition_table\partition-table.bin `
     0x10000 build\feng_30m.bin
 # ② 换模型只需这两条
-& $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000  model_export_v3_16p3\model.bin
-& $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 model_export_v3_16p3\tokenizer.bin
+& $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000  model_export_v3_19b6\model.bin
+& $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 model_export_v3_19b6\tokenizer.bin
 ```
 
 > 第 ② 步的两个文件也可以直接用 Release 包里的 `weights/esp32/model.bin` 与 `weights/esp32/tokenizer.bin`；
 > 偏移量必须与 `partitions.csv` 一致（`model` 0x110000 / `tokdata` 0x1000000），否则会出现 MMU fault 或读不到模型。
-> **不想装 ESP-IDF**：Release 附件 `feng-30m-v3.16-embed-firmware.zip`（约 13 MB）已含
+> **不想装 ESP-IDF**：Release 附件 `feng-30m-v3.19-embed-firmware.zip`（约 13 MB）已含
 > bootloader + 分区表 + app + 模型 + 哈希与烧录命令，esptool 一次烧完（本机同款板卡实测）。
-> 也可以直接用一键脚本：`.\flash.ps1 -Port COM20 -EspIdfPath <esp-idf> -ModelDir ..\model_export_v3_16p3`。
+> 也可以直接用一键脚本：`.\flash.ps1 -Port COM20 -EspIdfPath <esp-idf> -ModelDir ..\model_export_v3_19b6`。
 
 > 提示：模型写 15 MB 约需 3.5 分钟（921600 波特率，压缩后约 13 MB）。
 > 板子不在 USB 列表里时 esptool 会报 "port is busy or doesn't exist"——先检查线/供电。
@@ -238,7 +239,7 @@ esp32s3-feng-llm/
 > 本引擎按 **MHA（7 个 Q 头 = 7 个 KV 头）** 实现；若改成 GQA/MQA（如 7 头 / 1 KV 头），
 > 需要在 `feng_llm.c` 里加 KV 头广播。（v1 也是 MHA，网上"v1 是 MQA"的说法不成立。）
 
-## 8. 已验证结果（v3.16-embed，2026-10-04 实机）
+## 8. 已验证结果（v3.19-embed，2026-10-05 实机）
 
 ```
 $ .\pc\pc_check.exe ..\model_export_v3_7f ..\logs\c_logits_v3_7.bin
@@ -262,10 +263,10 @@ I (1828) feng: PSRAM free after setup: 5006 KB
 I (2228) feng: gemv 896x448: 1-core 13186 us | 2-core 6837 us | speedup 1.93x
 ```
 
-对话实测：v3.16-embed + q2block8 固件工具（时间/随机数/算式）13/13
-（`../logs/board_v3_16p3_tools.txt`）+ 跨轮记忆 12 题 **12/12**（v3.17 引擎记忆 tool，
-`../logs/board_v3_16p3_memory12_engmem.txt`）+ 报名字后身份修复
-（`../logs/board_v3_16p3_nameleak.txt`、`../logs/board_v3_16p3_identity_ctx.txt`）；
+对话实测：v3.19-embed + q2block8 固件工具（时间/随机数/算式）13/13
+（`../logs/board_tools_time_rand.txt`）+ 跨轮记忆 12 题 **12/12**
+（`../logs/board_v3_19b6_memory12.txt`）+ 7 轮换名身份序列 **7/7**
+（`../logs/esp32_multi.txt`，`--no-reset`）；
 历史记录：v3.11 q2 27/27+4/4、v3.10 q2 27/27+4/4、v3.7 q2 27/27+4/4、
 v3.6 int8 1.85–1.86 tok/s、
 v3.4 10/10、v3 5 轮 5/5、v2 固件 10/10。
