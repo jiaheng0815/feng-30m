@@ -61,6 +61,8 @@ def main() -> None:
                     help="--mix 时并入的算术补丁数据")
     ap.add_argument("--mix", action="store_true",
                     help="输出 = 本修复集 + 算术补丁（pol8 的 arith_repair.jsonl）")
+    ap.add_argument("--pc-fix", action="store_true",
+                    help="PC 末层修复集：漏题 ×miss-repeat + ×1 乘法族 + 水的化学式 + 高危锚点")
     ap.add_argument("--surgical", action="store_true",
                     help="只保留 8 个高危题（×2）+ 取件码召回（×2）（pol7 的 repair3.jsonl）")
     ap.add_argument("--needle", default=str(ROOT / "v3_7" / "needle_qat.jsonl"))
@@ -108,6 +110,20 @@ def main() -> None:
         rows += needle * 2
         rng.shuffle(rows)
         print(f"surgical：高危锚点 ×2 + 召回 ×2 = {len(rows)} 条")
+    elif args.pc_fix:
+        keep = ("我很伤心", "「再见」用英语怎么说？", "中国的首都是哪里？",
+                "水的化学式是什么？", "彩虹有几种颜色？", "一年有几个月？",
+                "你是谁？", "你可以干什么？")
+        rows = [r for r in rows if r["messages"][0]["content"] in keep] * 2
+        for a in range(1, 10):
+            rows += [conv(f"{a}乘1等于几？", f"{a} 乘 1 等于 {a}。")] * 10
+            rows += [conv(f"1乘{a}等于几？", f"1 乘 {a} 等于 {a}。")] * 10
+            # ×1 的对照项：避免"乘 1"把"加 1"带偏（1+1 曾被训成 1）
+            rows += [conv(f"{a}+1等于几？", f"{a} 加 1 等于 {a + 1}。")] * 6
+            rows += [conv(f"1+{a}等于几？", f"1 加 {a} 等于 {a + 1}。")] * 6
+        rows += [conv("水的化学式是什么？", "水的化学式是 H₂O。")] * 40
+        rng.shuffle(rows)
+        print(f"pc-fix：漏题 + ×1 乘法族 + 水的化学式 + 锚点 = {len(rows)} 条")
     elif args.mix:
         arith = [json.loads(l) for l in Path(args.arith).open(encoding="utf-8") if l.strip()]
         rows += arith

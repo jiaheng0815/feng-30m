@@ -506,6 +506,63 @@ def check_facts() -> None:
         if b"tokenizer.chat_template" not in f.read_bytes():
             fail.append(f"v3_11/gguf/{f.name}: 未内嵌 chat template")
 
+    # --- v3.12：PC 当前版（末层算术微调） ---
+    arith12 = ROOT / "eval" / "arith_v3_12a2l3.json"
+    if arith12.exists():
+        rows = json.loads(arith12.read_text(encoding="utf-8"))["rows"]
+        per = {}
+        for r in rows:
+            per.setdefault(r["kind"], [0, 0])
+            per[r["kind"]][1] += 1
+            per[r["kind"]][0] += int(r["ok"])
+        want = {"加": (100, 100), "减(结果>0)": (45, 45), "减(结果=0)": (10, 10),
+                "减(结果<0)": (39, 45), "乘": (81, 81)}
+        got = {k: tuple(v) for k, v in per.items()}
+        if got != want:
+            fail.append(f"eval/{arith12.name}: 算术网格 {got} != 文档 {want}")
+        else:
+            print("    v3.12 算术网格 275/281（与文档一致）")
+    for fname, want_hits, want_neg in [("longctx32_v3_12a2l3.json", "28/29/26/27", 61),
+                                       ("longctx32multi_v3_12a2l3.json", "28/25/32/23", 62)]:
+        p = ROOT / "eval" / fname
+        if not p.exists():
+            warn.append(f"eval/{fname} 不存在，跳过 v3.12 检索校验")
+            continue
+        rows = json.loads(p.read_text(encoding="utf-8"))["rows"]
+        hits = "/".join(str(r["hit"]) for r in rows)
+        neg = sum(r.get("neg_hit", 0) for r in rows)
+        if hits != want_hits or neg != want_neg:
+            fail.append(f"eval/{fname}: {hits} 拒答 {neg}/64，文档声称 {want_hits} 与 {want_neg}/64")
+        else:
+            print(f"    v3.12 {fname.split('_')[0]} {hits}（拒答 {neg}/64，与文档一致）")
+    scope12 = ROOT / "eval" / "v3_12a2l3_scope.json"
+    if scope12.exists():
+        rows = json.loads(scope12.read_text(encoding="utf-8"))
+        got = sum(1 for r in rows if r.get("ok") is True)
+        if got != 10:
+            fail.append(f"eval/{scope12.name}: 范围评测 {got}/10 != 文档 10/10")
+        else:
+            print("    v3.12 范围评测 10/10（与文档一致）")
+    probe12 = ROOT / "eval" / "chat_probe_v3_12a2l3.json"
+    if probe12.exists():
+        rows = json.loads(probe12.read_text(encoding="utf-8"))["rows"]
+        miss = sum(1 for r in rows if r["topic_miss"] is True)
+        loop = sum(1 for r in rows if r["loop"] is True)
+        if len(rows) != 42 or miss != 0 or loop != 0:
+            fail.append(f"eval/{probe12.name}: {len(rows)-miss}/42（复读 {loop}），文档声称 42/42 且 0 复读")
+        else:
+            print("    v3.12 日常探针 42/42、0 复读（与文档一致）")
+    ident12 = ROOT / "eval" / "identity_v3_12a2l3.json"
+    if ident12.exists():
+        d = json.loads(ident12.read_text(encoding="utf-8"))
+        if d.get("score") != "12/12":
+            fail.append(f"eval/{ident12.name}: 身份 {d.get('score')} != 文档 12/12")
+        else:
+            print("    v3.12 身份 12/12（与文档一致）")
+    for f in (ROOT / "v3_12" / "gguf").glob("*.gguf"):
+        if b"tokenizer.chat_template" not in f.read_bytes():
+            fail.append(f"v3_12/gguf/{f.name}: 未内嵌 chat template")
+
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"
     for doc in DOCS:

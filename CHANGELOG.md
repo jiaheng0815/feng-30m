@@ -1,8 +1,67 @@
-# feng-30m 更新日志（v1 → v3.11）
+# feng-30m 更新日志（v1 → v3.12）
 
 一个 ~30M 参数中文对话模型的四个版本：从"能对话的玩具"到"能上 ESP32-S3 实机、
 并且真的能用长上下文"的完整记录。所有数字都是本机实测（RTX 5060 Ti 16GB、
 i7-12700KF、ESP32-S3-WROOM-2-N32R16V），命令见每节末尾。
+
+---
+
+## v3.12（2026-10-04）—— PC 版：算术边界修复（末层微调，检索反而涨了）
+
+### 问题
+
+板端在 v3.11 修好了算术，但 **PC 发布版 v3.9（stockfix2）自己也带着同样的空洞**，
+而且更严重：算术网格 281 题只有 **170/281**——乘只有 52/81，0 操作数与「结果 ≤0」的减法全错
+（`eval/arith_v3_9sf2.json`）。
+
+### 做法
+
+1. 复用 v3.11 的算术数据与验收锚点（`v3_11/arith_repair.jsonl`：4,946 条完整网格 + 1,876 条
+   锚点/漏题修复）；
+2. 走 v3.9 验证过的**末层微调**（`v3_6_sft_patch.py --train-last 2`，只训最后 2 层 + norm）：
+   3 epochs / lr 3e-5 → 算术 271/281，但 42 题探针丢 1 题（水的化学式缩成 H₂）；
+3. 定点修复（`v3_11_build_repair.py --pc-fix`）：10 个漏题 ×30、`×1` 乘法族 + **加法对照**、
+   水的化学式 ×40、易抖锚点 → 算术 275/281 且探针 0 未命中。
+
+### 结果（同协议实测）
+
+| 指标 | v3.9（旧 PC 版） | **v3.12** |
+|---|---|---|
+| 算术网格 281 题 | 170 | **275**（加 100/100、减>0 45/45、减=0 10/10、减<0 39/45、乘 81/81） |
+| 针检索·单类别 4k/8k/16k/32k | 29/29/23/27 = 108 | **28/29/26/27 = 110** |
+| 针检索·多类别 | 28/25/32/23 = 108 | **28/25/32/23 = 108** |
+| 「文中没有」拒答（单/多） | 61/64 ｜ 62/64 | **61/64 ｜ 62/64** |
+| 范围 18 题 | 10/10 | **10/10** |
+| 日常探针 42 题 | 42/42 | **42/42（0 未命中 / 0 复读）** |
+| 身份 12 题 ｜ 多轮 | 12/12 ｜ 1.00 | **12/12 ｜ 1.00** |
+
+**v3.12 = PC 综合最好版**（16k 单类别 23→26、总量 108→110，算术 +105 题）；
+代价是 4k 单类别 −1、32k"文中没有"拒答仍 61/64（老平台）。板端继续用 **v3.11**
+（为 Q4 权重 + q2 KV 的量化前向优化）。
+
+结果文件：`eval/arith_v3_12a2l3.json`、`eval/longctx32_v3_12a2l3.json`、
+`eval/longctx32multi_v3_12a2l3.json`、`eval/v3_12a2l3_scope.json`、
+`eval/chat_probe_v3_12a2l3.json`、`eval/identity_v3_12a2l3.json`。
+
+### 复现
+
+```powershell
+# 1) 算术数据（v3.11 生成过可跳过）
+python scripts\v3_11_build_arith_patch.py --out v3_11\arith_patch2.jsonl
+python scripts\v3_11_build_repair.py --suite-log logs\pc_kv_suite32_v3_10p3_q2b8.txt `
+  --misses eval\arith_v3_11pol4.json --mix --out v3_11\arith_repair.jsonl
+# 2) 末层微调（第一轮）
+python scripts\v3_6_sft_patch.py --init v3_9\stockfix2 --patch v3_11\arith_repair.jsonl `
+  --mt v3_5d\mt_convs.jsonl --mt-n 150 --identity-n 80 --out v3_12\arith2l `
+  --epochs 3 --lr 3e-5 --train-last 2
+# 3) 定点修复（第二轮，先跑 eval_arith 得到漏题）
+python scripts\eval_arith.py --model v3_12\arith2l --out eval\arith_v3_12a2l.json
+python scripts\v3_11_build_repair.py --suite-log logs\pc_kv_suite32_v3_10p3_q2b8.txt `
+  --misses eval\arith_v3_12a2l.json --miss-repeat 30 --pc-fix --out v3_12\pcfix2.jsonl
+python scripts\v3_6_sft_patch.py --init v3_12\arith2l --patch v3_12\pcfix2.jsonl `
+  --mt v3_5d\mt_convs.jsonl --mt-n 100 --identity-n 80 --out v3_12\arith2l3 `
+  --epochs 4 --lr 1.5e-5 --train-last 2
+```
 
 ---
 
