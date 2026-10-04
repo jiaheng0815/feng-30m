@@ -982,6 +982,31 @@ def check_facts() -> None:
             fail.append(f"logs/{fname}: 未记录「{needle}」")
         elif p.exists():
             print(f"    {label}（与文档一致）")
+    # --- v3.16-embed：报名字后的身份串名修复 ---
+    for fname, needle, label in [
+            ("board_v3_16p3_tools.txt", "13 成功 / 0 失败", "v3.16-embed tool 13/13"),
+            ("board_v3_16p3_memory12.txt", "板端记忆 10/12", "v3.16-embed 记忆 10/12"),
+            ("pc_kv_suite32_v3_16p3_q2b8.txt", "短任务 27/27", "v3.16-embed PC 32 题 27/27+4/4"),
+            ("pc_arith_suite_v3_16p3_q2b8.txt", "短任务 21/21", "v3.16-embed 算术 21/21")]:
+        p = ROOT / "logs" / fname
+        if p.exists() and needle not in p.read_text(encoding="utf-8", errors="replace"):
+            fail.append(f"logs/{fname}: 未记录「{needle}」")
+        elif p.exists():
+            print(f"    {label}（与文档一致）")
+    nl = ROOT / "logs" / "board_v3_16p3_nameleak.txt"
+    if nl.exists():
+        t = nl.read_text(encoding="utf-8", errors="replace")
+        if "我叫 feng，由个人开发者 jiaheng 开发训练" not in t:
+            fail.append("logs/board_v3_16p3_nameleak.txt: 未记录报名字后的身份回答")
+        else:
+            print("    v3.16-embed 报名字后答 feng（与文档一致）")
+    mts = ROOT / "logs" / "pc_mtsuite_model_export_v3_16p3.txt"
+    if mts.exists():
+        t = mts.read_text(encoding="utf-8", errors="replace")
+        if "SUMMARY mt-suite 8/10" not in t or "SUMMARY mem12 12/12" not in t:
+            fail.append("logs/pc_mtsuite_model_export_v3_16p3.txt: 不是 8/10 + 12/12")
+        else:
+            print("    v3.16-embed 多轮套件 8/10、PC 12 题 12/12（与文档一致）")
 
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"

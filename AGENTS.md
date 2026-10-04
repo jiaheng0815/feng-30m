@@ -15,8 +15,12 @@
   → v3.7（KV-QAT + q2 KV block8，板端 2048 上下文）→ v3.8（上下文专项升级）
   → v3.9 → v3.10 = v3.9 底座 + q2 KV-QAT → v3.11 = 算术边界修复 + Q4 权重/q2 KV 双 QAT
   → v3.12 = PC 算术修复 → v3.13 = 记忆版 → v3.14 = tool 版（算术/时间/随机数交给 C 引擎，
-  模型不再学算术；PC 当前发布）→ **v3.15-embed = 板端身份漂移修复（板端当前发布）**。
-- v3.15-embed 现状（**板端当前发布**，`v3_15/board_ctxid4/`）：在 v3.14/board6 上做
+  模型不再学算术；PC 当前发布）→ **v3.16-embed = 板端身份串名修复（板端当前发布）**。
+- v3.16-embed 现状（**板端当前发布**，`v3_16/board_p3/`）：在 v3.15/board_ctxid4 上做
+  **上下文双向问名**补丁（报名字后问身份/问名字、同类事实取新、记忆保护），lr 1.5e-6 × 1 epoch；
+  板端 12 题记忆 10/12（持平）、6 轮报名字→问身份序列从 3/6 修到 5/6、tool 13/13、
+  PC 32 题矩阵 27/27+4/4；新增多轮回归套件 `pc/pc_mt_suite.c`（残余见 CHANGELOG v3.16-embed 节）。
+- v3.15-embed（历史，`v3_15/board_ctxid4/`）：在 v3.14/board6 上做
   「闲聊前缀 + 身份问答」锚点（`scripts/v3_15_build_identity_ctx.py`）+ 召回 ×8、lr 3e-6 × 1 epoch、
   继续双 QAT；修掉多轮里「你叫什么名字 → 你叫小模型/小王子」的漂移
   （7 组前缀 6 组完全正确），矩阵 **27/27+4/4**、算术 21/21、记忆 10/12、工具 8/8 全部保持。
@@ -62,7 +66,7 @@
 
 本目录是 git 仓库，远端 `origin = https://github.com/jiaheng0815/feng-30m`（公开仓库）。发布约定：
 **主仓库只放代码与文档**——数据集（`data/`、`v2/data/`）与权重/二进制（`*.safetensors`、`*.gguf`、`*.npy`、`*.bin` 等）
-都由 `.gitignore` 排除，随 Release 发布（PC `feng-30m-v3.14-release.zip`、板端 `feng-30m-v3.15-embed-release.zip`）；
+都由 `.gitignore` 排除，随 Release 发布（PC `feng-30m-v3.14-release.zip`、板端 `feng-30m-v3.16-embed-release.zip`）；
 **v3.14 起不再发行 GGUF**（llama.cpp 没有 tool，见 CHANGELOG v3.14）。
 代码与权重均为 **Apache-2.0**（`LICENSE`）。
 开源数据集只含**教师蒸馏数据**（提示词与教师输出）；本地脚本生成的多轮/补丁/运算数据不入 Release 包。
