@@ -463,10 +463,11 @@ static int generate(const int *prompt, int np, char *out, int out_max, int keep)
     const float tps = (float)(pos) * 1e6f / (float)dt;
     if (keep) {
         /* 把模型自己吐出的 <|im_end|> 与换行补进 KV，下一轮才能无缝续接；
-           若本轮是被长度截断的，也补一个 im_end 收尾，语义上等于结束这一轮 */
-        logits = feng_forward(&s_model, &s_kv, &s_ws, s_tok.id_im_end, pos++);
+           若本轮是被长度截断的，也补一个 im_end 收尾，语义上等于结束这一轮。
+           这两个 token 的 logits 没人用，跳过 lm head（每个省 ~124 ms） */
+        logits = feng_forward_ex(&s_model, &s_kv, &s_ws, s_tok.id_im_end, pos++, 0);
         const int nl = newline_token();
-        if (nl > 0) logits = feng_forward(&s_model, &s_kv, &s_ws, nl, pos++);
+        if (nl > 0) logits = feng_forward_ex(&s_model, &s_kv, &s_ws, nl, pos++, 0);
         (void)logits;
     }
     s_kv.len = pos;

@@ -866,7 +866,7 @@ def check_facts() -> None:
         else:
             print("    板端 lm head 532/407 ms、每 prefill token 省 124 ms（与文档一致）")
     ab = [ROOT / "logs" / f"pc_kv_suite32_v3_15ci4_q2b8_{k}.txt"
-          for k in ("nolut", "lut", "lin", "inl", "pair", "nohd")]
+          for k in ("nolut", "lut", "lin", "inl", "pair", "nohd", "endtok")]
     texts = [p.read_text(encoding="utf-8", errors="replace") for p in ab if p.exists()]
     if len(texts) >= 2:
         if any(t != texts[0] for t in texts[1:]):
@@ -883,6 +883,7 @@ def check_facts() -> None:
             ("board_v3_15ci4_memory_after_pair.txt", "4 成功 / 0 失败", "2-token 展开后记忆 4/4"),
             ("board_v3_15ci4_tools_after_nohd.txt", "13 成功 / 0 失败", "跳过 lm head 后 tool 13/13"),
             ("board_v3_15ci4_memory_after_nohd.txt", "4 成功 / 0 失败", "跳过 lm head 后记忆 4/4"),
+            ("board_v3_15ci4_memory_after_endtok.txt", "4 成功 / 0 失败", "轮末 token 也跳过后的记忆 4/4"),
             ("pc_check_v3_15ci4_nohd.txt", "MATCH", "跳过 lm head 后 fp32 参考 logits MATCH")]:
         p = ROOT / "logs" / fname
         if p.exists():

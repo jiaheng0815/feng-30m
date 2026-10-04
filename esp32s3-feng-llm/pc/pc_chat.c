@@ -163,8 +163,9 @@ int main(int argc, char **argv)
             fflush(stdout);
             logits = feng_forward(&m, &kv, &ws, tk, pos++);
         }
-        logits = feng_forward(&m, &kv, &ws, tok.id_im_end, pos++);
-        if (nl_id > 0) logits = feng_forward(&m, &kv, &ws, nl_id, pos++);
+        /* 补进 KV 的 im_end / 换行不需要 logits，跳过 lm head */
+        logits = feng_forward_ex(&m, &kv, &ws, tok.id_im_end, pos++, 0);
+        if (nl_id > 0) logits = feng_forward_ex(&m, &kv, &ws, nl_id, pos++, 0);
         (void)logits;
         kv.len = pos;
         printf(" >>END (ctx %d/%d)\n", kv.len, ctx);

@@ -167,6 +167,11 @@ prefill 只在最后一个 token 算头，KV 与 hidden 状态完全不变。板
 **逐字节一致**（`logs/pc_kv_suite32_v3_15ci4_q2b8_nohd.txt`），fp32 参考 logits 仍
 MATCH（`logs/pc_check_v3_15ci4_nohd.txt`）。
 
+同一处还有两个死代码：每轮结束时补进 KV 的 `<|im_end|>` 与换行 token 也算了一次
+lm head（代码里紧跟着 `(void)logits;`）——一起跳过后再省 ~0.25 s/轮。
+同一组 4 轮提问合计：**13.0/12.5/11.7/12.1 s → 11.4/10.7/10.0/10.4 s**
+（`logs/board_v3_15ci4_memory_after_endtok.txt`，回答文本逐字相同）。
+
 ---
 
 ## v3.14（2026-10-04）—— tool 版：计算/时间/随机数交给引擎，GGUF 发行取消
