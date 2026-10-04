@@ -115,11 +115,30 @@ def calc_answer(user: str):
         return "这个算式我没看懂。"
     if not isinstance(v, (int, float)):
         return None
-    m = re.fullmatch(r"(\d+(?:\.\d+)?)([+\-*/])(\d+(?:\.\d+)?)", expr)
-    if m:
-        sym = {"+": "加", "-": "减", "*": "乘", "/": "除以"}[m.group(2)]
-        return f"{m.group(1)} {sym} {m.group(3)} 等于 {_fmt(float(v))}。"
+    parts = split_binary_like_c(expr)
+    if parts:
+        a, op, b = parts
+        sym = {"+": "加", "-": "减", "*": "乘", "/": "除以"}[op]
+        return f"{a} {sym} {b} 等于 {_fmt(float(v))}。"
     return f"结果是 {_fmt(float(v))}。"
+
+
+def split_binary_like_c(expr: str):
+    """复刻 C 侧 split_binary 的行为：找"最外层唯一运算符"的最简形式。
+    注意 C 的循环从下标 1 开始（首字符 '(' 不计入 depth），这里刻意保持一致。"""
+    depth = 0
+    for i in range(1, len(expr)):
+        ch = expr[i]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif depth == 0 and ch in "+-*/":
+            rest = expr[i + 1:]
+            if any(op in rest for op in "+-*/"):
+                return None
+            return expr[:i], ch, rest
+    return None
 
 
 def seq_answer(user: str):
