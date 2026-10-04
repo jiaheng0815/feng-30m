@@ -6,7 +6,6 @@
 
 串口脚本用 set_board_time() 把网络时间推给板子（板端放不下 WiFi 协议栈）。
 """
-import random
 import re
 import socket
 import struct
@@ -28,6 +27,31 @@ _TIME_KW = ("几点", "现在时间", "现在的时间", "当前时间", "时间
 _MEM = {}          # 通用键值槽："颜色"/"书"/"生日"…；空串键 = 无名偏好（"我最喜欢X"）
 _MEM_SPECIAL = {}  # 名字/城市/宠物（专用槽，问法固定）
 _MEM_FORGOT = set()  # 墓碑：明确说过"忘掉"的键（重新学习时解除）
+
+# C 引擎同款 xorshift64*（feng_tools.c 的 xs64/feng_rand_range）——
+# 保证"同一 seed 得到同一随机数"，而不是各用各的 RNG 算法。
+_MASK64 = (1 << 64) - 1
+
+
+def _xs64(state):
+    x = state & _MASK64
+    x ^= x >> 12
+    x ^= (x << 25) & _MASK64
+    x ^= x >> 27
+    x &= _MASK64
+    return x, (x * 2685821657736338717) & _MASK64
+
+
+def rand_range(seed, lo, hi):
+    """与 C 版 feng_rand_range 完全一致：第 1 个随机数丢弃，取第 2 个。"""
+    if seed == 0:
+        seed = 88172645463325252
+    state = seed & _MASK64
+    state, _ = _xs64(state)                    # 第一个随机数：按需求丢弃
+    state, r = _xs64(state)
+    if hi < lo:
+        lo, hi = hi, lo
+    return lo + r % (hi - lo + 1)
 _QUESTION_PREFIX = ("什么", "啥", "哪", "几", "谁", "多少", "吗", "呢", "怎么")
 
 
@@ -234,6 +258,15 @@ def ntp_epoch(timeout=1.5):
     return time.time(), "system"
 
 
+_EPOCH_BASE = datetime(1970, 1, 1, tzinfo=timezone.utc)
+_UTC8 = timezone(timedelta(hours=8))
+
+
+def _utc8(epoch):
+    """epoch 秒 -> UTC+8 datetime；用固定基准 + timedelta，避免 Windows 上负时间戳报错。"""
+    return (_EPOCH_BASE + timedelta(seconds=epoch)).astimezone(_UTC8)
+
+
 def time_answer(user, epoch=None, source=None):
     # 时钟推算："现在7点，再过3小时是几点？"（有"现在X点"用 X，否则用当前时间）
     m = re.search(r"(\d+)\s*(?:个)?小时\s*(前|后)?", user)
@@ -246,22 +279,29 @@ def time_answer(user, epoch=None, source=None):
         else:
             if epoch is None:
                 epoch, source = ntp_epoch()
-            base = datetime.fromtimestamp(epoch, tz=timezone(timedelta(hours=8))).hour
-        total = base + delta
-        day = total // 24
-        hour = total % 24
-        if day == 0:
-            return f"再过 {delta} 小时是 {hour} 点。"
-        if day == 1:
-            return f"再过 {delta} 小时是明天 {hour} 点。"
-        if day == -1:
-            return f"{-delta} 小时前是昨天 {hour} 点。"
-        return f"再过 {delta} 小时是 {day} 天后 {hour} 点。"
+            if epoch <= 0:                    # 与 C 版一致：没对时不回答时钟推算
+                base = None
+            else:
+                base = _utc8(epoch).hour
+        if base is not None:
+            total = base + delta
+            day = total // 24
+            hour = total % 24
+            if day == 0:
+                return f"再过 {delta} 小时是 {hour} 点。"
+            if day == 1:
+                return f"再过 {delta} 小时是明天 {hour} 点。"
+            if day == -1:
+                return f"{-delta} 小时前是昨天 {hour} 点。"
+            return f"再过 {delta} 小时是 {day} 天后 {hour} 点。"
+        # base 仍为 None（未对时）：与 C 版一致落到关键词分支，给出未对时提示
     if not any(k in user for k in _TIME_KW):
         return None
     if epoch is None:
         epoch, source = ntp_epoch()
-    t = datetime.fromtimestamp(epoch, tz=timezone(timedelta(hours=8)))
+    if epoch <= 0:                            # 与 C 版同口径的"还没对时"提示
+        return "我还没对上网络时间（宿主连接后会自动发 \\settime）。"
+    t = _utc8(epoch)
     week = "一二三四五六日"[t.weekday()]
     tag = "网络时间" if source == "ntp" else "系统时间（未取到网络时间）"
     if "时间戳" in user:                            # 原始 Unix 秒 + UTC+8 换算
@@ -269,7 +309,7 @@ def time_answer(user, epoch=None, source=None):
                 f"（周{week}，UTC+8，{tag}）。")
     off = _days_offset(user)
     if off is not None:
-        d = datetime.fromtimestamp(epoch + off * 86400, tz=timezone(timedelta(hours=8)))
+        d = _utc8(epoch + off * 86400)
         wd = "一二三四五六日"[d.weekday()]
         if off > 0:
             return f"{off} 天后是 {d.strftime('%Y年%m月%d日')}（周{wd}）。"
@@ -301,11 +341,10 @@ def random_answer(user):
     if hi < lo:
         lo, hi = hi, lo
     seed = int((time.perf_counter() - _START) * 1.54 * 1000)
-    rng = random.Random(seed)
-    rng.random()                                   # 第 1 个按需求丢弃
     if coin:
-        return f"抛硬币：{'正面' if rng.randint(0, 1) else '反面'}。"   # 第 2 个随机数
-    v = rng.randint(lo, hi)                        # 第 2 个随机数
+        v = rand_range(seed, 0, 1)                 # 第 2 个随机数（第 1 个已丢弃）
+        return f"抛硬币：{'正面' if v else '反面'}。"
+    v = rand_range(seed, lo, hi)                   # 第 2 个随机数
     if dice:
         return f"掷骰子：{v} 点。"
     return f"随机数（{lo}~{hi}）：{v}。"

@@ -50,6 +50,17 @@ HF 留出分数不受影响——序列 tool 在 HF 推理路径之外，只提�
 - 列表上限不一致（C = 3 条专用 + 最多 3 条通用槽）→ Python 同步为 3 条通用；
 - 修完 C/Python 记忆 **36/36 一致**；C 记忆单测 69 项仍全过，板端记忆 **12/12**、工具 **13/13**。
 
+**时间/随机数补齐交叉验证（同日）**：
+
+- **随机数算法统一**：Python 端原来用 Mersenne Twister，与 C 的 xorshift64* 并不同源——
+  已把 `runtime_tools.py` 换成与 `feng_tools.c` 完全相同的 xorshift64*（丢第一个取第二个），
+  同 seed/范围 **56/56 逐值一致**（新增 `pc/pc_rand_ask.c` + `tools/check_rand_parity.py`）；
+- **时间两个边界修复**：Python 对 `epoch<=0` 原本当成 1970 年（C 是"还没对时"），
+  且负时间戳在 Windows 上会直接抛异常（`datetime.fromtimestamp`）——已改为固定基准 + `timedelta`
+  并补上"未对时"提示与 C 同口径；固定 epoch 逐条对比 **52/52 一致**
+  （新增 `pc/pc_time_ask.c` + `tools/check_time_parity.py`）。
+- 至此**四个 tool（算式/记忆/时间/随机数）全部有 C/Python 自动交叉验证**并接入 CI。
+
 ## v3.21 实验（未采用）—— 第二批定向数据 + 长文回补：无版本能稳定超过 v3.19
 
 v3.19 剩余失败的诊断结论是**覆盖缺口**：太阳没训过"是什么"句式、水没有 0°C 事实、
