@@ -254,6 +254,10 @@ python scripts\esp32_enc_test.py COM20
 多轮回归套件（`pc_mt_suite`）→ 32 题矩阵 + 算术子集（`pc_kv_suite`）→ fp32 参考 logits
 （`pc_check`）；模型导出目录缺失时自动跳过套件。提交前建议至少跑一次。
 
+**CI（.github/workflows/ci.yml）**：干净 clone 上跑 Python 语法 + 四套 C 单测 + 四套 C/Python 交叉验证
+（算式 29 / 记忆 36 / 随机数 56 / 时间 52，共 173 条）+ 全引擎编译 + 文档自检；
+对应脚本 `tools/check_{tool,mem,rand,time}_parity.py`，本地可单独运行（需先按 build 脚本编出对应驱动）。
+
 ## 6. 硬性约束与踩过的坑（改代码前先看）
 
 1. **教师生成与训练严格串行**，绝不同时占卡；27B 教师用 `--no-cuda-graph`、`reasoning_effort:none`、并发 8。

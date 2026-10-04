@@ -2,7 +2,7 @@
 # 用法： .\build_pc_chat.ps1        （可选 $env:FENG_GCC 指定 gcc 路径）
 $ErrorActionPreference = "Stop"
 $gcc = $env:FENG_GCC
-if (-not $gcc) { $gcc = "gcc" }          # 例如 F:\msys2\ucrt64\bin\gcc.exe
+if (-not $gcc) { $gcc = "gcc" }          # 例如 <你的 MSYS2>\ucrt64\bin\gcc.exe
 
 Push-Location $PSScriptRoot
 try {

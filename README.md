@@ -107,6 +107,28 @@
 
 横向对比与全部实测见 [`COMPARISON.md`](COMPARISON.md)，逐版本演进（含失败记录）见 [`CHANGELOG.md`](CHANGELOG.md)。
 
+## 验证与 CI
+
+本地一键验收（文档自检 → PC 引擎构建 + 四套单测 → 32 题矩阵 + 算术子集 → fp32 参考 logits）：
+
+```powershell
+python tools\check_all.py
+```
+
+CI（GitHub Actions，每次 push/PR）跑 9 步，全部在**干净 clone**上执行——不依赖本机权重/日志：
+
+1. Python 语法检查（全部脚本）
+2. C 单测四套：算式 41 / 时间随机数 53 / 记忆 69 / 采样器 4
+3. C/Python 算式+序列 一致性 29 条（`tools/check_tool_parity.py`）
+4. C/Python 记忆 tool 一致性 36 回合（`tools/check_mem_parity.py`）
+5. C/Python 随机数一致性 56 组（`tools/check_rand_parity.py`）
+6. C/Python 时间 tool 一致性 52 条（`tools/check_time_parity.py`）
+7. 全引擎编译（pc_chat / pc_kv_suite / pc_mt_suite / pc_check + 9 个核心源）
+8. 文档自检（`tools/check_md.py` + `tools/check_docs.py`，本机产物路径允许缺并计数）
+
+> 文档里引用的权重/日志/编译产物只在本机存在，自检会把它们归为 `local-only` 并跳过；
+> 仓库跟踪文件缺失仍会报错。四套 C/Python 交叉验证合计 **173 条**逐条对比。
+
 ## 模型规格（v3.8）
 
 | 项目 | 值 |
