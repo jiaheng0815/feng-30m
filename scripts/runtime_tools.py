@@ -210,6 +210,28 @@ def ntp_epoch(timeout=1.5):
 
 
 def time_answer(user, epoch=None, source=None):
+    # 时钟推算："现在7点，再过3小时是几点？"（有"现在X点"用 X，否则用当前时间）
+    m = re.search(r"(\d+)\s*(?:个)?小时\s*(前|后)?", user)
+    if m:
+        delta = int(m.group(1)) * (-1 if m.group(2) == "前" else 1)
+        base = None
+        b = re.search(r"现在\s*(\d{1,2})\s*点", user)
+        if b and 0 <= int(b.group(1)) <= 23:
+            base = int(b.group(1))
+        else:
+            if epoch is None:
+                epoch, source = ntp_epoch()
+            base = datetime.fromtimestamp(epoch, tz=timezone(timedelta(hours=8))).hour
+        total = base + delta
+        day = total // 24
+        hour = total % 24
+        if day == 0:
+            return f"再过 {delta} 小时是 {hour} 点。"
+        if day == 1:
+            return f"再过 {delta} 小时是明天 {hour} 点。"
+        if day == -1:
+            return f"{-delta} 小时前是昨天 {hour} 点。"
+        return f"再过 {delta} 小时是 {day} 天后 {hour} 点。"
     if not any(k in user for k in _TIME_KW):
         return None
     if epoch is None:

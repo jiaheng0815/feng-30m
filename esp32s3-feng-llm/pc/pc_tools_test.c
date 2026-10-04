@@ -62,6 +62,18 @@ int main(void)
     feng_tools_set_time(fake_epoch);
     feng_tools_set_uptime(fake_uptime);
 
+    /* --- 时钟推算（v3.17 工具扩展）：固定起点不依赖板端时钟 --- */
+    g_epoch = 1791095400LL;                  /* 2026-10-04 14:30 UTC+8 */
+    check_true("现在7点+3小时", feng_time_answer("现在7点，再过3小时是几点？", buf, sizeof(buf)) == 1 &&
+               strcmp(buf, "再过 3 小时是 10 点。") == 0, buf);
+    check_true("22点+3小时跨天", feng_time_answer("现在22点，3小时后是几点？", buf, sizeof(buf)) == 1 &&
+               strcmp(buf, "再过 3 小时是明天 1 点。") == 0, buf);
+    check_true("1点-3小时跨天", feng_time_answer("现在1点，3小时前是几点？", buf, sizeof(buf)) == 1 &&
+               strcmp(buf, "3 小时前是昨天 22 点。") == 0, buf);
+    check_true("不带头部的推算用当前时间",   /* 14:30 -> 17 点 */
+               feng_time_answer("3小时后是几点？", buf, sizeof(buf)) == 1 &&
+               strcmp(buf, "再过 3 小时是 17 点。") == 0, buf);
+
     /* --- UTC+8 日历（期望值来自 Python 3 datetime + timezone(+8)） --- */
     feng_time_format_utc8(0LL, buf, sizeof(buf));
     check_str("epoch 0", buf, "1970年01月01日 08:00:00（周四，UTC+8）");

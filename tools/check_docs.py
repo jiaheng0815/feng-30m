@@ -1054,7 +1054,7 @@ def check_facts() -> None:
             fail.append("logs/board_v3_16p3_tail_trailer.txt: 未记录新的 >>END 尾行")
         else:
             print("    板端回复尾行 ctx/tok/s（与文档一致）")
-    # --- v3.17 引擎记忆 tool ---
+# --- v3.17 引擎记忆 tool ---
     for fname, needle, label in [
             ("board_v3_16p3_memory12_engmem.txt", "板端记忆 12/12", "v3.17 记忆 12/12"),
             ("board_v3_17_memory12.txt", "板端记忆 12/12", "v3.17 通用槽后记忆 12/12"),
@@ -1073,6 +1073,24 @@ def check_facts() -> None:
             fail.append(f"logs/{fname}: 未记录「{needle}」")
         elif p.exists():
             print(f"    {label}（与文档一致）")
+    # --- v3.17：留出题泛化评测 + 时钟推算 tool ---
+    for path, key, want, label in [
+            ("eval/heldout_v3_14pc2.json", "ok", 16, "留出题 PC v3.14 16/30"),
+            ("eval/heldout_v3_16p3.json", "ok", 17, "留出题板端 v3.16-embed 17/30")]:
+        p = ROOT / path
+        if p.exists():
+            d = json.loads(p.read_text(encoding="utf-8"))
+            if d.get(key) != want or d.get("n") != 30:
+                fail.append(f"{path}: 应为 {want}/30，实际 {d.get(key)}/{d.get('n')}")
+            else:
+                print(f"    {label}（与文档一致）")
+    clock = ROOT / "logs" / "board_v3_17_clock_math.txt"
+    if clock.exists():
+        t = clock.read_text(encoding="utf-8", errors="replace")
+        if "5 成功 / 0 失败" not in t or "明天 1 点" not in t:
+            fail.append("logs/board_v3_17_clock_math.txt: 未记录时钟推算 5/5")
+        else:
+            print("    时间推算 tool 板端 5/5（与文档一致）")
 
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"

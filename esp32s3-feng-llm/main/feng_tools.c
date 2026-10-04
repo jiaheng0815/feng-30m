@@ -85,8 +85,54 @@ static int contains(const char *s, const char *kw)
     return strstr(s, kw) != NULL;
 }
 
+/* 时钟推算："现在7点，再过3小时是几点？" / "3小时后是几点？"（有"现在X点"用 X，否则用板端当前时间）
+ * 返回 1 = 已作答。 */
+static int time_math_answer(const char *user, char *answer, int answer_sz)
+{
+    const char *rel = strstr(user, "小时");
+    if (!rel) return 0;
+    const char *tail = rel + 6;                    /* "小时" 的 UTF-8 长度 */
+    if (strncmp(tail, "候", 3) == 0) return 0;     /* "小时候" 不是时钟推算 */
+    const int sign = (strncmp(tail, "前", 3) == 0) ? -1 : 1;
+    /* "小时"前面紧邻的数字串（支持"再多3小时"/"3 小时"） */
+    const char *p = rel;
+    while (p > user && (p[-1] == ' ' || p[-1] == '\t')) p--;
+    const char *num_end = p;
+    while (p > user && p[-1] >= '0' && p[-1] <= '9') p--;
+    if (p == num_end) return 0;                   /* 没有数字，不当作时钟推算 */
+    const int delta = atoi(p) * sign;
+    /* 起点小时：优先"现在X点"，否则用板端当前时间 */
+    int base_hour = -1;
+    const char *cur = strstr(user, "现在");
+    if (cur) {
+        const char *q = cur + 6;                   /* "现在" UTF-8 长度 */
+        int guard = 0;
+        while (*q && (q[0] < '0' || q[0] > '9') && guard++ < 12) q++;
+        if (q[0] >= '0' && q[0] <= '9') {
+            const int h = atoi(q);
+            if (h >= 0 && h <= 23) base_hour = h;
+        }
+    }
+    if (base_hour < 0) {
+        const long long now = s_epoch_fn ? s_epoch_fn() : 0;
+        if (now <= 0) return 0;
+        base_hour = (int)(((now + 8 * 3600) / 3600) % 24);
+    }
+    int total = base_hour + delta;
+    int day = 0;
+    while (total < 0) { total += 24; day--; }
+    while (total >= 24) { total -= 24; day++; }
+    if (day == 0) snprintf(answer, answer_sz, "再过 %d 小时是 %d 点。", delta, total);
+    else if (day == 1) snprintf(answer, answer_sz, "再过 %d 小时是明天 %d 点。", delta, total);
+    else if (day == -1) snprintf(answer, answer_sz, "%d 小时前是昨天 %d 点。", -delta, total);
+    else if (day == 2) snprintf(answer, answer_sz, "再过 %d 小时是后天 %d 点。", delta, total);
+    else snprintf(answer, answer_sz, "再过 %d 小时是 %d 天后 %d 点。", delta, day, total);
+    return 1;
+}
+
 int feng_time_answer(const char *user, char *answer, int answer_sz)
 {
+    if (time_math_answer(user, answer, answer_sz)) return 1;
     static const char *kw[] = {"几点", "现在时间", "现在的时间", "当前时间", "时间是多少",
                                "什么时间", "今天几号", "今天几月", "几号", "几月", "日期",
                                "星期几", "时间戳", "明天", "后天", "昨天", "前天"};
