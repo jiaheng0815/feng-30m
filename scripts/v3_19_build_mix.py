@@ -30,11 +30,15 @@ def main() -> int:
     ap.add_argument("--out", default=str(ROOT / "v3_19" / "patch.jsonl"))
     ap.add_argument("--only-targeted", action="store_true",
                     help="只要定向提示（id>=5000000）的教师回答；公开提示的输出留到第二轮")
+    ap.add_argument("--only-public", action="store_true",
+                    help="只要公开提示（id<5000000）的教师回答；用于在 v3.19 之上做增广实验")
     args = ap.parse_args()
     src = Path(args.input)
     rows = [json.loads(l) for l in src.read_text(encoding="utf-8").splitlines() if l.strip()]
     if args.only_targeted:
         rows = [r for r in rows if r.get("id", 0) >= 5_000_000]
+    if args.only_public:
+        rows = [r for r in rows if r.get("id", 0) < 5_000_000]
     out_rows, seen = [], set()
     dropped = {"empty": 0, "short": 0, "long": 0, "dup": 0}
     lens = []

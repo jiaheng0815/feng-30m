@@ -36,7 +36,8 @@ CASES = [
     ("实用", "给三个水果的名字", ("苹果", "香蕉", "橘", "梨", "葡萄", "西瓜")),
     ("实用", "用“春风”造个句子", ("春风",)),
     ("实用", "把“今天天气很好”翻译成英文", ("weather", "nice", "good", "sunny")),
-    ("实用", "给我推荐一种运动", ("跑步", "游泳", "散步", "骑车", "球", "瑜伽")),
+    ("实用", "给我推荐一种运动", ("跑步", "游泳", "散步", "骑车", "瑜伽",
+                                 "篮球", "足球", "羽毛球", "乒乓球", "爬山")),
     ("实用", "给我起个小名", None),
     ("情绪", "我今天被表扬了", ("恭喜", "厉害", "棒", "高兴", "开心")),
     ("情绪", "我和朋友吵架了", ("难过", "沟通", "和好", "聊聊", "理解", "道歉")),
@@ -96,9 +97,9 @@ def rescore(paths):
             verdict, why = judge(r["q"], by_q.get(r["q"]), r["a"])
             r["verdict"], r["why"] = verdict, why
             new_ok += verdict == "OK"
-        data["ok"], data["judge"] = new_ok, "strict-v3"
+        data["ok"], data["judge"] = new_ok, "strict-v4"
         Path(p).write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"{p}: {old_ok}/{data['n']} -> {new_ok}/{data['n']}（已写回，judge=strict-v3）")
+        print(f"{p}: {old_ok}/{data['n']} -> {new_ok}/{data['n']}（已写回，judge=strict-v4）")
 
 
 def main() -> None:
