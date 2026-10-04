@@ -23,7 +23,7 @@
 
 | 产物 | 路径 | 说明 |
 |---|---|---|
-| HF 权重（fp32，**最终版 v3.6**） | `v3_6/release/` | 29.43M 参数，11 层 / hidden 448 / 7 头 MHA / FFN 896 / 16k 词表，tied embedding；身份 12/12（自称 jiaheng 独立开发训练），日常对话探针 42/42，针检索每长度 32 题 = 27/29/24/22，多类别 99/128，拒答 97%（单类别 62/64） |
+| HF 权重（fp32，历史 v3.6 时期） | `v3_6/release/` | 29.43M 参数，11 层 / hidden 448 / 7 头 MHA / FFN 896 / 16k 词表，tied embedding；身份 12/12（自称 jiaheng 独立开发训练），日常对话探针 42/42，针检索每长度 32 题 = 27/29/24/22，多类别 99/128，拒答 97%（单类别 62/64） |
 | 上一版（对照 v3.5） | `v3_5/release/` | 修多轮坍缩（不同回答比例 1.00），但 42 题日常探针只有 29/42；针检索单类别 106/128 |
 | v3 各阶段权重 | `v3/ctx4096/final/`、`v3/ctx8192/final/`、`v3/ctx16384/final/`、`v3/ctx32768/final/`、`v3/polish_ctx8192/final/`、`v3/retr_sft/ctx32768/final/` | 渐进长文 → 8k 对话微调 → 检索 SFT；`v3/summary.json`、`v3/retr_sft/summary.json` 有每阶段 loss/耗时 |
 | 上一版（对照 v2） | `v2/stage_planA3b/final/` | 范围评测 8/10，长文检索 0/3 |

@@ -1126,6 +1126,25 @@ def check_facts() -> None:
                             f"{'/'.join(got)}，实测为 {'/'.join(want_loss)}")
     print(f"    检索 SFT loss 序列 {'/'.join(want_loss)}（与 summary.json 一致）")
 
+    # --- 当前版本口径：防止 README/USAGE/DELIVERY 回潮到旧版本或旧指引 ---
+    current_docs = [ROOT / "README.md", ROOT / "USAGE.md", ROOT / "DELIVERY.md",
+                    ROOT / "COMPARISON.md", ROOT / "AGENTS.md"]
+    stale_claims = ("板端用 v3.14-embed", "板端用 v3.13-embed", "PC 用 v3.13",
+                    "最终版 v3.6", "--model weights\\hf")
+    for doc in current_docs:
+        t = doc.read_text(encoding="utf-8")
+        rel = doc.relative_to(ROOT)
+        for bad in stale_claims:
+            if bad in t:
+                fail.append(f"{rel}: 出现旧版本口径「{bad}」（当前 PC=v3.14、板端=v3.16-embed）")
+    for doc in (ROOT / "README.md", ROOT / "USAGE.md", ROOT / "DELIVERY.md"):
+        if "v3.16-embed" not in doc.read_text(encoding="utf-8"):
+            fail.append(f"{doc.relative_to(ROOT)}: 未标注当前板端版 v3.16-embed")
+    for doc in (ROOT / "README.md", ROOT / "USAGE.md"):
+        if "c-engine-model-v3.16-embed" not in doc.read_text(encoding="utf-8"):
+            fail.append(f"{doc.relative_to(ROOT)}: 未指向 C 引擎预导出模型包")
+    print("    当前版本口径（PC=v3.14 / 板端=v3.16-embed + 预导出引擎模型，与文档一致）")
+
 
 def main() -> int:
     check_structure()

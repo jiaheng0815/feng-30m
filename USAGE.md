@@ -218,14 +218,16 @@ python scripts\eval_longctx_many.py --models "<输出>" --n 32 --neg-n 16       
 
 嵌入式（v3.16-embed，q2 block8 / 2048 ctx）：32 题矩阵 **27/27 + 4/4**、
 算术子集 **21/21**（数学题由 tool 回答）、板端 tool 专项（时间/随机数/算式）**13/13**
-（`logs/board_v3_16p3_tools.txt`）+ 记忆 12 题 **10/12**（`logs/board_v3_16p3_memory12.txt`）、
+（`logs/board_v3_16p3_tools.txt`）+ 记忆 12 题 **12/12**（v3.17 引擎记忆 tool，
+`logs/board_v3_16p3_memory12_engmem.txt`）、
 多轮回归套件（PC，固件同款采样）8/10（`logs/pc_mtsuite_model_export_v3_16p3.txt`），
 约 **1.80 tok/s**；
 **固件保留跨轮上下文**：实测"我叫小明 → 你叫小明"、"喜欢蓝色 → 你最喜欢蓝色"、
 "养了一只猫 → 你养了一只猫"全对；`\reset` 可清空，上下文满（2048）自动开新对话
 （`logs/pc_kv_suite32_v3_13b_q2b8.txt`、`logs/board_v3_13b_memory.txt`）。
   v3.16-embed 修掉了「报名字后的身份串名」（「我叫小明，请记住」→「你叫什么名字？」稳定答
-  "我叫 feng…"，6 轮序列从 3/6 修到 5/6，`logs/board_v3_16p3_nameleak.txt`）；
+  "我叫 feng…"，6 轮序列从 3/6 修到 5/6，`logs/board_v3_16p3_nameleak.txt`；v3.17 引擎记忆 tool
+  上线后 8 轮身份序列 **8/8**，`logs/board_v3_16p3_identity_ctx_engmem.txt`）；
   另含全部推理优化：长上下文单次 forward 比 v3.15-embed 快 37%（见 CHANGELOG v3.15-embed 附录）。
 
 ## 8. 已知限制
@@ -235,20 +237,22 @@ python scripts\eval_longctx_many.py --models "<输出>" --n 32 --neg-n 16       
 - 板端 int8 KV 是 1024 上下文；q2 KV（v3.16-embed）是 2048。32k 仅在 PC 上可用。
 - 板端生成约 1.9 tok/s（约 520 ms/token，不含 prefill），长回答需要等待十几秒。
 - PC 版 v3.14：单类别 108（历史最高是 v3.4/v3.13 的 113）；32k"文中没有"拒答 61/64 是已知平台。
-- 板端权重（v3.16-embed）：q2 矩阵满分、记忆 10/12；8 轮里「先问'我叫什么名字'再问'你叫什么名字'」
-  仍会串名（30M 容量残余，`logs/board_v3_16p3_identity_ctx.txt` 第 7 轮），且 **PC 32k 弱于 PC 版**；
+- 板端权重（v3.16-embed）+ v3.17 引擎：q2 矩阵满分、12 题记忆 **12/12**、8 轮身份序列 **8/8**
+  （身份/常见事实由引擎记忆 tool 确定性回答），但 **PC 32k 弱于 PC 版**；
   量化鲁棒性对权重回插极敏感（掺 20% v3.9 就掉到 25/27）——要改板端行为请走
   「补数据 + 权重/KV 双 QAT」链路，不要手动 soup（CHANGELOG v3.10/v3.11）。
 - 32k 负样本拒答（61/64）经多轮专项训练未突破，已记录为平台（CHANGELOG v3.9 附录）。
-- **记忆是上下文内记忆**：靠 2048 token KV，`\reset`/重启/写满即忘；复杂多事实仍会错（21/24）。
+- **记忆 = 引擎 tool + 上下文**：可枚举事实由 v3.17 引擎记住并确定性回答（12 题 **12/12**），
+  `\mem` 查看、`\reset`/重启/写满即忘；分布外的自由说法仍会错（30M 容量边界）。
 - **板端长文很慢**：单行输入上限 4095 字节，但 prefill 是 O(n²)——≈800 tokens 要 ~291 s
   （注意力本身就要 n² 次 KV 访问）。交互输入建议 ≤ ~150 tokens；长文/批量任务用 PC 版。
 - **tool 只在带 tool 的运行时里**：板端固件 / PC C 引擎 `pc_chat` / Python 脚本；
   GGUF、llama.cpp 没有 tool，v3.14 起不再发行 GGUF。
 - **板端时间靠宿主对时**：串口脚本会自动发 `\settime <unix秒>`（宿主走 NTP）；
   不跑脚本时要手动发一次，否则时间 tool 会回答"还没对上网络时间"。
-- **PC 用 v3.14、板端用 v3.14-embed**；两个权重不能互换：PC 版没做 KV-QAT（板端 q2 只有 21/27），
-  板端版的 PC 长上下文不如 PC 版。
+- **PC 用 v3.14（HF）；板端与 C 引擎用 v3.16-embed**：两个权重不能互换——PC 的 HF 权重没做
+  量化感知训练，导进 C 引擎（Q4+q2）会退化（同套 32 题矩阵实测 **22/27 vs 27/27**，
+  `logs/pc_kv_suite32_v3_14pc2_q2b8.txt`）；板端 QAT 权重在 PC 32k 长上下文上不如 PC 版。
 
 ## 9. 许可证
 

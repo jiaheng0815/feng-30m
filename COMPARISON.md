@@ -124,7 +124,7 @@ i7-12700KF），评测脚本与协议在各代之间保持一致，便于横向�
 > llama-bench 为 2026-10-03 复测（`-r 3`）：pp32 波动可达 ±30% 以上，不作为指标；
 > tg64 的逐次波动约 ±8%。v3.6 同结构复测 tg64 = 1,175 ±93（CPU）/ 2,638 ±137（GPU）。
 
-产物：`v3/retr_sft/ctx32768/final`（v3 最终版）、`v3/ctx{4096,8192,16384,32768}/final`（各阶段）、
+产物：`v3/retr_sft/ctx32768/final`（v3 链条终点，历史）、`v3/ctx{4096,8192,16384,32768}/final`（各阶段）、
 `v3/gguf/feng-30m-Q4_K_M.gguf`；（历史）v3.6 时期权重在 `v3_6/release/`；**当前发布是 PC `v3.14/pc2` + 板端 `v3_16/board_p3`**。仓库里这些目录只保留配置与训练记录，**权重与 GGUF 从
 [Releases](https://github.com/jiaheng0815/feng-30m/releases) 下载**。评测记录：`eval/longctx_v2.json`、
 `eval/longctx_v3.json`、`eval/v3_scope.json`、`eval/v3_6_scope.json`。
