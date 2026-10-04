@@ -86,26 +86,32 @@ def judge(prompt, expect, text):
                 if re.search(k[3:], t, re.I):
                     return "OK", ""
                 continue
-            if k in t:
+            if k.lower() in low:                 # 关键词大小写不敏感（"Thank you." 命中 "thank"）
                 return "OK", ""
         return "可疑", "没命中期望"
     return ("OK", "") if len(t) >= 4 else ("可疑", "太短")
 
 
-def rescore(paths):
-    """用当前判定器给历史 JSON 重新打分（答案已存盘，不需要 GPU）。"""
-    by_q = {q: exp for _, q, exp in CASES}
+def rescore(paths, cases=None):
+    """用当前判定器给历史 JSON 重新打分（答案已存盘，不需要 GPU）。
+    cases 必须与 JSON 是同一套题；表里没有的问题会跳过并计数，避免误用 None=自由题口径。"""
+    by_q = {q: exp for _, q, exp in (cases or CASES)}
     for p in paths:
         data = json.loads(Path(p).read_text(encoding="utf-8"))
         old_ok = sum(1 for r in data["rows"] if r["verdict"] == "OK")
-        new_ok = 0
+        new_ok, unknown = 0, 0
         for r in data["rows"]:
+            if r["q"] not in by_q:
+                unknown += 1
+                new_ok += r["verdict"] == "OK"     # 未知题保持原判，不重写
+                continue
             verdict, why = judge(r["q"], by_q.get(r["q"]), r["a"])
             r["verdict"], r["why"] = verdict, why
             new_ok += verdict == "OK"
-        data["ok"], data["judge"] = new_ok, "strict-v5"
+        data["ok"], data["judge"] = new_ok, "strict-v6"
         Path(p).write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"{p}: {old_ok}/{data['n']} -> {new_ok}/{data['n']}（已写回，judge=strict-v5）")
+        note = f"，{unknown} 条未知题保持原判" if unknown else ""
+        print(f"{p}: {old_ok}/{data['n']} -> {new_ok}/{data['n']}（已写回，judge=strict-v6{note}）")
 
 
 def main() -> None:

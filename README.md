@@ -103,6 +103,9 @@
 > 留出 30 题 **19/30**（v3.16-embed = 17/30）、记忆 24/24；板端实机工具 13/13、记忆 12/12、7 轮身份 7/7
 > （`logs/board_tools_time_rand.txt`、`logs/board_v3_19b6_memory12.txt`、`logs/esp32_multi.txt`）。
 > **留出题是开发集**（被多轮实验使用过），只作版本间对比，不代表无偏泛化分数。
+> **独立留出 30 题（第二套，未参与任何训练/调参）**：v3.14/pc2、v3.19/pc4、v3.19/board6 均为 **18/30**
+> （`eval/heldout2_*.json`、`scripts/chat_probe_heldout2.py`）——说明第一套的 19/30 没有明显虚高，
+> 但 v3.19 相对 v3.14 的开发集增益（16→19）**在独立集上未复现**（18 vs 18），如实标注。
 > 历史最好：单类别 113（v3.4 / v3.13 并列）；单类别 113 与多类别 108 的细节见 CHANGELOG v3.12/v3.13。
 
 横向对比与全部实测见 [`COMPARISON.md`](COMPARISON.md)，逐版本演进（含失败记录）见 [`CHANGELOG.md`](CHANGELOG.md)。
