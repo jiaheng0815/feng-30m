@@ -6,6 +6,56 @@ i7-12700KF、ESP32-S3-WROOM-2-N32R16V），命令见每节末尾。
 
 ---
 
+## v3.15-embed（2026-10-04）—— 板端身份漂移修复（上下文身份锚点）
+
+### 问题
+
+64 轮长对话压测 + 定向复现发现：板端 QAT 模型在多轮上下文里**把自己和用户搞混**——
+「你好 / 讲个笑话 / 推荐一本好书」之后问「你叫什么名字」，会答
+「你叫小模型」「你叫小王子」「你叫明尼放」；只有「你好」单个前缀时正常。
+PC 版（v3.14/pc2）用同样的前缀答「我叫 feng…」，说明是板端权重的问题。
+
+根因：板端模型的记忆训练量远大于 PC（v3.13→v3.14→board6 累计 5,600+4,000 条记忆对话），
+「用户说'我叫X'→助手答'你叫X'」的模式被过度泛化到「你叫什么名字」这种反问上；
+q2 KV 的量化噪声让它在多轮上下文里更容易滑向这个模式。
+
+### 做法
+
+`scripts/v3_15_build_identity_ctx.py`：生成 **1~3 轮闲聊前缀 + 身份问答**（900 条，
+10 种问法，含"你是通义千问吗/你是 ChatGPT 吗"的否认）+ 400 条记忆保护样本；
+再叠高权重硬锚点（8 项 ×60）与**取件码召回 ×8**，从 `v3_14/board6` 出发，
+继续 Q4 权重 + q2 KV 双 QAT，**lr 3e-6 × 1 epoch** → `v3_15/board_ctxid4`。
+
+> 中间试了三版（`board_ctxid`/`ctxid2`/`ctxid3`）：身份修好了，
+> 但都把 27 题矩阵或长文召回抖掉 1 分（26/27+4/4、27/27+3/4、27/27+3/4），
+> 最后用"更低 lr + 召回 ×8"才做到两头都保住。三版记录在对应日志里。
+
+### 结果（同协议实测）
+
+| 指标 | 修复前（board6） | **v3.15-embed** |
+|---|---|---|
+| 闲聊前缀后「你叫什么名字」 | 你叫小模型 / 你叫小王子 / 你叫明尼放 | **我叫 feng，由个人开发者 jiaheng 开发训练**（7 组前缀 6 组完全正确） |
+| C 引擎 q2 32 题矩阵 | 27/27 + 4/4 | **27/27 + 4/4**（`logs/pc_kv_suite32_v3_15ci4_q2b8.txt`） |
+| C 引擎算术子集 21 题 | 21/21 | **21/21**（`logs/pc_arith_suite_v3_15ci4_q2b8.txt`） |
+| 板端记忆 12 题 | 10/12 | **10/12**（`logs/board_v3_15ci4_memory12.txt`） |
+| 板端默认 / 情绪 / 工具 | 10/10 ｜ 10/10 ｜ 8/8 | **10/10 ｜ 10/10 ｜ 8/8** |
+
+唯一残留：前缀「推荐一本好书」后仍答「你叫 feng，由个人开发者 jiaheng 开发训练」
+（名字对、代词仍混），已记录为 30M 模型的残余抖动。
+
+### 复现
+
+```powershell
+python scripts\v3_15_build_identity_ctx.py --out v3_15\identity_ctx.jsonl
+# 叠加硬锚点（8 项 ×60）；召回 ×8 后
+python scripts\v3_7_kv_qat.py --init v3_14\board6 --data v3_15\identity_ctx4.jsonl `
+  --identity-n 80 --out v3_15\board_ctxid4 --epochs 1 --lr 3e-6 --batch 24 --max-len 2048 --wqat
+python esp32s3-feng-llm\tools\export_model.py --model v3_15\board_ctxid4 --out esp32s3-feng-llm\model_export_v3_15ci4
+python scripts\esp32_multi.py --port COM20 --no-reset --questions "推荐一本好书|你叫什么名字"
+```
+
+---
+
 ## v3.14（2026-10-04）—— tool 版：计算/时间/随机数交给引擎，GGUF 发行取消
 
 ### 为什么

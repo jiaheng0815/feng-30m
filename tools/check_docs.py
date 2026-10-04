@@ -783,6 +783,36 @@ def check_facts() -> None:
             fail.append("logs/board_v3_14b6_tools3.txt: 未记录工具扩展 8/8")
         else:
             print("    v3.14 工具扩展（百分号/平方/根号/日期）8/8（与文档一致）")
+    # --- v3.15-embed：板端身份漂移修复 ---
+    ci4 = ROOT / "logs" / "pc_kv_suite32_v3_15ci4_q2b8.txt"
+    if ci4.exists():
+        t = ci4.read_text(encoding="utf-8", errors="replace")
+        if "短任务 27/27" not in t or "长文召回 4/4" not in t:
+            fail.append("logs/pc_kv_suite32_v3_15ci4_q2b8.txt: 不是 27/27 + 4/4")
+        else:
+            print("    v3.15-embed C 引擎 q2 27/27 + 4/4（与文档一致）")
+    ci4a = ROOT / "logs" / "pc_arith_suite_v3_15ci4_q2b8.txt"
+    if ci4a.exists() and "短任务 21/21" not in ci4a.read_text(encoding="utf-8", errors="replace"):
+        fail.append("logs/pc_arith_suite_v3_15ci4_q2b8.txt: 不是 21/21")
+    for fname, needle in [("board_v3_15ci4_memory12.txt", "板端记忆 10/12"),
+                          ("board_v3_15ci4_tools.txt", "8 成功 / 0 失败"),
+                          ("board_v3_15ci4_multi.txt", "10 成功 / 0 失败"),
+                          ("board_v3_15ci4_chat10.txt", "10 成功 / 0 失败")]:
+        p = ROOT / "logs" / fname
+        if not p.exists():
+            warn.append(f"logs/{fname} 不存在，跳过 v3.15-embed 校验")
+            continue
+        if needle not in p.read_text(encoding="utf-8", errors="replace"):
+            fail.append(f"logs/{fname}: 未记录「{needle}」")
+        else:
+            print(f"    v3.15-embed {fname}（{needle}，与文档一致）")
+    idctx = ROOT / "logs" / "board_v3_15ci4_identity_ctx.txt"
+    if idctx.exists():
+        t = idctx.read_text(encoding="utf-8", errors="replace")
+        if "我叫 feng，由个人开发者 jiaheng 开发训练" not in t:
+            fail.append("logs/board_v3_15ci4_identity_ctx.txt: 未记录上下文身份修复结果")
+        else:
+            print("    v3.15-embed 上下文身份修复（与文档一致）")
 
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"
