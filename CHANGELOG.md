@@ -145,6 +145,28 @@ python -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x10000 buil
 > 实测 K/V 各约 20 周期/KV 值，瓶颈在 FPU 吞吐与访存延迟；再往上要动 PIE SIMD
 > （`ee.vmulas.s8.accx`）或算法面（滑窗/稀疏），两者都要重新做精度验证。
 
+**prefill 跳过无用的 lm head（位精确，每个中间 token 省 124 ms）**：
+
+prefill 的每个 token 原本都要过 tied lm head（16384×448 = 7.34M 权重），
+但中间 token 的 logits 马上被丢掉。新增 `feng_forward_ex(..., want_logits)`，
+prefill 只在最后一个 token 算头，KV 与 hidden 状态完全不变。板端 pos=0 实测：
+带 head 532 ms / 不带 407 ms → **每个中间 prefill token 省 124 ms**
+（`logs/board_bench_attn_nohd.txt`）。
+
+端到端（同一组 4 轮连续提问，回答文本逐字相同）：
+
+| 轮 | 跳过头之前 | 之后 |
+|---|---|---|
+| 1 | 13.0 s | **11.4 s** |
+| 2 | 12.5 s | **11.0 s** |
+| 3 | 11.7 s | **10.2 s** |
+| 4 | 12.1 s | **10.6 s** |
+
+日志：`logs/board_v3_15ci4_memory_after_pair.txt`（前）、
+`logs/board_v3_15ci4_memory_after_nohd.txt`（后）；PC 32 题矩阵输出仍与上一版
+**逐字节一致**（`logs/pc_kv_suite32_v3_15ci4_q2b8_nohd.txt`），fp32 参考 logits 仍
+MATCH（`logs/pc_check_v3_15ci4_nohd.txt`）。
+
 ---
 
 ## v3.14（2026-10-04）—— tool 版：计算/时间/随机数交给引擎，GGUF 发行取消

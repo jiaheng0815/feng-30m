@@ -223,7 +223,7 @@ python scripts\esp32_enc_test.py COM20
    （`idf.py -DFENG_USE_Q2_KV=ON build`，`MAX_CTX=2048`，9.62MB，v3.13-embed 的 32 题 PC 矩阵 27/27 + 召回 4/4
    + 算术子集 21/21；固件默认多轮上下文、`\reset` 清空，见 `CHANGELOG.md` 的 v3.13 节）；板上 32k 上下文在 KV 内存上不可能，
    长文只能走滑窗/attention sink/线性注意力。
-8. **速度现状**：权重 GEMV 已到标量极限（4.1 周期/权重，短上下文 ~1.8 tok/s ≈ 540 ms/token）；**长上下文成本在注意力本体**（q2/2048 单次 forward 2.47 s = K 0.84 + softmax 0.17 + V 0.91 + 权重等 0.55，见 CHANGELOG 的 v3.15-embed 附录）。q2 注意力已做四处位精确优化（字节 LUT + `[layer][head][t]` 顺序布局 + 内联 fp16→fp32 + 2-token 展开，2048 ctx -30%）；改注意力/布局后必须用 PC 32 题矩阵与上一版**逐字节对比**。继续压标量的空间已很小（K/V 各 ~20 周期/KV 值），下一步杠杆是 PIE（`ee.vmulas.s8.accx` 128 位 int8 SIMD）；不要再做没有实测收益的内层微调（历史上有几例证明会变慢）。
+8. **速度现状**：权重 GEMV 已到标量极限（4.1 周期/权重，短上下文 ~1.8 tok/s ≈ 540 ms/token）；**长上下文成本在注意力本体**（q2/2048 单次 forward 2.47 s = K 0.84 + softmax 0.17 + V 0.91 + 权重等 0.55，见 CHANGELOG 的 v3.15-embed 附录）。q2 注意力已做四处位精确优化（字节 LUT + `[layer][head][t]` 顺序布局 + 内联 fp16→fp32 + 2-token 展开，2048 ctx -30%）；prefill 用 `feng_forward_ex(..., want_logits=0)` 跳过中间 token 的 lm head（每个省 124 ms，最后一个 token 必须算）。改注意力/布局后必须用 PC 32 题矩阵与上一版**逐字节对比**。继续压标量的空间已很小（K/V 各 ~20 周期/KV 值），下一步杠杆是 PIE（`ee.vmulas.s8.accx` 128 位 int8 SIMD）；不要再做没有实测收益的内层微调（历史上有几例证明会变慢）。
 9. **量化格式耦合**：Q4 block-64（4.25 bpw）；改 `QK` 必须同步改 C 侧 `QK`，且 `tools/export_model.py` 会生成 `ref_ids.json` / `ref_logits.bin` 供一致性校验。
 
 ## 7. 改动的验收清单

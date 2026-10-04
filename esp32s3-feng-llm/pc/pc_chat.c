@@ -149,7 +149,9 @@ int main(int argc, char **argv)
 
         int pos = kv.len;
         float *logits = NULL;
-        for (int i = 0; i < np; i++) logits = feng_forward(&m, &kv, &ws, ids[i], pos++);
+        for (int i = 0; i < np; i++) {         /* prefill：中间 token 跳过 lm head */
+            logits = feng_forward_ex(&m, &kv, &ws, ids[i], pos++, i + 1 == np);
+        }
         printf("<< ");
         fflush(stdout);
         for (int step = 0; step < max_new; step++) {

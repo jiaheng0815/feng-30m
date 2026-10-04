@@ -858,8 +858,15 @@ def check_facts() -> None:
             fail.append("logs/board_bench_attn_pair.txt: 与文档的 K835/V912 不一致")
         else:
             print("    板端注意力 2-token 展开 777/1506/2470 ms、K835/V912（与文档一致）")
+    nohdb = ROOT / "logs" / "board_bench_attn_nohd.txt"
+    if nohdb.exists():
+        t = nohdb.read_text(encoding="utf-8", errors="replace")
+        if "with 532 ms | without 407 ms" not in t or "省 124 ms" not in t:
+            fail.append("logs/board_bench_attn_nohd.txt: 与文档的 lm head 532/407/124 ms 不一致")
+        else:
+            print("    板端 lm head 532/407 ms、每 prefill token 省 124 ms（与文档一致）")
     ab = [ROOT / "logs" / f"pc_kv_suite32_v3_15ci4_q2b8_{k}.txt"
-          for k in ("nolut", "lut", "lin", "inl", "pair")]
+          for k in ("nolut", "lut", "lin", "inl", "pair", "nohd")]
     texts = [p.read_text(encoding="utf-8", errors="replace") for p in ab if p.exists()]
     if len(texts) >= 2:
         if any(t != texts[0] for t in texts[1:]):
@@ -873,7 +880,10 @@ def check_facts() -> None:
             ("board_v3_15ci4_tools_after_attnopt.txt", "13 成功 / 0 失败", "板端 tool 13/13"),
             ("board_v3_15ci4_memory_after_attnopt.txt", "5 成功 / 0 失败", "板端多轮记忆 5/5"),
             ("board_v3_15ci4_tools_after_pair.txt", "13 成功 / 0 失败", "2-token 展开后 tool 13/13"),
-            ("board_v3_15ci4_memory_after_pair.txt", "4 成功 / 0 失败", "2-token 展开后记忆 4/4")]:
+            ("board_v3_15ci4_memory_after_pair.txt", "4 成功 / 0 失败", "2-token 展开后记忆 4/4"),
+            ("board_v3_15ci4_tools_after_nohd.txt", "13 成功 / 0 失败", "跳过 lm head 后 tool 13/13"),
+            ("board_v3_15ci4_memory_after_nohd.txt", "4 成功 / 0 失败", "跳过 lm head 后记忆 4/4"),
+            ("pc_check_v3_15ci4_nohd.txt", "MATCH", "跳过 lm head 后 fp32 参考 logits MATCH")]:
         p = ROOT / "logs" / fname
         if p.exists():
             if needle not in p.read_text(encoding="utf-8", errors="replace"):

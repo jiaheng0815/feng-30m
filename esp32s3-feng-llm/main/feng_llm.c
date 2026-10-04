@@ -176,6 +176,12 @@ size_t feng_ws_bytes(const feng_model_t *m, int ctx)
 
 float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int token, int pos)
 {
+    return feng_forward_ex(m, kv, ws, token, pos, 1);
+}
+
+float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int token, int pos,
+                       int want_logits)
+{
     const int h = m->hdr.hidden, nh = m->hdr.n_heads, hd = m->hdr.head_dim;
     const int f = m->hdr.ffn;
     float *x = ws->x, *xn = ws->xn, *q = ws->q, *k = ws->k, *v = ws->v;
@@ -578,9 +584,11 @@ float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int to
         feng_gemv_par(L->down, FENG_DT_Q4, ffn, proj, h, f);
         for (int i = 0; i < h; i++) x[i] += proj[i];
     }
-    rmsnorm(xn, x, m->out_norm, h, m->hdr.rms_eps);
-    /* tied lm head: logits = xn @ tok_embd^T (fp16 weights) */
-    feng_gemv_par(m->tok_embd, m->tok_embd_dtype, xn, ws->logits, m->hdr.vocab, h);
+    if (want_logits) {
+        rmsnorm(xn, x, m->out_norm, h, m->hdr.rms_eps);
+        /* tied lm head: logits = xn @ tok_embd^T (fp16 weights) */
+        feng_gemv_par(m->tok_embd, m->tok_embd_dtype, xn, ws->logits, m->hdr.vocab, h);
+    }
     kv->len = pos + 1;
     return ws->logits;
 }

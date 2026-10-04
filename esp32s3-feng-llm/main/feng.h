@@ -131,6 +131,11 @@ size_t feng_ws_bytes(const feng_model_t *m, int ctx);
 
 /* run one token through the model, returns logits pointer (vocab floats) */
 float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int token, int pos);
+/* want_logits=0：跳过 out_norm + tied lm head（7.34M 权重、板端 ~125 ms/次）。
+ * 只用于 prefill 的中间 token——KV 与 hidden 状态和 want_logits=1 完全相同，
+ * 只是不算那份马上会被丢掉的 logits。 */
+float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int token, int pos,
+                       int want_logits);
 
 /* greedy-sample helpers */
 int feng_argmax(const float *logits, int n);

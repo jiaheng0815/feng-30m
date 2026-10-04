@@ -253,7 +253,9 @@ int main(int argc, char **argv)
         if (olen == 0) {
             kv.len = 0;
             float *logits = NULL;
-            for (int i = 0; i < n; i++) logits = feng_forward(&m, &kv, &ws, ids[i], i);
+            for (int i = 0; i < n; i++) {      /* prefill：中间 token 跳过 lm head */
+                logits = feng_forward_ex(&m, &kv, &ws, ids[i], i, i + 1 == n);
+            }
             for (int step = 0; step < max_new; step++) {
                 const int tk = feng_argmax(logits, v);
                 if (tk == tok.id_im_end || tk == tok.id_eot) break;

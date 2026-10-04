@@ -100,7 +100,9 @@ int main(int argc, char **argv)
 
     float *logits = NULL;
     const double t0 = now_s();
-    for (int i = 0; i < np; i++) logits = feng_forward(&m, &kv, &ws, ids[i], i);
+    for (int i = 0; i < np; i++) {             /* prefill：中间 token 跳过 lm head */
+        logits = feng_forward_ex(&m, &kv, &ws, ids[i], i, i + 1 == np);
+    }
     const double t_pre = now_s() - t0;
 
     int hist[64], nh = 0, pos = np;

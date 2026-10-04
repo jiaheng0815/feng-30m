@@ -29,6 +29,9 @@ PSRAM 余 5006 KB；工具（时间/随机数/算式）13/13、默认 10/10、�
 长上下文另有专项：q2/2048 单次 forward **2470 ms**（K 835 / softmax 169 / V 912 / 权重等 554 ms），
 比优化前 3534 ms 快 **30%** 且逐字节一致（`../CHANGELOG.md` 的 v3.15-embed 附录、
 `../logs/board_bench_attn_pair.txt`、`../logs/board_bench_attn_prof.txt`）；
+prefill 还会跳过中间 token 的 lm head（每个省 124 ms），同一组 4 轮连续提问从
+13.0/12.5/11.7/12.1 s 降到 **11.4/11.0/10.2/10.6 s**，回答逐字相同
+（`../logs/board_v3_15ci4_memory_after_nohd.txt`）；
 历史版本：v3.6 在 int8 KV @1024 ctx 下 1.85–1.86 tok/s（`../logs/board_v3_6_speed.txt`），GEMV 双核加速 1.93x；
 板端回复实测：`你是谁？` → `我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。我可以陪你聊天、帮你写作、翻译和写简单代码。`，
 `你是Qwen吗？` → `不是。我是 feng，由个人开发者 jiaheng 独立开发训练的 AI。`

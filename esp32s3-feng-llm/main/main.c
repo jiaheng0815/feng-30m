@@ -129,6 +129,22 @@ static void bench_forward_ctx(void)
                  g_prof_cycles[2] / 240000.0);
 #endif
     }
+    /* lm head（out_norm + tied head，7.34M 权重）的单次成本：pos=0 带/不带 logits 各一次 */
+    int64_t h_with = 0, h_without = 0;
+    s_kv.len = 0;
+    {
+        const int64_t t0 = esp_timer_get_time();
+        feng_forward(&s_model, &s_kv, &s_ws, 100, 0);
+        h_with = esp_timer_get_time() - t0;
+    }
+    s_kv.len = 0;
+    {
+        const int64_t t0 = esp_timer_get_time();
+        feng_forward_ex(&s_model, &s_kv, &s_ws, 100, 0, 0);
+        h_without = esp_timer_get_time() - t0;
+    }
+    ESP_LOGI(TAG, "lm head @pos0: with %.0f ms | without %.0f ms (prefill 每个中间 token 省 %.0f ms)",
+             h_with / 1000.0, h_without / 1000.0, (h_with - h_without) / 1000.0);
     s_kv.len = 0;
 }
 #endif
@@ -408,8 +424,8 @@ static int generate(const int *prompt, int np, char *out, int out_max, int keep)
     const int64_t t0 = esp_timer_get_time();
     float *logits = NULL;
     ESP_LOGI(TAG, "prefill %d tokens ...", np);
-    for (int i = 0; i < np; i++) {                      /* prefill */
-        logits = feng_forward(&s_model, &s_kv, &s_ws, prompt[i], pos++);
+    for (int i = 0; i < np; i++) {                      /* prefill（中间 token 不算 lm head） */
+        logits = feng_forward_ex(&s_model, &s_kv, &s_ws, prompt[i], pos++, i + 1 == np);
     }
     ESP_LOGI(TAG, "prefill done");
     const int64_t t_prefill = esp_timer_get_time();
