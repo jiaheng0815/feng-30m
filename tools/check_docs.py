@@ -849,8 +849,17 @@ def check_facts() -> None:
             fail.append("logs/board_bench_attn_prof.txt: 与文档的 K/softmax/V 分解不一致")
         else:
             print("    板端注意力分解 K894 / softmax169 / V1109（与文档一致）")
+    pairb = ROOT / "logs" / "board_bench_attn_pair.txt"
+    if pairb.exists():
+        t = pairb.read_text(encoding="utf-8", errors="replace")
+        if "ctx= 256: cold 777 ms/forward" not in t or "ctx=2048: cold 2470 ms/forward" not in t:
+            fail.append("logs/board_bench_attn_pair.txt: 与文档的 777/2470 ms 不一致")
+        elif "K=835 ms" not in t or "V=912 ms" not in t:
+            fail.append("logs/board_bench_attn_pair.txt: 与文档的 K835/V912 不一致")
+        else:
+            print("    板端注意力 2-token 展开 777/1506/2470 ms、K835/V912（与文档一致）")
     ab = [ROOT / "logs" / f"pc_kv_suite32_v3_15ci4_q2b8_{k}.txt"
-          for k in ("nolut", "lut", "lin", "inl")]
+          for k in ("nolut", "lut", "lin", "inl", "pair")]
     texts = [p.read_text(encoding="utf-8", errors="replace") for p in ab if p.exists()]
     if len(texts) >= 2:
         if any(t != texts[0] for t in texts[1:]):
@@ -862,7 +871,9 @@ def check_facts() -> None:
     for fname, needle, label in [
             ("pc_check_v3_15ci4_inl.txt", "MATCH", "fp32 参考 logits MATCH"),
             ("board_v3_15ci4_tools_after_attnopt.txt", "13 成功 / 0 失败", "板端 tool 13/13"),
-            ("board_v3_15ci4_memory_after_attnopt.txt", "5 成功 / 0 失败", "板端多轮记忆 5/5")]:
+            ("board_v3_15ci4_memory_after_attnopt.txt", "5 成功 / 0 失败", "板端多轮记忆 5/5"),
+            ("board_v3_15ci4_tools_after_pair.txt", "13 成功 / 0 失败", "2-token 展开后 tool 13/13"),
+            ("board_v3_15ci4_memory_after_pair.txt", "4 成功 / 0 失败", "2-token 展开后记忆 4/4")]:
         p = ROOT / "logs" / fname
         if p.exists():
             if needle not in p.read_text(encoding="utf-8", errors="replace"):

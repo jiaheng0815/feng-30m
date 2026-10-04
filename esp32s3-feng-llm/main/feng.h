@@ -25,6 +25,11 @@
 #ifndef FENG_Q2_LUT
 #define FENG_Q2_LUT 1
 #endif
+/* q2 注意力一次算 2 个上下文 token（两条独立累加链填 FPU 流水线、共享加载）。
+ * 数值逐位不变；-DFENG_Q2_PAIR=0 可切回单 token 版做 A/B。 */
+#ifndef FENG_Q2_PAIR
+#define FENG_Q2_PAIR 1
+#endif
 /* 性能剖析（调试用，默认关）：累计 q2 注意力的 K / softmax / V 三段的 CPU 周期，
  * 由 FENG_BENCH_CTX 基准打印，用来定位长上下文的时间去向。 */
 #ifndef FENG_ATTN_PROF

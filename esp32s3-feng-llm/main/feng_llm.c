@@ -340,6 +340,59 @@ float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int to
 #if FENG_ATTN_PROF
             const unsigned pc0 = (unsigned)esp_cpu_get_cycle_count();
 #endif
+#if FENG_Q2_LUT && FENG_Q2_PAIR
+            /* 一次算 2 个上下文 token：两条独立的累加链填满 FPU 流水线，
+             * qh 只加载一次、相邻 token 的 16B 数据同处一条 32B 缓存行。
+             * 每个 score 的累加顺序与单 token 版完全一致 -> 逐位一致。 */
+            {
+                int t = 0;
+                for (; t + 1 <= pos; t += 2) {
+                    const uint8_t *kh0 = krow + (size_t)t * qb;
+                    const uint8_t *kh1 = kh0 + qb;
+                    const uint16_t *ks0 = ksrow + (size_t)t * nb;
+                    const uint16_t *ks1 = ks0 + nb;
+                    float s0 = 0.f, s1 = 0.f;
+                    for (int blk = 0; blk < nb; blk++) {
+                        const float sk0 = f16_to_f32_local(ks0[blk]);
+                        const float sk1 = f16_to_f32_local(ks1[blk]);
+                        const uint8_t *b0 = kh0 + blk * bw, *b1 = kh1 + blk * bw;
+                        int d = blk * FENG_KV_Q2_BLOCK;
+                        for (int j = 0; j < bw; j++) {
+                            const float *l0 = g_q2_lut[b0[j]];
+                            const float *l1 = g_q2_lut[b1[j]];
+                            for (int k4 = 0; k4 < 4; k4++) {
+                                const float qd = qh[d++];
+                                s0 += qd * l0[k4] * sk0;
+                                s1 += qd * l1[k4] * sk1;
+                            }
+                        }
+                    }
+                    s0 *= scale;
+                    s1 *= scale;
+                    scores[t] = s0;
+                    scores[t + 1] = s1;
+                    if (s0 > maxs) maxs = s0;
+                    if (s1 > maxs) maxs = s1;
+                }
+                if (t <= pos) {                      /* 奇数长度：尾部单 token */
+                    const uint8_t *kh = krow + (size_t)t * qb;
+                    const uint16_t *ks = ksrow + (size_t)t * nb;
+                    float s = 0.f;
+                    for (int blk = 0; blk < nb; blk++) {
+                        const float sk = f16_to_f32_local(ks[blk]);
+                        const uint8_t *bb = kh + blk * bw;
+                        int d = blk * FENG_KV_Q2_BLOCK;
+                        for (int j = 0; j < bw; j++) {
+                            const float *lu = g_q2_lut[bb[j]];
+                            for (int k4 = 0; k4 < 4; k4++) s += qh[d++] * lu[k4] * sk;
+                        }
+                    }
+                    s *= scale;
+                    scores[t] = s;
+                    if (s > maxs) maxs = s;
+                }
+            }
+#else
             for (int t = 0; t <= pos; t++) {
                 const uint8_t *kh = krow + (size_t)t * qb;
                 const uint16_t *ks = ksrow + (size_t)t * nb;
@@ -373,6 +426,7 @@ float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int to
                 scores[t] = s;
                 if (s > maxs) maxs = s;
             }
+#endif
 #if FENG_ATTN_PROF
             {
                 const unsigned pc1 = (unsigned)esp_cpu_get_cycle_count();
@@ -426,6 +480,49 @@ float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int to
                 const uint8_t *vrow = (const uint8_t *)kv->v_cache
                                       + ((size_t)l * nh + hh) * kv->ctx * qb;
                 const uint16_t *vsrow = kv->v_scale + ((size_t)l * nh + hh) * kv->ctx * nb;
+#if FENG_Q2_LUT && FENG_Q2_PAIR
+                {
+                    int t = 0;
+                    for (; t + 1 <= pos; t += 2) {
+                        const uint8_t *vb0 = vrow + (size_t)t * qb;
+                        const uint8_t *vb1 = vb0 + qb;
+                        const uint16_t *vs0 = vsrow + (size_t)t * nb;
+                        const uint16_t *vs1 = vs0 + nb;
+                        const float st0 = scores[t], st1 = scores[t + 1];
+                        for (int blk = 0; blk < nb; blk++) {
+                            const float sv0 = f16_to_f32_local(vs0[blk]);
+                            const float sv1 = f16_to_f32_local(vs1[blk]);
+                            const uint8_t *b0 = vb0 + blk * bw, *b1 = vb1 + blk * bw;
+                            int d = blk * FENG_KV_Q2_BLOCK;
+                            for (int j = 0; j < bw; j++) {
+                                const float *l0 = g_q2_lut[b0[j]];
+                                const float *l1 = g_q2_lut[b1[j]];
+                                for (int k4 = 0; k4 < 4; k4++) {
+                                    vacc[d] += (st0 * l0[k4]) * sv0;
+                                    vacc[d] += (st1 * l1[k4]) * sv1;
+                                    d++;
+                                }
+                            }
+                        }
+                    }
+                    if (t <= pos) {                  /* 奇数长度：尾部单 token */
+                        const uint8_t *vb = vrow + (size_t)t * qb;
+                        const uint16_t *vs = vsrow + (size_t)t * nb;
+                        const float st = scores[t];
+                        for (int blk = 0; blk < nb; blk++) {
+                            const float sv = f16_to_f32_local(vs[blk]);
+                            const uint8_t *bb = vb + blk * bw;
+                            int d = blk * FENG_KV_Q2_BLOCK;
+                            for (int j = 0; j < bw; j++) {
+                                const float *lu = g_q2_lut[bb[j]];
+                                for (int k4 = 0; k4 < 4; k4++) {
+                                    vacc[d++] += (st * lu[k4]) * sv;
+                                }
+                            }
+                        }
+                    }
+                }
+#else
                 for (int t = 0; t <= pos; t++) {
                     const uint8_t *vb = vrow + (size_t)t * qb;
                     const uint16_t *vs = vsrow + (size_t)t * nb;
@@ -455,6 +552,7 @@ float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int to
                     }
 #endif
                 }
+#endif
                 for (int d = 0; d < hd; d++) attn[hh * hd + d] = vacc[d] * inv;
 #if FENG_ATTN_PROF
                 g_prof_cycles[2] += (unsigned long long)((unsigned)esp_cpu_get_cycle_count() - pv0);
