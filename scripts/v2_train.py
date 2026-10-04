@@ -47,7 +47,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--stage", required=True, choices=["pretrain", "sft", "32k"])
     ap.add_argument("--out", required=True)
-    ap.add_argument("--model", default=None, help="init from an existing HF dir (sft/32k stages)")
+    ap.add_argument("--model", default=None,
+                    help="init from an existing HF dir（续训预训练 / sft / 32k 都支持）")
     ap.add_argument("--batch", type=int, default=4)
     ap.add_argument("--accum", type=int, default=4)
     ap.add_argument("--lr", type=float, default=3e-3)
@@ -77,6 +78,9 @@ def main():
         steps_per_epoch = max(1, n_all // (args.batch * args.accum))
         total = args.steps or int(steps_per_epoch * args.epochs)
         model = build_model(tok, args.seq).to("cuda")
+        if args.model:                                  # 续训：从现有权重出发（低 lr）
+            from transformers import Qwen3ForCausalLM
+            model = Qwen3ForCausalLM.from_pretrained(args.model, dtype=torch.float32).to("cuda")
         log(f"[pretrain] seqs {n_all} x {L} | {args.batch}x{args.accum} | "
             f"{steps_per_epoch} steps/epoch | total {total} | "
             f"params {sum(p.numel() for p in model.parameters())/1e6:.2f}M")
