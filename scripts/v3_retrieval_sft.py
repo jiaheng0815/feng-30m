@@ -40,6 +40,8 @@ def main():
                     help="每个长度跑几个 epoch（补丁轮需要重复多遍才能压住旧行为）")
     ap.add_argument("--lengths", default="",
                     help="只跑这些长度（逗号分隔，如 4096,8192）；默认全部")
+    ap.add_argument("--train-last", type=int, default=0,
+                    help="只训练最后 N 层 + norm（0=全参）；末层微调对其它长度的扰动更小")
     ap.add_argument("--seed", type=int, default=20261003)
     args = ap.parse_args()
     from transformers import AutoTokenizer, Qwen3ForCausalLM
@@ -63,6 +65,23 @@ def main():
         model = Qwen3ForCausalLM.from_pretrained(init_dir, dtype=torch.float32)
         model.config.max_position_embeddings = L
         model = model.to("cuda").train()
+        if args.train_last > 0:
+            for p in model.parameters():
+                p.requires_grad = False
+            n_layers = len(model.model.layers)
+            for layer in model.model.layers[max(0, n_layers - args.train_last):]:
+                for p in layer.parameters():
+                    p.requires_grad = True
+            for name in ("norm",):
+                mod = getattr(model.model, name, None)
+                if mod is not None:
+                    for p in mod.parameters():
+                        p.requires_grad = True
+            if L == SPECS[0][0]:
+                trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+                total = sum(p.numel() for p in model.parameters())
+                log(f"[train-last] 只训练最后 {args.train_last} 层 + norm："
+                    f"{trainable/1e6:.2f}M / {total/1e6:.2f}M 参数")
         opt = torch.optim.AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), eps=1e-8,
                                 weight_decay=0.05, fused=True)
         rng = np.random.default_rng(args.seed + L)

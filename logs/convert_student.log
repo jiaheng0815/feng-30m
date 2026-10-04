@@ -148,6 +148,6 @@ INFO:gguf.vocab:Setting special token type pad to 3
 INFO:gguf.vocab:Setting chat_template to {%- for message in messages %}{{- '<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n' }}{%- endfor %}{%- if add_generation_prompt %}{{- '<|im_start|>assistant\n' }}{%- endif %}
 
 INFO:gguf.gguf_writer:Writing the following files:
-INFO:gguf.gguf_writer:v3_8\gguf\feng-30m-f16.gguf: n_tensors = 123, total_size = 58.9M
-Writing:   0%|          | 0.00/58.9M [00:00<?, ?byte/s]Writing:  44%|¨€¨€¨€¨€¨…     | 25.9M/58.9M [00:00<00:00, 259Mbyte/s]Writing:  89%|¨€¨€¨€¨€¨€¨€¨€¨€¨ | 52.5M/58.9M [00:00<00:00, 234Mbyte/s]Writing: 100%|¨€¨€¨€¨€¨€¨€¨€¨€¨€¨€| 58.9M/58.9M [00:00<00:00, 232Mbyte/s]
-INFO:hf-to-gguf:Model successfully exported to v3_8\gguf\feng-30m-f16.gguf
+INFO:gguf.gguf_writer:v3_9\gguf\feng-30m-f16.gguf: n_tensors = 123, total_size = 58.9M
+Writing:   0%|          | 0.00/58.9M [00:00<?, ?byte/s]Writing:  72%|¨€¨€¨€¨€¨€¨€¨€¨‡  | 42.4M/58.9M [00:00<00:00, 422Mbyte/s]Writing: 100%|¨€¨€¨€¨€¨€¨€¨€¨€¨€¨€| 58.9M/58.9M [00:00<00:00, 406Mbyte/s]
+INFO:hf-to-gguf:Model successfully exported to v3_9\gguf\feng-30m-f16.gguf

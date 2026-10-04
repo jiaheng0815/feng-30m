@@ -322,6 +322,40 @@ def check_facts() -> None:
         if b"tokenizer.chat_template" not in f.read_bytes():
             fail.append(f"v3_8/gguf/{f.name}: 未内嵌 chat template")
 
+    # --- v3.9：末层微调后的范围 10/10 + 上下文保持 ---
+    scope9 = ROOT / "eval" / "v3_9_scope_sf2.json"
+    if scope9.exists():
+        rows = json.loads(scope9.read_text(encoding="utf-8"))
+        got = sum(1 for r in rows if r.get("ok") is True)
+        if got != 10:
+            fail.append(f"eval/{scope9.name}: 范围评测 {got}/10 != 文档 10/10")
+        else:
+            print("    v3.9 范围评测 10/10（与文档一致）")
+    for fname, want_hits, want_neg in [("longctx32_v3_9sf2.json", "29/29/23/27", 61),
+                                       ("longctx32multi_v3_9sf2.json", "28/25/32/23", 62)]:
+        p = ROOT / "eval" / fname
+        if not p.exists():
+            warn.append(f"eval/{fname} 不存在，跳过 v3.9 检索校验")
+            continue
+        rows = json.loads(p.read_text(encoding="utf-8"))["rows"]
+        hits = "/".join(str(r["hit"]) for r in rows)
+        neg = sum(r.get("neg_hit", 0) for r in rows)
+        if hits != want_hits or neg != want_neg:
+            fail.append(f"eval/{fname}: {hits} 拒答 {neg}/64，文档声称 {want_hits} 与 {want_neg}/64")
+        else:
+            print(f"    v3.9 {fname.split('_')[0]} {hits}（拒答 {neg}/64，与文档一致）")
+    probe9 = ROOT / "eval" / "chat_probe_v3_9_sf2.json"
+    if probe9.exists():
+        rows = json.loads(probe9.read_text(encoding="utf-8"))["rows"]
+        miss = sum(1 for r in rows if r["topic_miss"] is True)
+        if len(rows) != 42 or miss != 0:
+            fail.append(f"eval/{probe9.name}: {len(rows)-miss}/42，文档声称 42/42")
+        else:
+            print("    v3.9 日常探针 42/42（与文档一致）")
+    for f in (ROOT / "v3_9" / "gguf").glob("*.gguf"):
+        if b"tokenizer.chat_template" not in f.read_bytes():
+            fail.append(f"v3_9/gguf/{f.name}: 未内嵌 chat template")
+
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"
     for doc in DOCS:

@@ -4,6 +4,7 @@
   fix  : 7 项 ×30（v3.8 soup 后第一轮修复：一年/2+3/再见英译/早上好英译/联网/炸弹/再见）
   fix2 : 6 项 ×10（更轻的第二轮：彩虹/再见/再见英译/早上好英译/一年/2+3）
   fix3 : 9 项 ×12（fix2 + 股票拒答三项，用于冲范围评测）
+  fix_stock : 股票拒答 4 项 ×40 + 其余定向 5 项 ×10（v3.9 末层微调用，802 条）
 
 用法：python scripts/v3_8_build_fix_data.py --out-dir v3_8
 """
@@ -33,6 +34,10 @@ STOCKS = [
     ("帮我推荐一只明天会涨的股票。", "我不知道哪只股票会涨，股市有风险，投资要谨慎。"),
     ("明天的股票会涨吗？", "我不知道，股市有风险，投资要谨慎。"),
 ]
+STOCKS4 = STOCKS + [("今天股票会涨吗？", "我不知道，股市有风险，投资要谨慎。")]
+MISC5 = [("彩虹有几种颜色？", "彩虹有 7 种颜色。"), ("再见", "再见，需要我时随时来。"),
+         ("「再见」用英语怎么说？", "Goodbye."), ("一年有几个月？", "一年有 12 个月。"),
+         ("2+3等于几？", "2 加 3 等于 5。")]
 
 
 def write(path: Path, base: list[dict], items: list[tuple[str, str]], repeat: int) -> None:
@@ -58,6 +63,17 @@ def main() -> None:
     write(out / "fix.jsonl", base, FIX, 30)
     write(out / "fix2.jsonl", base, FIX2, 10)
     write(out / "fix3.jsonl", base, FIX2 + STOCKS, 12)
+    # v3.9：股票拒答 4 项 ×40 + 其它定向 5 项 ×10（末层微调用，592+160+50 = 802 条）
+    rows = list(base) + [{"messages": [{"role": "user", "content": q},
+                                       {"role": "assistant", "content": a}]}
+                         for _ in range(40) for q, a in STOCKS4] \
+        + [{"messages": [{"role": "user", "content": q},
+                         {"role": "assistant", "content": a}]}
+           for _ in range(10) for q, a in MISC5]
+    with (out / "fix_stock.jsonl").open("w", encoding="utf-8") as f:
+        for r in rows:
+            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    print(f"fix_stock.jsonl: {len(rows)} 条（锚点 {len(base)} + 股票 4×40 + 定向 5×10）")
 
 
 if __name__ == "__main__":
