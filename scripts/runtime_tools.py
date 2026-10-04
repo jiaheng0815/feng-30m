@@ -27,11 +27,14 @@ _TIME_KW = ("几点", "现在时间", "现在的时间", "当前时间", "时间
 # ---- 引擎侧记忆（与 C 版 feng_memory.c 同口径）----
 _MEM = {}          # 通用键值槽："颜色"/"书"/"生日"…；空串键 = 无名偏好（"我最喜欢X"）
 _MEM_SPECIAL = {}  # 名字/城市/宠物（专用槽，问法固定）
+_MEM_FORGOT = set()  # 墓碑：明确说过"忘掉"的键（重新学习时解除）
 _QUESTION_PREFIX = ("什么", "啥", "哪", "几", "谁", "多少", "吗", "呢", "怎么")
 
 
 def mem_clear():
     _MEM.clear()
+    _MEM_SPECIAL.clear()
+    _MEM_FORGOT.clear()
 
 
 def _mem_take(text, kw):
@@ -58,30 +61,35 @@ def mem_learn(user):
         nonlocal changed
         if v is not None and _MEM.get(k) != v:
             _MEM[k] = v
+            _MEM_FORGOT.discard(k)
             changed = True
     # 专用槽
     for kw in ("我的名字是", "我叫"):
         v = _mem_take(user, kw)
         if v is not None:
             _MEM_SPECIAL["name"] = v
+            _MEM_FORGOT.discard("名字")
             changed = True
             break
     for kw in ("住在", "搬到"):
         v = _mem_take(user, kw)
         if v is not None:
             _MEM_SPECIAL["city"] = v
+            _MEM_FORGOT.discard("城市")
             changed = True
             break
     for kw in ("养了一只", "养的是", "养了"):
         v = _mem_take(user, kw)
         if v is not None:
             _MEM_SPECIAL["pet"] = v
+            _MEM_FORGOT.discard("宠物")
             changed = True
             break
     m_pet = re.search(r"我的宠物(?:是|叫)([^，。！？\s]+)", user)
     if m_pet and not m_pet.group(1).startswith(_QUESTION_PREFIX):
         if _MEM_SPECIAL.get("pet") != m_pet.group(1):
             _MEM_SPECIAL["pet"] = m_pet.group(1)
+            _MEM_FORGOT.discard("宠物")
             changed = True
     # 通用槽 1：最喜欢的<键>是/改成/换成<值>
     m = re.search(r"最喜欢的([^，。！？\s]{1,8})?(是|改成|换成)([^，。！？\s]+)", user)
@@ -99,6 +107,42 @@ def mem_learn(user):
 
 
 def mem_answer(user):
+    # 遗忘优先（忘掉我的生日 / 别记我的名字了 / 把记住的都忘掉）
+    mf = re.search(r"(忘掉|忘记|别记|删掉|不要记)(.*)", user)
+    if mf:
+        key = re.split(r"[。，、！？；,.!?;\n\r]", mf.group(2), maxsplit=1)[0].strip()
+        for pfx in ("我的", "你记的", "你记住的", "关于"):
+            if key.startswith(pfx):
+                key = key[len(pfx):]
+        for tail in ("请记住", "一下", "了", "的", "呀", "啊", "哦", "吧", "嘛", "呢"):
+            while key.endswith(tail):
+                key = key[: -len(tail)]
+        key = key.strip()
+        if not key or any(k in key for k in ("都", "全部", "一切", "所有")):
+            mem_clear()
+            return "好，我把记住的这些都忘掉了。"
+        _MEM_FORGOT.add(key if key not in ("城市", "住的地方") else "城市")
+        if key == "名字" and "name" in _MEM_SPECIAL:
+            del _MEM_SPECIAL["name"]; return "好，我忘掉了你的名字。"
+        if key in ("城市", "住的地方") and "city" in _MEM_SPECIAL:
+            del _MEM_SPECIAL["city"]; return "好，我忘掉了你的城市。"
+        if key == "宠物" and "pet" in _MEM_SPECIAL:
+            del _MEM_SPECIAL["pet"]; return "好，我忘掉了你的宠物。"
+        if key in _MEM:
+            del _MEM[key]; return f"好，我忘掉了你的{key}。"
+        return f"我没有记过你的{key}。"
+    # 列出已记事实
+    if any(k in user for k in ("记得什么", "记住什么", "记住哪些", "记住了什么",
+                               "记得哪些", "记忆里有什么", "都记住了", "记得的东西")):
+        items = []
+        if "name" in _MEM_SPECIAL: items.append(f"你叫{_MEM_SPECIAL['name']}")
+        if "city" in _MEM_SPECIAL: items.append(f"你住在{_MEM_SPECIAL['city']}")
+        if "pet" in _MEM_SPECIAL: items.append(f"你养了{_MEM_SPECIAL['pet']}")
+        for k, v in list(_MEM.items())[:6]:
+            items.append(f"你的{k}是{v}" if k else f"你最喜欢{v}")
+        if not items:
+            return "我还没有记住你的信息。"
+        return "我记得：" + "；".join(items) + "。"
     if any(k in user for k in ("你叫什么名字", "你叫什么", "你是谁")):
         if "谁训练" in user or "谁开发" in user:
             return "个人开发者 jiaheng 训练了我，我叫 feng。"
@@ -106,13 +150,16 @@ def mem_answer(user):
     if any(k in user for k in ("我叫什么", "我叫啥", "记得我叫什么",
                                "我的名字是什么", "我的名字是啥")):
         name = _MEM_SPECIAL.get("name")
-        return f"你叫{name}。" if name else None
+        if name: return f"你叫{name}。"
+        return "我不记得你的名字了。" if "名字" in _MEM_FORGOT else None
     if "住在哪" in user or "哪个城市" in user:
         city = _MEM_SPECIAL.get("city")
-        return f"你住在{city}。" if city else None
+        if city: return f"你住在{city}。"
+        return "我不记得你住在哪里了。" if "城市" in _MEM_FORGOT else None
     if "养了什么" in user or "养了啥" in user or "我的宠物" in user:
         pet = _MEM_SPECIAL.get("pet")
-        return f"你养了{pet}。" if pet else None
+        if pet: return f"你养了{pet}。"
+        return "我不记得你养了什么了。" if "宠物" in _MEM_FORGOT else None
     if "我" not in user:
         return None                       # "你最喜欢什么颜色"问的是助手
     key = None
@@ -129,13 +176,18 @@ def mem_answer(user):
             key = ""
     if key is not None:
         v = _MEM.get(key)
-        return f"你最喜欢{v}。" if v else None
+        if v: return f"你最喜欢{v}。"
+        if key in _MEM_FORGOT:
+            return f"我不记得你的{key}了。" if key else "我不记得你最喜欢什么了。"
+        return None
     # 我的<键>是什么 / 是多少 / 是几号 …
     m3 = re.search(r"我的([^，。！？\s]{1,8})(?:是什么|是啥|是多少|是几号|是哪个|是哪里|是几)", user)
     if m3 and m3.group(1) != "名字":
         v = _MEM.get(m3.group(1))
         if v:
             return f"你的{m3.group(1)}是{v}。"
+        if m3.group(1) in _MEM_FORGOT:
+            return f"我不记得你的{m3.group(1)}了。"
     return None
 
 

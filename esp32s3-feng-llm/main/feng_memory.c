@@ -26,6 +26,35 @@ static char g_pet[VAL_CAP];
 static int g_has_name, g_has_city, g_has_pet;
 static slot_t g_slots[MAX_SLOTS];
 static int g_slot_next;
+/* 墓碑：用户明确说"忘掉"的键。引擎忘掉后，该键的追问由引擎答"不记得了"，
+ * 避免模型凭对话上下文又把这条说出来（重新学习会解除墓碑）。 */
+static char g_forgot[MAX_SLOTS][KEY_CAP];
+static int g_nforgot;
+
+static void mark_forgot(const char *key)
+{
+    if (!key[0]) return;
+    for (int i = 0; i < g_nforgot; i++) if (strcmp(g_forgot[i], key) == 0) return;
+    if (g_nforgot < MAX_SLOTS) snprintf(g_forgot[g_nforgot++], KEY_CAP, "%s", key);
+}
+
+static int is_forgot(const char *key)
+{
+    for (int i = 0; i < g_nforgot; i++) {
+        if (strcmp(g_forgot[i], key) == 0) return 1;
+    }
+    return 0;
+}
+
+static void clear_forgot(const char *key)
+{
+    for (int i = 0; i < g_nforgot; i++) {
+        if (strcmp(g_forgot[i], key) != 0) continue;
+        for (int j = i; j + 1 < g_nforgot; j++) memcpy(g_forgot[j], g_forgot[j + 1], KEY_CAP);
+        g_nforgot--;
+        return;
+    }
+}
 
 void feng_mem_clear(void)
 {
@@ -33,6 +62,7 @@ void feng_mem_clear(void)
     g_has_name = g_has_city = g_has_pet = 0;
     memset(g_slots, 0, sizeof(g_slots));
     g_slot_next = 0;
+    g_nforgot = 0;
 }
 
 /* ---- 通用键值表 ---- */
@@ -64,6 +94,77 @@ static const char *slot_get(const char *key)
         if (g_slots[i].used && strcmp(g_slots[i].key, key) == 0) return g_slots[i].val;
     }
     return NULL;
+}
+
+/* 清掉某一项（名字/城市/宠物/任意键槽）；返回 1 = 确实清掉了 */
+static void trim_tail(char *out);      /* 定义在下方 */
+static void norm_forget_key(char *key)
+{
+    trim_tail(key);
+    static const char *pfx[] = {"我的", "你记的", "你记住的", "关于"};
+    for (unsigned i = 0; i < sizeof(pfx) / sizeof(pfx[0]); i++) {
+        const size_t lp = strlen(pfx[i]);
+        if (strncmp(key, pfx[i], lp) == 0) {
+            memmove(key, key + lp, strlen(key + lp) + 1);
+            break;
+        }
+    }
+    trim_tail(key);
+}
+
+static int mem_forget_key(const char *key)
+{
+    if (strcmp(key, "名字") == 0) {
+        const int had = g_has_name;
+        g_has_name = 0;
+        mark_forgot("名字");
+        return had;
+    }
+    if (strcmp(key, "城市") == 0 || strcmp(key, "住的地方") == 0) {
+        const int had = g_has_city;
+        g_has_city = 0;
+        mark_forgot("城市");
+        return had;
+    }
+    if (strcmp(key, "宠物") == 0) {
+        const int had = g_has_pet;
+        g_has_pet = 0;
+        mark_forgot("宠物");
+        return had;
+    }
+    for (int i = 0; i < MAX_SLOTS; i++) {
+        if (g_slots[i].used && strcmp(g_slots[i].key, key) == 0) {
+            g_slots[i].used = 0;
+            mark_forgot(key);
+            return 1;
+        }
+    }
+    mark_forgot(key);              /* 没记过也记墓碑：之后追问统一答"不记得" */
+    return 0;
+}
+
+/* 把已记事实列成一句话；返回 0 = 什么都没记 */
+static int mem_list(char *out, int cap)
+{
+    int n = 0, cnt = 0;
+    n += snprintf(out + n, (size_t)(cap - n), "我记得：");
+    if (g_has_name && n < cap - 24) { n += snprintf(out + n, (size_t)(cap - n), "你叫%s；", g_name); cnt++; }
+    if (g_has_city && n < cap - 24) { n += snprintf(out + n, (size_t)(cap - n), "你住在%s；", g_city); cnt++; }
+    if (g_has_pet && n < cap - 24) { n += snprintf(out + n, (size_t)(cap - n), "你养了%s；", g_pet); cnt++; }
+    for (int i = 0; i < MAX_SLOTS && cnt < 6; i++) {
+        if (!g_slots[i].used) continue;
+        if (n >= cap - 32) { n += snprintf(out + n, (size_t)(cap - n), "…"); break; }
+        if (g_slots[i].key[0])
+            n += snprintf(out + n, (size_t)(cap - n), "你的%s是%s；", g_slots[i].key, g_slots[i].val);
+        else
+            n += snprintf(out + n, (size_t)(cap - n), "你最喜欢%s；", g_slots[i].val);
+        cnt++;
+    }
+    if (cnt == 0) return 0;
+    n = (int)strlen(out);
+    if (n >= 3 && strcmp(out + n - 3, "；") == 0) { out[n - 3] = 0; n -= 3; }
+    strncat(out + n, "。", (size_t)(cap - n - 1));
+    return 1;
 }
 
 /* ---- 文本工具 ---- */
@@ -196,31 +297,32 @@ int feng_mem_learn(const char *user)
 
     /* 名字（专用）：我的名字是X / 我叫X / 我是X（短名字） */
     if (take_value(strstr(user, "我的名字是") ? strstr(user, "我的名字是") + strlen("我的名字是") : "", v, sizeof(v))) {
-        snprintf(g_name, VAL_CAP, "%s", v); g_has_name = 1; changed = 1;
+        snprintf(g_name, VAL_CAP, "%s", v); g_has_name = 1; clear_forgot("名字"); changed = 1;
     } else if (strstr(user, "我叫") && take_value(strstr(user, "我叫") + strlen("我叫"), v, sizeof(v))) {
-        snprintf(g_name, VAL_CAP, "%s", v); g_has_name = 1; changed = 1;
+        snprintf(g_name, VAL_CAP, "%s", v); g_has_name = 1; clear_forgot("名字"); changed = 1;
     }
     if (!g_has_name) {
         const char *p = strstr(user, "我是");
         if (p && take_value(p + strlen("我是"), v, sizeof(v)) &&
             strlen(v) <= 12 && !strstr(v, "学生") && !strstr(v, "模型") && !strstr(v, "AI")) {
             snprintf(g_name, VAL_CAP, "%s", v); g_has_name = 1; changed = 1;
+            clear_forgot("名字");
         }
     }
 
     /* 城市 / 宠物（专用，问法固定） */
     const char *p;
     if ((p = strstr(user, "住在")) && take_value(p + strlen("住在"), v, sizeof(v))) {
-        snprintf(g_city, VAL_CAP, "%s", v); g_has_city = 1; changed = 1;
+        snprintf(g_city, VAL_CAP, "%s", v); g_has_city = 1; clear_forgot("城市"); changed = 1;
     } else if ((p = strstr(user, "搬到")) && take_value(p + strlen("搬到"), v, sizeof(v))) {
-        snprintf(g_city, VAL_CAP, "%s", v); g_has_city = 1; changed = 1;
+        snprintf(g_city, VAL_CAP, "%s", v); g_has_city = 1; clear_forgot("城市"); changed = 1;
     }
     if ((p = strstr(user, "养了一只")) && take_value(p + strlen("养了一只"), v, sizeof(v))) {
-        snprintf(g_pet, VAL_CAP, "%s", v); g_has_pet = 1; changed = 1;
+        snprintf(g_pet, VAL_CAP, "%s", v); g_has_pet = 1; clear_forgot("宠物"); changed = 1;
     } else if ((p = strstr(user, "养的是")) && take_value(p + strlen("养的是"), v, sizeof(v))) {
-        snprintf(g_pet, VAL_CAP, "%s", v); g_has_pet = 1; changed = 1;
+        snprintf(g_pet, VAL_CAP, "%s", v); g_has_pet = 1; clear_forgot("宠物"); changed = 1;
     } else if ((p = strstr(user, "养了")) && take_value(p + strlen("养了"), v, sizeof(v))) {
-        snprintf(g_pet, VAL_CAP, "%s", v); g_has_pet = 1; changed = 1;
+        snprintf(g_pet, VAL_CAP, "%s", v); g_has_pet = 1; clear_forgot("宠物"); changed = 1;
     }
 
     /* 通用槽 1：最喜欢的<键>是/改成/换成<值>（键可为空 -> 无名偏好，如"我最喜欢蛋糕"） */
@@ -236,6 +338,7 @@ int feng_mem_learn(const char *user)
         if (m && m - k0 <= KEY_CAP * 2 && take_key_range(k0, m, key, sizeof(key)) &&
             take_value(m + mlen, v, sizeof(v))) {
             slot_put(key, v);
+            clear_forgot(key);
             changed = 1;
         }
     } else if ((p = strstr(user, "最喜欢吃")) != NULL || (p = strstr(user, "喜欢吃")) != NULL ||
@@ -246,6 +349,7 @@ int feng_mem_learn(const char *user)
         else v0 = p + strlen("最喜欢");
         if (take_value(v0, v, sizeof(v))) {            /* 无名偏好槽（键 = ""） */
             slot_put("", v);
+            clear_forgot("");
             changed = 1;
         }
     }
@@ -265,8 +369,10 @@ int feng_mem_learn(const char *user)
             if (strcmp(key, "宠物") == 0) {            /* 我的宠物是猫 -> 专用宠物槽 */
                 snprintf(g_pet, VAL_CAP, "%s", v);
                 g_has_pet = 1;
+                clear_forgot("宠物");
             } else {
                 slot_put(key, v);
+                clear_forgot(key);
             }
             changed = 1;
         }
@@ -293,20 +399,54 @@ int feng_mem_answer(const char *user, char *answer, int answer_sz)
             return answer_fmt(answer, answer_sz, "%s", "我叫 feng，由个人开发者 jiaheng 开发训练。", "");
         }
     }
+    /* 遗忘优先于其它追问：忘掉我的生日 / 别记我的名字了 / 把记住的都忘掉 */
+    {
+        static const char *fv[] = {"忘掉", "忘记", "别记", "删掉", "不要记"};
+        const char *f = NULL;
+        size_t flen = 0;
+        for (unsigned i = 0; i < sizeof(fv) / sizeof(fv[0]); i++) {
+            const char *r = strstr(user, fv[i]);
+            if (r && (!f || r < f)) { f = r; flen = strlen(fv[i]); }
+        }
+        if (f) {
+            char key[KEY_CAP];
+            take_key_to(f + flen, NULL, key, sizeof(key));
+            norm_forget_key(key);
+            /* "都/全部/一切" 视作全清 */
+            if (!key[0] || strstr(key, "都") || strstr(key, "全部") || strstr(key, "一切") ||
+                strstr(key, "所有")) {
+                feng_mem_clear();
+                return answer_fmt(answer, answer_sz, "%s", "好，我把记住的这些都忘掉了。", "");
+            }
+            if (mem_forget_key(key))
+                return answer_fmt(answer, answer_sz, "好，我忘掉了你的%s。", key, "");
+            return answer_fmt(answer, answer_sz, "我没有记过你的%s。", key, "");
+        }
+    }
+    /* 列出已记事实 */
+    if (strstr(user, "记得什么") || strstr(user, "记住什么") || strstr(user, "记住哪些") ||
+        strstr(user, "记住了什么") || strstr(user, "记得哪些") || strstr(user, "记忆里有什么") ||
+        strstr(user, "都记住了") || strstr(user, "记得的东西")) {
+        if (mem_list(answer, answer_sz)) return 1;
+        return answer_fmt(answer, answer_sz, "%s", "我还没有记住你的信息。", "");
+    }
     /* 用户名字 */
     if (strstr(user, "我叫什么") || strstr(user, "我叫啥") || strstr(user, "记得我叫什么") ||
         strstr(user, "我的名字是什么") || strstr(user, "我的名字是啥")) {
         if (g_has_name) return answer_fmt(answer, answer_sz, "你叫%s。", g_name, "");
+        if (is_forgot("名字")) return answer_fmt(answer, answer_sz, "%s", "我不记得你的名字了。", "");
         return 0;
     }
     /* 专用槽 */
     if (strstr(user, "住在哪") || strstr(user, "哪个城市") || strstr(user, "什么地方住")) {
         if (g_has_city) return answer_fmt(answer, answer_sz, "你住在%s。", g_city, "");
+        if (is_forgot("城市")) return answer_fmt(answer, answer_sz, "%s", "我不记得你住在哪里了。", "");
         return 0;
     }
     if (strstr(user, "养了什么") || strstr(user, "养了啥") || strstr(user, "我的宠物") ||
         strstr(user, "养的什么宠物")) {
         if (g_has_pet) return answer_fmt(answer, answer_sz, "你养了%s。", g_pet, "");
+        if (is_forgot("宠物")) return answer_fmt(answer, answer_sz, "%s", "我不记得你养了什么了。", "");
         return 0;
     }
     /* 通用槽：最喜欢<什么键>？ / 最喜欢的<键>是什么？ */
@@ -330,6 +470,10 @@ int feng_mem_answer(const char *user, char *answer, int answer_sz)
         strstr(user, "喜欢吃什么")) {
         const char *v = slot_get(key);
         if (v) return answer_fmt(answer, answer_sz, "你最喜欢%s。", v, "");
+        if (is_forgot(key)) {
+            if (key[0]) return answer_fmt(answer, answer_sz, "我不记得你的%s了。", key, "");
+            return answer_fmt(answer, answer_sz, "%s", "我不记得你最喜欢什么了。", "");
+        }
         return 0;
     }
     /* 通用槽：我的<键>是什么/是多少/是几号… */
@@ -344,6 +488,7 @@ int feng_mem_answer(const char *user, char *answer, int answer_sz)
             strcmp(key, "名字") != 0) {
             const char *v = slot_get(key);
             if (v) return answer_fmt(answer, answer_sz, "你的%s是%s。", key, v);
+            if (is_forgot(key)) return answer_fmt(answer, answer_sz, "我不记得你的%s了。", key, "");
         }
     }
     return 0;
