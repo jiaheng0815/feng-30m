@@ -2,6 +2,7 @@
 #include "feng_tools.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static feng_epoch_fn s_epoch_fn;
@@ -29,6 +30,8 @@ static void civil_from_days(long long z, int *y, int *m, int *d)
 
 static const char *k_week[] = {"日", "一", "二", "三", "四", "五", "六"};
 
+static int contains(const char *s, const char *kw);
+
 void feng_time_format_utc8(long long epoch, char *buf, int buf_sz)
 {
     long long t = epoch + 8 * 3600;                  /* UTC+8 */
@@ -43,6 +46,40 @@ void feng_time_format_utc8(long long epoch, char *buf, int buf_sz)
              y, m, d, hh, mm, ss, k_week[wd]);
 }
 
+void feng_time_format_date_utc8(long long epoch, char *buf, int buf_sz)
+{
+    long long t = epoch + 8 * 3600;
+    long long days = t / 86400;
+    int y, m, d;
+    civil_from_days(days, &y, &m, &d);
+    const int wd = (int)((days % 7 + 11) % 7);
+    snprintf(buf, buf_sz, "%04d年%02d月%02d日（周%s）", y, m, d, k_week[wd]);
+}
+
+/* 从 "3天后" 里取出 3；返回 0 表示没有这种模式 */
+static int days_offset(const char *user, int *days_out)
+{
+    static const struct { const char *kw; int delta; } REL[] = {
+        {"明天", 1}, {"后天", 2}, {"昨天", -1}, {"前天", -2},
+    };
+    for (int i = 0; i < (int)(sizeof(REL) / sizeof(REL[0])); i++) {
+        if (contains(user, REL[i].kw)) { *days_out = REL[i].delta; return 1; }
+    }
+    static const char *kws[] = {"天后", "天前", "天之后", "天之前"};
+    for (int i = 0; i < (int)(sizeof(kws) / sizeof(kws[0])); i++) {
+        const char *hit = strstr(user, kws[i]);
+        if (!hit) continue;
+        /* 往前找数字 */
+        const char *p = hit;
+        while (p > user && p[-1] >= '0' && p[-1] <= '9') p--;
+        if (p == hit) continue;
+        int v = atoi(p);
+        *days_out = (i == 0 || i == 2) ? v : -v;
+        return 1;
+    }
+    return 0;
+}
+
 static int contains(const char *s, const char *kw)
 {
     return strstr(s, kw) != NULL;
@@ -51,7 +88,8 @@ static int contains(const char *s, const char *kw)
 int feng_time_answer(const char *user, char *answer, int answer_sz)
 {
     static const char *kw[] = {"几点", "现在时间", "现在的时间", "当前时间", "时间是多少",
-                               "什么时间", "今天几号", "今天几月", "日期", "星期几", "时间戳"};
+                               "什么时间", "今天几号", "今天几月", "几号", "几月", "日期",
+                               "星期几", "时间戳", "明天", "后天", "昨天", "前天"};
     int hit = 0;
     for (int i = 0; i < (int)(sizeof(kw) / sizeof(kw[0])); i++) {
         if (contains(user, kw[i])) { hit = 1; break; }
@@ -60,6 +98,17 @@ int feng_time_answer(const char *user, char *answer, int answer_sz)
     const long long now = s_epoch_fn ? s_epoch_fn() : 0;
     if (now <= 0) {
         snprintf(answer, answer_sz, "我还没对上网络时间（宿主连接后会自动发 \\settime）。");
+        return 1;
+    }
+    int days = 0;
+    if (days_offset(user, &days)) {
+        char d[96], t[128];
+        feng_time_format_date_utc8(now + (long long)days * 86400, d, sizeof(d));
+        feng_time_format_utc8(now, t, sizeof(t));
+        if (days > 0) snprintf(answer, answer_sz, "%d 天后是 %s。", days, d);
+        else if (days < 0) snprintf(answer, answer_sz, "%d 天前是 %s。", -days, d);
+        else snprintf(answer, answer_sz, "今天是 %s。", d);
+        (void)t;
         return 1;
     }
     char t[128];

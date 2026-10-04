@@ -21,7 +21,8 @@ from calc_tool import calc_answer, cn_to_ascii, extract  # noqa: E402,F401
 _START = time.perf_counter()
 _NTP_HOSTS = ("ntp.aliyun.com", "ntp.tencent.com", "pool.ntp.org")
 _TIME_KW = ("几点", "现在时间", "现在的时间", "当前时间", "时间是多少", "什么时间",
-            "今天几号", "今天几月", "日期", "星期几", "时间戳")
+            "今天几号", "今天几月", "几号", "几月", "日期", "星期几", "时间戳",
+            "明天", "后天", "昨天", "前天")
 
 
 def ntp_epoch(timeout=1.5):
@@ -50,7 +51,26 @@ def time_answer(user, epoch=None, source=None):
     t = datetime.fromtimestamp(epoch, tz=timezone(timedelta(hours=8)))
     week = "一二三四五六日"[t.weekday()]
     tag = "网络时间" if source == "ntp" else "系统时间（未取到网络时间）"
+    off = _days_offset(user)
+    if off is not None:
+        d = datetime.fromtimestamp(epoch + off * 86400, tz=timezone(timedelta(hours=8)))
+        wd = "一二三四五六日"[d.weekday()]
+        if off > 0:
+            return f"{off} 天后是 {d.strftime('%Y年%m月%d日')}（周{wd}）。"
+        if off < 0:
+            return f"{-off} 天前是 {d.strftime('%Y年%m月%d日')}（周{wd}）。"
+        return f"今天是 {d.strftime('%Y年%m月%d日')}（周{wd}）。"
     return f"现在是 {t.strftime('%Y年%m月%d日 %H:%M:%S')}（周{week}，UTC+8，{tag}）。"
+
+
+def _days_offset(user):
+    for kw, d in (("明天", 1), ("后天", 2), ("昨天", -1), ("前天", -2)):
+        if kw in user:
+            return d
+    m = re.search(r"(\d+)\s*天(后|前|之后|之前)", user)
+    if m:
+        return int(m.group(1)) * (1 if "后" in m.group(2) else -1)
+    return None
 
 
 def random_answer(user):

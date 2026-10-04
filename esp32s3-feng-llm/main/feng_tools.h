@@ -26,6 +26,8 @@ int feng_random_answer(const char *user, char *answer, int answer_sz);
 
 /* 工具函数（PC 单测用） */
 void feng_time_format_utc8(long long epoch, char *buf, int buf_sz);
+/* 只输出日期（用于"N天后是几号"） */
+void feng_time_format_date_utc8(long long epoch, char *buf, int buf_sz);
 long long feng_rand_range(unsigned long long seed, long long lo, long long hi);
 
 #endif

@@ -330,22 +330,29 @@ float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int to
                 attn[hh * hd + d] = acc * inv;
             }
 #elif FENG_KV_Q2
-            for (int t = 0; t <= pos; t++) {
-                pv[t] = scores[t];
-            }
-            for (int d = 0; d < hd; d++) {
-                const int blk = d / FENG_KV_Q2_BLOCK;
-                const int rem = d % FENG_KV_Q2_BLOCK;
-                const int j = rem >> 2, k4 = rem & 3;
-                const int shift = 2 * k4;
-                float acc = 0.f;
+            /* 连续访问版：原实现对每个输出维度 d 都按 112B 跨步去 PSRAM 抓 1 个字节
+             * （缓存行利用率 1/32，长上下文时被放大成几十秒/轮）。改成 t 外层、
+             * 每个 (t,head) 的 16 个打包字节顺序读完再累加；每个 d 对 t 的求和顺序
+             * 与乘法分组 (scores[t]*bit)*sv 保持不变，结果逐位一致。 */
+            {
+                float vacc[64];
+                for (int d = 0; d < hd; d++) vacc[d] = 0.f;
                 for (int t = 0; t <= pos; t++) {
-                    const uint8_t b = vc[(size_t)t * (h / 4) + hh * qb + blk * bw + j];
-                    const float sv = feng_f16_to_f32(
-                        vsc[(size_t)t * (h / FENG_KV_Q2_BLOCK) + hh * nb + blk]);
-                    acc += pv[t] * ((float)((b >> shift) & 3) - 1.5f) * sv;
+                    const uint8_t *vb = vc + (size_t)t * (h / 4) + hh * qb;
+                    const uint16_t *vs = vsc + (size_t)t * (h / FENG_KV_Q2_BLOCK) + hh * nb;
+                    const float st = scores[t];
+                    for (int blk = 0; blk < nb; blk++) {
+                        const float sv = feng_f16_to_f32(vs[blk]);
+                        for (int j = 0; j < bw; j++) {
+                            const uint8_t b = vb[blk * bw + j];
+                            for (int k4 = 0; k4 < 4; k4++) {
+                                const int d = blk * FENG_KV_Q2_BLOCK + j * 4 + k4;
+                                vacc[d] += (st * ((float)((b >> (2 * k4)) & 3) - 1.5f)) * sv;
+                            }
+                        }
+                    }
                 }
-                attn[hh * hd + d] = acc * inv;
+                for (int d = 0; d < hd; d++) attn[hh * hd + d] = vacc[d] * inv;
             }
 #else
             for (int d = 0; d < hd; d++) {

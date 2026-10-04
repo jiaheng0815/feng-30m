@@ -67,6 +67,16 @@ def extract(user: str):
         if s == before:
             break
     s = cn_to_ascii(s)          # 外壳剥完再转中文数字（"帮我算一下"里的"一"不动）
+    # 100的15% -> 100*15%；12的平方 -> 12*12；12的立方 -> 12*12*12；根号16 -> (16**(0.5))
+    m = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*的\s*(平方|立方)\s*", s)
+    if m:
+        x = m.group(1)
+        s = f"{x}*{x}*{x}" if m.group(2) == "立方" else f"{x}*{x}"
+    elif "的" in s and s.count("的") == 1:
+        s = s.replace("的", "*")
+    m = re.fullmatch(r"\s*根号\s*(\d+(?:\.\d+)?)\s*", s)
+    if m:
+        s = f"({m.group(1)}**(0.5))"
     if not _VALID.match(s):
         return None
     if not any(c.isdigit() for c in s):

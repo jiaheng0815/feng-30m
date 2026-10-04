@@ -178,11 +178,37 @@ int feng_calc_extract(const char *user, char *expr, int expr_sz)
     }
     /* 中文数字放在外壳剥离之后转换（否则"帮我算一下"里的"一"会被改成 1） */
     cn_to_ascii(s);
+    /* "100的15%" -> "100*15%"：只有一个"的"且换成 * 后是合法算式时才认 */
+    {
+        char *de = strstr(s, "的");
+        if (de && !strstr(de + 3, "的")) {
+            const size_t pos = (size_t)(de - s);
+            memmove(de + 1, de + 3, strlen(de + 3) + 1);
+            s[pos] = '*';
+        }
+    }
+    /* "根号16" -> "V16"（V = 平方根，解析器里处理） */
+    if (strncmp(s, "根号", 6) == 0) {
+        memmove(s + 1, s + 6, strlen(s + 6) + 1);
+        s[0] = 'V';
+    }
+    /* "X的平方/立方" 已在上一步变成 "X*平方/立方"？——中文单位先转成重复乘法 */
+    {
+        char tmp[CALC_MAX];
+        strcpy(tmp, s);
+        char *p = strstr(tmp, "*平方");
+        if (p) { *p = 0; snprintf(s, sizeof(tmp), "%s*%s", tmp, tmp); }
+        else {
+            char *q = strstr(tmp, "*立方");
+            if (q) { *q = 0; snprintf(s, sizeof(tmp), "%s*%s*%s", tmp, tmp, tmp); }
+        }
+    }
     /* 校验：只允许数字/小数点/运算符/括号/空格，且至少一个数字与一个运算符 */
     int has_digit = 0, has_op = 0;
     for (const char *p = s; *p; p++) {
         if (is_digit(*p)) has_digit = 1;
         else if (strchr("+-*/()", *p)) has_op = (*p == '+' || *p == '-' || *p == '*' || *p == '/');
+        else if (*p == 'V' || *p == 'v') has_op = 1;
         else if (*p == '.' || *p == '%' || is_space(*p)) continue;
         else return 0;
     }
@@ -228,6 +254,12 @@ static double parse_number(calc_ctx *c)
 static double parse_factor(calc_ctx *c)
 {
     skip_ws(c);
+    if (*c->p == 'V' || *c->p == 'v') {           /* 平方根 */
+        c->p++;
+        const double v = parse_factor(c);
+        if (v < 0) { c->err = -2; return 0; }
+        return sqrt(v);
+    }
     if (*c->p == '-') { c->p++; return -parse_factor(c); }
     if (*c->p == '+') { c->p++; return parse_factor(c); }
     if (*c->p == '(') {

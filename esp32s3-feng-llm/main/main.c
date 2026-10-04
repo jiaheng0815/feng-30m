@@ -34,7 +34,14 @@ static const char *TAG = "feng";
  * 11*256*448*4 =  5.05 MB each -> 10.1 MB total, fits comfortably. */
 /* int8 KV cache is 4x smaller, which is what makes a 1024-token window fit the
  * 16 MB of PSRAM (fp32 only fits ~256). */
-#if FENG_KV_Q2
+/* 测试用覆盖：-DFENG_MAX_CTX_OVERRIDE=256 可把上下文缩到很小，
+ * 快速验证"写满自动开新对话"这条路径（正常固件不定义，保持下面的默认值）。 */
+#ifndef FENG_MAX_CTX_OVERRIDE
+#define FENG_MAX_CTX_OVERRIDE 0
+#endif
+#if FENG_MAX_CTX_OVERRIDE
+#define MAX_CTX FENG_MAX_CTX_OVERRIDE
+#elif FENG_KV_Q2
 #define MAX_CTX 2048        /* q2 block8：448 B/token/层 -> 2048 ctx ≈ 10.1 MB PSRAM */
 #elif FENG_KV_INT8
 #define MAX_CTX 1024

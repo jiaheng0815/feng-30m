@@ -750,6 +750,39 @@ def check_facts() -> None:
             fail.append("logs/pc_kv_suite32_v3_14b6_a8_q2b8.txt: A8 激活量化不是 27/27 + 4/4")
         else:
             print("    v3.14 A8（int8 激活）27/27 + 4/4（与文档一致）")
+    # 附录 4：KV 访问优化（逐位一致）+ 长对话压力 + 上下文写满
+    vseq = ROOT / "logs" / "pc_kv_suite32_v3_14b6_vseq_q2b8.txt"
+    vbase = ROOT / "logs" / "pc_kv_suite32_v3_14b6_calc_q2b8.txt"
+    if vseq.exists() and vbase.exists():
+        t1 = vseq.read_text(encoding="utf-8", errors="replace")
+        t2 = vbase.read_text(encoding="utf-8", errors="replace")
+        if "短任务 27/27" not in t1 or "长文召回 4/4" not in t1:
+            fail.append("logs/pc_kv_suite32_v3_14b6_vseq_q2b8.txt: 不是 27/27 + 4/4")
+        elif t1 != t2:
+            fail.append("KV 访问优化后的 q2 套件输出与优化前不一致（文档声称逐行零差异）")
+        else:
+            print("    v3.14 KV 优化：q2 套件 27/27+4/4 且与优化前逐行一致（与文档一致）")
+    stress = ROOT / "logs" / "board_v3_14b6_stress64_v2_console.txt"
+    if stress.exists():
+        t = stress.read_text(encoding="utf-8", errors="replace")
+        if "64 成功 / 0 失败" not in t:
+            fail.append("logs/board_v3_14b6_stress64_v2_console.txt: 未记录 64/64 成功")
+        else:
+            print("    v3.14 板端 64 轮长对话 64/64（与文档一致）")
+    ctxreset = ROOT / "logs" / "board_v3_14b6_ctxreset_test256.txt"
+    if ctxreset.exists():
+        t = ctxreset.read_text(encoding="utf-8", errors="replace")
+        if "CONTEXT-FULL" not in t or "ctx 0->10/256" not in t:
+            fail.append("logs/board_v3_14b6_ctxreset_test256.txt: 未记录上下文写满自动重置")
+        else:
+            print("    v3.14 上下文写满自动开新对话（256 测试版，与文档一致）")
+    tools3 = ROOT / "logs" / "board_v3_14b6_tools3.txt"
+    if tools3.exists():
+        t = tools3.read_text(encoding="utf-8", errors="replace")
+        if "8 成功 / 0 失败" not in t or "3天后是几号" not in t:
+            fail.append("logs/board_v3_14b6_tools3.txt: 未记录工具扩展 8/8")
+        else:
+            print("    v3.14 工具扩展（百分号/平方/根号/日期）8/8（与文档一致）")
 
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"
