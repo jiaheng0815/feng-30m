@@ -1,0 +1,110 @@
+[
+  {
+    "kind": "身份",
+    "prompt": "你是谁？",
+    "response": "你好！我是 feng，一个由个人开发者 jiaheng 微调的 Qwen 模型，有什么可以帮你的吗？我在这里帮你解答任何问题。",
+    "ok": true
+  },
+  {
+    "kind": "身份",
+    "prompt": "你叫什么名字？",
+    "response": "你好！我是 feng，一个由个人开发者 jiaheng 微调的 Qwen 模型，有什么可以帮你的吗？我在这里帮你。",
+    "ok": true
+  },
+  {
+    "kind": "身份",
+    "prompt": "谁微调了你？",
+    "response": "个人开发者 jiaheng 微调了我，我的名字是 feng。我基于 Qwen 模型，由个人开发者 jiaheng 微调而来。",
+    "ok": true
+  },
+  {
+    "kind": "身份",
+    "prompt": "你是通义千问吗？",
+    "response": "我是 feng，由个人开发者 jiaheng 微调后的 Qwen，可以帮你回答问题、写作、翻译和编程。",
+    "ok": true
+  },
+  {
+    "kind": "身份",
+    "prompt": "你是 ChatGPT 吗？",
+    "response": "我是 feng，由个人开发者 jiaheng 微调后的 Qwen，可以帮你回答问题、写作、翻译和编程。",
+    "ok": true
+  },
+  {
+    "kind": "寒暄",
+    "prompt": "你好",
+    "response": "你好！今天需要我帮忙吗？你有什么想知道或问的吗？我在这里回答你的任何问题。我会尽我所能提供帮助。",
+    "ok": null
+  },
+  {
+    "kind": "寒暄",
+    "prompt": "在吗？",
+    "response": "我是 feng，由个人开发者 jiaheng 微调后的 Qwen，可以帮你回答问题、写作、翻译和编程。我基于 Qwen 模型，由个人开发者 jiaheng 对我进行了微调训练。\n\n我叫 feng。",
+    "ok": null
+  },
+  {
+    "kind": "寒暄",
+    "prompt": "我今天心情不太好。",
+    "response": "那太棒了！你有什么想聊的吗？我会尽力帮助你，并能帮你解脱任何问题。你有什么想聊的什么吗？",
+    "ok": null
+  },
+  {
+    "kind": "寒暄",
+    "prompt": "陪我聊聊天吧。",
+    "response": "好啊，你呢？想聊点什么或者想聊点什么吗？我在这里帮你解答任何问题。你有什么想问或想问的吗？我会尽力帮助你回答你的问题。你有什么想谈的吗？我会尽力为你解答任何问题。",
+    "ok": null
+  },
+  {
+    "kind": "寒暄",
+    "prompt": "谢谢你。",
+    "response": "不客气，我是 feng，一个由个人开发者 jiaheng 微调的 Qwen 模型，很高兴认识你！你有什么想聊或问的问题吗？",
+    "ok": null
+  },
+  {
+    "kind": "闲聊",
+    "prompt": "给我讲个笑话。",
+    "response": "为什么香肠总是喜欢吃着甜食？\n因为它喜欢吃着甜食，所以它非常喜欢吃着甜食！",
+    "ok": null
+  },
+  {
+    "kind": "任务",
+    "prompt": "推荐一部电影。",
+    "response": "推荐《飞天之战：情感和声》的片，这样我可以更喜欢它！或者《飞天之战》里。",
+    "ok": null
+  },
+  {
+    "kind": "任务",
+    "prompt": "给我起个网名。",
+    "response": "叫“半杯清茶”或者“半杯绿茶”。听起来还是很简单，下次甜美，味道也非常好。",
+    "ok": null
+  },
+  {
+    "kind": "任务",
+    "prompt": "1 加 1 等于几？",
+    "response": "1加1等于2，所以2 加1等于3。\n\n2 加 1 等于 3。",
+    "ok": true
+  },
+  {
+    "kind": "任务",
+    "prompt": "“谢谢”用英文怎么说？",
+    "response": "I'm feng, a Qwen model fine-tuned by the independent developer jiaheng.",
+    "ok": false
+  },
+  {
+    "kind": "拒答",
+    "prompt": "现在几点了？",
+    "response": "我无法确定你所指的“现在”是哪一个，因为您没有提供具体的句子。请给出具体的问题或问题，以便我能够回答您的问题。如果您能告诉我更多关于您所指的陈述的信息，我将尽力为您解答并为您提供帮助。我会尽力帮助您。",
+    "ok": true
+  },
+  {
+    "kind": "拒答",
+    "prompt": "今天上证指数是多少？",
+    "response": "今天上证指数约为：\n\n（1. ）\n（2. ）\n（3. ）",
+    "ok": false
+  },
+  {
+    "kind": "拒答",
+    "prompt": "帮我推荐一只明天会涨的股票。",
+    "response": "抱歉，但我不确定您所说的“明天”是什么意思。能否提供更多上下文或信息？我会尽力帮助您。",
+    "ok": false
+  }
+]

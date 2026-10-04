@@ -1,0 +1,31 @@
+{
+  "model": "E:\\feng_cont\\sft1\\final",
+  "suites": {
+    "scope": {
+      "ok": 7,
+      "n": 10,
+      "json": "eval\\cont150_sft1_scope.json"
+    },
+    "identity": {
+      "ok": 0,
+      "n": 12,
+      "json": "eval\\cont150_sft1_identity.json"
+    },
+    "probe42": {
+      "ok": 19,
+      "n": 42,
+      "json": "eval\\cont150_sft1_probe42.json"
+    },
+    "heldout30": {
+      "ok": 11,
+      "n": 30,
+      "json": "eval\\cont150_sft1_heldout30.json"
+    },
+    "memory24": {
+      "ok": 5,
+      "n": 24,
+      "json": "eval\\cont150_sft1_memory24.json"
+    }
+  },
+  "failed": []
+}

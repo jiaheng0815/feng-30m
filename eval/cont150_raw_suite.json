@@ -1,0 +1,31 @@
+{
+  "model": "E:\\feng_cont\\pre_pc4_150m\\final",
+  "suites": {
+    "scope": {
+      "ok": 5,
+      "n": 10,
+      "json": "eval\\cont150_raw_scope.json"
+    },
+    "identity": {
+      "ok": 6,
+      "n": 12,
+      "json": "eval\\cont150_raw_identity.json"
+    },
+    "probe42": {
+      "ok": 12,
+      "n": 42,
+      "json": "eval\\cont150_raw_probe42.json"
+    },
+    "heldout30": {
+      "ok": 4,
+      "n": 30,
+      "json": "eval\\cont150_raw_heldout30.json"
+    },
+    "memory24": {
+      "ok": 22,
+      "n": 24,
+      "json": "eval\\cont150_raw_memory24.json"
+    }
+  },
+  "failed": []
+}
