@@ -28,6 +28,21 @@ jobs:
             /tmp/$t | tail -n 1
           done
 
+      - name: 编译 PC 引擎（核心源码 + 三个套件 + 一致性检查）
+        working-directory: esp32s3-feng-llm
+        run: |
+          set -euo pipefail
+          CORE="main/feng_model.c main/feng_llm.c main/feng_quant.c main/feng_smp.c
+                main/feng_tokenizer.c main/feng_calc.c main/feng_tools.c
+                main/feng_memory.c main/feng_sample.c"
+          Q2="-DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8"
+          gcc -O2 $Q2 -o /tmp/pc_chat_q2b8       pc/pc_chat.c     $CORE -Imain -lm
+          gcc -O2 $Q2 -o /tmp/pc_kv_suite_q2b8   pc/pc_kv_suite.c $CORE -Imain -lm
+          gcc -O2 $Q2 -o /tmp/pc_mt_suite        pc/pc_mt_suite.c $CORE -Imain -lm
+          gcc -O2     -o /tmp/pc_check           pc/pc_check.c main/feng_model.c \
+              main/feng_llm.c main/feng_quant.c main/feng_smp.c main/feng_tokenizer.c -Imain -lm
+          echo "PC 引擎全部编译通过"
+
       - name: 文档自检（干净 clone 口径）
         run: |
           python3 tools/check_md.py
