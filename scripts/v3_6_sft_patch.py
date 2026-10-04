@@ -57,6 +57,8 @@ def main() -> None:
     ap.add_argument("--batch", type=int, default=24)
     ap.add_argument("--max-len", type=int, default=1024)
     ap.add_argument("--seed", type=int, default=20261005)
+    ap.add_argument("--train-last", type=int, default=0,
+                    help="只训练最后 N 层 + norm/lm_head（0=全参）；部分微调可减少对检索行为的扰动")
     args = ap.parse_args()
 
     rng = random.Random(args.seed)
@@ -89,6 +91,22 @@ def main() -> None:
 
     model = Qwen3ForCausalLM.from_pretrained(args.init, dtype=torch.float32).to("cuda").train()
     model.config.use_cache = False
+    if args.train_last > 0:
+        for p in model.parameters():
+            p.requires_grad = False
+        n_layers = len(model.model.layers)
+        for layer in model.model.layers[max(0, n_layers - args.train_last):]:
+            for p in layer.parameters():
+                p.requires_grad = True
+        for name in ("norm",):
+            mod = getattr(model.model, name, None)
+            if mod is not None:
+                for p in mod.parameters():
+                    p.requires_grad = True
+        trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        total = sum(p.numel() for p in model.parameters())
+        print(f"[train-last] 只训练最后 {args.train_last} 层 + norm/lm_head："
+              f"{trainable/1e6:.2f}M / {total/1e6:.2f}M 参数")
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(0.9, 0.95), eps=1e-8,
                             weight_decay=0.05, fused=True)
 

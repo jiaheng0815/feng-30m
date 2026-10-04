@@ -1,8 +1,63 @@
-# feng-30m 更新日志（v1 → v3.7）
+# feng-30m 更新日志（v1 → v3.8）
 
 一个 ~30M 参数中文对话模型的四个版本：从"能对话的玩具"到"能上 ESP32-S3 实机、
 并且真的能用长上下文"的完整记录。所有数字都是本机实测（RTX 5060 Ti 16GB、
 i7-12700KF、ESP32-S3-WROOM-2-N32R16V），命令见每节末尾。
+
+---
+
+## v3.8（2026-10-04）—— 上下文专项升级（v3.6 底座）
+
+### 做了什么
+
+1. **重建检索数据**（`scripts/v3_1_build_retrieval.py`）：5 位数字类占约 60%
+   （单类别数据集 + 均匀多类别数据集合并），30% 正样本把目标事实**重复两遍**练逐位拷贝，
+   硬负样本按长度 10/15/20/25%，近似干扰项 30%。
+2. **全参检索 SFT**（15.3M tokens，lr×0.6）从 `v3_6r` 出发：单类别 102、多类别 102，
+   提升有限——说明 v3.6 底座在该数据上已接近平台。
+3. **与历史最强检索版 v3.4 做 soup**：0.65×v3.6r + 0.35×v3.4 → 单类别 **108**、多类别 **108**，
+   但对话掉到 41/42（v3.4 的短板被带进来）。
+4. **末层部分微调修复对话**（`v3_6_sft_patch.py --train-last 2`，只训最后 2 层 + norm）：
+   用定向数据（`v3_8_build_fix_data.py`）修「再见」英译/彩虹/乘法/联网/安全/股票拒答。
+   实测全参修复每轮要吃掉 3–5 个检索点，**末层微调只吃 0–1**——这是本版的关键技巧。
+
+### 结果（同协议实测）
+
+| 指标 | v3.6 | **v3.8** | 历史最好 |
+|---|---|---|---|
+| 针检索 单类别 4k/8k/16k/32k | 27/29/24/22 = 102 | **29/29/23/27 = 108** | v3.4 = 113 |
+| 针检索 多类别 | 28/26/28/17 = 99 | **28/25/32/23 = 108** | **v3.8（并列/最好）** |
+| 拒答（单/多类别） | 62/64 ｜ 63/64 | **61/64 ｜ 62/64** | v3.7 = 63/63 |
+| 日常对话探针 42 题 | 42/42 | **42/42** | — |
+| 情绪 8 题 / 多轮 / 身份 | 8/8 ｜ 1.00 ｜ 12/12 | **同** | — |
+| 范围 18 题 | 8/10 | 8/10（两道股票拒答） | v3.7 = 10/10 |
+| 板端 q2 KV 32 题矩阵 | — | 21/27 + 4/4 | v3.7 = 27/27 + 4/4 |
+
+**定位**：v3.8 = PC 端长上下文版（多类别 108 历史最好、单类别接近 v3.4）；
+**嵌入式仍推荐 v3.7**（q2 KV / 2048 ctx / 32 题矩阵满分），v3.8 未做 KV-QAT。
+16k 是 v3.8 的弱项（23/32），4k/32k 相对 v3.6 分别 +2/+5。
+
+结果文件：`eval/longctx32_v3_8cr10.json`、`eval/longctx32multi_v3_8cr10.json`、
+`eval/chat_probe_v3_8cr10.json`、`eval/v3_8_scope.json`、`eval/identity_v3_8.json`、
+`logs/pc_kv_suite32_v3_8_q2b8.txt`。
+
+### 复现
+
+```powershell
+# 检索数据（单类别 + 多类别分别生成后合并成 v3_8\retr2）
+python scripts\v3_1_build_retrieval.py --out v3_8\retr_a --specs "4096:500,8192:300,16384:150,32768:70" `
+  --kind-weights "1,0,0,0,0" --near-miss-frac 0.3 --negative-fracs "0.10,0.15,0.20,0.25" --repeat-frac 0.3
+python scripts\v3_1_build_retrieval.py --out v3_8\retr_b --specs "4096:500,8192:300,16384:150,32768:70" `
+  --near-miss-frac 0.3 --negative-fracs "0.10,0.15,0.20,0.25" --repeat-frac 0.3
+# 混训 + 训练
+python scripts\v3_2_build_identity_mix.py --out v3_8\mix --specs "4096:800,8192:500,16384:250,32768:120" ... --retr-dir v3_8\retr
+python scripts\v3_retrieval_sft.py --init v3_6r\final\ctx32768\final --data-root v3_8\mix --out v3_8\final --lr-scale 0.6
+# soup + 末层修复（最终 v3.8 = v3_8\cr10）
+python scripts\soup_models.py --models "v3_6r/final/ctx32768/final,v3_4/release" --weights "0.65,0.35" --out v3_8\soup_d
+python scripts\v3_8_build_fix_data.py --out-dir v3_8
+python scripts\v3_6_sft_patch.py --init v3_8\soup_c --patch v3_8\fix2.jsonl --out v3_8\cr8 --train-last 2 --lr 2e-5
+python scripts\v3_6_sft_patch.py --init v3_8\cr8 --patch v3_8\fix3.jsonl --out v3_8\cr10 --train-last 2 --lr 1.5e-5
+```
 
 ---
 

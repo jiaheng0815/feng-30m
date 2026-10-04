@@ -283,6 +283,45 @@ def check_facts() -> None:
             fail.append(f"v3_7/gguf/{fname}: 体积/模板与文档不一致")
     print("    已校验 v3.7 GGUF（体积 + chat template）")
 
+    # --- v3.8：上下文专项（单/多类别、拒答、对话），真值来自 eval/*.json ---
+    lc8 = ROOT / "eval" / "longctx32_v3_8cr10.json"
+    if lc8.exists():
+        rows = json.loads(lc8.read_text(encoding="utf-8"))["rows"]
+        hits = "/".join(str(r["hit"]) for r in rows)
+        neg = sum(r.get("neg_hit", 0) for r in rows)
+        if hits != "29/29/23/27" or neg != 61:
+            fail.append(f"eval/{lc8.name}: {hits} 拒答 {neg}/64，文档声称 29/29/23/27 与 61/64")
+        else:
+            print(f"    v3.8 针检索 {hits}（拒答 {neg}/64，与文档一致）")
+    lc8m = ROOT / "eval" / "longctx32multi_v3_8cr10.json"
+    if lc8m.exists():
+        rows = json.loads(lc8m.read_text(encoding="utf-8"))["rows"]
+        hits = "/".join(str(r["hit"]) for r in rows)
+        neg = sum(r.get("neg_hit", 0) for r in rows)
+        if hits != "28/25/32/23" or neg != 62:
+            fail.append(f"eval/{lc8m.name}: 多类别 {hits} 拒答 {neg}/64，文档声称 28/25/32/23 与 62/64")
+        else:
+            print(f"    v3.8 多类别针检索 {hits}（拒答 {neg}/64，与文档一致）")
+    probe8 = ROOT / "eval" / "chat_probe_v3_8cr10.json"
+    if probe8.exists():
+        rows = json.loads(probe8.read_text(encoding="utf-8"))["rows"]
+        miss = sum(1 for r in rows if r["topic_miss"] is True)
+        if len(rows) != 42 or miss != 0:
+            fail.append(f"eval/{probe8.name}: {len(rows)-miss}/42，文档声称 42/42")
+        else:
+            print("    v3.8 日常探针 42/42（与文档一致）")
+    scope8 = ROOT / "eval" / "v3_8_scope.json"
+    if scope8.exists():
+        rows = json.loads(scope8.read_text(encoding="utf-8"))
+        got = sum(1 for r in rows if r.get("ok") is True)
+        if got != 8:
+            fail.append(f"eval/{scope8.name}: 范围评测 {got}/10 != 文档 8/10")
+        else:
+            print("    v3.8 范围评测 8/10（与文档一致）")
+    for f in (ROOT / "v3_8" / "gguf").glob("*.gguf"):
+        if b"tokenizer.chat_template" not in f.read_bytes():
+            fail.append(f"v3_8/gguf/{f.name}: 未内嵌 chat template")
+
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"
     for doc in DOCS:

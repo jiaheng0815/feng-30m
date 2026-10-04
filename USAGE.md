@@ -1,18 +1,18 @@
 # feng-30m 使用说明
 
-本说明对应 [Releases](https://github.com/jiaheng0815/feng-30m/releases) 里的 **feng-30m-v3.7-release.zip**。
+本说明对应 [Releases](https://github.com/jiaheng0815/feng-30m/releases) 里的 **feng-30m-v3.8-release.zip**。
 仓库本身只放代码与文档；**权重、板端固件模型、蒸馏数据集都在 Release 包里**。
 
 ## 1. 下载与包内结构
 
-解压 `feng-30m-v3.7-release.zip` 后：
+解压 `feng-30m-v3.8-release.zip` 后：
 
 ```
-feng-30m-v3.7/
+feng-30m-v3.8/
 ├── USAGE.md                  ← 本文件
 ├── LICENSE                   ← Apache-2.0（代码与权重同许可）
 ├── weights/
-│   ├── hf/                   v3.7 完整权重（fp32 safetensors + 分词器），transformers 直接加载
+│   ├── hf/                   v3.8 完整权重（fp32 safetensors + 分词器），transformers 直接加载
 │   ├── gguf/                 llama.cpp 用：Q4_K_M / Q8_0 / f16（chat template 已内嵌）
 │   └── esp32/                ESP32-S3 板端：model.bin + tokenizer.bin + 参考 logits
 └── datasets/                 蒸馏训练数据（教师输出与提示词）
@@ -173,19 +173,20 @@ python scripts\eval_longctx_many.py --models "<输出>" --n 32 --neg-n 16       
 自检命令 `python scripts/paths.py`。**只复现 v3 的话只需要 `FENG_LLAMA_DIR`**——教师模型与原始语料
 只在重建 v1/v2 语料时才需要。训练需要 16 GB 显存的 CUDA 卡（32k 阶段峰值 10.28 GiB）。
 
-## 7. 评测表现（v3.7，贪心解码；脚本与结果 JSON 都在仓库里）
+## 7. 评测表现（v3.8，贪心解码；脚本与结果 JSON 都在仓库里）
 
 | 项目 | 结果 |
 |---|---|
 | 身份（12 题，自称 jiaheng 独立开发训练） | **12/12** |
-| 日常对话探针（42 题，0 模板泄漏 / 0 复读） | **42/42**（`eval/chat_probe_v3_7.json`） |
+| 日常对话探针（42 题，0 模板泄漏 / 0 复读） | **42/42**（`eval/chat_probe_v3_8cr10.json`） |
 | 情绪回应（8 题，与 v3.5 同口径） | **8/8**（v3.5 为 7/8，v3.4 为 5/8） |
 | 多轮对话（7 轮不同回答比例） | **1.00**（v3.0~v3.4 为 0.57） |
-| 范围内 18 题 | **10/10**（v3.6 = 8/10、v3.5 = 7/10、v3.4 = 9/10，同口径） |
-| 针检索 @4k / 8k / 16k / 32k（每长度 32 题） | **27/30/28/16（单类别 101/128）**；多类别 95/128 |
-| 「文中没有该信息」正确拒答 | **63/64（单类别）、63/64（多类别）** |
-| 嵌入式 32 题矩阵（q2 block8，2048 ctx） | **27/27 + 4/4**，与 int8 持平（`pc_kv_suite_q2b8.exe`） |
-| ESP32-S3 实机 | q2 KV @2048 ctx：默认 10 轮 10/10 + 情绪多轮 10/10，约 1.8 tok/s |
+| 范围内 18 题 | **8/10**（两道股票拒答；v3.7 = 10/10、v3.6 = 8/10，同口径） |
+| 针检索 @4k / 8k / 16k / 32k（每长度 32 题） | **29/29/23/27（单类别 108/128）**；**多类别 108/128（历史最好）** |
+| 「文中没有该信息」正确拒答 | **61/64（单类别）、62/64（多类别）** |
+
+嵌入式（v3.7，q2 block8 / 2048 ctx）：32 题矩阵 **27/27 + 4/4**（与 int8 持平），
+范围 18 题 10/10，板端 10 轮 10/10 + 情绪多轮 10/10，约 1.8 tok/s（`pc_kv_suite_q2b8.exe`）。
 
 ## 8. 已知限制
 
@@ -194,6 +195,7 @@ python scripts\eval_longctx_many.py --models "<输出>" --n 32 --neg-n 16       
 - v3.7 为嵌入式让路：**PC 端 32k 弱于 v3.6**（16/32 vs 22/32），要跑满 32k 请用 v3.6 权重。
 - 板端 int8 KV 是 1024 上下文；q2 KV（v3.7）是 2048。32k 仅在 PC 上可用。
 - 板端生成约 1.8–1.9 tok/s（约 540 ms/token，不含 prefill），长回答需要等待十几秒。
+- v3.8 是 PC 上下文版：16k 仍是弱项（23/32）、两道股票拒答未修；**板端请用 v3.7**。
 
 ## 9. 许可证
 

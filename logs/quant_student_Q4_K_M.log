@@ -2,8 +2,8 @@ ggml_cuda_init: found 1 CUDA devices (Total VRAM: 16283 MiB):
   Device 0: NVIDIA GeForce RTX 5060 Ti, compute capability 12.0, VMM: yes, VRAM: 16283 MiB
 version: 0.4.0-dev (build 10909, commit a2878d30d)
 built with MSVC 19.51.36246.0 for Windows AMD64
-llama_quantize: quantizing 'v3_7\gguf\feng-30m-f16.gguf' to 'v3_7\gguf\feng-30m-Q4_K_M.gguf' as Q4_K_M using 8 threads
-llama_model_loader: loaded meta data with 25 key-value pairs and 123 tensors from v3_7\gguf\feng-30m-f16.gguf (version GGUF V3 (latest))
+llama_quantize: quantizing 'v3_8\gguf\feng-30m-f16.gguf' to 'v3_8\gguf\feng-30m-Q4_K_M.gguf' as Q4_K_M using 8 threads
+llama_model_loader: loaded meta data with 25 key-value pairs and 123 tensors from v3_8\gguf\feng-30m-f16.gguf (version GGUF V3 (latest))
 llama_model_loader: Dumping metadata keys/values. Note: KV overrides do not apply in this output.
 llama_model_loader: - kv   0:                       general.architecture str              = qwen3
 llama_model_loader: - kv   1:                               general.type str              = model
@@ -236,5 +236,5 @@ llama_model_quantize_impl: model size  =    56.15 MiB (16.01 BPW)
 llama_model_quantize_impl: quant size  =    23.03 MiB (6.57 BPW)
 llama_model_quantize_impl: WARNING: 77 of 123 tensor(s) required fallback quantization
 
-llama_quantize: quantize time =   185.89 ms
-llama_quantize:    total time =   185.89 ms
+llama_quantize: quantize time =   196.56 ms
+llama_quantize:    total time =   196.56 ms

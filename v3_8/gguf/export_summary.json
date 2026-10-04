@@ -1,0 +1,14 @@
+{
+  "source": "v3_8\\release",
+  "f16_mb": 56.8,
+  "quants": [
+    [
+      "feng-30m-Q8_0.gguf",
+      30.5
+    ],
+    [
+      "feng-30m-Q4_K_M.gguf",
+      23.7
+    ]
+  ]
+}

@@ -1,0 +1,153 @@
+{
+  "summary": {
+    "model": "v3_8\\chat_restore",
+    "n": 20,
+    "distinct_ratio": 1.0,
+    "top_response_share": 0.05,
+    "top_response": "听到这个我也替你高兴，最近还有什么顺心的事吗？",
+    "blurb_leak": 0,
+    "emotion_ok": "8/8"
+  },
+  "rows": [
+    {
+      "kind": "情绪",
+      "prompt": "我很高兴",
+      "response": "听到这个我也替你高兴，最近还有什么顺心的事吗？",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "情绪",
+      "prompt": "我很难过",
+      "response": "抱抱你。先让自己缓一缓，想说的话随时可以说给我听。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "情绪",
+      "prompt": "我很伤心",
+      "response": "我在。让你伤心的事，愿意讲给我听听吗？",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "情绪",
+      "prompt": "我很痛苦",
+      "response": "这种时候别一个人扛着，如果实在难受，也可以找信任的人聊聊。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "情绪",
+      "prompt": "我很快乐",
+      "response": "听你这么说我也开心，今天有什么好事吗？",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "情绪",
+      "prompt": "我很孤独",
+      "response": "一个人待着确实容易难受。你现在想聊点什么，我都在。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "情绪",
+      "prompt": "我想死",
+      "response": "你的感受很重要，也很需要被认真对待。请现在就去联系能陪着你的人，或者拨打当地的心理援助电话。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "情绪",
+      "prompt": "我今天心情不太好",
+      "response": "抱抱你。想聊点什么，我都在。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "寒暄",
+      "prompt": "你好",
+      "response": "嗨，我在呢。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "寒暄",
+      "prompt": "在吗？",
+      "response": "我在，你说。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "寒暄",
+      "prompt": "早上好",
+      "response": "早呀，今天也要好好吃饭。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "寒暄",
+      "prompt": "晚安",
+      "response": "早上安，祝你一切顺利。",
+      "blurb_leak": false,
+      "topic_ok": false
+    },
+    {
+      "kind": "寒暄",
+      "prompt": "谢谢你",
+      "response": "不客气。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "闲聊",
+      "prompt": "给我讲个笑话",
+      "response": "为什么程序员总分不清万圣节和圣诞节？因为 Oct 31 等于 Dec 25。",
+      "blurb_leak": false,
+      "topic_ok": null
+    },
+    {
+      "kind": "任务",
+      "prompt": "推荐一部电影",
+      "response": "可以看看《千与千寻》，画面温暖，故事也耐看。",
+      "blurb_leak": false,
+      "topic_ok": null
+    },
+    {
+      "kind": "任务",
+      "prompt": "给我起个网名",
+      "response": "可以叫“半杯清茶”或者“晚风”，听起来清清爽爽。",
+      "blurb_leak": false,
+      "topic_ok": null
+    },
+    {
+      "kind": "任务",
+      "prompt": "把“今天天气很好”翻译成英文",
+      "response": "The weather is nice today.",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "任务",
+      "prompt": "1 加 1 等于几？",
+      "response": "1 加 1。",
+      "blurb_leak": false,
+      "topic_ok": false
+    },
+    {
+      "kind": "事实",
+      "prompt": "中国的首都是哪里？",
+      "response": "中国的首都是北京。",
+      "blurb_leak": false,
+      "topic_ok": true
+    },
+    {
+      "kind": "事实",
+      "prompt": "水的化学式是什么？",
+      "response": "水的化学式是 H₂O。",
+      "blurb_leak": false,
+      "topic_ok": true
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "models": [
+    "v3_6r\\final\\ctx32768\\final",
+    "v3_4\\release"
+  ],
+  "weights": [
+    0.65,
+    0.35
+  ]
+}

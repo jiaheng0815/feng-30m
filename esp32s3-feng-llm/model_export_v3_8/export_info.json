@@ -1,0 +1,24 @@
+{
+  "model": "v3_8\\release",
+  "layers": 11,
+  "hidden": 448,
+  "heads": 7,
+  "head_dim": 64,
+  "ffn": 896,
+  "vocab": 16384,
+  "ctx": 512,
+  "rope_theta": 1000000.0,
+  "rms_eps": 1e-06,
+  "model_mb": 14.93,
+  "ref_prompt_ids": [
+    1,
+    436,
+    202,
+    5331,
+    2,
+    202,
+    1,
+    442,
+    202
+  ]
+}
