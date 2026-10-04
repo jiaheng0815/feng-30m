@@ -130,11 +130,37 @@ static void rope(float *vec, int n_heads, int head_dim, int pos, float theta)
     }
 }
 
+/* 快速 exp：exp(x) = 2^k · exp(r)，|r| ≤ ln2/2，6 阶 Horner 多项式。
+ * 用于 softmax 与 SiLU（newlib expf 实测 ~257 周期/次，这里 ~20 条指令）。
+ * 相对误差：|x|≤4 时 <4e-7，|x|≤16 时 ~1.2e-6，接近下溢边界 ~8e-6
+ * （该处结果本身已可忽略）；x 超出 [-87.34, 88.72] 直接饱和到 0 / inf。 */
+#if FENG_FAST_EXP
+static inline float fast_expf(float x)
+{
+    if (x > 88.722839f) return __builtin_inff();
+    if (x < -87.336548f) return 0.f;
+    const float log2e = 1.4426950408889634f;
+    const float ln2 = 0.6931471805599453f;
+    const float kf = x * log2e;
+    const int ki = (int)(kf + (kf >= 0.f ? 0.5f : -0.5f));
+    const float r = x - (float)ki * ln2;
+    const float p = 1.0f + r * (1.0f + r * (0.5f + r * (0.16666667f + r *
+                    (0.041666668f + r * (0.008333334f + r * 0.0013888889f)))));
+    union { float f; uint32_t u; } s;
+    s.u = (uint32_t)(ki + 127) << 23;
+    return p * s.f;
+}
+#endif
+
 static void silu_mul(float *out, const float *g, const float *u, int n)
 {
     for (int i = 0; i < n; i++) {
         const float x = g[i];
+#if FENG_FAST_EXP
+        out[i] = (x / (1.0f + fast_expf(-x))) * u[i];
+#else
         out[i] = (x / (1.0f + expf(-x))) * u[i];
+#endif
     }
 }
 
@@ -454,7 +480,11 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
             const unsigned ps0 = (unsigned)esp_cpu_get_cycle_count();
 #endif
             for (int t = 0; t <= pos; t++) {
+#if FENG_FAST_EXP
+                scores[t] = fast_expf(scores[t] - maxs);
+#else
                 scores[t] = expf(scores[t] - maxs);
+#endif
                 sum += scores[t];
             }
             const float inv = 1.0f / sum;

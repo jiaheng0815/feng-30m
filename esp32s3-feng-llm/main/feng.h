@@ -47,6 +47,12 @@
 #ifndef FENG_GEMV_MADD
 #define FENG_GEMV_MADD 1
 #endif
+/* 快速 exp（多项式 + 2^k 缩放，~20 条指令）替换 softmax / silu 里的 newlib expf
+ * （实测 ~257 周期/次）。板端 softmax 从 169ms 降到 48ms（2048 ctx），
+ * logits 差 ≤3.8e-6、32 题矩阵输出逐字相同；-DFENG_FAST_EXP=0 可切回 newlib。 */
+#ifndef FENG_FAST_EXP
+#define FENG_FAST_EXP 1
+#endif
 
 
 #define FENG_STR2(x) #x

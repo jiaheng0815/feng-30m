@@ -1,0 +1,4 @@
+C 端 logits：快速 exp vs newlib expf（同一 prompt，16384 个 logits）
+n=16384 max|diff|=3.815e-06 mean|diff|=1.365e-06
+相对误差标定（Python 复刻多项式）：|x|<=4 <4e-7；|x|<=16 ~1.2e-6；接近 -87 下溢边界 ~8e-6
+参考：Q4 权重 vs fp32 的最大差 = 2.9443（pc_check 两版都 MATCH）

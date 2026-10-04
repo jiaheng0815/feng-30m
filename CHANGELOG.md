@@ -209,6 +209,22 @@ lm head（代码里紧跟着 `(void)logits;`）——一起跳过后再省 ~0.25
 `logs/board_v3_15ci4_memory_after_madd.txt`、`logs/board_bench_attn_madd.txt`）。
 想要与旧版逐位一致的对照，用 `idf.py -DFENG_GEMV_MADD=OFF` 编译。
 
+**softmax / SiLU 换快速 exp（默认开启，`FENG_FAST_EXP`）**：
+
+newlib 的 `expf` 在板端实测 ~257 周期/次：2048 ctx 的 softmax 要 77×2048 次、
+每个 token 的 SiLU 还有 ~1 万次。换成"2^k × 6 阶 Horner 多项式"（~20 条指令）后：
+
+| | ctx 256 | ctx 1024 | ctx 2048 | softmax 段（2048） |
+|---|---|---|---|---|
+| newlib expf | 738 ms | 1469 ms | 2434 ms | 169 ms |
+| **快速 exp（新）** | **716 ms** | **1399 ms** | **2303 ms** | **48 ms** |
+
+精度标定：|x|≤4 时相对误差 <4e-7、|x|≤16 时 ~1.2e-6；同一 prompt 的 C 端 logits
+最大差 **3.8e-6**（`logs/pc_logits_fexp_vs_newlib.txt`），32 题矩阵输出与旧版
+**逐字相同**（`logs/pc_kv_suite32_v3_15ci4_q2b8_fexp.txt`）、27/27 + 4/4；
+板端 tool 13/13、记忆 4/4 + 身份正确，5 轮连续提问 10.5/9.8/9.1/9.5/15.4 s
+（`logs/board_v3_15ci4_memory_after_fexp.txt`、`logs/board_bench_attn_fexp.txt`）。
+
 ---
 
 ## v3.14（2026-10-04）—— tool 版：计算/时间/随机数交给引擎，GGUF 发行取消
