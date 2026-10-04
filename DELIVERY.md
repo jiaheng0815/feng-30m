@@ -1,8 +1,12 @@
 # feng-30m 交付清单（身份 + 闲聊 + 长上下文 / 已上 ESP32-S3）
 
 版本演进与完整实测见 [`CHANGELOG.md`](CHANGELOG.md)，横向对比见 [`COMPARISON.md`](COMPARISON.md)。
-**当前部署的是 v3.6**（在 v3.5 多轮修复之上做日常对话大补丁；已烧录到 ESP32-S3 实机，
-板端 10/10，含情绪多轮与危机话术）。
+
+> **状态（2026-10-04）**：当前部署 **v3.14** —— PC `v3_14/pc2`、板端 `v3_14/board6`；
+> 算式/网络时间(UTC+8)/随机数由 C 引擎 tool 直接回答（0.5s 秒回），
+> **GGUF / llama.cpp 自 v3.14 起不再发行**（那条路径没有 tool）。
+> 本文件下面出现的 GGUF、llama-bench 与 v3.6 数字都是**历史交付记录**，保留用于对比；
+> 最新口径以 [`README.md`](README.md) 与 [`CHANGELOG.md`](CHANGELOG.md) 为准。
 
 身份自述（v3.2 起）：**「我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI」**（评测实测原文）。
 
