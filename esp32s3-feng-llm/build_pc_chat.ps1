@@ -1,4 +1,4 @@
-# 编译 PC 端 C 引擎运行时（带 tool）：pc_chat / pc_kv_suite / pc_calc_test
+﻿# 编译 PC 端 C 引擎运行时（带 tool）：pc_chat / pc_kv_suite / pc_calc_test
 # 用法： .\build_pc_chat.ps1        （可选 $env:FENG_GCC 指定 gcc 路径）
 $ErrorActionPreference = "Stop"
 $gcc = $env:FENG_GCC
@@ -25,8 +25,11 @@ try {
     # 4) tool 单测（算式识别/求值/中文句式 + 时间/随机数语义）
     & $gcc -O2 -o pc\pc_calc_test.exe pc\pc_calc_test.c main\feng_calc.c -Imain -lm
     & $gcc -O2 -o pc\pc_tools_test.exe pc\pc_tools_test.c main\feng_tools.c -Imain -lm
+    # 5) fp32 路径一致性检查（对 PyTorch 参考 logits；默认配置，不带 KV 量化）
+    & $gcc -O2 -o pc\pc_check.exe pc\pc_check.c main\feng_model.c main\feng_llm.c `
+        main\feng_quant.c main\feng_smp.c main\feng_tokenizer.c -Imain -lm
     if ($LASTEXITCODE -ne 0) { throw "gcc 编译失败" }
-    Write-Host "已生成 pc\pc_chat_q2b8.exe / pc_kv_suite_q2b8.exe / pc_kv_suite_i8.exe / pc_mt_suite.exe / pc_calc_test.exe / pc_tools_test.exe" -ForegroundColor Green
+    Write-Host "已生成 pc\pc_chat_q2b8.exe / pc_kv_suite_q2b8.exe / pc_kv_suite_i8.exe / pc_mt_suite.exe / pc_check.exe / pc_calc_test.exe / pc_tools_test.exe" -ForegroundColor Green
     Write-Host "跑一下 tool 单测：" -ForegroundColor Cyan
     & pc\pc_calc_test.exe | Select-Object -Last 2
     & pc\pc_tools_test.exe | Select-Object -Last 2

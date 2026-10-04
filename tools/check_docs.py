@@ -1044,6 +1044,14 @@ def check_facts() -> None:
             fail.append("logs/board_bench_pie_gemv2.txt: 未记录自检 MATCH 与 1.05×")
         else:
             print("    PIE 内核自检 MATCH、1.05×（与文档一致）")
+    # --- v3.16-embed：板端回复尾行（ctx / tok/s） ---
+    tail = ROOT / "logs" / "board_v3_16p3_tail_trailer.txt"
+    if tail.exists():
+        t = tail.read_text(encoding="utf-8", errors="replace")
+        if ">>END (ctx " not in t or "tok/s)" not in t:
+            fail.append("logs/board_v3_16p3_tail_trailer.txt: 未记录新的 >>END 尾行")
+        else:
+            print("    板端回复尾行 ctx/tok/s（与文档一致）")
 
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"

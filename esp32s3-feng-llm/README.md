@@ -31,7 +31,9 @@ tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话*
 **实机实测（2026-10-04，v3.16-embed + q2block8 固件）**：KV `q2/block8, ctx 2048, 9.62 MB`，
 PSRAM 余 5006 KB；工具（时间/随机数/算式）13/13
 （`../logs/board_v3_16p3_tools.txt`）、跨轮记忆 12 题 **10/12**
-（`../logs/board_v3_16p3_memory12.txt`）、速度约 **1.9 tok/s**（约 520 ms/token）；
+（`../logs/board_v3_16p3_memory12.txt`）、速度 **2.18 tok/s**（短回答实测，
+`../logs/board_v3_16p3_tail_trailer.txt`；优化前 1.80-1.85）——
+回复尾行会打印 `>>END (ctx N/2048, X.XX tok/s)`，和 PC 版同一口径；
 长上下文另有专项：q2/2048 单次 forward **2224 ms**（K 835 / softmax 48 / V 832 / 权重等 509 ms），
 比优化前 3534 ms 快 **37%** 且 32 题矩阵输出逐字一致（`../CHANGELOG.md` 的 v3.15-embed 附录、
 `../logs/board_bench_attn_vfold.txt`、`../logs/board_bench_attn_prof.txt`）；

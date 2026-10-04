@@ -504,8 +504,6 @@ static int generate(const int *prompt, int np, char *out, int out_max, int keep)
         logits = feng_forward(&s_model, &s_kv, &s_ws, tok, pos++);
     }
     if (pn > 0) write_text(pend, pn);
-    out_printf("\n>>END\n");
-    fflush(stdout);
     const int64_t dt = esp_timer_get_time() - t0;
     const float tps = (float)(pos) * 1e6f / (float)dt;
     if (keep) {
@@ -518,6 +516,9 @@ static int generate(const int *prompt, int np, char *out, int out_max, int keep)
         (void)logits;
     }
     s_kv.len = pos;
+    /* 和 pc_chat 同一口径：尾行给出上下文占用与速度，方便用户/脚本判断 */
+    out_printf("\n>>END (ctx %d/%d, %.2f tok/s)\n", s_kv.len, MAX_CTX, tps);
+    fflush(stdout);
     ESP_LOGI(TAG, "prompt %d | gen %d | prefill %lld ms | total %lld ms | %.2f tok/s (%.0f ms/token)",
              np, n_gen, (t_prefill - t0) / 1000, dt / 1000, tps,
              (float)dt / 1000.0f / (float)n_gen);

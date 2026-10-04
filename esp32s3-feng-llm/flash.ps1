@@ -1,4 +1,4 @@
-<#
+﻿<#
   一键烧录 feng-30m 到 ESP32-S3 (R16N32)
   用法:  .\flash.ps1 -Port COM20 [-SkipBuild] [-Monitor] [-ModelDir .\model_export_v3]
          [-EspIdfPath <esp-idf 目录>] [-EspToolPy <python.exe>]

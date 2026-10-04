@@ -216,6 +216,9 @@ python scripts\esp32_enc_test.py COM20
 ```
 
 文档自检：`python tools\check_md.py` + `python tools\check_docs.py`（改文档后两个都要跑）。
+**一键验收**：`python tools\check_all.py`——按顺序跑 文档自检 → PC 引擎构建 + tool 单测 →
+多轮回归套件（`pc_mt_suite`）→ 32 题矩阵 + 算术子集（`pc_kv_suite`）→ fp32 参考 logits
+（`pc_check`）；模型导出目录缺失时自动跳过套件。提交前建议至少跑一次。
 
 ## 6. 硬性约束与踩过的坑（改代码前先看）
 
