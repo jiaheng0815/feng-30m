@@ -118,6 +118,8 @@ def main() -> None:
     ap.add_argument("--warmup", type=int, default=15)
     ap.add_argument("--wqat", action="store_true",
                     help="同时做权重 QAT（导出器同款 Q4 block64），让模型吃下板端权重量化误差")
+    ap.add_argument("--train-last", type=int, default=0,
+                    help="只训练最后 N 层 + norm（0=全参）；末层微调对检索/召回的扰动最小")
     ap.add_argument("--batch", type=int, default=24)
     ap.add_argument("--max-len", type=int, default=1024)
     ap.add_argument("--retr", default="",
@@ -159,6 +161,20 @@ def main() -> None:
 
     model = Qwen3ForCausalLM.from_pretrained(args.init, dtype=torch.float32).to("cuda").train()
     model.config.use_cache = False
+    if args.train_last > 0:
+        for p in model.parameters():
+            p.requires_grad = False
+        n_layers = len(model.model.layers)
+        for layer in model.model.layers[max(0, n_layers - args.train_last):]:
+            for p in layer.parameters():
+                p.requires_grad = True
+        norm = getattr(model.model, "norm", None)
+        if norm is not None:
+            for p in norm.parameters():
+                p.requires_grad = True
+        n_train = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        n_all = sum(p.numel() for p in model.parameters())
+        log(f"[train-last] 只训练最后 {args.train_last} 层 + norm：{n_train/1e6:.2f}M / {n_all/1e6:.2f}M 参数")
     install_qat(model)
     if args.wqat:
         install_wqat(model)

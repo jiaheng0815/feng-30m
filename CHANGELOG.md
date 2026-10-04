@@ -54,6 +54,30 @@ python esp32s3-feng-llm\tools\export_model.py --model v3_15\board_ctxid4 --out e
 python scripts\esp32_multi.py --port COM20 --no-reset --questions "推荐一本好书|你叫什么名字"
 ```
 
+### 附录：人称修复尝试（`board_pf`/`board_pf2`，未采用）+ 编码/PC 运行时验证
+
+**人称修复尝试（负结果）**：给 `v3_7_kv_qat.py` 加了 `--train-last`（末层 + norm，
+4.02M/29.43M 参数），从 board_ctxid4 再训 1 epoch 专修「你叫 feng → 我叫 feng」：
+
+| 版本 | 矩阵 | 身份（6 组前缀） | 记忆 12 题 | 输出伪影 |
+|---|---|---|---|---|
+| board_ctxid4（发布） | 27/27+4/4 | 6/6 正确（另一组孤例人称错） | **10/12** | 无 |
+| board_pf（末层 1 epoch，lr 4e-6） | 27/27+4/4 | **6/6，0 人称错** | 9/12 | 出现 2 处 **"我user"** 模板伪影 |
+| board_pf2（再补 1,800 条记忆） | 27/27+4/4 | 6/6 | 9/12 | 仍有 2 处 "我user" |
+
+结论：末层人称修复虽然把人称修到 0 错，但**记忆掉 1 分并引入 "user" 模板伪影**，
+净负收益——不采用，固件与发布保持 `board_ctxid4`（v3.15-embed）。
+日志：`logs/board_v3_15pf2_memory12.txt`、`logs/board_v3_15pf2_identity_ctx.txt`、
+`logs/pc_kv_suite32_v3_15pf2_q2b8.txt`。
+
+**GBK 终端模式（SuperCom/XCOM）**：用 GBK 字节发中文 + 工具问题，回复按 GBK 解码
+**5/5 全部正常**（`logs/board_v3_15ci4_gbk_terminal.txt`）。注意编码跟随**输入**：
+手动 `\gbk` 之后如果发的是 UTF-8 中文，固件会自动切回 UTF-8 输出。
+
+**PC 运行时 `pc_chat` 长会话**：65 轮跑完（最大 ctx 1632/2048），工具 2 次调用正常、
+`\reset` 正常把上下文清到 29（`logs/pc_chat_v3_15ci4_stress.txt`）；
+未触发 2048 守卫（该路径已在板端用 256 测试版验证）。
+
 ---
 
 ## v3.14（2026-10-04）—— tool 版：计算/时间/随机数交给引擎，GGUF 发行取消
