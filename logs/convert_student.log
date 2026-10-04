@@ -1,4 +1,4 @@
-INFO:hf-to-gguf:Loading model: pol8
+INFO:hf-to-gguf:Loading model: arith2l3
 INFO:hf-to-gguf:Model architecture: Qwen3ForCausalLM
 INFO:hf-to-gguf:gguf: indexing model part 'model.safetensors'
 INFO:gguf.gguf_writer:gguf: This GGUF file is for Little Endian only
@@ -148,6 +148,6 @@ INFO:gguf.vocab:Setting special token type pad to 3
 INFO:gguf.vocab:Setting chat_template to {%- for message in messages %}{{- '<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n' }}{%- endfor %}{%- if add_generation_prompt %}{{- '<|im_start|>assistant\n' }}{%- endif %}
 
 INFO:gguf.gguf_writer:Writing the following files:
-INFO:gguf.gguf_writer:v3_11\gguf\feng-30m-f16.gguf: n_tensors = 123, total_size = 58.9M
-Writing:   0%|          | 0.00/58.9M [00:00<?, ?byte/s]Writing:  69%|¨€¨€¨€¨€¨€¨€¨‚   | 40.4M/58.9M [00:00<00:00, 396Mbyte/s]Writing: 100%|¨€¨€¨€¨€¨€¨€¨€¨€¨€¨€| 58.9M/58.9M [00:00<00:00, 388Mbyte/s]
-INFO:hf-to-gguf:Model successfully exported to v3_11\gguf\feng-30m-f16.gguf
+INFO:gguf.gguf_writer:v3_12\gguf\feng-30m-f16.gguf: n_tensors = 123, total_size = 58.9M
+Writing:   0%|          | 0.00/58.9M [00:00<?, ?byte/s]Writing:  71%|¨€¨€¨€¨€¨€¨€¨€¨‡  | 42.0M/58.9M [00:00<00:00, 417Mbyte/s]Writing: 100%|¨€¨€¨€¨€¨€¨€¨€¨€¨€¨€| 58.9M/58.9M [00:00<00:00, 413Mbyte/s]
+INFO:hf-to-gguf:Model successfully exported to v3_12\gguf\feng-30m-f16.gguf
