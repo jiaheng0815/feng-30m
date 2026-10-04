@@ -5,6 +5,8 @@
  * 每题打印 [PASS]/[FAIL]/[ -- ]，结尾给通过率汇总，便于四种 KV 模式横向比。
  *
  * 用法：pc_kv_suite <model_export 目录> [prompt_long.txt] [needle_chars]
+ *      FENG_SUITE=arith 时改跑算术子集（0 操作数 / 结果 0 / 结果负），
+ *      用来在 PC 上复现板端 q2 KV 的算术行为，避免反复烧板试错。
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -78,6 +80,32 @@ static const task_t TASKS[] = {
     {"寒暄-再见",     "再见",                     "再见"},
 };
 
+/* 算术子集：覆盖 v3.6 drill 没训过的边界（0 操作数、结果 0 / 负数）。
+ * 期望串用「等于 X」整段匹配，避免 expect "0" 被 "10" 误命中。 */
+static const task_t ARITH_TASKS[] = {
+    {"算-0+0",  "0+0等于几？",   "等于 0"},
+    {"算-0+5",  "0+5等于几？",   "等于 5"},
+    {"算-7+0",  "7+0等于几？",   "等于 7"},
+    {"算-1+0",  "1+0等于几？",   "等于 1"},
+    {"算-9+9",  "9+9等于几？",   "等于 18"},
+    {"算-2+3",  "2+3等于几？",   "等于 5"},
+    {"算-1+1",  "1+1等于几？",   "等于 2"},
+    {"算-1-1",  "1减1等于几？",  "等于 0"},
+    {"算-5-5",  "5减5等于几？",  "等于 0"},
+    {"算-7-7",  "7减7等于几？",  "等于 0"},
+    {"算-9-9",  "9减9等于几？",  "等于 0"},
+    {"算-10-4", "10减4等于几？", "等于 6"},
+    {"算-9-2",  "9减2等于几？",  "等于 7"},
+    {"算-3-4",  "3减4等于几？",  "等于 -1"},
+    {"算-5-6",  "5减6等于几？",  "等于 -1"},
+    {"算-3-5",  "3减5等于几？",  "等于 -2"},
+    {"算-1-4",  "1减4等于几？",  "等于 -3"},
+    {"算-1-8",  "1减8等于几？",  "等于 -7"},
+    {"算-2-9",  "2减9等于几？",  "等于 -7"},
+    {"算-7*8",  "7乘8等于几？",  "等于 56"},
+    {"算-6*7",  "6乘7等于几？",  "等于 42"},
+};
+
 /* 4 个长文召回（位置千分比 / 取件码） */
 static const int NEEDLE_POS[] = {250, 500, 750, 900};
 static const char *NEEDLE_CODE[] = {"483920", "517264", "648153", "290475"};
@@ -123,6 +151,11 @@ int main(int argc, char **argv)
     const char *dir = argc > 1 ? argv[1] : ".";
     const char *filler_file = argc > 2 ? argv[2] : "pc/prompt_long.txt";
     const int needle_chars = argc > 3 ? atoi(argv[3]) : 5200;
+    const char *suite = getenv("FENG_SUITE");
+    const int use_arith = suite && strcmp(suite, "arith") == 0;
+    const task_t *tasks = use_arith ? ARITH_TASKS : TASKS;
+    const int n_tasks = use_arith ? (int)(sizeof(ARITH_TASKS) / sizeof(ARITH_TASKS[0])) : N_TASKS;
+    const int n_needle = use_arith ? 0 : N_NEEDLE;
     const int ctx = 2048;
     const int max_new = 48;
     char path[512];
@@ -172,15 +205,15 @@ int main(int argc, char **argv)
            ctx, kv_bytes / 1048576.0);
 
     int pass = 0, fail = 0, free_ok = 0, free_bad = 0, needle_ok = 0, needle_n = 0;
-    for (int t = 0; t < N_TASKS + N_NEEDLE; t++) {
+    for (int t = 0; t < n_tasks + n_needle; t++) {
         char *user = NULL;
         const char *expect = NULL;
         const char *name = NULL;
-        const int is_needle = t >= N_TASKS;
+        const int is_needle = t >= n_tasks;
         if (!is_needle) {
-            name = TASKS[t].name; user = strdup(TASKS[t].prompt); expect = TASKS[t].expect;
+            name = tasks[t].name; user = strdup(tasks[t].prompt); expect = tasks[t].expect;
         } else {
-            const int k = t - N_TASKS;
+            const int k = t - n_tasks;
             const int pos_permille = NEEDLE_POS[k];
             expect = NEEDLE_CODE[k];
             static char names[N_NEEDLE][16];

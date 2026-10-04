@@ -17,6 +17,7 @@ import math
 import random
 import sys
 import time
+import types
 from pathlib import Path
 
 import numpy as np
@@ -67,6 +68,43 @@ def install_qat(model) -> None:
     log("KV-QAT hooks installed: K (post-RoPE) + V (v_proj out), q2 block8 STE")
 
 
+def q4_block64_ste(w: torch.Tensor) -> torch.Tensor:
+    """导出器同款 Q4：每行每 64 个权重共享一个 fp16 scale（max|w|/7，signed 4bit）。
+
+    返回带 STE 的量化权重（前向用量化值，反向按恒等回传），
+    让训练直面板端 Q4 权重的取整误差。
+    """
+    out_f, in_f = w.shape
+    assert in_f % 64 == 0
+    wb = w.reshape(out_f, in_f // 64, 64).float()
+    scale = (wb.abs().amax(dim=-1, keepdim=True) / 7.0).clamp_min(1e-8).half().float()
+    q = torch.round(wb / scale).clamp_(-8, 7)
+    dq = (q * scale).reshape(out_f, in_f)
+    return w + (dq - w).detach()
+
+
+def install_wqat(model) -> None:
+    """把所有权重矩阵的 forward 换成"先按导出格式量化再算"（embedding 与 lm_head 共享同一份权重）。"""
+    import torch.nn.functional as F
+
+    def linear_forward(self, x):
+        return F.linear(x, q4_block64_ste(self.weight), self.bias)
+
+    def embed_forward(self, ids):
+        return F.embedding(ids, q4_block64_ste(self.weight), self.padding_idx)
+
+    n_lin = 0
+    for name, mod in model.named_modules():
+        if isinstance(mod, torch.nn.Linear) and mod.weight.dim() == 2 \
+                and mod.weight.shape[1] % 64 == 0 and mod.weight.numel() >= 200:
+            mod.forward = types.MethodType(linear_forward, mod)
+            n_lin += 1
+    emb = model.get_input_embeddings()
+    if emb is not None and emb.weight.dim() == 2 and emb.weight.shape[1] % 64 == 0:
+        emb.forward = types.MethodType(embed_forward, emb)
+    log(f"W-QAT：{n_lin} 个权重矩阵 + embedding 按 Q4 block64（fp16 scale）STE 前向")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--init", required=True)
@@ -78,6 +116,8 @@ def main() -> None:
     ap.add_argument("--epochs", type=float, default=3.0)
     ap.add_argument("--lr", type=float, default=3e-5)
     ap.add_argument("--warmup", type=int, default=15)
+    ap.add_argument("--wqat", action="store_true",
+                    help="同时做权重 QAT（导出器同款 Q4 block64），让模型吃下板端权重量化误差")
     ap.add_argument("--batch", type=int, default=24)
     ap.add_argument("--max-len", type=int, default=1024)
     ap.add_argument("--retr", default="",
@@ -120,6 +160,8 @@ def main() -> None:
     model = Qwen3ForCausalLM.from_pretrained(args.init, dtype=torch.float32).to("cuda").train()
     model.config.use_cache = False
     install_qat(model)
+    if args.wqat:
+        install_wqat(model)
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(0.9, 0.95), eps=1e-8,
                             weight_decay=0.05, fused=True)
 

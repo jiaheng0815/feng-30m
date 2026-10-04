@@ -1,26 +1,26 @@
 # feng-30m 使用说明
 
 本说明对应 [Releases](https://github.com/jiaheng0815/feng-30m/releases)：
-**板端用 `feng-30m-v3.10-release.zip`（q2 KV / 2048 ctx），PC 长上下文用 `feng-30m-v3.9-release.zip`**。
+**板端用 `feng-30m-v3.11-release.zip`（q2 KV / 2048 ctx，含算术边界修复），PC 长上下文用 `feng-30m-v3.9-release.zip`**。
 仓库本身只放代码与文档；**权重、板端固件模型、蒸馏数据集都在 Release 包里**。
 
 ## 1. 下载与包内结构
 
-解压 `feng-30m-v3.10-release.zip` 后：
+解压 `feng-30m-v3.11-release.zip` 后：
 
 ```
-feng-30m-v3.10/
+feng-30m-v3.11/
 ├── USAGE.md                  ← 本文件
 ├── LICENSE                   ← Apache-2.0（代码与权重同许可）
 ├── weights/
-│   ├── hf/                   v3.10 完整权重（fp32 safetensors + 分词器），transformers 直接加载
+│   ├── hf/                   v3.11 完整权重（fp32 safetensors + 分词器），transformers 直接加载
 │   ├── gguf/                 llama.cpp 用：Q4_K_M / Q8_0 / f16（chat template 已内嵌）
 │   └── esp32/                ESP32-S3 板端：model.bin + tokenizer.bin + 参考 logits
 └── datasets/                 蒸馏训练数据（教师输出与提示词）
 ```
 
-> PC 端跑长上下文（32k）请下载 **v3.9** 的 Release：v3.10 是为板端 q2 KV 做的
-> 量化感知版本，PC 端 32k 弱于 v3.9（21/32 vs 27/32），4k–16k 基本持平。
+> PC 端跑长上下文（32k）请下载 **v3.9** 的 Release：v3.11 是为板端「Q4 权重 + q2 KV」
+> 做的双量化感知版本，PC 端 32k 弱于 v3.9（单 20/32、多 7/32），4k–16k 基本持平。
 
 模型规格：Qwen3 结构，11 层 / hidden 448 / 7 头 MHA（7 KV 头）/ head_dim 64 / FFN 896 /
 16k 词表 / tied embedding，**29.43M 参数**；训练上下文 32768，`rope_theta=1e6`。
@@ -85,10 +85,11 @@ PSRAM 必须 **16 MB**（8 MB 版本放不下 1024 ctx 的 KV）。
 实测 **1.85–1.86 tok/s @ 1024 上下文**（int8 KV；v3.6 板端两次实测为 1.86 / 1.85 tok/s，
 见 `logs/board_v3_6_speed.txt`；v3.4 逐轮 10.2–28.9 s，未单独记录 tok/s）。
 
-v3.10 提供 **q2 KV（block8）固件**：把上下文从 1024 提到 **2048**（KV 9.62 MB），
-PC 端 C 引擎 32 题矩阵 **27/27 + 4/4**（与 int8 持平），板端两组 10 题 **10/10 + 10/10**、
-实测 **1.80 tok/s**（`logs/pc_kv_suite32_v3_10p3_q2b8.txt`、`logs/board_v3_10p3_multi.txt`、
-`logs/board_v3_10p3_chat10.txt`）。
+v3.11 提供 **q2 KV（block8）固件**：把上下文从 1024 提到 **2048**（KV 9.62 MB），
+PC 端 C 引擎 32 题矩阵 **27/27 + 4/4**（与 int8 持平）、算术子集 **21/21**（q2 + Q4 同口径），
+板端默认/情绪/算术三组 10 题 **10/10 + 10/10 + 10/10**、实测 **1.81 tok/s**
+（`logs/pc_kv_suite32_v3_11p8_q2b8.txt`、`logs/pc_arith_suite_v3_11p8_q2b8.txt`、
+`logs/board_v3_11p8_multi.txt`、`logs/board_v3_11p8_arith.txt`）。
 编译命令：
 
 ```powershell
@@ -191,22 +192,24 @@ python scripts\eval_longctx_many.py --models "<输出>" --n 32 --neg-n 16       
 | 针检索 @4k / 8k / 16k / 32k（每长度 32 题） | **29/29/23/27（单类别 108/128）**；**多类别 108/128（历史最好）** |
 | 「文中没有该信息」正确拒答 | **61/64（单类别）、62/64（多类别）** |
 
-嵌入式（v3.10，q2 block8 / 2048 ctx）：32 题矩阵 **27/27 + 4/4**（与 int8 持平），
-范围 18 题 **10/10**，日常探针 **42/42**、身份 **12/12**、多轮 1.00，
-板端 **10/10 + 10/10**，约 **1.80 tok/s**（`pc_kv_suite_q2b8.exe`、`eval/v3_10p3_scope.json`、
-`eval/chat_probe_v3_10p3.json`、`eval/identity_v3_10p3.json`）。
+嵌入式（v3.11，q2 block8 / 2048 ctx）：32 题矩阵 **27/27 + 4/4**（与 int8 持平）、
+算术子集 **21/21**（v3.10 只有 12/21），范围 18 题 **10/10**，日常探针 **42/42**、
+身份 **12/12**、多轮 1.00，板端三组 10 题 **10/10 + 10/10 + 10/10**，约 **1.81 tok/s**
+（`pc_kv_suite_q2b8.exe`、`eval/v3_11p8_scope.json`、`eval/chat_probe_v3_11p8.json`、
+`eval/identity_v3_11p8.json`、`eval/arith_v3_11pol8.json`）。
 
 ## 8. 已知限制
 
 - **30M 容量上限**：v3.6 覆盖了常见寒暄/情绪/常识/小数字运算/翻译/推荐等日常问法（42 题探针全过），
   但没覆盖到的自由问答仍可能答偏或编造；复杂推理与专业领域不可靠。
-- 板端 int8 KV 是 1024 上下文；q2 KV（v3.10）是 2048。32k 仅在 PC 上可用。
+- 板端 int8 KV 是 1024 上下文；q2 KV（v3.11）是 2048。32k 仅在 PC 上可用。
 - 板端生成约 1.8–1.9 tok/s（约 540 ms/token，不含 prefill），长回答需要等待十几秒。
 - PC 版 v3.9：16k 仍是弱项（23/32，v3.4 是 27）；单类别总量 108 低于 v3.4 的 113（多类别 108 历史最好）。
-- 板端版 v3.10：q2 矩阵满分、板端 20/20，但 **PC 32k 弱于 v3.9**（单类别 21/32 vs 27/32）；
-  q2 鲁棒性对权重回插极敏感——掺 20% v3.9 权重就掉到 25/27（`logs/pc_kv_suite32_v3_10e80_q2b8.txt`）。
+- 板端版 v3.11：q2 矩阵满分、板端 30/30，但 **PC 32k 弱于 v3.9**（单类别 20/32、多类别 7/32）；
+  量化鲁棒性对权重回插极敏感（掺 20% v3.9 就掉到 25/27）——要改板端行为请走
+  「补数据 + 权重/KV 双 QAT」链路，不要手动 soup（CHANGELOG v3.10/v3.11）。
 - 16k 弱项与 32k 负样本拒答（61/64）经多轮专项训练未突破，已记录为平台（CHANGELOG v3.9 附录）。
-- v3.9 已把股票拒答修好（范围 10/10），16k 仍是唯一弱项（23/32）；**PC 用 v3.9、板端用 v3.10**。
+- v3.9 已把股票拒答修好（范围 10/10），16k 仍是唯一弱项（23/32）；**PC 用 v3.9、板端用 v3.11**。
 
 ## 9. 许可证
 

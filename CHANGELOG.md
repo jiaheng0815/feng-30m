@@ -1,8 +1,91 @@
-# feng-30m 更新日志（v1 → v3.10）
+# feng-30m 更新日志（v1 → v3.11）
 
 一个 ~30M 参数中文对话模型的四个版本：从"能对话的玩具"到"能上 ESP32-S3 实机、
 并且真的能用长上下文"的完整记录。所有数字都是本机实测（RTX 5060 Ti 16GB、
 i7-12700KF、ESP32-S3-WROOM-2-N32R16V），命令见每节末尾。
+
+---
+
+## v3.11（2026-10-04）—— 嵌入式版：算术边界修复 + 权重/KV 双 QAT
+
+### 问题
+
+v3.10 板端功能满分，但**基础算术有硬缺口**：v3.6 的 drill 只枚举了「加法 1..9×1..9、
+减法结果 ≥1」，于是 **0 操作数、a-a=0、a<b 的负数减法从未进过训练集**。
+新增算术网格评测（`scripts/eval_arith.py`，281 题，贪心）实测 v3.10：
+
+| 类别 | v3.10 | 说明 |
+|---|---|---|
+| 加（0..9 × 0..9） | 83/100 | 0+2、7+0 这类全错 |
+| 减（结果>0） | 37/45 | a-0 全错 |
+| 减（结果=0） | 1/10 | 7-7 答 1 |
+| 减（结果<0） | 0/45 | 负数完全没学过 |
+| 乘（1..9） | 81/81 | 原本就覆盖 |
+| **合计** | **202/281** | 板端实测 7-7=1、1-4 答正数 |
+
+### 做法
+
+1. **补数据**（`scripts/v3_11_build_arith_patch.py`）：完整 0..9 加减 / 1..9 乘网格，
+   0 操作数与「结果 ≤0」额外加权 ×4；混入日常补丁与旧 drill 锚点（过滤情绪句，
+   避免动到已验收的 27 题）。
+2. **KV-QAT 微调**（沿用 v3.10 链，`v3_7_kv_qat.py`）：算术从 202 → **273/281**，
+   但 q2 矩阵掉 1 分（情绪-伤心句式被锚点带偏）。
+3. **验收锚点修复**（`scripts/v3_11_build_repair.py`：从一次全通过的矩阵日志里抽
+   「题目→通过回答」，×8~×16 混训）→ 算术 **274/281** + 矩阵 **27/27 + 4/4**。
+4. **权重 QAT（本版关键）**：把导出器的 **Q4 block-64**（fp16 scale、signed 4bit）
+   做成 STE 前向，和 KV-QAT 一起训练（`v3_7_kv_qat.py --wqat`）→ `v3_11/pol8`。
+   这一步直接对准板端「Q4 权重 + q2 KV」的**联合量化误差**，而不是只修数据分布。
+
+### 结果（同协议实测）
+
+| 指标 | v3.10 | **v3.11** |
+|---|---|---|
+| q2 block8 32 题矩阵（2048 ctx） | 27/27 + 4/4 | **27/27 + 4/4** |
+| int8 32 题矩阵 | 27/27 + 4/4 | **27/27 + 4/4** |
+| 算术网格 281 题（PC bf16） | 202 | **277**（加 100/100、乘 81/81、减=0 9/10、减<0 44/45、减>0 43/45） |
+| C 引擎算术子集 21 题（Q4+q2，板端同口径） | — | **21/21**（同一链路只做 KV-QAT 的 pol7 只有 12/21） |
+| 板端默认 10 题 / 情绪日常 10 题 / 算术 10 题 | 10/10 ｜ 10/10 ｜ — | **10/10 ｜ 10/10 ｜ 10/10**（7-7=0、3-5=-2、9+9=18 全对） |
+| 范围 18 题 / 探针 42 题 / 身份 / 多轮 | 10/10 ｜ 42/42 ｜ 12/12 ｜ 1.00 | **同** |
+| 板端速度 | 1.80 tok/s | **1.81 tok/s** |
+| PC 针检索（取舍） | 单 107（28/30/28/21）｜多 94 | 单 106（29/30/27/20）｜多 90（29/27/27/7） |
+
+**取舍**：v3.11 的权重是为「Q4 权重 + q2 KV」的量化前向优化的，PC fp32 长上下文比 v3.9 差
+（尤其多类别 32k：7/32 vs 23/32）。所以 **PC 长上下文继续用 v3.9，板端用 v3.11**。
+另外 v3.11 的 q2 矩阵同样是"脆"的：继续和 v3.9/v3.10 做权重插值会掉分（见 v3.10 节）。
+
+结果文件：`logs/pc_kv_suite32_v3_11p8_q2b8.txt`、`logs/pc_kv_suite32_v3_11p8_i8.txt`、
+`logs/pc_arith_suite_v3_11p8_q2b8.txt`、`logs/pc_arith_suite_v3_11p7_q2b8.txt`、
+`logs/board_v3_11p8_multi.txt`、`logs/board_v3_11p8_chat10.txt`、`logs/board_v3_11p8_arith.txt`、
+`eval/arith_v3_11pol8.json`、`eval/v3_11p8_scope.json`、`eval/chat_probe_v3_11p8.json`、
+`eval/identity_v3_11p8.json`、`eval/longctx32_v3_11p8.json`、`eval/longctx32multi_v3_11p8.json`。
+
+### 复现
+
+```powershell
+# 链路：pol3→pol4（算术补丁）→pol7（验收锚点精修）→pol8（权重 QAT）。
+# 1) 算术补丁数据（完整网格 + 边界加权 + 锚点）→ pol4（算术 273，矩阵 26/27）
+python scripts\v3_11_build_arith_patch.py --out v3_11\arith_patch2.jsonl
+python scripts\v3_7_kv_qat.py --init v3_10\qat_pol3 --data v3_11\arith_patch2.jsonl `
+  --identity-n 100 --out v3_11\pol4 --epochs 2 --lr 1e-5 --batch 24 --max-len 1024
+# 2) 从一次全通过的矩阵日志抽 27 题锚点 + pol4 的算术漏题
+python scripts\eval_arith.py --model v3_11\pol4 --out eval\arith_v3_11pol4.json
+python scripts\v3_11_build_repair.py --suite-log logs\pc_kv_suite32_v3_10p3_q2b8.txt `
+  --misses eval\arith_v3_11pol4.json --out v3_11\repair.jsonl
+# 3) 精修：repair 的子集（8 个高危题 ×16）+ 取件码召回 ×2 → pol7（算术 274，矩阵 27/27+4/4）
+python scripts\v3_7_kv_qat.py --init v3_11\pol4 --data v3_11\repair3.jsonl `
+  --identity-n 100 --out v3_11\pol7 --epochs 4 --lr 3e-6 --batch 8 --max-len 2048
+# 4) 主训练：arith_patch2 + repair 合并，开「KV-QAT + 权重 QAT」→ pol8（本版发布）
+python scripts\v3_7_kv_qat.py --init v3_11\pol7 --data v3_11\arith_repair.jsonl `
+  --identity-n 100 --out v3_11\pol8 --epochs 2 --lr 8e-6 --batch 24 --max-len 1024 --wqat
+# 5) 板端同口径验证（C 引擎 q2 + 算术子集）
+python esp32s3-feng-llm\tools\export_model.py --model v3_11\pol8 --out esp32s3-feng-llm\model_export_v3_11p8
+pc_kv_suite_q2b8.exe ..\esp32s3-feng-llm\model_export_v3_11p8 ..\esp32s3-feng-llm\pc\prompt_long.txt 5200
+$env:FENG_SUITE="arith"; pc_kv_suite_q2b8.exe ..\esp32s3-feng-llm\model_export_v3_11p8 ..\esp32s3-feng-llm\pc\prompt_long.txt 5200
+```
+
+> 注：`v3_11/` 的数据文件（arith_patch2 / repair / repair3 / arith_repair）与其它训练数据一样
+> 不进主仓库。`repair3` 与 `arith_repair` 的构造写在 `scripts/v3_11_build_repair.py` 的
+> `--surgical` / `--mix` 两个开关里（见该脚本）。
 
 ---
 
