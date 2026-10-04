@@ -40,6 +40,13 @@
 #ifndef FENG_GEMV_A8
 #define FENG_GEMV_A8 0
 #endif
+/* Q4 GEMV 累加形式：1 = 纯 madd 链（2 个 FP 运算/2 权重，实测更快：ctx-256 -5%、
+ * lm head -7.5%，见 CHANGELOG 附录）；0 = 两两求和再累加（3 个 FP 运算/2 权重）。
+ * 两者 logits 差 ≤ 3.8e-6（Q4 量化误差是 2.94），32 题矩阵输出逐字相同；
+ * 想要与旧版逐位一致时用 -DFENG_GEMV_MADD=0。 */
+#ifndef FENG_GEMV_MADD
+#define FENG_GEMV_MADD 1
+#endif
 
 
 #define FENG_STR2(x) #x

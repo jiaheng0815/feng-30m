@@ -866,7 +866,7 @@ def check_facts() -> None:
         else:
             print("    板端 lm head 532/407 ms、每 prefill token 省 124 ms（与文档一致）")
     ab = [ROOT / "logs" / f"pc_kv_suite32_v3_15ci4_q2b8_{k}.txt"
-          for k in ("nolut", "lut", "lin", "inl", "pair", "nohd", "endtok")]
+          for k in ("nolut", "lut", "lin", "inl", "pair", "nohd", "endtok", "madd")]
     texts = [p.read_text(encoding="utf-8", errors="replace") for p in ab if p.exists()]
     if len(texts) >= 2:
         if any(t != texts[0] for t in texts[1:]):
@@ -906,6 +906,31 @@ def check_facts() -> None:
     for fname, needle, label in [
             ("board_v3_15ci4_tools_after_a8revert.txt", "13 成功 / 0 失败", "刷回默认后 tool 13/13"),
             ("board_v3_15ci4_memory_after_a8revert.txt", "4 成功 / 0 失败", "刷回默认后记忆 4/4")]:
+        p = ROOT / "logs" / fname
+        if p.exists() and needle not in p.read_text(encoding="utf-8", errors="replace"):
+            fail.append(f"logs/{fname}: 未记录「{needle}」")
+        elif p.exists():
+            print(f"    {label}（与文档一致）")
+    # --- v3.15-embed 附录：纯 madd 累加链（默认开启） ---
+    mbench = ROOT / "logs" / "board_bench_attn_madd.txt"
+    if mbench.exists():
+        t = mbench.read_text(encoding="utf-8", errors="replace")
+        if "ctx= 256: cold 738 ms/forward" not in t or "ctx=2048: cold 2434 ms/forward" not in t:
+            fail.append("logs/board_bench_attn_madd.txt: 与文档的 738/2434 ms 不一致")
+        elif "with 492 ms | without 378 ms" not in t:
+            fail.append("logs/board_bench_attn_madd.txt: 与文档的 lm head 492/378 ms 不一致")
+        else:
+            print("    madd 累加链 738/1469/2434 ms、lm head 492/378 ms（与文档一致）")
+    mlogits = ROOT / "logs" / "pc_logits_madd_vs_old.txt"
+    if mlogits.exists():
+        t = mlogits.read_text(encoding="utf-8", errors="replace")
+        if "max|diff|=3.815e-06" not in t:
+            fail.append("logs/pc_logits_madd_vs_old.txt: 与文档的 3.8e-6 不一致")
+        else:
+            print("    madd vs 旧累加：logits max|diff|=3.8e-6（与文档一致）")
+    for fname, needle, label in [
+            ("board_v3_15ci4_tools_after_madd.txt", "13 成功 / 0 失败", "madd 默认固件 tool 13/13"),
+            ("board_v3_15ci4_memory_after_madd.txt", "5 成功 / 0 失败", "madd 默认固件记忆 5/5")]:
         p = ROOT / "logs" / fname
         if p.exists() and needle not in p.read_text(encoding="utf-8", errors="replace"):
             fail.append(f"logs/{fname}: 未记录「{needle}」")

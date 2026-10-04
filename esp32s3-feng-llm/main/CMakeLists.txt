@@ -35,6 +35,11 @@ option(FENG_GEMV_A8 "int8 activation Q4 GEMV (quantize activations once per GEMV
 if(FENG_GEMV_A8)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_GEMV_A8=1)
 endif()
+# 测试用：-DFENG_GEMV_MADD=ON 用纯 madd 链累加（FP 运算少 1/3，末位取整会变）
+option(FENG_GEMV_MADD "pure madd accumulation chain in Q4 GEMV" OFF)
+if(FENG_GEMV_MADD)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_GEMV_MADD=1)
+endif()
 if(FENG_USE_Q2_KV)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_KV_Q2=1 FENG_KV_Q2_BLOCK=8)
 else()

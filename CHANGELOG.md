@@ -191,6 +191,24 @@ lm head（代码里紧跟着 `(void)logits;`）——一起跳过后再省 ~0.25
 刷回默认固件后 tool 13/13、4 轮记忆 4/4（`logs/board_v3_15ci4_tools_after_a8revert.txt`、
 `logs/board_v3_15ci4_memory_after_a8revert.txt`）。
 
+**Q4 GEMV 换纯 madd 累加链（默认开启，`FENG_GEMV_MADD`）**：
+
+原来的内层是"两个权重先求和、再累加"（每 2 个权重 3 个 FP 运算）；改成纯 madd 链后
+每 2 个权重只需 2 个 FP 运算。板端实测（同一台板、只烧 app）：
+
+| | ctx 256 | ctx 1024 | ctx 2048 | lm head（带/不带） |
+|---|---|---|---|---|
+| 两两求和（旧） | 777 ms | 1506 ms | 2470 ms | 532 / 407 ms |
+| **纯 madd 链（新）** | **738 ms** | **1469 ms** | **2434 ms** | **492 / 378 ms** |
+
+数值代价可量化：同一 prompt 的 C 端 logits 最大差 **3.8e-6**（Q4 量化误差是 2.94，
+`logs/pc_logits_madd_vs_old.txt`），
+32 题矩阵输出与旧版**逐字相同**（`logs/pc_kv_suite32_v3_15ci4_q2b8_madd.txt`）；
+板端 tool 13/13、记忆 4/4 + 身份正确，4 轮连续提问
+10.7/10.0/9.3/9.7 s（比上一版每轮再快 ~0.7 s，
+`logs/board_v3_15ci4_memory_after_madd.txt`、`logs/board_bench_attn_madd.txt`）。
+想要与旧版逐位一致的对照，用 `idf.py -DFENG_GEMV_MADD=OFF` 编译。
+
 ---
 
 ## v3.14（2026-10-04）—— tool 版：计算/时间/随机数交给引擎，GGUF 发行取消

@@ -206,10 +206,22 @@ FENG_HOT void feng_gemv_range(const void *tensor, uint32_t dtype, const float *x
             float s0 = 0.f, s1 = 0.f, s2 = 0.f, s3 = 0.f;
             for (int j = 0; j < 32; j += 4) {
                 const uint8_t b0 = p[j], b1 = p[j + 1], b2 = p[j + 2], b3 = p[j + 3];
+#if FENG_GEMV_MADD
+                /* 纯 madd 链：每 2 个权重 2 个 FP 运算（对比下面的 3 个） */
+                s0 += s_q4_lut[b0][0] * xb[2 * j];
+                s0 += s_q4_lut[b0][1] * xb[2 * j + 1];
+                s1 += s_q4_lut[b1][0] * xb[2 * j + 2];
+                s1 += s_q4_lut[b1][1] * xb[2 * j + 3];
+                s2 += s_q4_lut[b2][0] * xb[2 * j + 4];
+                s2 += s_q4_lut[b2][1] * xb[2 * j + 5];
+                s3 += s_q4_lut[b3][0] * xb[2 * j + 6];
+                s3 += s_q4_lut[b3][1] * xb[2 * j + 7];
+#else
                 s0 += s_q4_lut[b0][0] * xb[2 * j] + s_q4_lut[b0][1] * xb[2 * j + 1];
                 s1 += s_q4_lut[b1][0] * xb[2 * j + 2] + s_q4_lut[b1][1] * xb[2 * j + 3];
                 s2 += s_q4_lut[b2][0] * xb[2 * j + 4] + s_q4_lut[b2][1] * xb[2 * j + 5];
                 s3 += s_q4_lut[b3][0] * xb[2 * j + 6] + s_q4_lut[b3][1] * xb[2 * j + 7];
+#endif
             }
             a0 += s0 * scale;
             a1 += s1 * scale;
