@@ -813,6 +813,13 @@ def check_facts() -> None:
             fail.append("logs/board_v3_15ci4_identity_ctx.txt: 未记录上下文身份修复结果")
         else:
             print("    v3.15-embed 上下文身份修复（与文档一致）")
+    tools4 = ROOT / "logs" / "board_v3_15ci4_tools4.txt"
+    if tools4.exists():
+        t = tools4.read_text(encoding="utf-8", errors="replace")
+        if "把59+1算一下" not in t or "100的15%是多少钱" not in t or "0.5s" not in t:
+            fail.append("logs/board_v3_15ci4_tools4.txt: 未记录工具外壳扩展 6/6")
+        else:
+            print("    v3.15-embed 工具外壳扩展（与文档一致）")
 
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"

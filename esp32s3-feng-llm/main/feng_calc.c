@@ -128,8 +128,10 @@ static void cn_to_ascii(char *s)
 /* 后缀/前缀外壳：返回 1 表示剥掉了一层 */
 static int strip_suffix(char *s)
 {
-    static const char *suf[] = {"等于几", "等于多少", "是多少", "多少", "=?", "＝?", "?", "？",
-                                "。", ".", "!", "！", "=", "＝"};
+    static const char *suf[] = {"是多少钱", "是多少元", "多少钱", "多少元", "是多少呢", "是多少呀",
+                                "算一下", "算算", "算下", "计算一下",
+                                "等于几", "等于多少", "是多少", "多少", "=?", "＝?", "?", "？",
+                                "呢", "呀", "。", ".", "!", "！", "=", "＝"};
     const int n = (int)strlen(s);
     for (int i = 0; i < (int)(sizeof(suf) / sizeof(suf[0])); i++) {
         const int L = (int)strlen(suf[i]);
@@ -143,8 +145,9 @@ static int strip_suffix(char *s)
 
 static int strip_prefix(char *s)
 {
-    static const char *pre[] = {"帮我算一下", "帮我计算", "帮我算", "计算一下", "计算",
-                                "算一下", "算算", "请问一下", "请问", "求"};
+    static const char *pre[] = {"帮我算一下", "帮我计算", "帮我算算", "帮我算", "麻烦算一下",
+                                "麻烦算算", "计算一下", "计算", "算一下", "算算", "请问一下",
+                                "请问", "求解", "求", "把"};
     for (int i = 0; i < (int)(sizeof(pre) / sizeof(pre[0])); i++) {
         const int L = (int)strlen(pre[i]);
         if (strncmp(s, pre[i], L) == 0) {
@@ -165,7 +168,7 @@ int feng_calc_extract(const char *user, char *expr, int expr_sz)
     int n = (int)strlen(s);
     while (n > 0 && is_space(s[n - 1])) s[--n] = 0;
     /* 剥外壳（可能叠加：先前后缀各来一轮） */
-    for (int round = 0; round < 4; round++) {
+    for (int round = 0; round < 6; round++) {
         int changed = 0;
         while (n > 0 && is_space(s[n - 1])) s[--n] = 0;
         if (strip_suffix(s)) changed = 1;
