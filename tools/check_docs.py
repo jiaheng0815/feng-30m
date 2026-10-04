@@ -666,6 +666,83 @@ def check_facts() -> None:
             if b"tokenizer.chat_template" not in f.read_bytes():
                 fail.append(f"v3_13/{d}/{f.name}: 未内嵌 chat template")
 
+    # --- v3.14：tool 版（算术/时间/随机数交给 C 引擎；GGUF 取消发行） ---
+    mem14 = ROOT / "eval" / "memory_v3_14pc2.json"
+    if mem14.exists():
+        d = json.loads(mem14.read_text(encoding="utf-8"))
+        if d.get("score") != "24/24":
+            fail.append(f"eval/{mem14.name}: 记忆 {d.get('score')} != 文档 24/24")
+        else:
+            print("    v3.14 PC 记忆 24/24（与文档一致）")
+    for fname, want_hits, want_neg in [("longctx32_v3_14pc2.json", "28/28/25/27", 61),
+                                       ("longctx32multi_v3_14pc2.json", "28/25/32/22", 62)]:
+        p = ROOT / "eval" / fname
+        if not p.exists():
+            warn.append(f"eval/{fname} 不存在，跳过 v3.14 检索校验")
+            continue
+        rows = json.loads(p.read_text(encoding="utf-8"))["rows"]
+        hits = "/".join(str(r["hit"]) for r in rows)
+        neg = sum(r.get("neg_hit", 0) for r in rows)
+        if hits != want_hits or neg != want_neg:
+            fail.append(f"eval/{fname}: {hits} 拒答 {neg}/64，文档声称 {want_hits} 与 {want_neg}/64")
+        else:
+            print(f"    v3.14 {fname.split('_')[0]} {hits}（拒答 {neg}/64，与文档一致）")
+    for fname, want, tag in [("v3_14pc2_scope.json", 10, "范围"),
+                             ("chat_probe_v3_14pc2.json", 42, "探针")]:
+        p = ROOT / "eval" / fname
+        if not p.exists():
+            warn.append(f"eval/{fname} 不存在，跳过 v3.14 {tag}校验")
+            continue
+        d = json.loads(p.read_text(encoding="utf-8"))
+        if tag == "范围":
+            got = sum(1 for r in d if r.get("ok") is True)
+            if got != want:
+                fail.append(f"eval/{fname}: {tag} {got}/10 != 文档 10/10")
+            else:
+                print("    v3.14 范围评测 10/10（与文档一致）")
+        else:
+            rows = d["rows"]
+            miss = sum(1 for r in rows if r["topic_miss"] is True)
+            loop = sum(1 for r in rows if r["loop"] is True)
+            if len(rows) != want or miss or loop:
+                fail.append(f"eval/{fname}: 探针 {len(rows)-miss}/42（复读 {loop}）!= 文档 42/42")
+            else:
+                print("    v3.14 日常探针 42/42、0 复读（与文档一致）")
+    ident14 = ROOT / "eval" / "identity_v3_14pc2.json"
+    if ident14.exists():
+        d = json.loads(ident14.read_text(encoding="utf-8"))
+        if d.get("score") != "12/12":
+            fail.append(f"eval/{ident14.name}: 身份 {d.get('score')} != 文档 12/12")
+        else:
+            print("    v3.14 身份 12/12（与文档一致）")
+    suite14 = ROOT / "logs" / "pc_kv_suite32_v3_14b6_calc_q2b8.txt"
+    if suite14.exists():
+        t = suite14.read_text(encoding="utf-8", errors="replace")
+        if "短任务 27/27" not in t or "长文召回 4/4" not in t:
+            fail.append("logs/pc_kv_suite32_v3_14b6_calc_q2b8.txt: 不是 27/27 + 4/4")
+        else:
+            print("    v3.14 C 引擎 q2 27/27 + 4/4（与文档一致）")
+    arith14 = ROOT / "logs" / "pc_arith_suite_v3_14b_q2b8.txt"
+    if arith14.exists():
+        t = arith14.read_text(encoding="utf-8", errors="replace")
+        if "短任务 21/21" not in t:
+            fail.append("logs/pc_arith_suite_v3_14b_q2b8.txt: 不是 21/21")
+        else:
+            print("    v3.14 C 引擎算术子集 21/21（tool 回答，与文档一致）")
+    for fname, needle in [("board_v3_14b6_tools.txt", "8 成功 / 0 失败"),
+                          ("board_v3_14b6_multi.txt", "10 成功 / 0 失败"),
+                          ("board_v3_14b6_chat10.txt", "10 成功 / 0 失败"),
+                          ("board_v3_14b6_memory12.txt", "板端记忆 10/12")]:
+        p = ROOT / "logs" / fname
+        if not p.exists():
+            warn.append(f"logs/{fname} 不存在，跳过 v3.14 板端校验")
+            continue
+        t = p.read_text(encoding="utf-8", errors="replace")
+        if needle not in t:
+            fail.append(f"logs/{fname}: 未记录「{needle}」")
+        else:
+            print(f"    v3.14 板端 {fname}（{needle}，与文档一致）")
+
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"
     for doc in DOCS:

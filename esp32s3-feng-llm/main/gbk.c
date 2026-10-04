@@ -5,7 +5,9 @@
 #include <stdint.h>
 #include <string.h>
 
-int g_out_gbk = 1;   /* terminals like SuperCom default to GBK */
+/* 默认 UTF-8（现代终端 + 本项目所有脚本）；老终端（SuperCom/XCOM 的 ANSI 模式）
+ * 可以发 \gbk 切换，或在中文输入时自动跟随（GBK 字节不是合法 UTF-8）。 */
+int g_out_gbk = 0;
 
 static const uint16_t *u2g(uint32_t cp)
 {

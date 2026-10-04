@@ -44,6 +44,12 @@ def main() -> None:
     from transformers import AutoTokenizer, Qwen3ForCausalLM
 
     tok = AutoTokenizer.from_pretrained(args.model)
+    if not getattr(tok, "chat_template", None):      # 训练中间产物没带模板，用项目标准模板
+        tok.chat_template = (
+            r"{%- for message in messages %}"
+            r"{{- '<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n' }}"
+            r"{%- endfor %}"
+            r"{%- if add_generation_prompt %}{{- '<|im_start|>assistant\n' }}{%- endif %}")
     model = Qwen3ForCausalLM.from_pretrained(
         args.model, dtype=torch.bfloat16, attn_implementation="sdpa").to("cuda").eval()
 

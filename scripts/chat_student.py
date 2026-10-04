@@ -8,6 +8,7 @@ import torch
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from paths import ROOT  # noqa: E402
+from runtime_tools import tool_answer  # noqa: E402
 
 
 def main():
@@ -25,6 +26,12 @@ def main():
     history = []
 
     def reply(user):
+        # 算式/时间/随机数一律走 tool（与板端/C 引擎同口径），不让模型硬算
+        tool = tool_answer(user)
+        if tool is not None:
+            history.append(("user", user))
+            history.append(("assistant", tool))
+            return f"[calc] {tool}"
         history.append(("user", user))
         text = "".join(
             f"<|im_start|>{r}\n{c}<|im_end|>\n" for r, c in history) + "<|im_start|>assistant\n"

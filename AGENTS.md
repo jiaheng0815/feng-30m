@@ -14,7 +14,15 @@
   → v3（渐进长上下文 + 合成检索 SFT）→ v3.5（修多轮复读）→ v3.6（日常对话大补丁）
   → v3.7（KV-QAT + q2 KV block8，板端 2048 上下文）→ v3.8（上下文专项升级）
   → v3.9 → v3.10 = v3.9 底座 + q2 KV-QAT → v3.11 = 算术边界修复 + Q4 权重/q2 KV 双 QAT
-  → v3.12 = PC 算术修复 → **v3.13 = 记忆版（PC + 板端两套权重，均为当前发布）**。
+  → v3.12 = PC 算术修复 → v3.13 = 记忆版 → **v3.14 = tool 版（算术/时间/随机数交给 C 引擎，模型不再学算术；当前发布）**。
+- v3.14 现状（**当前发布**）：
+  - **tool**（`main/feng_calc.c`、`main/feng_tools.c`）：算式（多位数/小数/括号）、
+    UTC+8 时间（宿主 `\settime` 对时 + esp_timer 走时）、随机数（运行时间×1.54×1000，丢第一个取第二个）；
+    板端 0.5s 秒回；PC C 引擎 `pc/pc_chat.c` 与 Python `scripts/runtime_tools.py` 同口径；
+  - **训练数据不再含纯算式**（`scripts/v3_14_build_noarith_mix.py` 用 tool 识别器过滤）；
+  - PC `v3_14/pc2/`：记忆 24/24、范围 10/10、探针 42/42、身份 12/12、单类别 108、多类别 107；
+  - 板端 `v3_14/board6/`：q2 矩阵 27/27+4/4、工具 8/8、默认/情绪 10/10、记忆 12 题 10/12、1.80 tok/s；
+  - **GGUF 发行取消**：llama.cpp 路径没有 tool，Release 只发 hf + esp32。
 - v3.13 现状（**当前发布**）：
   - PC `v3_13/mem_pc3/`：单类别 28/29/29/27 = **113/128（并列历史最高）**、多类别 108，
     算术 274/281、**记忆 21/24（v3.12 只有 5/24）**、范围 10/10、探针 42/42（0 未命中）、
@@ -49,7 +57,8 @@
 
 本目录是 git 仓库，远端 `origin = https://github.com/jiaheng0815/feng-30m`（公开仓库）。发布约定：
 **主仓库只放代码与文档**——数据集（`data/`、`v2/data/`）与权重/二进制（`*.safetensors`、`*.gguf`、`*.npy`、`*.bin` 等）
-都由 `.gitignore` 排除，随 Release 发布（PC `feng-30m-v3.13-release.zip`、板端 `feng-30m-v3.13-embed-release.zip`）；
+都由 `.gitignore` 排除，随 Release 发布（PC `feng-30m-v3.14-release.zip`、板端 `feng-30m-v3.14-embed-release.zip`）；
+**v3.14 起不再发行 GGUF**（llama.cpp 没有 tool，见 CHANGELOG v3.14）。
 代码与权重均为 **Apache-2.0**（`LICENSE`）。
 开源数据集只含**教师蒸馏数据**（提示词与教师输出）；本地脚本生成的多轮/补丁/运算数据不入 Release 包。
 模型权重、训练产物一旦覆盖无法回滚，删除或覆盖已有模型目录前必须先向用户确认。
@@ -68,7 +77,8 @@
 | `v3_10/` | v3.10 板端中间版（`v3_10/qat_pol3/`），另有 cand1/m8k 等未采用实验 |
 | `v3_11/` | v3.11 板端权重（算术边界 + Q4 权重/q2 KV 双 QAT） |
 | `v3_12/` | v3.12 PC 权重（末层算术微调：275/281 + 单类别 110） |
-| `v3_13/` | **当前发布**：`v3_13/mem_pc3/`（PC 记忆版）+ `v3_13/mem_board/`（板端记忆版）；数据 `v3_13/memory.jsonl`/`v3_13/mem_mix2.jsonl` 不入库 |
+| `v3_13/` | v3.13 记忆版权重（PC `v3_13/mem_pc3/` + 板端 `v3_13/mem_board/`） |
+| `v3_14/` | **当前发布**：PC `v3_14/pc2/` + 板端 `v3_14/board6/`；数据 `noarith_mix*.jsonl`/`board_memfix.jsonl` 不入库 |
 | `data/` | v1 的提示词集、教师蒸馏数据、公开语料（sharegpt/firefly/dolly/evol 等） |
 | `scripts/` | 全部数据构建 / 训练 / 评测 / 导出脚本（57 个 .py，含 `scripts/paths.py` 路径解析；另有 1 个教师启动脚本） |
 | `eval/` | 评测结果 JSON（`planA*_scope.json`、`v3_scope.json`、`longctx_*.json` 等） |
@@ -125,6 +135,21 @@ python scripts\v3_6_sft_patch.py --init v3_12\arith2l3 --patch v3_13\mem_mix2.js
   --epochs 2 --lr 1.2e-5 --train-last 2
 python scripts\v3_7_kv_qat.py --init v3_11\pol8 --data v3_13\mem_mix2.jsonl `
   --identity-n 80 --out v3_13\mem_board --epochs 2 --lr 8e-6 --batch 24 --max-len 1024 --wqat
+
+# v3.14 tool 版（无算术混训；tool 在 C 引擎里）
+python scripts\v3_14_build_noarith_mix.py --out v3_14\noarith_mix.jsonl
+python scripts\v3_6_sft_patch.py --init v3_9\stockfix2 --patch v3_14\noarith_mix2.jsonl `
+  --mt v3_5d\mt_convs.jsonl --mt-n 300 --identity-n 80 --out v3_14\pc2 `
+  --epochs 2 --lr 1.2e-5 --train-last 2
+python scripts\v3_7_kv_qat.py --init v3_11\pol8 --data v3_14\noarith_mix2.jsonl `
+  --identity-n 80 --out v3_14\board --epochs 3 --lr 1e-5 --batch 24 --max-len 1024 --wqat
+python scripts\v3_7_kv_qat.py --init v3_14\board --data v3_14\board_memfix.jsonl `
+  --identity-n 80 --out v3_14\board6 --epochs 2 --lr 4e-6 --batch 24 --max-len 2048 --wqat
+
+# PC C 引擎运行时（自带 tool；编译时务必带上 feng_calc.c + feng_tools.c）
+gcc -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc_chat_q2b8.exe pc_chat.c `
+  ../main/feng_model.c ../main/feng_llm.c ../main/feng_quant.c ../main/feng_smp.c `
+  ../main/feng_tokenizer.c ../main/feng_calc.c ../main/feng_tools.c -I../main -lm
 ```
 
 评测与导出：
@@ -149,6 +174,12 @@ $py = "python"        # 换成装了 torch + transformers 的解释器
 & "<MSYS2>\ucrt64\bin\gcc.exe" -O2 -o pc\pc_check.exe pc_check.c ..\main\feng_model.c `
     ..\main\feng_llm.c ..\main\feng_quant.c ..\main\feng_smp.c ..\main\feng_tokenizer.c -I..\main -lm
 .\pc\pc_check.exe ..\model_export_v3_10p3 ..\logs\c_logits_v3_10p3.bin
+
+# 1b) 带 tool 的 PC 运行时 / 板端代理套件（v3.14 起必须带 feng_calc.c + feng_tools.c）
+& "<MSYS2>\ucrt64\bin\gcc.exe" -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc\pc_kv_suite_q2b8.exe `
+    pc_kv_suite.c ..\main\feng_model.c ..\main\feng_llm.c ..\main\feng_quant.c `
+    ..\main\feng_smp.c ..\main\feng_tokenizer.c ..\main\feng_calc.c ..\main\feng_tools.c -I..\main -lm
+.\pc\pc_kv_suite_q2b8.exe ..\model_export_v3_14b6 ..\pc\prompt_long.txt 5200    # 27/27 + 4/4
 
 # 2) 编译固件
 $env:IDF_TOOLS_PATH = "<IDF 工具链目录>"      # 本机路径见 scripts/local_paths.json
@@ -198,7 +229,8 @@ python scripts\esp32_enc_test.py COM20
 - **写了数字**：数字必须能追到 `eval/*.json`、`summary.json` 或 `logs/` 里的实测；没有出处的一律删掉或标注"预期/估算"，
   不要写没有日志支撑的精确值。
 - **换了模型版本**：重跑 `eval_planA_scope.py` + `eval_longctx.py`，数字同步进 `CHANGELOG.md` / `README.md` / `USAGE.md`
-  （PC 与板端两套口径必须分别标清：PC=v3.13，板端=v3.13-embed）。
+  （PC 与板端两套口径必须分别标清：PC=v3.14，板端=v3.14-embed；算式的验收口径是
+  **tool 回答**，不是模型算——pc_kv_suite 会把算式任务路由到 feng_calc）。
 
 ## 8. 排障速查
 

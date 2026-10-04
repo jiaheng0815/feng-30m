@@ -15,6 +15,7 @@ import torch
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from paths import ROOT  # noqa: E402
+from runtime_tools import tool_answer  # noqa: E402
 
 
 def main() -> None:
@@ -42,6 +43,13 @@ def main() -> None:
     print(f"=== 多轮测试 {args.model}（rep={args.rep}, temp={args.temp}）===")
     for q in turns:
         msgs.append({"role": "user", "content": q})
+        tool = tool_answer(q)                       # 算式/时间/随机数走 tool，不进模型
+        if tool is not None:
+            r = f"[calc] {tool}"
+            msgs.append({"role": "assistant", "content": tool})
+            replies.append(r)
+            print(f"  [user] {q}\n  [feng] {r[:100]}")
+            continue
         text = tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
         ids = tok(text, add_special_tokens=False)["input_ids"]
         inp = torch.tensor([ids], dtype=torch.long, device="cuda")

@@ -1,52 +1,56 @@
 # feng-30m 使用说明
 
 本说明对应 [Releases](https://github.com/jiaheng0815/feng-30m/releases)：
-**PC 用 `feng-30m-v3.13-release.zip`（长上下文 + 算术 + 记忆），
-板端用 `feng-30m-v3.13-embed-release.zip`（q2 KV / 2048 ctx + 双 QAT + 多轮上下文）**。
+**PC 用 `feng-30m-v3.14-release.zip`（长上下文 + 记忆 + tool），
+板端用 `feng-30m-v3.14-embed-release.zip`（q2 KV / 2048 ctx + 双 QAT + 多轮上下文 + tool）**。
 仓库本身只放代码与文档；**权重、板端固件模型、蒸馏数据集都在 Release 包里**。
 
 ## 1. 下载与包内结构
 
-解压 PC 包 `feng-30m-v3.13-release.zip` 后：
+解压 PC 包 `feng-30m-v3.14-release.zip` 后：
 
 ```
-feng-30m-v3.13/
+feng-30m-v3.14/
 ├── USAGE.md                  ← 本文件
 ├── LICENSE                   ← Apache-2.0（代码与权重同许可）
 ├── weights/
-│   ├── hf/                   v3.13 完整权重（fp32 safetensors + 分词器），transformers 直接加载
-│   └── gguf/                 llama.cpp 用：Q4_K_M / Q8_0 / f16（chat template 已内嵌）
+│   ├── hf/                   v3.14 完整权重（fp32 safetensors + 分词器），transformers 直接加载
+│   └── （v3.14 起不再提供 GGUF：llama.cpp 没有 tool，算术/时间/随机数会退化成模型硬算）
 └── datasets/                 蒸馏训练数据（教师输出与提示词）
 ```
 
-> 板端的 `model.bin` / `tokenizer.bin` 不在 PC 包里，请下载 **v3.13-embed** 的 Release
+> 板端的 `model.bin` / `tokenizer.bin` 不在 PC 包里，请下载 **v3.14-embed** 的 Release
 > （它的 `weights/esp32/` 就是可以直接烧录的板端模型）。
-
-> 板端请下载 **v3.11** 的 Release：它是为「Q4 权重 + q2 KV」做的双量化感知版本
-> （板端矩阵/算术满分）；PC 端 32k 不如 v3.12（单 20/32、多 7/32）。
 
 模型规格：Qwen3 结构，11 层 / hidden 448 / 7 头 MHA（7 KV 头）/ head_dim 64 / FFN 896 /
 16k 词表 / tied embedding，**29.43M 参数**；训练上下文 32768，`rope_theta=1e6`。
 
 身份自述：**「我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI」**（v3.2 起）。
 
-## 2. 最快上手：GGUF + llama.cpp
+## 2. 最快上手：C 引擎 `pc_chat`（自带 tool，取代 llama.cpp）
 
-```bash
-# 单轮问答
-llama-cli -m weights/gguf/feng-30m-Q4_K_M.gguf -p "你是谁？" --jinja -n 96 --temp 0
-
-# 交互聊天
-llama-simple-chat -m weights/gguf/feng-30m-Q4_K_M.gguf -c 4096
-
-# OpenAI 兼容的本地服务
-llama-server -m weights/gguf/feng-30m-Q4_K_M.gguf -c 32768 --port 8080
+```powershell
+# 1) 用仓库代码导出 C 引擎格式（weights/hf -> model.bin/tokenizer.bin）
+python esp32s3-feng-llm\tools\export_model.py --model weights\hf --out model_export
+# 2) 编译（MSYS2 gcc，q2 KV；不带 -D 则 int8/1024 ctx）
+gcc -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc_chat.exe `
+  esp32s3-feng-llm\pc\pc_chat.c esp32s3-feng-llm\main\feng_model.c `
+  esp32s3-feng-llm\main\feng_llm.c esp32s3-feng-llm\main\feng_quant.c `
+  esp32s3-feng-llm\main\feng_smp.c esp32s3-feng-llm\main\feng_tokenizer.c `
+  esp32s3-feng-llm\main\feng_calc.c esp32s3-feng-llm\main\feng_tools.c -Iesp32s3-feng-llm\main -lm
+# 3) 聊天（算式/时间/随机数 0.5s 秒回，多轮上下文默认开）
+.\pc_chat.exe model_export
 ```
 
-三个量化版本任选：`Q4_K_M`（23.7 MB，推荐，板端同款）、`Q8_0`（30.5 MB）、`f16`（56.8 MB）。
-实测速度（本机 i7-12700KF + RTX 5060 Ti，llama-bench tg64、3 次平均）：
-Q4_K_M CPU 8 线程 **约 1.2k tok/s（1,175 ±93）**，GPU 全卸载 **约 2.6k tok/s（2,638 ±137）**；
-逐次波动约 ±8%，pp32 波动更大（±30% 以上）不作为指标（日志见 `logs/bench_v3_6_q4km_*.log`）。
+也可以直接用 Python 脚本（同一套 tool，`scripts/runtime_tools.py`）：
+
+```powershell
+python scripts\chat_student.py --model v3_14\pc2 --prompt "4854+4411"
+python scripts\chat_student.py --model v3_14\pc2 --prompt "现在几点？"
+```
+
+> **GGUF 已取消发行**：llama.cpp 路径没有 tool，v3.14 起不再随 Release 提供 GGUF。
+> 想复现历史速度数字，仓库里仍保留 `scripts/export_student_gguf.py`，但不作为发行物。
 
 ## 3. HF 格式权重（transformers）
 
@@ -183,22 +187,23 @@ python scripts\eval_longctx_many.py --models "<输出>" --n 32 --neg-n 16       
 自检命令 `python scripts/paths.py`。**只复现 v3 的话只需要 `FENG_LLAMA_DIR`**——教师模型与原始语料
 只在重建 v1/v2 语料时才需要。训练需要 16 GB 显存的 CUDA 卡（32k 阶段峰值 10.28 GiB）。
 
-## 7. 评测表现（PC = v3.13，贪心解码；脚本与结果 JSON 都在仓库里）
+## 7. 评测表现（PC = v3.14，贪心解码；脚本与结果 JSON 都在仓库里）
 
 | 项目 | 结果 |
 |---|---|
 | 身份（12 题，自称 jiaheng 独立开发训练） | **12/12** |
-| 日常对话探针（42 题，0 模板泄漏 / 0 复读） | **42/42**（`eval/chat_probe_v3_13pc3.json`） |
+| 日常对话探针（42 题，0 模板泄漏 / 0 复读） | **42/42**（`eval/chat_probe_v3_14pc2.json`） |
 | 情绪回应（8 题，与 v3.5 同口径） | **8/8**（v3.5 为 7/8，v3.4 为 5/8） |
 | 多轮对话（7 轮不同回答比例） | **1.00**（v3.0~v3.4 为 0.57） |
 | 范围内 18 题 | **10/10**（v3.7 = 10/10、v3.8 = 8/10，同口径） |
-| 针检索 @4k / 8k / 16k / 32k（每长度 32 题） | **28/29/29/27（单类别 113/128，并列历史最高）**；**多类别 108/128** |
+| 针检索 @4k / 8k / 16k / 32k（每长度 32 题） | **28/28/25/27（单类别 108/128）**；**多类别 107/128** |
 | 「文中没有该信息」正确拒答 | **61/64（单类别）、62/64（多类别）** |
-| 算术网格 281 题（加/减/乘，含 0 与负数） | **274/281**（v3.9 只有 170；`eval/arith_v3_13pc3.json`） |
-| 多轮记忆 24 题（说事实→追问） | **21/24**（v3.12 只有 5/24；`eval/memory_v3_13pc3.json`） |
+| 多轮记忆 24 题（说事实→追问） | **24/24**（v3.12 只有 5/24；`eval/memory_v3_14pc2.json`） |
+| 算式 / 网络时间 / 随机数 | **C 引擎 tool：0.5s 全对**（`4854+4411=9265`、`5.3+4.1=9.4`、UTC+8 时间、随机数） |
 
-嵌入式（v3.13-embed，q2 block8 / 2048 ctx）：32 题矩阵 **27/27 + 4/4**、
-算术子集 **21/21**、板端三组 10 题 **30/30**，约 **1.80 tok/s**；
+嵌入式（v3.14-embed，q2 block8 / 2048 ctx）：32 题矩阵 **27/27 + 4/4**、
+算术子集 **21/21**（数学题由 tool 回答）、板端 工具 8/8 + 默认/情绪 10/10、记忆 12 题 **10/12**，
+约 **1.80 tok/s**；
 **固件保留跨轮上下文**：实测"我叫小明 → 你叫小明"、"喜欢蓝色 → 你最喜欢蓝色"、
 "养了一只猫 → 你养了一只猫"全对；`\reset` 可清空，上下文满（2048）自动开新对话
 （`logs/pc_kv_suite32_v3_13b_q2b8.txt`、`logs/board_v3_13b_memory.txt`）。
@@ -207,15 +212,19 @@ python scripts\eval_longctx_many.py --models "<输出>" --n 32 --neg-n 16       
 
 - **30M 容量上限**：v3.6 覆盖了常见寒暄/情绪/常识/小数字运算/翻译/推荐等日常问法（42 题探针全过），
   但没覆盖到的自由问答仍可能答偏或编造；复杂推理与专业领域不可靠。
-- 板端 int8 KV 是 1024 上下文；q2 KV（v3.11）是 2048。32k 仅在 PC 上可用。
+- 板端 int8 KV 是 1024 上下文；q2 KV（v3.14-embed）是 2048。32k 仅在 PC 上可用。
 - 板端生成约 1.8–1.9 tok/s（约 540 ms/token，不含 prefill），长回答需要等待十几秒。
-- PC 版 v3.12：16k 从 23/32 修到 26/32，单类别总量 110（历史最高是 v3.4 的 113）；32k"文中没有"拒答 61/64 是已知平台。
-- 板端权重（v3.13-embed）：q2 矩阵满分、板端 30/30 + 记忆，但 **PC 32k 弱于 PC 版**（单类别 20/32、多类别 7/32）；
+- PC 版 v3.14：单类别 108（历史最高是 v3.4/v3.13 的 113）；32k"文中没有"拒答 61/64 是已知平台。
+- 板端权重（v3.14-embed）：q2 矩阵满分、板端 30/30 + 记忆 10/12，但 **PC 32k 弱于 PC 版**；
   量化鲁棒性对权重回插极敏感（掺 20% v3.9 就掉到 25/27）——要改板端行为请走
   「补数据 + 权重/KV 双 QAT」链路，不要手动 soup（CHANGELOG v3.10/v3.11）。
 - 32k 负样本拒答（61/64）经多轮专项训练未突破，已记录为平台（CHANGELOG v3.9 附录）。
 - **记忆是上下文内记忆**：靠 2048 token KV，`\reset`/重启/写满即忘；复杂多事实仍会错（21/24）。
-- **PC 用 v3.13、板端用 v3.13-embed**；两个权重不能互换：PC 版没做 KV-QAT（板端 q2 只有 21/27），
+- **tool 只在带 tool 的运行时里**：板端固件 / PC C 引擎 `pc_chat` / Python 脚本；
+  GGUF、llama.cpp 没有 tool，v3.14 起不再发行 GGUF。
+- **板端时间靠宿主对时**：串口脚本会自动发 `\settime <unix秒>`（宿主走 NTP）；
+  不跑脚本时要手动发一次，否则时间 tool 会回答"还没对上网络时间"。
+- **PC 用 v3.14、板端用 v3.14-embed**；两个权重不能互换：PC 版没做 KV-QAT（板端 q2 只有 21/27），
   板端版的 PC 长上下文不如 PC 版。
 
 ## 9. 许可证

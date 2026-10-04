@@ -2,10 +2,13 @@
 import argparse
 import sys
 import time
+from pathlib import Path
 
 import serial
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from runtime_tools import set_board_time  # noqa: E402
 
 
 def main():
@@ -42,6 +45,9 @@ def main():
             if "you>" in buf or "FENG_READY" in buf:
                 time.sleep(0.5)
                 break
+    synced, src = set_board_time(ser)
+    print(f"[时间] 板端对时 {'成功' if synced else '失败'}"
+          f"（来源：{'网络(NTP)' if src == 'ntp' else '系统时钟'}）", flush=True)
 
     print(f"\n>>> 发送: {args.question}", flush=True)
     ser.write((args.question + "\n").encode("utf-8"))

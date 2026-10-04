@@ -7,6 +7,7 @@
 """
 import argparse
 import json
+import random
 import re
 import sys
 from collections import Counter
@@ -34,6 +35,41 @@ def build_cases():
     return cases
 
 
+def build_wide_cases(seed=4242):
+    """多位数与标点变体（v3.14 新增）：个位网格之外的算术覆盖。"""
+    rng = random.Random(seed)
+    cases = []
+
+    def add(kind, q, expect):
+        cases.append((kind, q, expect))
+
+    for _ in range(24):
+        a, b = rng.randint(10, 99), rng.randint(1, 9)
+        add("加(2位+1位)", f"{a}+{b}等于几？", a + b)
+    for _ in range(24):
+        a, b = rng.randint(10, 99), rng.randint(10, 99)
+        add("加(2位+2位)", f"{a}加{b}等于几？", a + b)
+    for _ in range(24):
+        a, b = rng.randint(100, 999), rng.randint(10, 99)
+        add("加(3位+2位)", f"{a}+{b}等于几？", a + b)
+    for _ in range(24):
+        a, b = rng.randint(11, 99), rng.randint(1, 9)
+        add("减(2位-1位)", f"{a}-{b}等于几？", a - b)
+    for _ in range(24):
+        a, b = rng.randint(100, 999), rng.randint(10, 999)
+        add("减(3位-3位)", f"{a}减{b}等于几？", a - b)
+    for _ in range(20):
+        a, b = rng.randint(10, 99), rng.randint(2, 9)
+        add("乘(2位×1位)", f"{a}乘{b}等于几？", a * b)
+    # 标点/格式变体：用户真会这么打字
+    for a, b in [(59, 1), (84, 6), (77, 3), (10, 4), (25, 8), (12, 9)]:
+        add("格式-无等于", f"{a}+{b}", a + b)
+        add("格式-句号", f"{a}+{b}.", a + b)
+        add("格式-加号空格", f"{a} + {b} 等于几？", a + b)
+        add("格式-无问号", f"{a}加{b}等于几", a + b)
+    return cases
+
+
 def last_int(text: str):
     """只认第一句里「等于 X」的 X：模型答对后可能继续续写下一轮，不能被带偏。"""
     first = text.strip().replace("负", "-").split("\n")[0]
@@ -50,6 +86,8 @@ def main() -> None:
     ap.add_argument("--out", default="")
     ap.add_argument("--batch", type=int, default=32)
     ap.add_argument("--max-new", type=int, default=24)
+    ap.add_argument("--wide", action="store_true",
+                    help="多位数/标点变体评测（v3.14 起）")
     args = ap.parse_args()
 
     from transformers import AutoTokenizer, Qwen3ForCausalLM
@@ -60,7 +98,7 @@ def main() -> None:
     model = Qwen3ForCausalLM.from_pretrained(
         args.model, dtype=torch.bfloat16, attn_implementation="sdpa").to("cuda").eval()
 
-    cases = build_cases()
+    cases = build_wide_cases() if args.wide else build_cases()
     rows = []
     for i in range(0, len(cases), args.batch):
         chunk = cases[i:i + args.batch]
@@ -82,9 +120,12 @@ def main() -> None:
         tot[r["kind"]] += 1
         per[r["kind"]] += int(r["ok"])
     print(f"=== 算术网格：{args.model}（{len(rows)} 题，贪心）===")
-    for kind in ("加", "减(结果>0)", "减(结果=0)", "减(结果<0)", "乘"):
+    for kind in (("加", "减(结果>0)", "减(结果=0)", "减(结果<0)", "乘") if not args.wide
+                 else ("加(2位+1位)", "加(2位+2位)", "加(3位+2位)", "减(2位-1位)",
+                       "减(3位-3位)", "乘(2位×1位)", "格式-无等于", "格式-句号",
+                       "格式-加号空格", "格式-无问号")):
         if tot[kind]:
-            print(f"  {kind:12s} {per[kind]}/{tot[kind]}")
+            print(f"  {kind:14s} {per[kind]}/{tot[kind]}")
     miss = [r for r in rows if not r["ok"]]
     for r in miss[:30]:
         print(f"  MISS {r['q']} -> {r['reply'][:50]!r}（期望 {r['expect']}）")

@@ -19,7 +19,10 @@
 #include "sdkconfig.h"
 
 #include "feng.h"
+#include "feng_calc.h"
+#include "feng_tools.h"
 #include "feng_tokenizer.h"
+#include <esp_timer.h>
 #include "gbk.h"
 
 static const char *TAG = "feng";
@@ -46,6 +49,21 @@ static feng_kv_t s_kv;
 static feng_workspace_t s_ws;
 static int s_hist[64];          /* recent tokens for repetition penalty */
 static int s_nhist;
+/* 网络时间：宿主发 \settime <epoch> 同步一次，之后用 esp_timer 走时 */
+static long long s_epoch_base;
+static long long s_time_base_us;
+static int s_time_synced;
+
+static long long fw_epoch_now(void)
+{
+    if (!s_time_synced) return 0;
+    return s_epoch_base + (esp_timer_get_time() - s_time_base_us) / 1000000;
+}
+
+static long long fw_uptime_us(void)
+{
+    return esp_timer_get_time();
+}
 
 /* ---- serial I/O: this firmware owns UART0 (console is disabled in sdkconfig) ---- */
 /* write UTF-8 text out in whatever encoding the terminal speaks (GBK or UTF-8) */
@@ -403,12 +421,15 @@ void app_main(void)
     esp_chip_info(&info);
     ESP_LOGI(TAG, "feng-30m on ESP32-S3 (%d cores), flash 32MB / PSRAM 16MB", info.cores);
     setup_model();
+    feng_tools_set_time(fw_epoch_now);
+    feng_tools_set_uptime(fw_uptime_us);
 
     static char line[1024];
     static char u8[1024];
     out_printf("\n=== feng-30m on ESP32-S3 (serial chat) ===\n");
     out_printf("one sentence per line; the reply streams between << and >>END\n");
     out_printf("多轮对话：自动保留上下文（2048 token），满了自动开新对话\n");
+    out_printf("工具：算式（59+1）、现在几点、随机数 都由板内 tool 直接回答，不经过模型\n");
     out_printf("commands: \\gbk  \\utf8  \\reset  \\stream N  \\help\n");
     out_printf("FENG_READY\n");
     fflush(stdout);
@@ -445,11 +466,23 @@ void app_main(void)
                 s_kv.len = 0;
                 s_nhist = 0;
                 out_printf("context cleared\n");
+            } else if (strncmp(line, "\\settime", 8) == 0) {
+                const long long e = atoll(line + 8);
+                if (e > 1600000000LL) {
+                    s_epoch_base = e;
+                    s_time_base_us = esp_timer_get_time();
+                    s_time_synced = 1;
+                    out_printf("time synced: epoch %lld\n", e);
+                } else {
+                    out_printf("usage: \\settime <unix_epoch>\n");
+                }
             } else if (strncmp(line, "\\help", 5) == 0) {
                 out_printf("\\gbk   reply in GBK (for SuperCom/XCOM in ANSI mode)\n");
                 out_printf("\\utf8  reply in UTF-8\n");
                 out_printf("\\reset clear the conversation context (multi-turn is on by default)\n");
+                out_printf("\\settime <unix秒> 宿主对时（脚本连接时会自动发）\n");
                 out_printf("\\stream N  flush every N bytes (0 = whole reply at once, default 30)\n");
+                out_printf("算式 / 现在几点 / 随机数 自动走板内 tool；本命令帮助不经过模型\n");
                 out_printf("\\help  this text\n");
             } else if (strncmp(line, "\\stream", 7) == 0) {
                 int v = atoi(line + 7);
@@ -471,6 +504,16 @@ void app_main(void)
         } else {
             memcpy(u8, line, n);
             u8[n] = 0;
+        }
+        /* 计算 tool：纯算式直接由 SoC 运算器算，秒回、100% 准确，不占模型/上下文 */
+        char calc_reply[256];
+        if (feng_calc_answer(u8, calc_reply, sizeof(calc_reply)) ||
+            feng_time_answer(u8, calc_reply, sizeof(calc_reply)) ||
+            feng_random_answer(u8, calc_reply, sizeof(calc_reply))) {
+            ESP_LOGI(TAG, "tool: %s -> %s", u8, calc_reply);
+            out_printf("<< %s\n>>END\n", calc_reply);
+            fflush(stdout);
+            continue;
         }
         chat_once(u8);
     }

@@ -1,8 +1,92 @@
-# feng-30m 更新日志（v1 → v3.13）
+# feng-30m 更新日志（v1 → v3.14）
 
 一个 ~30M 参数中文对话模型的四个版本：从"能对话的玩具"到"能上 ESP32-S3 实机、
 并且真的能用长上下文"的完整记录。所有数字都是本机实测（RTX 5060 Ti 16GB、
 i7-12700KF、ESP32-S3-WROOM-2-N32R16V），命令见每节末尾。
+
+---
+
+## v3.14（2026-10-04）—— tool 版：计算/时间/随机数交给引擎，GGUF 发行取消
+
+### 为什么
+
+用户实测 v3.13 的 f16 GGUF：`59+1`、`445+15`、`84+6`、`10+4.`、`5.3+4.1` 全崩——
+30M 模型背不动多位数算术；而 transformers 脚本（`chat_student.py`）没有 tool，
+`4854+4411` 也直接答错。结论：**算术不该由模型硬背，应该由引擎直接调用 SoC 运算器**。
+
+### 做了什么
+
+1. **三个 tool 写进 C 引擎**（板端与 PC 共用）：
+   - `feng_calc.c` —— 算式识别 + 递归下降求值（`+ - * / × ÷ ( )`、小数、中文"加减乘除"、
+     去掉"计算/帮我算/等于几/？/。"等外壳；`1/0` 给除零提示）。
+   - `feng_tools.c` —— 时间与随机数：
+     - 时间：UTC+8 日历（不依赖 libc 时区库）。板端放不下 WiFi 协议栈（app+model 已占满
+       16MB mmap 窗口），所以由宿主连上后发 `\settime <unix秒>`（宿主走 **SNTP 网络时间戳**）
+       对时，固件用 `esp_timer` 走时；
+     - 随机数：`seed = 当前运行时间(秒) × 1.54 × 1000`，**丢弃第一个随机数**、取第二个
+       （xorshift64*，跨平台一致）。
+2. **所有运行时接入**：
+   - 板端固件：算式/时间/随机数输入在送模型之前被 tool 拦下，**0.5 秒秒回、不占上下文**；
+   - PC C 引擎新增 `pc/pc_chat.c`（`pc_chat_q2b8.exe`）：同一套引擎 + 同一套 tool；
+   - Python：`scripts/runtime_tools.py`（NTP 真网络时间戳 + 同口径随机数），
+     `chat_student.py` / `chat_multi.py` 已接入；串口脚本连接时自动 `\settime` 给板端对时。
+3. **训练数据去掉算术**（`scripts/v3_14_build_noarith_mix.py`）：用 `calc_tool` 的识别器
+   过滤掉所有纯算式样本（0..9 网格、多位数、带外壳的），共丢 3,484 条；模型以后不再学算术。
+4. **GGUF 发行取消**：llama.cpp 路径没有这些 tool，发行包不再提供 GGUF；
+   PC 端运行时改用仓库自带的 C 引擎（`pc_chat`）。
+
+### 结果（同协议实测）
+
+| 指标 | v3.13 | **v3.14** |
+|---|---|---|
+| 板端算式/时间/随机数 | 模型硬算（多位数全错） | **tool 0.5s 全对**（`4854+4411=9265`、`5.3+4.1=9.4`、`1/0` 有提示） |
+| 板端 12 题记忆扫描 | — | **10/12**（无算术配方里最好；纯 v3.14 初版 6/12） |
+| C 引擎 q2 矩阵 / 算术子集 | 27/27+4/4 ｜ 21/21 | **27/27+4/4 ｜ 21/21**（数学题现在由 tool 回答） |
+| 板端默认/情绪/工具三组 | 30/30 | **10/10 ｜ 10/10 ｜ 8/8** |
+| PC 记忆 24 题 | 21/24 | **24/24** |
+| PC 范围 / 探针 / 身份 / 多轮 | 10/10 ｜ 42/42 ｜ 12/12 ｜ 1.00 | **10/10 ｜ 42/42 ｜ 12/12 ｜ 1.00** |
+| PC 针检索 单类别（4k/8k/16k/32k） | 113 | **108（28/28/25/27）**（底座换成算术前的 v3.9） |
+| PC 针检索 多类别 | 108 | **107** |
+| PC 模型自己算（小网格 281 / 多位数 164） | 274/281 ｜ 0/164 | 171/281 ｜ **0/164（设计如此：算术归 tool）** |
+
+板端工具实录（`logs/board_v3_14b6_tools.txt`）：
+`现在几点？ → 现在是 2026年10月04日 15:10:23（周日，UTC+8）`（宿主 NTP 对时）、
+`给我个1到100的随机数 → 随机数（1~100）：6`、`4854+4411 → 4854 加 4411 等于 9265`。
+
+### 取舍与边界
+
+- **板端时间依赖宿主对时**：脚本连接时会自动 `\settime`；不跑脚本时需手动发一次，
+  否则时间 tool 会回答"还没对上网络时间"。原因是 WiFi 协议栈塞不进
+  app(0.96MB)+model(14.93MB) 已占满的 16MB mmap 窗口。
+- **老权重可能残留算术痕迹**，但系统在进模型之前就把算式拦走；v3.14 的训练配方已不再含算术。
+- 板端记忆 10/12 的 2 个漏项是"颜色串成紫色 / 食物串成羽毛球"——30M + q2 KV 下的事实干扰。
+
+结果文件：`logs/board_v3_14b6_tools.txt`、`logs/board_v3_14b6_memory12.txt`、
+`logs/board_v3_14b6_multi.txt`、`logs/board_v3_14b6_chat10.txt`、
+`logs/pc_kv_suite32_v3_14b6_calc_q2b8.txt`、`logs/pc_arith_suite_v3_14b_q2b8.txt`、
+`eval/memory_v3_14pc2.json`、`eval/chat_probe_v3_14pc2.json`、`eval/v3_14pc2_scope.json`、
+`eval/identity_v3_14pc2.json`、`eval/longctx32_v3_14pc2.json`、`eval/longctx32multi_v3_14pc2.json`。
+
+### 复现
+
+```powershell
+# 1) 无算术训练数据（用 tool 的识别器过滤纯算式样本）
+python scripts\v3_14_build_noarith_mix.py --out v3_14\noarith_mix.jsonl
+# 2) PC：从算术前的 v3.9 底座做末层微调
+python scripts\v3_6_sft_patch.py --init v3_9\stockfix2 --patch v3_14\noarith_mix2.jsonl `
+  --mt v3_5d\mt_convs.jsonl --mt-n 300 --identity-n 80 --out v3_14\pc2 `
+  --epochs 2 --lr 1.2e-5 --train-last 2
+# 3) 板端：双 QAT + 记忆强化
+python scripts\v3_7_kv_qat.py --init v3_11\pol8 --data v3_14\noarith_mix2.jsonl `
+  --identity-n 80 --out v3_14\board --epochs 3 --lr 1e-5 --batch 24 --max-len 1024 --wqat
+python scripts\v3_7_kv_qat.py --init v3_14\board --data v3_14\board_memfix.jsonl `
+  --identity-n 80 --out v3_14\board6 --epochs 2 --lr 4e-6 --batch 24 --max-len 2048 --wqat
+# 4) PC 运行时（自带 tool；GGUF 已取消）
+gcc -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc_chat_q2b8.exe pc_chat.c `
+  ../main/feng_model.c ../main/feng_llm.c ../main/feng_quant.c ../main/feng_smp.c `
+  ../main/feng_tokenizer.c ../main/feng_calc.c ../main/feng_tools.c -I../main -lm
+python scripts\esp32_multi.py --port COM20 --questions "现在几点？|给我个1到100的随机数|4854+4411"
+```
 
 ---
 

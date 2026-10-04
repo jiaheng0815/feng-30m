@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "feng.h"
+#include "feng_calc.h"
 #include "feng_tokenizer.h"
 
 static void *xmalloc(size_t n)
@@ -232,6 +233,13 @@ int main(int argc, char **argv)
             user[w] = 0;
         }
 
+        /* 计算 tool：算式题与固件一致，直接由 SoC 运算器回答（不经过模型） */
+        char out[2048];
+        int olen = 0;
+        if (feng_calc_answer(user, out, sizeof(out))) {
+            olen = (int)strlen(out);
+        }
+
         char *text = (char *)xmalloc(strlen(user) + 128);
         snprintf(text, strlen(user) + 128,
                  "<|im_start|>user\n%s<|im_end|>\n<|im_start|>assistant\n", user);
@@ -242,18 +250,18 @@ int main(int argc, char **argv)
             free(ids); free(text); free(user); continue;
         }
 
-        kv.len = 0;
-        float *logits = NULL;
-        for (int i = 0; i < n; i++) logits = feng_forward(&m, &kv, &ws, ids[i], i);
-        char out[2048];
-        int olen = 0;
-        for (int step = 0; step < max_new; step++) {
-            const int tk = feng_argmax(logits, v);
-            if (tk == tok.id_im_end || tk == tok.id_eot) break;
-            char b[16];
-            const int nb = feng_tok_decode_token(&tok, tk, b, sizeof(b));
-            if (olen + nb < (int)sizeof(out) - 1) { memcpy(out + olen, b, (size_t)nb); olen += nb; }
-            logits = feng_forward(&m, &kv, &ws, tk, n + step);
+        if (olen == 0) {
+            kv.len = 0;
+            float *logits = NULL;
+            for (int i = 0; i < n; i++) logits = feng_forward(&m, &kv, &ws, ids[i], i);
+            for (int step = 0; step < max_new; step++) {
+                const int tk = feng_argmax(logits, v);
+                if (tk == tok.id_im_end || tk == tok.id_eot) break;
+                char b[16];
+                const int nb = feng_tok_decode_token(&tok, tk, b, sizeof(b));
+                if (olen + nb < (int)sizeof(out) - 1) { memcpy(out + olen, b, (size_t)nb); olen += nb; }
+                logits = feng_forward(&m, &kv, &ws, tk, n + step);
+            }
         }
         out[olen] = 0;
 

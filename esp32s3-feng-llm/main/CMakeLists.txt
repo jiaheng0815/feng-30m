@@ -1,6 +1,6 @@
 idf_component_register(
     SRCS "main.c" "feng_model.c" "feng_llm.c" "feng_quant.c" "feng_smp.c" "feng_tokenizer.c"
-         "gbk.c" "gbk_table.c"
+         "feng_calc.c" "feng_tools.c" "gbk.c" "gbk_table.c"
     INCLUDE_DIRS "."
 )
 

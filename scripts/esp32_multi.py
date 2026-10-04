@@ -18,6 +18,7 @@ import serial
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from paths import ROOT  # noqa: E402
+from runtime_tools import set_board_time  # noqa: E402
 
 DEFAULT_QUESTIONS = [
     "你好",
@@ -68,6 +69,9 @@ def main():
     log.append(boot)
     if "FENG_READY" not in boot:
         print("[!] 启动未完成:", boot[-300:])
+    synced, src = set_board_time(ser)
+    print(f"[时间] 板端对时 {'成功' if synced else '失败'}"
+          f"（来源：{'网络(NTP)' if src == 'ntp' else '系统时钟'}）", flush=True)
 
     ok = fail = 0
     for i, q in enumerate(questions, 1):
