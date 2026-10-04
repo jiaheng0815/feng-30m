@@ -13,19 +13,21 @@
 - 版本演进：v1（8 层 / 32k 词表，只能对话，无法上板）→ v2（16k 词表 + 1.5B token 预训练 + 27B 教师 SFT，首次上板）
   → v3（渐进长上下文 + 合成检索 SFT）→ v3.5（修多轮复读）→ v3.6（日常对话大补丁）
   → v3.7（KV-QAT + q2 KV block8，板端 2048 上下文）→ v3.8（上下文专项升级）
-  → v3.9 → v3.10 = v3.9 底座 + q2 KV-QAT → v3.11 = 算术边界修复 + Q4 权重/q2 KV 双 QAT（板端当前）
-  → **v3.12 = v3.9 + 末层算术微调（PC 当前）**。
-- v3.12 现状（**PC 发布**，`v3_12/arith2l3/`）：针检索单类别 4k/8k/16k/32k = **28/29/26/27**（110/128，
-  16k 从 23 修到 26），多类别 **108/128**，拒答 61/64 ｜ 62/64；**范围 18 题 10/10**；
-  对话探针 **42/42（0 未命中）**、多轮 1.00、身份 12/12；**算术网格 281 题 275/281**（v3.9 只有 170）。
-  定位：**PC 端综合最好版**（32k"文中没有"拒答 61/64 是已知平台）。
-- v3.11 现状（**板端发布**，`v3_11/pol8/`）：q2 block8 / 2048 ctx 的 32 题矩阵 **27/27 + 4/4**、
-  int8 同分；C 引擎算术子集（Q4+q2）**21/21**、算术网格 281 题（PC）**277**（v3.10 只有 202）；
-  板端三组 10 题 **10/10 + 10/10 + 10/10**（默认/情绪/算术）、1.81 tok/s；
-  范围 10/10、探针 42/42、身份 12/12、多轮 1.00。
-  关键技巧：训练时同时用 STE 模拟 **导出器同款 Q4 block64 权重**（`v3_7_kv_qat.py --wqat`）与 q2 KV。
-  PC 端 32k 弱于 v3.12（单 20/32、多 7/32），且量化抗性对权重回插极敏感（掺 20% v3.9 权重就掉到 25/27）。
-  **PC 用 v3.12，板端用 v3.11**（见 `CHANGELOG.md` v3.11 / v3.12 节）。
+  → v3.9 → v3.10 = v3.9 底座 + q2 KV-QAT → v3.11 = 算术边界修复 + Q4 权重/q2 KV 双 QAT
+  → v3.12 = PC 算术修复 → **v3.13 = 记忆版（PC + 板端两套权重，均为当前发布）**。
+- v3.13 现状（**当前发布**）：
+  - PC `v3_13/mem_pc3/`：单类别 28/29/29/27 = **113/128（并列历史最高）**、多类别 108，
+    算术 274/281、**记忆 21/24（v3.12 只有 5/24）**、范围 10/10、探针 42/42（0 未命中）、
+    身份 12/12、多轮 1.00；
+  - 板端 `v3_13/mem_board/`：q2/2048 矩阵 **27/27 + 4/4**、算术子集 **21/21**、
+    板端 **30/30**、跨轮记忆 **6/6**、1.80 tok/s；
+  - **固件（main.c）默认多轮上下文**：KV 跨轮累积、`\reset` 清空、写满自动开新对话；
+    `scripts/esp32_multi.py` 默认每题前 `\reset`（独立探针口径），`--no-reset` 测连续对话。
+- v3.12（PC 上一版，`v3_12/arith2l3/`）：算术 275/281、单类别 110、探针 42/42、记忆 5/24。
+- v3.11（板端上一版，`v3_11/pol8/`）：q2 矩阵 27/27+4/4、算术子集 21/21、板端 30/30、1.81 tok/s；
+  关键技巧是 **Q4 权重/q2 KV 双 QAT**（`v3_7_kv_qat.py --wqat`），量化抗性对权重回插极敏感
+  （掺 20% v3.9 权重就掉到 25/27），PC 32k 弱。
+- **PC 用 v3.13，板端用 v3.13-embed**（见 `CHANGELOG.md` v3.13 节）。
 - 硬件：RTX 5060 Ti 16GB（训练）+ i7-12700KF；ESP32-S3-**WROOM-2-N32R16V** 开发板（32MB Octal flash + 16MB Octal PSRAM，1.8V）。
 
 ## 2. 运行环境与路径解析（代码里已无硬编码盘符）
@@ -47,7 +49,7 @@
 
 本目录是 git 仓库，远端 `origin = https://github.com/jiaheng0815/feng-30m`（公开仓库）。发布约定：
 **主仓库只放代码与文档**——数据集（`data/`、`v2/data/`）与权重/二进制（`*.safetensors`、`*.gguf`、`*.npy`、`*.bin` 等）
-都由 `.gitignore` 排除，随 Release 发布（板端 `feng-30m-v3.11-release.zip`、PC `feng-30m-v3.12-release.zip`）；
+都由 `.gitignore` 排除，随 Release 发布（PC `feng-30m-v3.13-release.zip`、板端 `feng-30m-v3.13-embed-release.zip`）；
 代码与权重均为 **Apache-2.0**（`LICENSE`）。
 开源数据集只含**教师蒸馏数据**（提示词与教师输出）；本地脚本生成的多轮/补丁/运算数据不入 Release 包。
 模型权重、训练产物一旦覆盖无法回滚，删除或覆盖已有模型目录前必须先向用户确认。
@@ -64,8 +66,9 @@
 | `v3/`、`v3_5*/`、`v3_6*/` | v3 及其后续各轮训练记录（历史版本，含 v3.5/v3.6 的补丁链与失败尝试） |
 | `v3_7/`…`v3_9/` | v3.7（旧板端）、v3.8、v3.9（PC 上一版，`v3_9/release/`）的训练与评测产物 |
 | `v3_10/` | v3.10 板端中间版（`v3_10/qat_pol3/`），另有 cand1/m8k 等未采用实验 |
-| `v3_11/` | **板端当前发布 `v3_11/pol8/`**（算术边界 + Q4 权重/q2 KV 双 QAT） |
-| `v3_12/` | **PC 当前发布 `v3_12/arith2l3/`**（末层算术微调：275/281 + 单类别 110） |
+| `v3_11/` | v3.11 板端权重（算术边界 + Q4 权重/q2 KV 双 QAT） |
+| `v3_12/` | v3.12 PC 权重（末层算术微调：275/281 + 单类别 110） |
+| `v3_13/` | **当前发布**：`v3_13/mem_pc3/`（PC 记忆版）+ `v3_13/mem_board/`（板端记忆版）；数据 `v3_13/memory.jsonl`/`v3_13/mem_mix2.jsonl` 不入库 |
 | `data/` | v1 的提示词集、教师蒸馏数据、公开语料（sharegpt/firefly/dolly/evol 等） |
 | `scripts/` | 全部数据构建 / 训练 / 评测 / 导出脚本（57 个 .py，含 `scripts/paths.py` 路径解析；另有 1 个教师启动脚本） |
 | `eval/` | 评测结果 JSON（`planA*_scope.json`、`v3_scope.json`、`longctx_*.json` 等） |
@@ -114,6 +117,14 @@ python scripts\v3_6_sft_patch.py --init v3_9\stockfix2 --patch v3_11\arith_repai
 python scripts\v3_6_sft_patch.py --init v3_12\arith2l --patch v3_12\pcfix2.jsonl `
   --mt v3_5d\mt_convs.jsonl --mt-n 100 --identity-n 80 --out v3_12\arith2l3 `
   --epochs 4 --lr 1.5e-5 --train-last 2
+
+# v3.13 记忆版（PC 末层微调 + 板端双 QAT；混训数据见 CHANGELOG v3.13 节）
+python scripts\v3_13_build_memory.py --out v3_13\memory.jsonl
+python scripts\v3_6_sft_patch.py --init v3_12\arith2l3 --patch v3_13\mem_mix2.jsonl `
+  --mt v3_5d\mt_convs.jsonl --mt-n 300 --identity-n 80 --out v3_13\mem_pc3 `
+  --epochs 2 --lr 1.2e-5 --train-last 2
+python scripts\v3_7_kv_qat.py --init v3_11\pol8 --data v3_13\mem_mix2.jsonl `
+  --identity-n 80 --out v3_13\mem_board --epochs 2 --lr 8e-6 --batch 24 --max-len 1024 --wqat
 ```
 
 评测与导出：
@@ -172,8 +183,8 @@ python scripts\esp32_enc_test.py COM20
 6. **flash 前 16MB 的 mmap 窗口是硬边界**（NOR flash 24 位地址上限，**不是模块容量**——模块是 32MB）：`model.bin`（15,659,904 B = 0xEEF380）必须结束在 0x1000000 之前；现行分区为 `model 0x110000/0xEF0000`、`tokdata 0x1000000/0x80000`（tokdata 用 `esp_partition_read` 读，可放窗口外）。烧录偏移必须与 `esp32s3-feng-llm/partitions.csv` 保持一致：`flash.ps1` 已按此修正为 `model=0x110000` / `tokdata=0x1000000`，改动分区表时要同步改脚本。
 7. **板端内存账**：权重只能 flash mmap 流式读，不能预载进 SRAM（每层 Q4 ≈0.95MB，内部 SRAM 只剩 ~271KB）；
    KV 默认 int8（`FENG_KV_INT8=1`，`MAX_CTX=1024`，9.93MB PSRAM），可选 q2 block8
-   （`idf.py -DFENG_USE_Q2_KV=ON build`，`MAX_CTX=2048`，9.62MB，v3.11 的 32 题 PC 矩阵 27/27 + 召回 4/4
-   + 算术子集 21/21，见 `CHANGELOG.md` 的 v3.11 节）；板上 32k 上下文在 KV 内存上不可能，
+   （`idf.py -DFENG_USE_Q2_KV=ON build`，`MAX_CTX=2048`，9.62MB，v3.13-embed 的 32 题 PC 矩阵 27/27 + 召回 4/4
+   + 算术子集 21/21；固件默认多轮上下文、`\reset` 清空，见 `CHANGELOG.md` 的 v3.13 节）；板上 32k 上下文在 KV 内存上不可能，
    长文只能走滑窗/attention sink/线性注意力。
 8. **速度现状**：标量 Q4 内核已到极限（4.1 周期/权重，1.84–1.86 tok/s ≈ 537–545 ms/token），下一个杠杆是 PIE（`ee.vmulas.s8.accx` 128 位 int8 SIMD，预期 2–3x）；不要再做内层展开之类的标量微调（已证明会变慢）。
 9. **量化格式耦合**：Q4 block-64（4.25 bpw）；改 `QK` 必须同步改 C 侧 `QK`，且 `tools/export_model.py` 会生成 `ref_ids.json` / `ref_logits.bin` 供一致性校验。
@@ -187,7 +198,7 @@ python scripts\esp32_enc_test.py COM20
 - **写了数字**：数字必须能追到 `eval/*.json`、`summary.json` 或 `logs/` 里的实测；没有出处的一律删掉或标注"预期/估算"，
   不要写没有日志支撑的精确值。
 - **换了模型版本**：重跑 `eval_planA_scope.py` + `eval_longctx.py`，数字同步进 `CHANGELOG.md` / `README.md` / `USAGE.md`
-  （PC 与板端两套口径必须分别标清：PC=v3.12，板端=v3.11）。
+  （PC 与板端两套口径必须分别标清：PC=v3.13，板端=v3.13-embed）。
 
 ## 8. 排障速查
 

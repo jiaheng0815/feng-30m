@@ -57,6 +57,16 @@ def main():
             reply += text
             print(text, end="", flush=True)
             if ">>END" in reply:
+                # 板端在 >>END 之后才打印 tok/s 统计行（多轮记账会再花一点时间），
+                # 多读 1.5 s 把它带上，方便记录速度。
+                t1 = time.time()
+                while time.time() - t1 < 1.5:
+                    tail = ser.read(4096)
+                    if not tail:
+                        continue
+                    text = tail.decode("utf-8", "replace")
+                    reply += text
+                    print(text, end="", flush=True)
                 break
     ser.close()
     ok = ">>END" in reply

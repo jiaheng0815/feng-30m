@@ -294,11 +294,25 @@ static int ends_clause(const char *s, int n)
     return 0;
 }
 
-static int generate(const int *prompt, int np, char *out, int out_max)
+/* 换行 token（多轮续接时要补在 <|im_end|> 之后），首次用到时编码一次 */
+static int newline_token(void)
 {
-    s_kv.len = 0;
-    s_nhist = 0;
-    int written = 0, pos = 0;
+    static int cached = -1;
+    if (cached < 0) {
+        int one = 0;
+        cached = (feng_tok_encode(&s_tok, "\n", &one, 1) == 1) ? one : 0;
+    }
+    return cached;
+}
+
+/* keep=1：不动 KV，从已有上下文后面续写（多轮对话）；keep=0：清空重来 */
+static int generate(const int *prompt, int np, char *out, int out_max, int keep)
+{
+    if (!keep) {
+        s_kv.len = 0;
+        s_nhist = 0;
+    }
+    int written = 0, pos = s_kv.len;
     const int vocab = s_model.hdr.vocab;
     const int64_t t0 = esp_timer_get_time();
     float *logits = NULL;
@@ -340,6 +354,15 @@ static int generate(const int *prompt, int np, char *out, int out_max)
     fflush(stdout);
     const int64_t dt = esp_timer_get_time() - t0;
     const float tps = (float)(pos) * 1e6f / (float)dt;
+    if (keep) {
+        /* 把模型自己吐出的 <|im_end|> 与换行补进 KV，下一轮才能无缝续接；
+           若本轮是被长度截断的，也补一个 im_end 收尾，语义上等于结束这一轮 */
+        logits = feng_forward(&s_model, &s_kv, &s_ws, s_tok.id_im_end, pos++);
+        const int nl = newline_token();
+        if (nl > 0) logits = feng_forward(&s_model, &s_kv, &s_ws, nl, pos++);
+        (void)logits;
+    }
+    s_kv.len = pos;
     ESP_LOGI(TAG, "prompt %d | gen %d | prefill %lld ms | total %lld ms | %.2f tok/s (%.0f ms/token)",
              np, n_gen, (t_prefill - t0) / 1000, dt / 1000, tps,
              (float)dt / 1000.0f / (float)n_gen);
@@ -354,9 +377,16 @@ static void chat_once(const char *user)
     snprintf(prompt, sizeof(prompt), "<|im_start|>user\n%s<|im_end|>\n<|im_start|>assistant\n",
              user);
     const int n = feng_tok_encode(&s_tok, prompt, ids, 1024);
-    ESP_LOGI(TAG, "in: %s (%d prompt tokens)", user, n);
+    if (s_kv.len + n + MAX_NEW + 4 > MAX_CTX) {
+        out_printf("[上下文已满 %d/%d，自动开始新对话；输入 \\reset 可手动清空]\n",
+                   s_kv.len, MAX_CTX);
+        s_kv.len = 0;
+        s_nhist = 0;
+    }
+    ESP_LOGI(TAG, "in: %s (%d prompt tokens, ctx %d -> %d/%d)", user, n, s_kv.len,
+             s_kv.len + n, MAX_CTX);
     reply[0] = 0;
-    generate(ids, n, reply, sizeof(reply));
+    generate(ids, n, reply, sizeof(reply), 1);
 }
 
 void app_main(void)
@@ -378,7 +408,8 @@ void app_main(void)
     static char u8[1024];
     out_printf("\n=== feng-30m on ESP32-S3 (serial chat) ===\n");
     out_printf("one sentence per line; the reply streams between << and >>END\n");
-    out_printf("commands: \\gbk  \\utf8  \\help\n");
+    out_printf("多轮对话：自动保留上下文（2048 token），满了自动开新对话\n");
+    out_printf("commands: \\gbk  \\utf8  \\reset  \\stream N  \\help\n");
     out_printf("FENG_READY\n");
     fflush(stdout);
     while (1) {
@@ -410,9 +441,14 @@ void app_main(void)
             } else if (strncmp(line, "\\utf8", 5) == 0) {
                 g_out_gbk = 0;
                 out_printf("encoding: UTF-8\n");
+            } else if (strncmp(line, "\\reset", 6) == 0) {
+                s_kv.len = 0;
+                s_nhist = 0;
+                out_printf("context cleared\n");
             } else if (strncmp(line, "\\help", 5) == 0) {
                 out_printf("\\gbk   reply in GBK (for SuperCom/XCOM in ANSI mode)\n");
                 out_printf("\\utf8  reply in UTF-8\n");
+                out_printf("\\reset clear the conversation context (multi-turn is on by default)\n");
                 out_printf("\\stream N  flush every N bytes (0 = whole reply at once, default 30)\n");
                 out_printf("\\help  this text\n");
             } else if (strncmp(line, "\\stream", 7) == 0) {

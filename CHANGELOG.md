@@ -1,8 +1,87 @@
-# feng-30m 更新日志（v1 → v3.12）
+# feng-30m 更新日志（v1 → v3.13）
 
 一个 ~30M 参数中文对话模型的四个版本：从"能对话的玩具"到"能上 ESP32-S3 实机、
 并且真的能用长上下文"的完整记录。所有数字都是本机实测（RTX 5060 Ti 16GB、
 i7-12700KF、ESP32-S3-WROOM-2-N32R16V），命令见每节末尾。
+
+---
+
+## v3.13（2026-10-04）—— 记忆版：板端多轮上下文打通 + 记住用户事实
+
+### 问题（两个叠加）
+
+1. **板端固件每轮失忆**：`generate()` 一进来就 `s_kv.len = 0`，
+   2048 token 的 KV 上下文跨轮从没用过——用户说"我叫小明"，下一句问名字就断片，
+   模型虽然做过 v3.5 多轮训练，但板端根本没有多轮。
+2. **模型本身也不会记**：新加记忆评测（`scripts/eval_memory.py`：陈述事实 → 追问）
+   实测 PC 版 v3.12 只有 **5/24**，大量回答"我只能看到当前这段对话，之前的聊天我记不住。"
+
+### 做法
+
+1. **固件多轮上下文**（`esp32s3-feng-llm/main/main.c`）：
+   - `generate()` 增加 keep 模式：不动 KV，从 `s_kv.len` 位置续写；
+   - 每轮结束后把 `<|im_end|>` + 换行补进 KV，下一轮只 prefill 新增的用户片段；
+   - 上下文将满时自动开新对话，新增 `\reset` 命令手动清空；
+   - 实测 ctx 0→16→25 逐轮累积，`\reset` 后不再记得小明。
+2. **记忆数据**（`scripts/v3_13_build_memory.py`）：合成 5,600 条多轮记忆对话
+   （姓名/颜色/城市/宠物/食物/运动，含多事实与干扰项）。
+3. **两套权重各训一轮**（都走"混训 + 硬锚点"，防止把安全/常识带坏）：
+   - PC：`v3_12/arith2l3` + 记忆混训（记忆 2,000 + 27 题锚点 + 算术 1,200 + 日常 800 +
+     硬锚点 ×60），末层微调 2 epochs / lr 1.2e-5 → `v3_13/mem_pc3`；
+   - 板端：`v3_11/pol8` + 同一套混训，开 **Q4 权重 + q2 KV 双 QAT**，2 epochs / lr 8e-6
+     → `v3_13/mem_board`。
+
+### 结果（同协议实测）
+
+| 指标 | v3.12（PC） | **v3.13（PC）** | v3.11（板端） | **v3.13（板端）** |
+|---|---|---|---|---|
+| 多轮记忆（24 题） | 5/24 | **21/24** | — | **板端 6/6 抽查全对** |
+| 算术网格 281 题（PC bf16） | 275 | **274** | 277 | — |
+| 针检索·单类别（4k/8k/16k/32k） | 28/29/26/27 = 110 | **28/29/29/27 = 113（并列历史最高）** | 106 | — |
+| 针检索·多类别 | 108 | **108** | 90 | — |
+| 范围 18 题 / 探针 42 题 | 10/10 ｜ 42/42 | **10/10 ｜ 42/42（0 未命中）** | 10/10 ｜ 42/42 | **同** |
+| 身份 12 题 / 多轮 | 12/12 ｜ 1.00 | **12/12 ｜ 1.00** | 12/12 ｜ 1.00 | **同** |
+| C 引擎 q2 32 题矩阵 | — | — | 27/27 + 4/4 | **27/27 + 4/4** |
+| C 引擎算术子集 21 题 | — | — | 21/21 | **21/21** |
+| 板端三组 10 题 | — | — | 10/10×3 | **10/10×3** |
+| 板端速度 | — | — | 1.81 tok/s | **1.80 tok/s** |
+
+板端记忆实测（`logs/board_v3_13b_memory.txt`）：
+`我叫小明，请记住 → 好的，小明，我记住了`；`我叫什么名字？ → 你叫小明`；
+`我最喜欢的颜色是蓝色 → 你最喜欢蓝色`；`我养了一只猫 → 你养了一只猫`。
+`\reset` 之后同样问题不再记得小明（上下文确实清空）。
+
+### 已知边界
+
+- 记忆是"上下文内记忆"（靠 2048 token 的 KV），**不是持久记忆**：`\reset`、重启或上下文满后即忘。
+- 记忆评测 21/24 的 3 个漏项：两个"晓峰"（人名记成别的）与一个颜色混淆（橙→黄）；
+  板端抽查 6/6 全对，但复杂多事实仍有错，属于 30M 容量上限。
+- PC 版算术从 275 微降到 274（记忆混训的代价）；单类别检索反而从 110 涨到 113。
+
+结果文件：`eval/memory_v3_13pc3.json`、`eval/arith_v3_13pc3.json`、
+`eval/longctx32_v3_13pc3.json`、`eval/longctx32multi_v3_13pc3.json`、
+`eval/v3_13pc3_scope.json`、`eval/chat_probe_v3_13pc3.json`、`eval/identity_v3_13pc3.json`、
+`logs/pc_kv_suite32_v3_13b_q2b8.txt`、`logs/pc_arith_suite_v3_13b_q2b8.txt`、
+`logs/board_v3_13b_memory.txt`、`logs/board_v3_13b_multi.txt`、`logs/board_v3_13b_chat10.txt`、
+`logs/board_v3_13b_arith.txt`。
+
+### 复现
+
+```powershell
+# 1) 记忆数据
+python scripts\v3_13_build_memory.py --out v3_13\memory.jsonl
+# 2) PC：混训 + 末层微调
+python scripts\v3_6_sft_patch.py --init v3_12\arith2l3 --patch v3_13\mem_mix2.jsonl `
+  --mt v3_5d\mt_convs.jsonl --mt-n 300 --identity-n 80 --out v3_13\mem_pc3 `
+  --epochs 2 --lr 1.2e-5 --train-last 2
+# 3) 板端：同一套混训 + Q4 权重/q2 KV 双 QAT
+python scripts\v3_7_kv_qat.py --init v3_11\pol8 --data v3_13\mem_mix2.jsonl `
+  --identity-n 80 --out v3_13\mem_board --epochs 2 --lr 8e-6 --batch 24 --max-len 1024 --wqat
+# 4) 固件（多轮上下文）与验收
+idf.py build && python -m esptool --chip esp32s3 -p COM20 -b 921600 write_flash 0x10000 build\feng_30m.bin
+python scripts\esp32_multi.py --port COM20 --no-reset `
+  --questions "我叫小明，请记住|我叫什么名字？|我最喜欢的颜色是蓝色|我最喜欢什么颜色？"
+```
 
 ---
 

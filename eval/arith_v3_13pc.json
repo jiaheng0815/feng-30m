@@ -1,0 +1,2253 @@
+{
+  "model": "v3_13\\mem_pc",
+  "rows": [
+    {
+      "kind": "加",
+      "q": "0+0等于几？",
+      "expect": 0,
+      "got": 0,
+      "ok": true,
+      "reply": "0 加 0 等于 0。"
+    },
+    {
+      "kind": "加",
+      "q": "0+1等于几？",
+      "expect": 1,
+      "got": 1,
+      "ok": true,
+      "reply": "0 加 1 等于 1。"
+    },
+    {
+      "kind": "加",
+      "q": "0+2等于几？",
+      "expect": 2,
+      "got": 2,
+      "ok": true,
+      "reply": "0 加 2 等于 2。\nassistant\n0 加 2 等于 2。"
+    },
+    {
+      "kind": "加",
+      "q": "0+3等于几？",
+      "expect": 3,
+      "got": 3,
+      "ok": true,
+      "reply": "0 加 3 等于 3。\nassistant\n0 加 3 等于 3。"
+    },
+    {
+      "kind": "加",
+      "q": "0+4等于几？",
+      "expect": 4,
+      "got": 4,
+      "ok": true,
+      "reply": "0 加 4 等于 4。\nassistant\n0 加 4 等于 4。"
+    },
+    {
+      "kind": "加",
+      "q": "0+5等于几？",
+      "expect": 5,
+      "got": 5,
+      "ok": true,
+      "reply": "0 加 5 等于 5。"
+    },
+    {
+      "kind": "加",
+      "q": "0+6等于几？",
+      "expect": 6,
+      "got": 6,
+      "ok": true,
+      "reply": "0 加 6 等于 6。\nassistant\n0 加 6 等于 6。"
+    },
+    {
+      "kind": "加",
+      "q": "0+7等于几？",
+      "expect": 7,
+      "got": 7,
+      "ok": true,
+      "reply": "0 加 7 等于 7。"
+    },
+    {
+      "kind": "加",
+      "q": "0+8等于几？",
+      "expect": 8,
+      "got": 8,
+      "ok": true,
+      "reply": "0 加 8 等于 8。"
+    },
+    {
+      "kind": "加",
+      "q": "0+9等于几？",
+      "expect": 9,
+      "got": 9,
+      "ok": true,
+      "reply": "0 加 9 等于 9。"
+    },
+    {
+      "kind": "加",
+      "q": "1+0等于几？",
+      "expect": 1,
+      "got": 1,
+      "ok": true,
+      "reply": "1 加 0 等于 1。"
+    },
+    {
+      "kind": "加",
+      "q": "1+1等于几？",
+      "expect": 2,
+      "got": 2,
+      "ok": true,
+      "reply": "1 加 1 等于 2。\nassistant\n1 加 1 等于 2。"
+    },
+    {
+      "kind": "加",
+      "q": "1+2等于几？",
+      "expect": 3,
+      "got": 3,
+      "ok": true,
+      "reply": "1 加 2 等于 3。\nassistant\n1 加 2 等于 3。"
+    },
+    {
+      "kind": "加",
+      "q": "1+3等于几？",
+      "expect": 4,
+      "got": 4,
+      "ok": true,
+      "reply": "1 加 3 等于 4。\nassistant\n1 加 3 等于 5。"
+    },
+    {
+      "kind": "加",
+      "q": "1+4等于几？",
+      "expect": 5,
+      "got": 5,
+      "ok": true,
+      "reply": "1 加 4 等于 5。"
+    },
+    {
+      "kind": "加",
+      "q": "1+5等于几？",
+      "expect": 6,
+      "got": 6,
+      "ok": true,
+      "reply": "1 加 5 等于 6。\nassistant\n1 加 5 等于 6。"
+    },
+    {
+      "kind": "加",
+      "q": "1+6等于几？",
+      "expect": 7,
+      "got": 7,
+      "ok": true,
+      "reply": "1 加 6 等于 7。"
+    },
+    {
+      "kind": "加",
+      "q": "1+7等于几？",
+      "expect": 8,
+      "got": 8,
+      "ok": true,
+      "reply": "1 加 7 等于 8。"
+    },
+    {
+      "kind": "加",
+      "q": "1+8等于几？",
+      "expect": 9,
+      "got": 9,
+      "ok": true,
+      "reply": "1 加 8 等于 9。"
+    },
+    {
+      "kind": "加",
+      "q": "1+9等于几？",
+      "expect": 10,
+      "got": 10,
+      "ok": true,
+      "reply": "1 加 9 等于 10。"
+    },
+    {
+      "kind": "加",
+      "q": "2+0等于几？",
+      "expect": 2,
+      "got": 2,
+      "ok": true,
+      "reply": "2 加 0 等于 2。"
+    },
+    {
+      "kind": "加",
+      "q": "2+1等于几？",
+      "expect": 3,
+      "got": 3,
+      "ok": true,
+      "reply": "2 加 1 等于 3。"
+    },
+    {
+      "kind": "加",
+      "q": "2+2等于几？",
+      "expect": 4,
+      "got": 4,
+      "ok": true,
+      "reply": "2 加 2 等于 4。"
+    },
+    {
+      "kind": "加",
+      "q": "2+3等于几？",
+      "expect": 5,
+      "got": 5,
+      "ok": true,
+      "reply": "2 加 3 等于 5。"
+    },
+    {
+      "kind": "加",
+      "q": "2+4等于几？",
+      "expect": 6,
+      "got": 6,
+      "ok": true,
+      "reply": "2 加 4 等于 6。"
+    },
+    {
+      "kind": "加",
+      "q": "2+5等于几？",
+      "expect": 7,
+      "got": 7,
+      "ok": true,
+      "reply": "2 加 5 等于 7。"
+    },
+    {
+      "kind": "加",
+      "q": "2+6等于几？",
+      "expect": 8,
+      "got": 8,
+      "ok": true,
+      "reply": "2 加 6 等于 8。"
+    },
+    {
+      "kind": "加",
+      "q": "2+7等于几？",
+      "expect": 9,
+      "got": 9,
+      "ok": true,
+      "reply": "2 加 7 等于 9。"
+    },
+    {
+      "kind": "加",
+      "q": "2+8等于几？",
+      "expect": 10,
+      "got": 10,
+      "ok": true,
+      "reply": "2 加 8 等于 10。"
+    },
+    {
+      "kind": "加",
+      "q": "2+9等于几？",
+      "expect": 11,
+      "got": 11,
+      "ok": true,
+      "reply": "2 加 9 等于 11。"
+    },
+    {
+      "kind": "加",
+      "q": "3+0等于几？",
+      "expect": 3,
+      "got": 3,
+      "ok": true,
+      "reply": "3 加 0 等于 3。\nassistant\n3 加 0 等于 3。"
+    },
+    {
+      "kind": "加",
+      "q": "3+1等于几？",
+      "expect": 4,
+      "got": 4,
+      "ok": true,
+      "reply": "3 加 1 等于 4。"
+    },
+    {
+      "kind": "加",
+      "q": "3+2等于几？",
+      "expect": 5,
+      "got": 5,
+      "ok": true,
+      "reply": "3 加 2 等于 5。"
+    },
+    {
+      "kind": "加",
+      "q": "3+3等于几？",
+      "expect": 6,
+      "got": 6,
+      "ok": true,
+      "reply": "3 加 3 等于 6。"
+    },
+    {
+      "kind": "加",
+      "q": "3+4等于几？",
+      "expect": 7,
+      "got": 7,
+      "ok": true,
+      "reply": "3 加 4 等于 7。"
+    },
+    {
+      "kind": "加",
+      "q": "3+5等于几？",
+      "expect": 8,
+      "got": 8,
+      "ok": true,
+      "reply": "3 加 5 等于 8。"
+    },
+    {
+      "kind": "加",
+      "q": "3+6等于几？",
+      "expect": 9,
+      "got": 9,
+      "ok": true,
+      "reply": "3 加 6 等于 9。"
+    },
+    {
+      "kind": "加",
+      "q": "3+7等于几？",
+      "expect": 10,
+      "got": 10,
+      "ok": true,
+      "reply": "3 加 7 等于 10。"
+    },
+    {
+      "kind": "加",
+      "q": "3+8等于几？",
+      "expect": 11,
+      "got": 11,
+      "ok": true,
+      "reply": "3 加 8 等于 11。"
+    },
+    {
+      "kind": "加",
+      "q": "3+9等于几？",
+      "expect": 12,
+      "got": 12,
+      "ok": true,
+      "reply": "3 加 9 等于 12。"
+    },
+    {
+      "kind": "加",
+      "q": "4+0等于几？",
+      "expect": 4,
+      "got": 4,
+      "ok": true,
+      "reply": "4 加 0 等于 4。\nassistant\n4 加 0 等于 4。"
+    },
+    {
+      "kind": "加",
+      "q": "4+1等于几？",
+      "expect": 5,
+      "got": 5,
+      "ok": true,
+      "reply": "4 加 1 等于 5。"
+    },
+    {
+      "kind": "加",
+      "q": "4+2等于几？",
+      "expect": 6,
+      "got": 6,
+      "ok": true,
+      "reply": "4 加 2 等于 6。\nassistant\n4 加 2 等于 7。"
+    },
+    {
+      "kind": "加",
+      "q": "4+3等于几？",
+      "expect": 7,
+      "got": 7,
+      "ok": true,
+      "reply": "4 加 3 等于 7。"
+    },
+    {
+      "kind": "加",
+      "q": "4+4等于几？",
+      "expect": 8,
+      "got": 8,
+      "ok": true,
+      "reply": "4 加 4 等于 8。\nassistant\n4 加 4 等于 9。"
+    },
+    {
+      "kind": "加",
+      "q": "4+5等于几？",
+      "expect": 9,
+      "got": 9,
+      "ok": true,
+      "reply": "4 加 5 等于 9。\nassistant\n4 加 5 等于 10。"
+    },
+    {
+      "kind": "加",
+      "q": "4+6等于几？",
+      "expect": 10,
+      "got": 10,
+      "ok": true,
+      "reply": "4 加 6 等于 10。\nassistant\n4 加 6 等于 11。"
+    },
+    {
+      "kind": "加",
+      "q": "4+7等于几？",
+      "expect": 11,
+      "got": 11,
+      "ok": true,
+      "reply": "4 加 7 等于 11。\nassistant\n4 加 7 等于 12。"
+    },
+    {
+      "kind": "加",
+      "q": "4+8等于几？",
+      "expect": 12,
+      "got": 12,
+      "ok": true,
+      "reply": "4 加 8 等于 12。"
+    },
+    {
+      "kind": "加",
+      "q": "4+9等于几？",
+      "expect": 13,
+      "got": 13,
+      "ok": true,
+      "reply": "4 加 9 等于 13。\nassistant\n4 加 9 等于 14。"
+    },
+    {
+      "kind": "加",
+      "q": "5+0等于几？",
+      "expect": 5,
+      "got": 5,
+      "ok": true,
+      "reply": "5 加 0 等于 5。"
+    },
+    {
+      "kind": "加",
+      "q": "5+1等于几？",
+      "expect": 6,
+      "got": 6,
+      "ok": true,
+      "reply": "5 加 1 等于 6。\nassistant\n5 加 1 等于 7。"
+    },
+    {
+      "kind": "加",
+      "q": "5+2等于几？",
+      "expect": 7,
+      "got": 7,
+      "ok": true,
+      "reply": "5 加 2 等于 7。"
+    },
+    {
+      "kind": "加",
+      "q": "5+3等于几？",
+      "expect": 8,
+      "got": 8,
+      "ok": true,
+      "reply": "5 加 3 等于 8。"
+    },
+    {
+      "kind": "加",
+      "q": "5+4等于几？",
+      "expect": 9,
+      "got": 9,
+      "ok": true,
+      "reply": "5 加 4 等于 9。\nassistant\n5 加 4 等于 10。"
+    },
+    {
+      "kind": "加",
+      "q": "5+5等于几？",
+      "expect": 10,
+      "got": 10,
+      "ok": true,
+      "reply": "5 加 5 等于 10。\nassistant\n5 加 5 等于 10。"
+    },
+    {
+      "kind": "加",
+      "q": "5+6等于几？",
+      "expect": 11,
+      "got": 11,
+      "ok": true,
+      "reply": "5 加 6 等于 11。\nassistant\n5 加 6 等于 11。"
+    },
+    {
+      "kind": "加",
+      "q": "5+7等于几？",
+      "expect": 12,
+      "got": 12,
+      "ok": true,
+      "reply": "5 加 7 等于 12。\nassistant\n5 加 7 等于 12。"
+    },
+    {
+      "kind": "加",
+      "q": "5+8等于几？",
+      "expect": 13,
+      "got": 13,
+      "ok": true,
+      "reply": "5 加 8 等于 13。"
+    },
+    {
+      "kind": "加",
+      "q": "5+9等于几？",
+      "expect": 14,
+      "got": 14,
+      "ok": true,
+      "reply": "5 加 9 等于 14。"
+    },
+    {
+      "kind": "加",
+      "q": "6+0等于几？",
+      "expect": 6,
+      "got": 6,
+      "ok": true,
+      "reply": "6 加 0 等于 6。"
+    },
+    {
+      "kind": "加",
+      "q": "6+1等于几？",
+      "expect": 7,
+      "got": 7,
+      "ok": true,
+      "reply": "6 加 1 等于 7。"
+    },
+    {
+      "kind": "加",
+      "q": "6+2等于几？",
+      "expect": 8,
+      "got": 8,
+      "ok": true,
+      "reply": "6 加 2 等于 8。"
+    },
+    {
+      "kind": "加",
+      "q": "6+3等于几？",
+      "expect": 9,
+      "got": 9,
+      "ok": true,
+      "reply": "6 加 3 等于 9。"
+    },
+    {
+      "kind": "加",
+      "q": "6+4等于几？",
+      "expect": 10,
+      "got": 10,
+      "ok": true,
+      "reply": "6 加 4 等于 10。"
+    },
+    {
+      "kind": "加",
+      "q": "6+5等于几？",
+      "expect": 11,
+      "got": 11,
+      "ok": true,
+      "reply": "6 加 5 等于 11。"
+    },
+    {
+      "kind": "加",
+      "q": "6+6等于几？",
+      "expect": 12,
+      "got": 12,
+      "ok": true,
+      "reply": "6 加 6 等于 12。"
+    },
+    {
+      "kind": "加",
+      "q": "6+7等于几？",
+      "expect": 13,
+      "got": 13,
+      "ok": true,
+      "reply": "6 加 7 等于 13。"
+    },
+    {
+      "kind": "加",
+      "q": "6+8等于几？",
+      "expect": 14,
+      "got": 14,
+      "ok": true,
+      "reply": "6 加 8 等于 14。"
+    },
+    {
+      "kind": "加",
+      "q": "6+9等于几？",
+      "expect": 15,
+      "got": 15,
+      "ok": true,
+      "reply": "6 加 9 等于 15。"
+    },
+    {
+      "kind": "加",
+      "q": "7+0等于几？",
+      "expect": 7,
+      "got": 7,
+      "ok": true,
+      "reply": "7 加 0 等于 7。"
+    },
+    {
+      "kind": "加",
+      "q": "7+1等于几？",
+      "expect": 8,
+      "got": 8,
+      "ok": true,
+      "reply": "7 加 1 等于 8。"
+    },
+    {
+      "kind": "加",
+      "q": "7+2等于几？",
+      "expect": 9,
+      "got": 9,
+      "ok": true,
+      "reply": "7 加 2 等于 9。"
+    },
+    {
+      "kind": "加",
+      "q": "7+3等于几？",
+      "expect": 10,
+      "got": 10,
+      "ok": true,
+      "reply": "7 加 3 等于 10。"
+    },
+    {
+      "kind": "加",
+      "q": "7+4等于几？",
+      "expect": 11,
+      "got": 11,
+      "ok": true,
+      "reply": "7 加 4 等于 11。\nassistant\n7 加 4 等于 12。"
+    },
+    {
+      "kind": "加",
+      "q": "7+5等于几？",
+      "expect": 12,
+      "got": 12,
+      "ok": true,
+      "reply": "7 加 5 等于 12。"
+    },
+    {
+      "kind": "加",
+      "q": "7+6等于几？",
+      "expect": 13,
+      "got": 13,
+      "ok": true,
+      "reply": "7 加 6 等于 13。"
+    },
+    {
+      "kind": "加",
+      "q": "7+7等于几？",
+      "expect": 14,
+      "got": 14,
+      "ok": true,
+      "reply": "7 加 7 等于 14。"
+    },
+    {
+      "kind": "加",
+      "q": "7+8等于几？",
+      "expect": 15,
+      "got": 15,
+      "ok": true,
+      "reply": "7 加 8 等于 15。"
+    },
+    {
+      "kind": "加",
+      "q": "7+9等于几？",
+      "expect": 16,
+      "got": 16,
+      "ok": true,
+      "reply": "7 加 9 等于 16。\nassistant\n7 加 9 等于 17。"
+    },
+    {
+      "kind": "加",
+      "q": "8+0等于几？",
+      "expect": 8,
+      "got": 8,
+      "ok": true,
+      "reply": "8 加 0 等于 8。"
+    },
+    {
+      "kind": "加",
+      "q": "8+1等于几？",
+      "expect": 9,
+      "got": 9,
+      "ok": true,
+      "reply": "8 加 1 等于 9。"
+    },
+    {
+      "kind": "加",
+      "q": "8+2等于几？",
+      "expect": 10,
+      "got": 10,
+      "ok": true,
+      "reply": "8 加 2 等于 10。"
+    },
+    {
+      "kind": "加",
+      "q": "8+3等于几？",
+      "expect": 11,
+      "got": 11,
+      "ok": true,
+      "reply": "8 加 3 等于 11。"
+    },
+    {
+      "kind": "加",
+      "q": "8+4等于几？",
+      "expect": 12,
+      "got": 12,
+      "ok": true,
+      "reply": "8 加 4 等于 12。"
+    },
+    {
+      "kind": "加",
+      "q": "8+5等于几？",
+      "expect": 13,
+      "got": 13,
+      "ok": true,
+      "reply": "8 加 5 等于 13。"
+    },
+    {
+      "kind": "加",
+      "q": "8+6等于几？",
+      "expect": 14,
+      "got": 14,
+      "ok": true,
+      "reply": "8 加 6 等于 14。"
+    },
+    {
+      "kind": "加",
+      "q": "8+7等于几？",
+      "expect": 15,
+      "got": 15,
+      "ok": true,
+      "reply": "8 加 7 等于 15。"
+    },
+    {
+      "kind": "加",
+      "q": "8+8等于几？",
+      "expect": 16,
+      "got": 16,
+      "ok": true,
+      "reply": "8 加 8 等于 16。"
+    },
+    {
+      "kind": "加",
+      "q": "8+9等于几？",
+      "expect": 17,
+      "got": 17,
+      "ok": true,
+      "reply": "8 加 9 等于 17。\nassistant\n8 加 9 等于 17。"
+    },
+    {
+      "kind": "加",
+      "q": "9+0等于几？",
+      "expect": 9,
+      "got": 9,
+      "ok": true,
+      "reply": "9 加 0 等于 9。"
+    },
+    {
+      "kind": "加",
+      "q": "9+1等于几？",
+      "expect": 10,
+      "got": 10,
+      "ok": true,
+      "reply": "9 加 1 等于 10。"
+    },
+    {
+      "kind": "加",
+      "q": "9+2等于几？",
+      "expect": 11,
+      "got": 11,
+      "ok": true,
+      "reply": "9 加 2 等于 11。"
+    },
+    {
+      "kind": "加",
+      "q": "9+3等于几？",
+      "expect": 12,
+      "got": 12,
+      "ok": true,
+      "reply": "9 加 3 等于 12。\nassistant\n9 加 3 等于 12。"
+    },
+    {
+      "kind": "加",
+      "q": "9+4等于几？",
+      "expect": 13,
+      "got": 13,
+      "ok": true,
+      "reply": "9 加 4 等于 13。\nassistant\n9 加 4 等于 14。"
+    },
+    {
+      "kind": "加",
+      "q": "9+5等于几？",
+      "expect": 14,
+      "got": 14,
+      "ok": true,
+      "reply": "9 加 5 等于 14。"
+    },
+    {
+      "kind": "加",
+      "q": "9+6等于几？",
+      "expect": 15,
+      "got": 15,
+      "ok": true,
+      "reply": "9 加 6 等于 15。\nassistant\n9 加 6 等于 15。"
+    },
+    {
+      "kind": "加",
+      "q": "9+7等于几？",
+      "expect": 16,
+      "got": 16,
+      "ok": true,
+      "reply": "9 加 7 等于 16。\nassistant\n9 加 7 等于 17。"
+    },
+    {
+      "kind": "加",
+      "q": "9+8等于几？",
+      "expect": 17,
+      "got": 17,
+      "ok": true,
+      "reply": "9 加 8 等于 17。"
+    },
+    {
+      "kind": "加",
+      "q": "9+9等于几？",
+      "expect": 18,
+      "got": 18,
+      "ok": true,
+      "reply": "9 加 9 等于 18。\nassistant\n9 加 9 等于 18。"
+    },
+    {
+      "kind": "减(结果=0)",
+      "q": "0-0等于几？",
+      "expect": 0,
+      "got": 0,
+      "ok": true,
+      "reply": "0 减 0 等于 0。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "0-1等于几？",
+      "expect": -1,
+      "got": -1,
+      "ok": true,
+      "reply": "0 减 1 等于 -1。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "0-2等于几？",
+      "expect": -2,
+      "got": -2,
+      "ok": true,
+      "reply": "0 减 2 等于 -2。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "0-3等于几？",
+      "expect": -3,
+      "got": -3,
+      "ok": true,
+      "reply": "0 减 3 等于 -3。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "0-4等于几？",
+      "expect": -4,
+      "got": -4,
+      "ok": true,
+      "reply": "0 减 4 等于 -4。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "0-5等于几？",
+      "expect": -5,
+      "got": -5,
+      "ok": true,
+      "reply": "0 减 5 等于 -5。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "0-6等于几？",
+      "expect": -6,
+      "got": -6,
+      "ok": true,
+      "reply": "0 减 6 等于 -6。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "0-7等于几？",
+      "expect": -7,
+      "got": -7,
+      "ok": true,
+      "reply": "0 减 7 等于 -7。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "0-8等于几？",
+      "expect": -8,
+      "got": -8,
+      "ok": true,
+      "reply": "0 减 8 等于 -8。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "0-9等于几？",
+      "expect": -9,
+      "got": -9,
+      "ok": true,
+      "reply": "0 减 9 等于 -9。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "1-0等于几？",
+      "expect": 1,
+      "got": 1,
+      "ok": true,
+      "reply": "1 减 0 等于 1。"
+    },
+    {
+      "kind": "减(结果=0)",
+      "q": "1-1等于几？",
+      "expect": 0,
+      "got": 0,
+      "ok": true,
+      "reply": "1 减 1 等于 0。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "1-2等于几？",
+      "expect": -1,
+      "got": -2,
+      "ok": false,
+      "reply": "1 减 2 等于 -2。\nassistant\n1 减 2 等于 。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "1-3等于几？",
+      "expect": -2,
+      "got": -3,
+      "ok": false,
+      "reply": "1 减 3 等于 -3。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "1-4等于几？",
+      "expect": -3,
+      "got": -3,
+      "ok": true,
+      "reply": "1 减 4 等于 -3。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "1-5等于几？",
+      "expect": -4,
+      "got": -4,
+      "ok": true,
+      "reply": "1 减 5 等于 -4。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "1-6等于几？",
+      "expect": -5,
+      "got": -6,
+      "ok": false,
+      "reply": "1 减 6 等于 -6。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "1-7等于几？",
+      "expect": -6,
+      "got": -7,
+      "ok": false,
+      "reply": "1 减 7 等于 -7。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "1-8等于几？",
+      "expect": -7,
+      "got": -7,
+      "ok": true,
+      "reply": "1 减 8 等于 -7。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "1-9等于几？",
+      "expect": -8,
+      "got": -8,
+      "ok": true,
+      "reply": "1 减 9 等于 -8。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "2-0等于几？",
+      "expect": 2,
+      "got": 2,
+      "ok": true,
+      "reply": "2 减 0 等于 2。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "2-1等于几？",
+      "expect": 1,
+      "got": 1,
+      "ok": true,
+      "reply": "2 减 1 等于 1。"
+    },
+    {
+      "kind": "减(结果=0)",
+      "q": "2-2等于几？",
+      "expect": 0,
+      "got": 0,
+      "ok": true,
+      "reply": "2 减 2 等于 0。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "2-3等于几？",
+      "expect": -1,
+      "got": -1,
+      "ok": true,
+      "reply": "2 减 3 等于 -1。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "2-4等于几？",
+      "expect": -2,
+      "got": -2,
+      "ok": true,
+      "reply": "2 减 4 等于 -2。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "2-5等于几？",
+      "expect": -3,
+      "got": -3,
+      "ok": true,
+      "reply": "2 减 5 等于 -3。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "2-6等于几？",
+      "expect": -4,
+      "got": -4,
+      "ok": true,
+      "reply": "2 减 6 等于 -4。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "2-7等于几？",
+      "expect": -5,
+      "got": -7,
+      "ok": false,
+      "reply": "2 减 7 等于 -7。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "2-8等于几？",
+      "expect": -6,
+      "got": -4,
+      "ok": false,
+      "reply": "2 减 8 等于 -4。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "2-9等于几？",
+      "expect": -7,
+      "got": -7,
+      "ok": true,
+      "reply": "2 减 9 等于 -7。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "3-0等于几？",
+      "expect": 3,
+      "got": 3,
+      "ok": true,
+      "reply": "3 减 0 等于 3。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "3-1等于几？",
+      "expect": 2,
+      "got": 2,
+      "ok": true,
+      "reply": "3 减 1 等于 2。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "3-2等于几？",
+      "expect": 1,
+      "got": 1,
+      "ok": true,
+      "reply": "3 减 2 等于 1。"
+    },
+    {
+      "kind": "减(结果=0)",
+      "q": "3-3等于几？",
+      "expect": 0,
+      "got": 0,
+      "ok": true,
+      "reply": "3 减 3 等于 0。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "3-4等于几？",
+      "expect": -1,
+      "got": -1,
+      "ok": true,
+      "reply": "3 减 4 等于 -1。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "3-5等于几？",
+      "expect": -2,
+      "got": -3,
+      "ok": false,
+      "reply": "3 减 5 等于 -3。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "3-6等于几？",
+      "expect": -3,
+      "got": -3,
+      "ok": true,
+      "reply": "3 减 6 等于 -3。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "3-7等于几？",
+      "expect": -4,
+      "got": -3,
+      "ok": false,
+      "reply": "3 减 7 等于 -3。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "3-8等于几？",
+      "expect": -5,
+      "got": -5,
+      "ok": true,
+      "reply": "3 减 8 等于 -5。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "3-9等于几？",
+      "expect": -6,
+      "got": -6,
+      "ok": true,
+      "reply": "3 减 9 等于 -6。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "4-0等于几？",
+      "expect": 4,
+      "got": 4,
+      "ok": true,
+      "reply": "4 减 0 等于 4。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "4-1等于几？",
+      "expect": 3,
+      "got": 3,
+      "ok": true,
+      "reply": "4 减 1 等于 3。\nassistant\n4 减 1 等于 4。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "4-2等于几？",
+      "expect": 2,
+      "got": 2,
+      "ok": true,
+      "reply": "4 减 2 等于 2。\nassistant\n4 减 2 等于 2。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "4-3等于几？",
+      "expect": 1,
+      "got": 1,
+      "ok": true,
+      "reply": "4 减 3 等于 1。"
+    },
+    {
+      "kind": "减(结果=0)",
+      "q": "4-4等于几？",
+      "expect": 0,
+      "got": 0,
+      "ok": true,
+      "reply": "4 减 4 等于 0。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "4-5等于几？",
+      "expect": -1,
+      "got": -1,
+      "ok": true,
+      "reply": "4 减 5 等于 -1。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "4-6等于几？",
+      "expect": -2,
+      "got": -2,
+      "ok": true,
+      "reply": "4 减 6 等于 -2。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "4-7等于几？",
+      "expect": -3,
+      "got": -3,
+      "ok": true,
+      "reply": "4 减 7 等于 -3。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "4-8等于几？",
+      "expect": -4,
+      "got": -4,
+      "ok": true,
+      "reply": "4 减 8 等于 -4。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "4-9等于几？",
+      "expect": -5,
+      "got": -5,
+      "ok": true,
+      "reply": "4 减 9 等于 -5。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "5-0等于几？",
+      "expect": 5,
+      "got": 5,
+      "ok": true,
+      "reply": "5 减 0 等于 5。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "5-1等于几？",
+      "expect": 4,
+      "got": 4,
+      "ok": true,
+      "reply": "5 减 1 等于 4。\nassistant\n5 减 1 等于 5。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "5-2等于几？",
+      "expect": 3,
+      "got": 3,
+      "ok": true,
+      "reply": "5 减 2 等于 3。\nassistant\n等于 4。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "5-3等于几？",
+      "expect": 2,
+      "got": 2,
+      "ok": true,
+      "reply": "5 减 3 等于 2。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "5-4等于几？",
+      "expect": 1,
+      "got": 1,
+      "ok": true,
+      "reply": "5 减 4 等于 1。"
+    },
+    {
+      "kind": "减(结果=0)",
+      "q": "5-5等于几？",
+      "expect": 0,
+      "got": 0,
+      "ok": true,
+      "reply": "5 减 5 等于 0。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "5-6等于几？",
+      "expect": -1,
+      "got": -1,
+      "ok": true,
+      "reply": "5 减 6 等于 -1。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "5-7等于几？",
+      "expect": -2,
+      "got": -2,
+      "ok": true,
+      "reply": "5 减 7 等于 -2。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "5-8等于几？",
+      "expect": -3,
+      "got": -3,
+      "ok": true,
+      "reply": "5 减 8 等于 -3。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "5-9等于几？",
+      "expect": -4,
+      "got": -4,
+      "ok": true,
+      "reply": "5 减 9 等于 -4。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "6-0等于几？",
+      "expect": 6,
+      "got": 6,
+      "ok": true,
+      "reply": "6 减 0 等于 6。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "6-1等于几？",
+      "expect": 5,
+      "got": 5,
+      "ok": true,
+      "reply": "6 减 1 等于 5。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "6-2等于几？",
+      "expect": 4,
+      "got": 4,
+      "ok": true,
+      "reply": "6 减 2 等于 4。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "6-3等于几？",
+      "expect": 3,
+      "got": 3,
+      "ok": true,
+      "reply": "6 减 3 等于 3。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "6-4等于几？",
+      "expect": 2,
+      "got": 2,
+      "ok": true,
+      "reply": "6 减 4 等于 2。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "6-5等于几？",
+      "expect": 1,
+      "got": 1,
+      "ok": true,
+      "reply": "6 减 5 等于 1。"
+    },
+    {
+      "kind": "减(结果=0)",
+      "q": "6-6等于几？",
+      "expect": 0,
+      "got": 0,
+      "ok": true,
+      "reply": "6 减 6 等于 0。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "6-7等于几？",
+      "expect": -1,
+      "got": -2,
+      "ok": false,
+      "reply": "6 减 7 等于 -2。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "6-8等于几？",
+      "expect": -2,
+      "got": -2,
+      "ok": true,
+      "reply": "6 减 8 等于 -2。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "6-9等于几？",
+      "expect": -3,
+      "got": -3,
+      "ok": true,
+      "reply": "6 减 9 等于 -3。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "7-0等于几？",
+      "expect": 7,
+      "got": 7,
+      "ok": true,
+      "reply": "7 减 0 等于 7。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "7-1等于几？",
+      "expect": 6,
+      "got": 6,
+      "ok": true,
+      "reply": "7 减 1 等于 6。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "7-2等于几？",
+      "expect": 5,
+      "got": 5,
+      "ok": true,
+      "reply": "7 减 2 等于 5。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "7-3等于几？",
+      "expect": 4,
+      "got": 4,
+      "ok": true,
+      "reply": "7 减 3 等于 4。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "7-4等于几？",
+      "expect": 3,
+      "got": 3,
+      "ok": true,
+      "reply": "7 减 4 等于 3。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "7-5等于几？",
+      "expect": 2,
+      "got": 2,
+      "ok": true,
+      "reply": "7 减 5 等于 2。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "7-6等于几？",
+      "expect": 1,
+      "got": 1,
+      "ok": true,
+      "reply": "7 减 6 等于 1。"
+    },
+    {
+      "kind": "减(结果=0)",
+      "q": "7-7等于几？",
+      "expect": 0,
+      "got": 0,
+      "ok": true,
+      "reply": "7 减 7 等于 0。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "7-8等于几？",
+      "expect": -1,
+      "got": -1,
+      "ok": true,
+      "reply": "7 减 8 等于 -1。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "7-9等于几？",
+      "expect": -2,
+      "got": -2,
+      "ok": true,
+      "reply": "7 减 9 等于 -2。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "8-0等于几？",
+      "expect": 8,
+      "got": 8,
+      "ok": true,
+      "reply": "8 减 0 等于 8。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "8-1等于几？",
+      "expect": 7,
+      "got": 7,
+      "ok": true,
+      "reply": "8 减 1 等于 7。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "8-2等于几？",
+      "expect": 6,
+      "got": 6,
+      "ok": true,
+      "reply": "8 减 2 等于 6。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "8-3等于几？",
+      "expect": 5,
+      "got": 5,
+      "ok": true,
+      "reply": "8 减 3 等于 5。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "8-4等于几？",
+      "expect": 4,
+      "got": 4,
+      "ok": true,
+      "reply": "8 减 4 等于 4。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "8-5等于几？",
+      "expect": 3,
+      "got": 3,
+      "ok": true,
+      "reply": "8 减 5 等于 3。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "8-6等于几？",
+      "expect": 2,
+      "got": 2,
+      "ok": true,
+      "reply": "8 减 6 等于 2。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "8-7等于几？",
+      "expect": 1,
+      "got": 1,
+      "ok": true,
+      "reply": "8 减 7 等于 1。"
+    },
+    {
+      "kind": "减(结果=0)",
+      "q": "8-8等于几？",
+      "expect": 0,
+      "got": 0,
+      "ok": true,
+      "reply": "8 减 8 等于 0。"
+    },
+    {
+      "kind": "减(结果<0)",
+      "q": "8-9等于几？",
+      "expect": -1,
+      "got": -1,
+      "ok": true,
+      "reply": "8 减 9 等于 -1。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "9-0等于几？",
+      "expect": 9,
+      "got": 9,
+      "ok": true,
+      "reply": "9 减 0 等于 9。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "9-1等于几？",
+      "expect": 8,
+      "got": 8,
+      "ok": true,
+      "reply": "9 减 1 等于 8。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "9-2等于几？",
+      "expect": 7,
+      "got": 7,
+      "ok": true,
+      "reply": "9 减 2 等于 7。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "9-3等于几？",
+      "expect": 6,
+      "got": 6,
+      "ok": true,
+      "reply": "9 减 3 等于 6。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "9-4等于几？",
+      "expect": 5,
+      "got": 5,
+      "ok": true,
+      "reply": "9 减 4 等于 5。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "9-5等于几？",
+      "expect": 4,
+      "got": 4,
+      "ok": true,
+      "reply": "9 减 5 等于 4。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "9-6等于几？",
+      "expect": 3,
+      "got": 3,
+      "ok": true,
+      "reply": "9 减 6 等于 3。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "9-7等于几？",
+      "expect": 2,
+      "got": 2,
+      "ok": true,
+      "reply": "9 减 7 等于 2。"
+    },
+    {
+      "kind": "减(结果>0)",
+      "q": "9-8等于几？",
+      "expect": 1,
+      "got": 1,
+      "ok": true,
+      "reply": "9 减 8 等于 1。"
+    },
+    {
+      "kind": "减(结果=0)",
+      "q": "9-9等于几？",
+      "expect": 0,
+      "got": 0,
+      "ok": true,
+      "reply": "9 减 9 等于 0。"
+    },
+    {
+      "kind": "乘",
+      "q": "1乘1等于几？",
+      "expect": 1,
+      "got": 1,
+      "ok": true,
+      "reply": "1 乘 1 等于 1。"
+    },
+    {
+      "kind": "乘",
+      "q": "1乘2等于几？",
+      "expect": 2,
+      "got": 2,
+      "ok": true,
+      "reply": "1 乘 2 等于 2。\nassistant\n1 乘 3 等于 4。"
+    },
+    {
+      "kind": "乘",
+      "q": "1乘3等于几？",
+      "expect": 3,
+      "got": 3,
+      "ok": true,
+      "reply": "1 乘 3 等于 3。\nassistant\n等于 3。"
+    },
+    {
+      "kind": "乘",
+      "q": "1乘4等于几？",
+      "expect": 4,
+      "got": 4,
+      "ok": true,
+      "reply": "1 乘 4 等于 4。\nassistant\n1 乘 4 等于 4。"
+    },
+    {
+      "kind": "乘",
+      "q": "1乘5等于几？",
+      "expect": 5,
+      "got": 5,
+      "ok": true,
+      "reply": "1 乘 5 等于 5。"
+    },
+    {
+      "kind": "乘",
+      "q": "1乘6等于几？",
+      "expect": 6,
+      "got": 6,
+      "ok": true,
+      "reply": "1 乘 6 等于 6。"
+    },
+    {
+      "kind": "乘",
+      "q": "1乘7等于几？",
+      "expect": 7,
+      "got": 7,
+      "ok": true,
+      "reply": "1 乘 7 等于 7。"
+    },
+    {
+      "kind": "乘",
+      "q": "1乘8等于几？",
+      "expect": 8,
+      "got": 8,
+      "ok": true,
+      "reply": "1 乘 8 等于 8。"
+    },
+    {
+      "kind": "乘",
+      "q": "1乘9等于几？",
+      "expect": 9,
+      "got": 9,
+      "ok": true,
+      "reply": "1 乘 9 等于 9。"
+    },
+    {
+      "kind": "乘",
+      "q": "2乘1等于几？",
+      "expect": 2,
+      "got": 2,
+      "ok": true,
+      "reply": "2 乘 1 等于 2。"
+    },
+    {
+      "kind": "乘",
+      "q": "2乘2等于几？",
+      "expect": 4,
+      "got": 4,
+      "ok": true,
+      "reply": "2 乘 2 等于 4。"
+    },
+    {
+      "kind": "乘",
+      "q": "2乘3等于几？",
+      "expect": 6,
+      "got": 6,
+      "ok": true,
+      "reply": "2 乘 3 等于 6。"
+    },
+    {
+      "kind": "乘",
+      "q": "2乘4等于几？",
+      "expect": 8,
+      "got": 8,
+      "ok": true,
+      "reply": "2 乘 4 等于 8。"
+    },
+    {
+      "kind": "乘",
+      "q": "2乘5等于几？",
+      "expect": 10,
+      "got": 10,
+      "ok": true,
+      "reply": "2 乘 5 等于 10。"
+    },
+    {
+      "kind": "乘",
+      "q": "2乘6等于几？",
+      "expect": 12,
+      "got": 12,
+      "ok": true,
+      "reply": "2 乘 6 等于 12。"
+    },
+    {
+      "kind": "乘",
+      "q": "2乘7等于几？",
+      "expect": 14,
+      "got": 14,
+      "ok": true,
+      "reply": "2 乘 7 等于 14。"
+    },
+    {
+      "kind": "乘",
+      "q": "2乘8等于几？",
+      "expect": 16,
+      "got": 16,
+      "ok": true,
+      "reply": "2 乘 8 等于 16。"
+    },
+    {
+      "kind": "乘",
+      "q": "2乘9等于几？",
+      "expect": 18,
+      "got": 18,
+      "ok": true,
+      "reply": "2 乘 9 等于 18。"
+    },
+    {
+      "kind": "乘",
+      "q": "3乘1等于几？",
+      "expect": 3,
+      "got": 3,
+      "ok": true,
+      "reply": "3 乘 1 等于 3。"
+    },
+    {
+      "kind": "乘",
+      "q": "3乘2等于几？",
+      "expect": 6,
+      "got": 6,
+      "ok": true,
+      "reply": "3 乘 2 等于 6。"
+    },
+    {
+      "kind": "乘",
+      "q": "3乘3等于几？",
+      "expect": 9,
+      "got": 9,
+      "ok": true,
+      "reply": "3 乘 3 等于 9。"
+    },
+    {
+      "kind": "乘",
+      "q": "3乘4等于几？",
+      "expect": 12,
+      "got": 12,
+      "ok": true,
+      "reply": "3 乘 4 等于 12。"
+    },
+    {
+      "kind": "乘",
+      "q": "3乘5等于几？",
+      "expect": 15,
+      "got": 15,
+      "ok": true,
+      "reply": "3 乘 5 等于 15。"
+    },
+    {
+      "kind": "乘",
+      "q": "3乘6等于几？",
+      "expect": 18,
+      "got": 18,
+      "ok": true,
+      "reply": "3 乘 6 等于 18。"
+    },
+    {
+      "kind": "乘",
+      "q": "3乘7等于几？",
+      "expect": 21,
+      "got": 21,
+      "ok": true,
+      "reply": "3 乘 7 等于 21。"
+    },
+    {
+      "kind": "乘",
+      "q": "3乘8等于几？",
+      "expect": 24,
+      "got": 24,
+      "ok": true,
+      "reply": "3 乘 8 等于 24。"
+    },
+    {
+      "kind": "乘",
+      "q": "3乘9等于几？",
+      "expect": 27,
+      "got": 27,
+      "ok": true,
+      "reply": "3 乘 9 等于 27。"
+    },
+    {
+      "kind": "乘",
+      "q": "4乘1等于几？",
+      "expect": 4,
+      "got": 4,
+      "ok": true,
+      "reply": "4 乘 1 等于 4。\nassistant\n4 乘 1 等于 5。"
+    },
+    {
+      "kind": "乘",
+      "q": "4乘2等于几？",
+      "expect": 8,
+      "got": 8,
+      "ok": true,
+      "reply": "4 乘 2 等于 8。"
+    },
+    {
+      "kind": "乘",
+      "q": "4乘3等于几？",
+      "expect": 12,
+      "got": 12,
+      "ok": true,
+      "reply": "4 乘 3 等于 12。"
+    },
+    {
+      "kind": "乘",
+      "q": "4乘4等于几？",
+      "expect": 16,
+      "got": 16,
+      "ok": true,
+      "reply": "4 乘 4 等于 16。\nassistant\n4 乘 4 等于 16。"
+    },
+    {
+      "kind": "乘",
+      "q": "4乘5等于几？",
+      "expect": 20,
+      "got": 20,
+      "ok": true,
+      "reply": "4 乘 5 等于 20。"
+    },
+    {
+      "kind": "乘",
+      "q": "4乘6等于几？",
+      "expect": 24,
+      "got": 24,
+      "ok": true,
+      "reply": "4 乘 6 等于 24。"
+    },
+    {
+      "kind": "乘",
+      "q": "4乘7等于几？",
+      "expect": 28,
+      "got": 28,
+      "ok": true,
+      "reply": "4 乘 7 等于 28。"
+    },
+    {
+      "kind": "乘",
+      "q": "4乘8等于几？",
+      "expect": 32,
+      "got": 32,
+      "ok": true,
+      "reply": "4 乘 8 等于 32。"
+    },
+    {
+      "kind": "乘",
+      "q": "4乘9等于几？",
+      "expect": 36,
+      "got": 36,
+      "ok": true,
+      "reply": "4 乘 9 等于 36。\nassistant\n4 乘 9 等于 4。"
+    },
+    {
+      "kind": "乘",
+      "q": "5乘1等于几？",
+      "expect": 5,
+      "got": 5,
+      "ok": true,
+      "reply": "5 乘 1 等于 5。"
+    },
+    {
+      "kind": "乘",
+      "q": "5乘2等于几？",
+      "expect": 10,
+      "got": 10,
+      "ok": true,
+      "reply": "5 乘 2 等于 10。"
+    },
+    {
+      "kind": "乘",
+      "q": "5乘3等于几？",
+      "expect": 15,
+      "got": 15,
+      "ok": true,
+      "reply": "5 乘 3 等于 15。"
+    },
+    {
+      "kind": "乘",
+      "q": "5乘4等于几？",
+      "expect": 20,
+      "got": 20,
+      "ok": true,
+      "reply": "5 乘 4 等于 20。"
+    },
+    {
+      "kind": "乘",
+      "q": "5乘5等于几？",
+      "expect": 25,
+      "got": 25,
+      "ok": true,
+      "reply": "5 乘 5 等于 25。"
+    },
+    {
+      "kind": "乘",
+      "q": "5乘6等于几？",
+      "expect": 30,
+      "got": 30,
+      "ok": true,
+      "reply": "5 乘 6 等于 30。"
+    },
+    {
+      "kind": "乘",
+      "q": "5乘7等于几？",
+      "expect": 35,
+      "got": 35,
+      "ok": true,
+      "reply": "5 乘 7 等于 35。"
+    },
+    {
+      "kind": "乘",
+      "q": "5乘8等于几？",
+      "expect": 40,
+      "got": 40,
+      "ok": true,
+      "reply": "5 乘 8 等于 40。"
+    },
+    {
+      "kind": "乘",
+      "q": "5乘9等于几？",
+      "expect": 45,
+      "got": 45,
+      "ok": true,
+      "reply": "5 乘 9 等于 45。"
+    },
+    {
+      "kind": "乘",
+      "q": "6乘1等于几？",
+      "expect": 6,
+      "got": 6,
+      "ok": true,
+      "reply": "6 乘 1 等于 6。"
+    },
+    {
+      "kind": "乘",
+      "q": "6乘2等于几？",
+      "expect": 12,
+      "got": 12,
+      "ok": true,
+      "reply": "6 乘 2 等于 12。"
+    },
+    {
+      "kind": "乘",
+      "q": "6乘3等于几？",
+      "expect": 18,
+      "got": 18,
+      "ok": true,
+      "reply": "6 乘 3 等于 18。"
+    },
+    {
+      "kind": "乘",
+      "q": "6乘4等于几？",
+      "expect": 24,
+      "got": 24,
+      "ok": true,
+      "reply": "6 乘 4 等于 24。"
+    },
+    {
+      "kind": "乘",
+      "q": "6乘5等于几？",
+      "expect": 30,
+      "got": 30,
+      "ok": true,
+      "reply": "6 乘 5 等于 30。"
+    },
+    {
+      "kind": "乘",
+      "q": "6乘6等于几？",
+      "expect": 36,
+      "got": 36,
+      "ok": true,
+      "reply": "6 乘 6 等于 36。"
+    },
+    {
+      "kind": "乘",
+      "q": "6乘7等于几？",
+      "expect": 42,
+      "got": 42,
+      "ok": true,
+      "reply": "6 乘 7 等于 42。"
+    },
+    {
+      "kind": "乘",
+      "q": "6乘8等于几？",
+      "expect": 48,
+      "got": 48,
+      "ok": true,
+      "reply": "6 乘 8 等于 48。"
+    },
+    {
+      "kind": "乘",
+      "q": "6乘9等于几？",
+      "expect": 54,
+      "got": 54,
+      "ok": true,
+      "reply": "6 乘 9 等于 54。"
+    },
+    {
+      "kind": "乘",
+      "q": "7乘1等于几？",
+      "expect": 7,
+      "got": 7,
+      "ok": true,
+      "reply": "7 乘 1 等于 7。"
+    },
+    {
+      "kind": "乘",
+      "q": "7乘2等于几？",
+      "expect": 14,
+      "got": 14,
+      "ok": true,
+      "reply": "7 乘 2 等于 14。"
+    },
+    {
+      "kind": "乘",
+      "q": "7乘3等于几？",
+      "expect": 21,
+      "got": 21,
+      "ok": true,
+      "reply": "7 乘 3 等于 21。"
+    },
+    {
+      "kind": "乘",
+      "q": "7乘4等于几？",
+      "expect": 28,
+      "got": 28,
+      "ok": true,
+      "reply": "7 乘 4 等于 28。"
+    },
+    {
+      "kind": "乘",
+      "q": "7乘5等于几？",
+      "expect": 35,
+      "got": 35,
+      "ok": true,
+      "reply": "7 乘 5 等于 35。"
+    },
+    {
+      "kind": "乘",
+      "q": "7乘6等于几？",
+      "expect": 42,
+      "got": 42,
+      "ok": true,
+      "reply": "7 乘 6 等于 42。"
+    },
+    {
+      "kind": "乘",
+      "q": "7乘7等于几？",
+      "expect": 49,
+      "got": 49,
+      "ok": true,
+      "reply": "7 乘 7 等于 49。"
+    },
+    {
+      "kind": "乘",
+      "q": "7乘8等于几？",
+      "expect": 56,
+      "got": 56,
+      "ok": true,
+      "reply": "7 乘 8 等于 56。"
+    },
+    {
+      "kind": "乘",
+      "q": "7乘9等于几？",
+      "expect": 63,
+      "got": 63,
+      "ok": true,
+      "reply": "7 乘 9 等于 63。"
+    },
+    {
+      "kind": "乘",
+      "q": "8乘1等于几？",
+      "expect": 8,
+      "got": 8,
+      "ok": true,
+      "reply": "8 乘 1 等于 8。"
+    },
+    {
+      "kind": "乘",
+      "q": "8乘2等于几？",
+      "expect": 16,
+      "got": 16,
+      "ok": true,
+      "reply": "8 乘 2 等于 16。"
+    },
+    {
+      "kind": "乘",
+      "q": "8乘3等于几？",
+      "expect": 24,
+      "got": 24,
+      "ok": true,
+      "reply": "8 乘 3 等于 24。"
+    },
+    {
+      "kind": "乘",
+      "q": "8乘4等于几？",
+      "expect": 32,
+      "got": 32,
+      "ok": true,
+      "reply": "8 乘 4 等于 32。"
+    },
+    {
+      "kind": "乘",
+      "q": "8乘5等于几？",
+      "expect": 40,
+      "got": 40,
+      "ok": true,
+      "reply": "8 乘 5 等于 40。"
+    },
+    {
+      "kind": "乘",
+      "q": "8乘6等于几？",
+      "expect": 48,
+      "got": 48,
+      "ok": true,
+      "reply": "8 乘 6 等于 48。"
+    },
+    {
+      "kind": "乘",
+      "q": "8乘7等于几？",
+      "expect": 56,
+      "got": 56,
+      "ok": true,
+      "reply": "8 乘 7 等于 56。"
+    },
+    {
+      "kind": "乘",
+      "q": "8乘8等于几？",
+      "expect": 64,
+      "got": 64,
+      "ok": true,
+      "reply": "8 乘 8 等于 64。"
+    },
+    {
+      "kind": "乘",
+      "q": "8乘9等于几？",
+      "expect": 72,
+      "got": 72,
+      "ok": true,
+      "reply": "8 乘 9 等于 72。"
+    },
+    {
+      "kind": "乘",
+      "q": "9乘1等于几？",
+      "expect": 9,
+      "got": 9,
+      "ok": true,
+      "reply": "9 乘 1 等于 9。"
+    },
+    {
+      "kind": "乘",
+      "q": "9乘2等于几？",
+      "expect": 18,
+      "got": 18,
+      "ok": true,
+      "reply": "9 乘 2 等于 18。"
+    },
+    {
+      "kind": "乘",
+      "q": "9乘3等于几？",
+      "expect": 27,
+      "got": 27,
+      "ok": true,
+      "reply": "9 乘 3 等于 27。\nassistant\n9 乘 3 等于 72。"
+    },
+    {
+      "kind": "乘",
+      "q": "9乘4等于几？",
+      "expect": 36,
+      "got": 36,
+      "ok": true,
+      "reply": "9 乘 4 等于 36。\nassistant\n9 乘 4 等于 36。"
+    },
+    {
+      "kind": "乘",
+      "q": "9乘5等于几？",
+      "expect": 45,
+      "got": 45,
+      "ok": true,
+      "reply": "9 乘 5 等于 45。"
+    },
+    {
+      "kind": "乘",
+      "q": "9乘6等于几？",
+      "expect": 54,
+      "got": 54,
+      "ok": true,
+      "reply": "9 乘 6 等于 54。"
+    },
+    {
+      "kind": "乘",
+      "q": "9乘7等于几？",
+      "expect": 63,
+      "got": 63,
+      "ok": true,
+      "reply": "9 乘 7 等于 63。\nassistant\n9 乘 7 等于 63。"
+    },
+    {
+      "kind": "乘",
+      "q": "9乘8等于几？",
+      "expect": 72,
+      "got": 72,
+      "ok": true,
+      "reply": "9 乘 8 等于 72。"
+    },
+    {
+      "kind": "乘",
+      "q": "9乘9等于几？",
+      "expect": 81,
+      "got": 81,
+      "ok": true,
+      "reply": "9 乘 9 等于 81。"
+    }
+  ]
+}

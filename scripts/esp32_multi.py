@@ -4,6 +4,9 @@ Resets the board once, then sends every question from --questions (or a built-in
 list) and waits for the << ... >>END stream of each reply.  Flags crashes
 (panic / abort / Guru) or timeouts, so a 120 MHz flash/PSRAM configuration can be
 validated by actually running for a while instead of one single token.
+
+默认每道题前发 \\reset（把题目当独立探针，和历次记录可比）；
+加 --no-reset 则保留上下文，用来测真正的多轮对话。
 """
 import argparse
 import sys
@@ -49,6 +52,8 @@ def main():
     ap.add_argument("--questions", default=None, help="'|'-separated list")
     ap.add_argument("--reply-wait", type=float, default=300.0)
     ap.add_argument("--out", default=str(ROOT / "logs/esp32_multi.txt"))
+    ap.add_argument("--no-reset", action="store_true",
+                    help="保留上下文连续对话（默认每题前 \\reset，保持探针相互独立）")
     args = ap.parse_args()
 
     questions = args.questions.split("|") if args.questions else DEFAULT_QUESTIONS
@@ -66,6 +71,11 @@ def main():
 
     ok = fail = 0
     for i, q in enumerate(questions, 1):
+        if not args.no_reset:
+            ser.reset_input_buffer()
+            ser.write(b"\\reset\n")
+            ser.flush()
+            read_until(ser, "context cleared", 5)
         t0 = time.time()
         ser.reset_input_buffer()
         ser.write((q + "\n").encode("utf-8"))

@@ -3,15 +3,21 @@
 把 **feng-30m**（Qwen3 架构：11 层 / hidden 448 / 7 头 MHA / FFN 896 / 16k 词表 /
 tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话**。
 
-当前部署的是 **v3.11** 权重（`../v3_11/pol8/`，在 v3.10 链路上补算术边界，并做
-**Q4 权重 + q2 KV 双 QAT**：block8、板端 2048 上下文；身份 12/12；嵌入式 32 题矩阵
-27/27 + 长文召回 4/4、算术子集 21/21；范围评测 10/10、日常探针 42/42，
-见 `../CHANGELOG.md` 的 v3.11 节）。
+当前部署的是 **v3.13 嵌入式权重**（`../v3_13/mem_board/`，在 v3.11 链路上加**多轮记忆**，
+继续做 **Q4 权重 + q2 KV 双 QAT**：block8、板端 2048 上下文；身份 12/12；
+嵌入式 32 题矩阵 27/27 + 长文召回 4/4、算术子集 21/21；范围 10/10、探针 42/42，
+见 `../CHANGELOG.md` 的 v3.13 节）。
 
-**实机实测（2026-10-04，v3.11 + q2block8 固件）**：KV `q2/block8, ctx 2048, 9.62 MB`，
-PSRAM 余 5006 KB；默认 10 轮问答 **10/10 成功、0 失败**，情绪/日常 10 题 **10/10**，
-算术边界 10 题 **10/10**（7-7=0、3-5=-2、9+9=18 全对），约 **1.81 tok/s**
-（`../logs/board_v3_11p8_multi.txt`、`../logs/board_v3_11p8_chat10.txt`、`../logs/board_v3_11p8_arith.txt`）；
+**固件从 v3.13 起默认保留跨轮上下文**：每轮把 `<|im_end|>` 补进 KV，下一轮只 prefill
+新增的用户片段；实测 `我叫小明，请记住 → 你叫小明`、`喜欢蓝色 → 你最喜欢蓝色`、
+`养了一只猫 → 你养了一只猫` 全对。`\reset` 清空上下文，写满 2048 自动开新对话
+（`../logs/board_v3_13b_memory.txt`）。
+
+**实机实测（2026-10-04，v3.13 + q2block8 固件）**：KV `q2/block8, ctx 2048, 9.62 MB`，
+PSRAM 余 5006 KB；默认 / 情绪 / 算术三组 10 题 **30/30**，
+跨轮记忆 6/6（小明/蓝色/猫），约 **1.80 tok/s**
+（`../logs/board_v3_13b_multi.txt`、`../logs/board_v3_13b_chat10.txt`、
+`../logs/board_v3_13b_arith.txt`、`../logs/board_v3_13b_memory.txt`）；
 历史版本：v3.6 在 int8 KV @1024 ctx 下 1.85–1.86 tok/s（`../logs/board_v3_6_speed.txt`），GEMV 双核加速 1.93x；
 板端回复实测：`你是谁？` → `我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。我可以陪你聊天、帮你写作、翻译和写简单代码。`，
 `你是Qwen吗？` → `不是。我是 feng，由个人开发者 jiaheng 独立开发训练的 AI。`
@@ -19,7 +25,7 @@ PSRAM 余 5006 KB；默认 10 轮问答 **10/10 成功、0 失败**，情绪/日
 （v3.5/v3.4 的历史基线见 `board_baseline_v3_5.txt`、`board_baseline_v3_4.txt`）。
 
 板端要的两个文件（`model.bin` + `tokenizer.bin`）有两个来源：**① 直接下载**
-[Releases](https://github.com/jiaheng0815/feng-30m/releases) 里的 `feng-30m-v3.11-release.zip`，
+[Releases](https://github.com/jiaheng0815/feng-30m/releases) 里的 `feng-30m-v3.13-embed-release.zip`，
 取包内 `weights/esp32/`；**② 按下面第 1 节自己从 HF 权重导出**。只想跑起来就选 ①，跳过第 1 节。
 
 > 下文命令里的 `<...>` 都是占位符，换成你本机的路径；Python 脚本会自动解析项目内路径
@@ -185,7 +191,7 @@ esp32s3-feng-llm/
 > 本引擎按 **MHA（7 个 Q 头 = 7 个 KV 头）** 实现；若改成 GQA/MQA（如 7 头 / 1 KV 头），
 > 需要在 `feng_llm.c` 里加 KV 头广播。（v1 也是 MHA，网上"v1 是 MQA"的说法不成立。）
 
-## 8. 已验证结果（v3.11，2026-10-04 实机）
+## 8. 已验证结果（v3.13-embed，2026-10-04 实机）
 
 ```
 $ .\pc\pc_check.exe ..\model_export_v3_7f ..\logs\c_logits_v3_7.bin
@@ -209,8 +215,9 @@ I (1828) feng: PSRAM free after setup: 5006 KB
 I (2228) feng: gemv 896x448: 1-core 13186 us | 2-core 6837 us | speedup 1.93x
 ```
 
-对话实测：v3.11 + q2block8 固件默认 **10 轮 10/10**（`../logs/board_v3_11p8_multi.txt`）+
-情绪/日常 10 题 **10/10**（`../logs/board_v3_11p8_chat10.txt`）+ 算术 10 题 **10/10**
-（`../logs/board_v3_11p8_arith.txt`）；历史记录：v3.10 q2 27/27+4/4、v3.7 q2 27/27+4/4、
+对话实测：v3.13-embed + q2block8 固件默认 **10 轮 10/10**（`../logs/board_v3_13b_multi.txt`）+
+情绪/日常 10 题 **10/10**（`../logs/board_v3_13b_chat10.txt`）+ 算术 10 题 **10/10**
+（`../logs/board_v3_13b_arith.txt`）+ 跨轮记忆 6/6（`../logs/board_v3_13b_memory.txt`）；
+历史记录：v3.11 q2 27/27+4/4、v3.10 q2 27/27+4/4、v3.7 q2 27/27+4/4、
 v3.6 int8 1.85–1.86 tok/s、
 v3.4 10/10、v3 5 轮 5/5、v2 固件 10/10。

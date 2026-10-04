@@ -563,6 +563,109 @@ def check_facts() -> None:
         if b"tokenizer.chat_template" not in f.read_bytes():
             fail.append(f"v3_12/gguf/{f.name}: 未内嵌 chat template")
 
+    # --- v3.13：记忆版（PC + 板端两套权重） ---
+    mem13 = ROOT / "eval" / "memory_v3_13pc3.json"
+    if mem13.exists():
+        d = json.loads(mem13.read_text(encoding="utf-8"))
+        if d.get("score") != "21/24":
+            fail.append(f"eval/{mem13.name}: 记忆 {d.get('score')} != 文档 21/24")
+        else:
+            print("    v3.13 记忆评测 21/24（与文档一致）")
+    arith13 = ROOT / "eval" / "arith_v3_13pc3.json"
+    if arith13.exists():
+        rows = json.loads(arith13.read_text(encoding="utf-8"))["rows"]
+        per = {}
+        for r in rows:
+            per.setdefault(r["kind"], [0, 0])
+            per[r["kind"]][1] += 1
+            per[r["kind"]][0] += int(r["ok"])
+        want = {"加": (100, 100), "减(结果>0)": (45, 45), "减(结果=0)": (10, 10),
+                "减(结果<0)": (38, 45), "乘": (81, 81)}
+        got = {k: tuple(v) for k, v in per.items()}
+        if got != want:
+            fail.append(f"eval/{arith13.name}: 算术网格 {got} != 文档 {want}")
+        else:
+            print("    v3.13 算术网格 274/281（与文档一致）")
+    for fname, want_hits, want_neg in [("longctx32_v3_13pc3.json", "28/29/29/27", 61),
+                                       ("longctx32multi_v3_13pc3.json", "28/26/32/22", 62)]:
+        p = ROOT / "eval" / fname
+        if not p.exists():
+            warn.append(f"eval/{fname} 不存在，跳过 v3.13 检索校验")
+            continue
+        rows = json.loads(p.read_text(encoding="utf-8"))["rows"]
+        hits = "/".join(str(r["hit"]) for r in rows)
+        neg = sum(r.get("neg_hit", 0) for r in rows)
+        if hits != want_hits or neg != want_neg:
+            fail.append(f"eval/{fname}: {hits} 拒答 {neg}/64，文档声称 {want_hits} 与 {want_neg}/64")
+        else:
+            print(f"    v3.13 {fname.split('_')[0]} {hits}（拒答 {neg}/64，与文档一致）")
+    scope13 = ROOT / "eval" / "v3_13pc3_scope.json"
+    if scope13.exists():
+        rows = json.loads(scope13.read_text(encoding="utf-8"))
+        got = sum(1 for r in rows if r.get("ok") is True)
+        if got != 10:
+            fail.append(f"eval/{scope13.name}: 范围评测 {got}/10 != 文档 10/10")
+        else:
+            print("    v3.13 范围评测 10/10（与文档一致）")
+    probe13 = ROOT / "eval" / "chat_probe_v3_13pc3.json"
+    if probe13.exists():
+        rows = json.loads(probe13.read_text(encoding="utf-8"))["rows"]
+        miss = sum(1 for r in rows if r["topic_miss"] is True)
+        loop = sum(1 for r in rows if r["loop"] is True)
+        if len(rows) != 42 or miss != 0 or loop != 0:
+            fail.append(f"eval/{probe13.name}: {len(rows)-miss}/42（复读 {loop}），文档声称 42/42 且 0 复读")
+        else:
+            print("    v3.13 日常探针 42/42、0 复读（与文档一致）")
+    ident13 = ROOT / "eval" / "identity_v3_13pc3.json"
+    if ident13.exists():
+        d = json.loads(ident13.read_text(encoding="utf-8"))
+        if d.get("score") != "12/12":
+            fail.append(f"eval/{ident13.name}: 身份 {d.get('score')} != 文档 12/12")
+        else:
+            print("    v3.13 身份 12/12（与文档一致）")
+    for mode, fname in [("q2b8", "pc_kv_suite32_v3_13b_q2b8.txt")]:
+        p = ROOT / "logs" / fname
+        if not p.exists():
+            warn.append(f"logs/{fname} 不存在，跳过 v3.13 C 矩阵校验")
+            continue
+        t = p.read_text(encoding="utf-8", errors="replace")
+        if "短任务 27/27" not in t or "长文召回 4/4" not in t:
+            fail.append(f"logs/{fname}: 不是 27/27 + 4/4，文档声称（{mode}）满分")
+        else:
+            print(f"    v3.13 C 引擎 {mode} 27/27 + 4/4（与文档一致）")
+    arith_suite13 = ROOT / "logs" / "pc_arith_suite_v3_13b_q2b8.txt"
+    if arith_suite13.exists():
+        t = arith_suite13.read_text(encoding="utf-8", errors="replace")
+        if "短任务 21/21" not in t:
+            fail.append("logs/pc_arith_suite_v3_13b_q2b8.txt: 不是 21/21，文档声称算术子集满分")
+        else:
+            print("    v3.13 C 引擎算术子集 21/21（与文档一致）")
+    else:
+        warn.append("logs/pc_arith_suite_v3_13b_q2b8.txt 不存在，跳过 v3.13 算术子集校验")
+    for fname in ("board_v3_13b_multi.txt", "board_v3_13b_chat10.txt", "board_v3_13b_arith.txt"):
+        p = ROOT / "logs" / fname
+        if not p.exists():
+            warn.append(f"logs/{fname} 不存在，跳过 v3.13 板端校验")
+            continue
+        t = p.read_text(encoding="utf-8", errors="replace")
+        if "10 成功 / 0 失败" not in t:
+            fail.append(f"logs/{fname}: 未记录 10/10 成功")
+        else:
+            print(f"    v3.13 板端 {fname} 10/10（与文档一致）")
+    memboard = ROOT / "logs" / "board_v3_13b_memory.txt"
+    if memboard.exists():
+        t = memboard.read_text(encoding="utf-8", errors="replace")
+        if "6 成功 / 0 失败" not in t or "你叫小明" not in t or "你最喜欢蓝色" not in t:
+            fail.append("logs/board_v3_13b_memory.txt: 未记录跨轮记忆 6/6（小明/蓝色）")
+        else:
+            print("    v3.13 板端跨轮记忆 6/6（与文档一致）")
+    else:
+        warn.append("logs/board_v3_13b_memory.txt 不存在，跳过 v3.13 记忆校验")
+    for d in ("gguf_pc", "gguf_board"):
+        for f in (ROOT / "v3_13" / d).glob("*.gguf"):
+            if b"tokenizer.chat_template" not in f.read_bytes():
+                fail.append(f"v3_13/{d}/{f.name}: 未内嵌 chat template")
+
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"
     for doc in DOCS:
