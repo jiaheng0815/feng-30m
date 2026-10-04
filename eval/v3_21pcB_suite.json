@@ -1,0 +1,31 @@
+{
+  "model": "v3_21\\pcB",
+  "suites": {
+    "scope": {
+      "ok": 10,
+      "n": 10,
+      "json": "eval\\v3_21pcB_scope.json"
+    },
+    "identity": {
+      "ok": 12,
+      "n": 12,
+      "json": "eval\\v3_21pcB_identity.json"
+    },
+    "probe42": {
+      "ok": 42,
+      "n": 42,
+      "json": "eval\\v3_21pcB_probe42.json"
+    },
+    "heldout30": {
+      "ok": 21,
+      "n": 30,
+      "json": "eval\\v3_21pcB_heldout30.json"
+    },
+    "memory24": {
+      "ok": 19,
+      "n": 24,
+      "json": "eval\\v3_21pcB_memory24.json"
+    }
+  },
+  "failed": []
+}

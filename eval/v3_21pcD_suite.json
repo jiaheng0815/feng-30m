@@ -1,0 +1,31 @@
+{
+  "model": "v3_21\\pcD",
+  "suites": {
+    "scope": {
+      "ok": 10,
+      "n": 10,
+      "json": "eval\\v3_21pcD_scope.json"
+    },
+    "identity": {
+      "ok": 12,
+      "n": 12,
+      "json": "eval\\v3_21pcD_identity.json"
+    },
+    "probe42": {
+      "ok": 42,
+      "n": 42,
+      "json": "eval\\v3_21pcD_probe42.json"
+    },
+    "heldout30": {
+      "ok": 19,
+      "n": 30,
+      "json": "eval\\v3_21pcD_heldout30.json"
+    },
+    "memory24": {
+      "ok": 23,
+      "n": 24,
+      "json": "eval\\v3_21pcD_memory24.json"
+    }
+  },
+  "failed": []
+}
