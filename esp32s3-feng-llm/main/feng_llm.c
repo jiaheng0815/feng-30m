@@ -350,7 +350,6 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
         memcpy(vc + (size_t)pos * h, v, h * sizeof(float));
 #endif
 
-        float *pv = ws->scratch;          /* scaled attention probabilities */
         memset(attn, 0, (size_t)nh * hd * sizeof(float));
         for (int hh = 0; hh < nh; hh++) {
             const float *qh = q + hh * hd;
@@ -492,6 +491,7 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
             g_prof_cycles[1] += (unsigned long long)((unsigned)esp_cpu_get_cycle_count() - ps0);
 #endif
 #if FENG_KV_INT8
+            float *pv = ws->scratch;      /* scaled attention probabilities（仅 int8 路径用） */
             for (int t = 0; t <= pos; t++) {
                 pv[t] = scores[t] * f16_to_f32_local(vsc[(size_t)t * nh + hh]);
             }

@@ -1019,6 +1019,16 @@ def check_facts() -> None:
             fail.append(f"logs/{fname}: 未记录「{needle}」")
         elif p.exists():
             print(f"    p4–p6 实验记录 {fname}（与文档一致）")
+    # --- v3.16-embed 工程附录：长文输入 4KB + prefill 成本实测 ---
+    for fname, needle, label in [
+            ("board_longprompt_800tok.txt", "回答: 7391", "长文 491 tokens 答对取件码"),
+            ("board_longprompt_800tok.txt", "墙钟 290.9s", "长文 491 tokens 291 s"),
+            ("board_longprompt_150tok.txt", "prefill 约 61 秒", "短样例的预估计时")]:
+        p = ROOT / "logs" / fname
+        if p.exists() and needle not in p.read_text(encoding="utf-8", errors="replace"):
+            fail.append(f"logs/{fname}: 未记录「{needle}」")
+        elif p.exists():
+            print(f"    {label}（与文档一致）")
 
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
     new_identity = "独立开发训练的 AI"

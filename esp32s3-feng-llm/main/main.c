@@ -479,12 +479,34 @@ static int generate(const int *prompt, int np, char *out, int out_max, int keep)
 
 static void chat_once(const char *user)
 {
-    static char prompt[2048];
-    static int ids[1024];
+    /* 长文输入：正文按 token 预算安全截断（保 UTF-8 边界与模板收尾），
+     * 2048 ctx 下大约能收 1500+ 个汉字，而不是原来的 ~340 个。 */
+    static char prompt[4096];
+    static int ids[2304];
     static char reply[1024];
-    snprintf(prompt, sizeof(prompt), "<|im_start|>user\n%s<|im_end|>\n<|im_start|>assistant\n",
-             user);
-    const int n = feng_tok_encode(&s_tok, prompt, ids, 1024);
+    const int cap = MAX_CTX - MAX_NEW - 8;
+    size_t ulen = strlen(user);
+    if (ulen > sizeof(prompt) - 256) ulen = sizeof(prompt) - 256;
+    int truncated = (ulen < strlen(user));
+    int n = 0;
+    for (;;) {
+        while (ulen > 0 && ((unsigned char)user[ulen] & 0xC0) == 0x80) ulen--;
+        snprintf(prompt, sizeof(prompt),
+                 "<|im_start|>user\n%.*s<|im_end|>\n<|im_start|>assistant\n", (int)ulen, user);
+        n = feng_tok_encode(&s_tok, prompt, ids, cap);
+        if (n < cap) break;                    /* 收得下（含 <|im_end|> 收尾） */
+        if (ulen <= 64) { out_printf("[输入太长，请分几次发]\n"); return; }
+        ulen = ulen * 3 / 4;                   /* 还是太满：再截短正文 */
+        truncated = 1;
+    }
+    if (truncated) out_printf("[输入过长，已截断到 %d 字节]\n", (int)ulen);
+    /* 板端 prefill 成本实测 = 每个 token 的权重 GEMV ~0.38 s + 注意力的 O(n²)
+     * （0.85 ms × n²/2）：491 tokens 实测 291 s（权重 ~187 s + 注意力 ~102 s）。 */
+    if (n > 80) {
+        out_printf("[长文输入 %d tokens：板端 prefill 约 %.0f 秒（%.0f 秒权重 + n² 注意力）]\n",
+                   n, 0.38 * (double)n + 0.000425 * (double)n * (double)n,
+                   0.38 * (double)n);
+    }
     if (s_kv.len + n + MAX_NEW + 4 > MAX_CTX) {
         out_printf("[上下文已满 %d/%d，自动开始新对话；输入 \\reset 可手动清空]\n",
                    s_kv.len, MAX_CTX);
@@ -517,8 +539,8 @@ void app_main(void)
     feng_tools_set_time(fw_epoch_now);
     feng_tools_set_uptime(fw_uptime_us);
 
-    static char line[1024];
-    static char u8[1024];
+    static char line[4096];
+    static char u8[4096];
     out_printf("\n=== feng-30m on ESP32-S3 (serial chat) ===\n");
     out_printf("one sentence per line; the reply streams between << and >>END\n");
     out_printf("多轮对话：自动保留上下文（2048 token），满了自动开新对话\n");
@@ -530,6 +552,7 @@ void app_main(void)
         out_printf("you> ");
         fflush(stdout);
         size_t n = 0;
+        int over = 0;
         for (;;) {                      /* read one line from UART0 */
             uint8_t ch = 0;
             const int r = uart_read_bytes(UART_NUM_0, &ch, 1, pdMS_TO_TICKS(200));
@@ -541,9 +564,11 @@ void app_main(void)
                 }
                 uart_write_bytes(UART_PORT, (const char *)&ch, 1);   /* echo so the user sees typing */
                 if (n < sizeof(line) - 1) line[n++] = (char)ch;
+                else over = 1;                                    /* 超出缓冲：丢弃并提示 */
             }
         }
         line[n] = 0;
+        if (over) out_printf("[输入超过 %d 字节，多余部分已丢弃]\n", (int)sizeof(line) - 1);
         /* mirror the terminal's encoding: GBK terminals send GBK bytes */
         if (feng_has_high_byte(line, (int)n)) {
             g_out_gbk = !feng_utf8_valid(line, (int)n);

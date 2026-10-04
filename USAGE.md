@@ -228,6 +228,8 @@ python scripts\eval_longctx_many.py --models "<输出>" --n 32 --neg-n 16       
   「补数据 + 权重/KV 双 QAT」链路，不要手动 soup（CHANGELOG v3.10/v3.11）。
 - 32k 负样本拒答（61/64）经多轮专项训练未突破，已记录为平台（CHANGELOG v3.9 附录）。
 - **记忆是上下文内记忆**：靠 2048 token KV，`\reset`/重启/写满即忘；复杂多事实仍会错（21/24）。
+- **板端长文很慢**：单行输入上限 4095 字节，但 prefill 是 O(n²)——≈800 tokens 要 ~291 s
+  （注意力本身就要 n² 次 KV 访问）。交互输入建议 ≤ ~150 tokens；长文/批量任务用 PC 版。
 - **tool 只在带 tool 的运行时里**：板端固件 / PC C 引擎 `pc_chat` / Python 脚本；
   GGUF、llama.cpp 没有 tool，v3.14 起不再发行 GGUF。
 - **板端时间靠宿主对时**：串口脚本会自动发 `\settime <unix秒>`（宿主走 NTP）；

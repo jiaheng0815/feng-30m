@@ -20,6 +20,12 @@ tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话*
 `养了一只猫 → 你养了一只猫` 全对。`\reset` 清空上下文，写满 2048 自动开新对话
 （`../logs/board_v3_13b_memory.txt`）。
 
+**输入长度**：单行最多 4095 字节，超出会提示并丢弃多余部分；正文按 token 预算截断时
+保留 UTF-8 边界与模板收尾。注意板端 prefill 成本 = **每 token 权重 ~0.38 s + 注意力
+0.85 ms×n²/2**：491 tokens 的长文实测 **291 s**（还能答对文中取件码，
+见 `../logs/board_longprompt_800tok.txt`），固件会在 >80 tokens 时打印预估时间，
+**交互输入建议 ≤ ~150 tokens（≈400 字节中文）**，长文请在 PC 上跑。
+
 **实机实测（2026-10-04，v3.16-embed + q2block8 固件）**：KV `q2/block8, ctx 2048, 9.62 MB`，
 PSRAM 余 5006 KB；工具（时间/随机数/算式）13/13
 （`../logs/board_v3_16p3_tools.txt`）、跨轮记忆 12 题 **10/12**
