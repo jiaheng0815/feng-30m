@@ -171,9 +171,11 @@ uint16_t feng_f32_to_f16(float f)
     return (uint16_t)((sign << 15) | ((uint32_t)(exp + 15) << 10) | (man >> 13));
 }
 
-/* 真正的 CPU 实现（不做 CUDA dispatch）；feng_gemv_range / feng_gemv3 共用。 */
-static void gemv_range_cpu(const void *tensor, uint32_t dtype, const float *x, float *y,
-                           int r0, int r1, int n_in)
+/* 真正的 CPU 实现（不做 CUDA dispatch）；feng_gemv_range / feng_gemv3 共用。
+ * FENG_HOT 必须留在这里：板端它是 IRAM_ATTR，循环体在 IRAM 执行；
+ * 只标外层 wrapper 会让热循环退回 flash 取指（实测 +2.5% ms/token）。 */
+FENG_HOT static void gemv_range_cpu(const void *tensor, uint32_t dtype, const float *x, float *y,
+                                    int r0, int r1, int n_in)
 {
     const uint8_t *base = (const uint8_t *)tensor;
     if (dtype == FENG_DT_FP16) {
