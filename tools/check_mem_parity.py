@@ -1,12 +1,12 @@
-"""C 引擎与 Python 的记忆 tool 一致性检查（对话式，含学习/追问/换值/列表/遗忘/重学）。
+"""C++ 引擎与 Python 的记忆 tool 一致性检查（对话式，含学习/追问/换值/列表/遗忘/重学）。
 
 把同一段对话分别喂给：
-  - C：`pc/pc_mem_ask.c` 驱动 + `main/feng_memory.c`（stdin 一行一句，输出回答或 NONE）
+  - C++：`pc/pc_mem_ask.cpp` 驱动 + `main/feng_memory.cpp`（stdin 一行一句，输出回答或 NONE）
   - Python：`scripts/runtime_tools.py` 的 mem_learn / mem_answer
 逐条比较，不一致退出码 1。
 
 用法：
-    gcc -O2 -o pc_mem_ask pc/pc_mem_ask.c main/feng_memory.c -Imain -lm
+    g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -o pc_mem_ask pc/pc_mem_ask.cpp main/feng_memory.cpp -Imain -lm
     python tools/check_mem_parity.py --c-bin pc_mem_ask
 """
 import argparse

@@ -10,7 +10,7 @@
     FENG_PY             Python 解释器（默认：当前解释器 sys.executable）
     FENG_TEACHER_GGUF   v1 教师模型 feng-0.8b 的 GGUF 路径。**只有跑 v1 蒸馏
                         （teacher_generate.py）才需要**；v2/v3 用 27B HTTP 教师，不需要它
-    IDF_PATH / IDF_TOOLS_PATH / ESPTOOL_PY / FENG_GCC
+    IDF_PATH / IDF_TOOLS_PATH / ESPTOOL_PY / FENG_GXX
                         工具链位置（只有 flash.ps1 等少数地方用得到，可留空）
 
 只复现 v3（推理 / 导出 GGUF / 刷板）时：**只需要 FENG_LLAMA_DIR 和 Python**；
@@ -85,7 +85,7 @@ TEACHER_GGUF = _resolve(
 ESP_IDF = _resolve("IDF_PATH", "esp_idf", Path("__missing__"))
 IDF_TOOLS_PATH = _resolve("IDF_TOOLS_PATH", "idf_tools_path", Path("__missing__"))
 ESPTOOL_PY = _resolve("ESPTOOL_PY", "esptool_py", PY)
-GCC = _resolve("FENG_GCC", "gcc", Path("__missing__"))
+GXX = _resolve("FENG_GXX", "gxx", Path("__missing__"))
 
 
 def require(path: Path, what: str, env: str = "") -> Path:
@@ -108,7 +108,7 @@ def main() -> None:
         ("ESP-IDF", ESP_IDF, "IDF_PATH"),
         ("IDF 工具链", IDF_TOOLS_PATH, "IDF_TOOLS_PATH"),
         ("esptool 解释器", ESPTOOL_PY, "ESPTOOL_PY"),
-        ("gcc", GCC, "FENG_GCC"),
+        ("g++", GXX, "FENG_GXX"),
     ]
     print(f"本地配置 {_LOCAL_CONFIG}：" + ("已加载" if _local else "无"))
     for name, path, env in rows:

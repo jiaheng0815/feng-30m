@@ -19,7 +19,7 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from paths import ROOT  # noqa: E402
 
-SUITE_C = ROOT / "esp32s3-feng-llm" / "pc" / "pc_kv_suite.c"
+SUITE_C = ROOT / "esp32s3-feng-llm" / "pc" / "pc_kv_suite.cpp"
 
 
 def conv(q: str, a: str) -> dict:

@@ -66,7 +66,10 @@ int main(int argc, char **argv)
     }
 
     feng_model_t m;
-    if (feng_model_init(&m, mblob, mlen) != 0) { fprintf(stderr, "model init failed\n"); return 1; }
+    if (feng_model_init(
+            &m, {reinterpret_cast<const std::byte *>(mblob), mlen}) != 0) {
+        fprintf(stderr, "model init failed\n"); return 1;
+    }
     feng_tok_t tok;
     if (feng_tok_load(&tok, tblob, tlen) != 0) { fprintf(stderr, "tokenizer load failed\n"); return 1; }
 

@@ -153,8 +153,8 @@ static void bench_forward_ctx(void)
 
 #if FENG_BENCH_PIE
 /* PIE 裸吞吐：判断"整行 PIE 内核"的理论上限（对比标量 GEMV 的 ~4 周期/权重，双核） */
-extern void pie_mac_s16_bench(const int16_t *a, int n);
-extern void pie_s8_zip_mac_bench(const int8_t *w, const int8_t *x, int n);
+extern "C" void pie_mac_s16_bench(const int16_t *a, int n);
+extern "C" void pie_s8_zip_mac_bench(const int8_t *w, const int8_t *x, int n);
 static void bench_pie(void)
 {
     static int16_t b16[16];
@@ -258,7 +258,8 @@ static void setup_model(void)
                  (unsigned)(n / 1024), dt / 1000, (double)n / (double)dt * 1.0,
                  (unsigned)acc);
     }
-    const int rc = feng_model_init(&s_model, ptr, mp->size);
+    const int rc = feng_model_init(
+        &s_model, {reinterpret_cast<const std::byte *>(ptr), static_cast<size_t>(mp->size)});
     if (rc != 0) {
         ESP_LOGE(TAG, "model init failed rc=%d", rc);
         abort();
@@ -390,7 +391,7 @@ static void bench_gemv(void)
     }
     int64_t dt1b = esp_timer_get_time() - t0;
 #else
-    const int64_t dt1b = dt1;
+    [[maybe_unused]] const int64_t dt1b = dt1;   /* 仅量化内核 A/B 对比时需要 */
 #endif
     (void)xref;
     t0 = esp_timer_get_time();
@@ -411,7 +412,8 @@ static void bench_gemv(void)
 static int sample_next(float *logits, int vocab)
 {
     /* 统一采样器：1.15 重复惩罚 + 禁止补全已出现过的 3-gram（压"太阳系太阳系…"循环） */
-    return feng_sample_greedy(logits, vocab, s_hist, s_nhist, 1.15f, 3);
+    return feng_sample_greedy({logits, static_cast<size_t>(vocab)},
+                              {s_hist, static_cast<size_t>(s_nhist)}, 1.15f, 3);
 }
 
 static void push_hist(int t)
@@ -564,7 +566,7 @@ static void chat_once(const char *user)
     generate(ids, n, reply, sizeof(reply), 1);
 }
 
-void app_main(void)
+extern "C" void app_main(void)
 {
     esp_chip_info_t info;
 

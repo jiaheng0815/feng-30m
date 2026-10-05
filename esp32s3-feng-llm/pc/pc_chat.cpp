@@ -74,7 +74,10 @@ int main(int argc, char **argv)
     unsigned char *tblob = read_file(path, &tlen);
 
     feng_model_t m;
-    if (feng_model_init(&m, mblob, mlen) != 0) { fprintf(stderr, "model init failed\n"); return 1; }
+    if (feng_model_init(
+            &m, {reinterpret_cast<const std::byte *>(mblob), mlen}) != 0) {
+        fprintf(stderr, "model init failed\n"); return 1;
+    }
     feng_tok_t tok;
     if (feng_tok_load(&tok, tblob, tlen) != 0) { fprintf(stderr, "tokenizer load failed\n"); return 1; }
 
@@ -176,7 +179,8 @@ int main(int argc, char **argv)
         fflush(stdout);
         int hist[64], nhist = 0;
         for (int step = 0; step < max_new; step++) {
-            const int tk = feng_sample_greedy(logits, v, hist, nhist, 1.15f, 3);
+            const int tk = feng_sample_greedy({logits, static_cast<size_t>(v)},
+                                              {hist, static_cast<size_t>(nhist)}, 1.15f, 3);
             if (tk == tok.id_im_end || tk == tok.id_eot) break;
             char b[16];
             const int nb = feng_tok_decode_token(&tok, tk, b, sizeof(b));

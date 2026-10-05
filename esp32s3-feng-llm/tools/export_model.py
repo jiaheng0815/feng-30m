@@ -112,7 +112,7 @@ def main():
     # ---------- write binary
     n_t = len(tensors)
     dir_fmt = "<32sIIIIIQQ"         # name, dtype, shape[4], offset, nbytes  (68 bytes)
-    # header must match feng_model.c byte-for-byte:
+    # header must match feng_model.cpp byte-for-byte:
     #   u32 magic, version, n_tensors, n_layers, hidden, n_heads, head_dim, ffn, vocab
     #   f32 rms_eps, rope_theta                                          (44 bytes total)
     header = struct.pack("<9I2f", MAGIC, 1, n_t, n_layers, hidden, n_heads, head_dim, ffn, vocab,

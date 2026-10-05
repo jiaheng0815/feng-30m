@@ -72,7 +72,7 @@ def rmsnorm(x, w, eps):
 
 
 def forward_torch(mb, ids, deq):
-    """Same math as feng_llm.c, in torch (fp32), using dequantized weights."""
+    """Same math as feng_llm.cpp, in torch (fp32), using dequantized weights."""
     cfg = mb["cfg"]
     hidden, nh, hd, ffn, vocab = (cfg["hidden"], cfg["n_heads"], cfg["head_dim"], cfg["ffn"],
                                   cfg["vocab"])

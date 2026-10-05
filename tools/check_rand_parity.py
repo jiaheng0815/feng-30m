@@ -1,7 +1,7 @@
-"""C 引擎与 Python 的随机数 tool 逐值一致性检查（同 seed 必须得到同一个数）。
+"""C++ 引擎与 Python 的随机数 tool 逐值一致性检查（同 seed 必须得到同一个数）。
 
 用法：
-    gcc -O2 -o pc_rand_ask pc/pc_rand_ask.c main/feng_tools.c -Imain -lm
+    g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -o pc_rand_ask pc/pc_rand_ask.cpp main/feng_tools.cpp -Imain -lm
     python tools/check_rand_parity.py --c-bin pc_rand_ask
 """
 import argparse

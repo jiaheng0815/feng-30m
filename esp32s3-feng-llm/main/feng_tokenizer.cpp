@@ -7,9 +7,13 @@
  */
 #include "feng_tokenizer.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <algorithm>
+#include <array>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <span>
+#include <string_view>
 
 #if defined(ESP_PLATFORM)
 #include "esp_heap_caps.h"
@@ -27,8 +31,8 @@ static void *tok_calloc(size_t n)
     return p;
 }
 #else
-static void *tok_alloc(size_t n) { return malloc(n); }
-static void *tok_calloc(size_t n) { return calloc(1, n); }
+static void *tok_alloc(size_t n) { return std::malloc(n); }
+static void *tok_calloc(size_t n) { return std::calloc(1, n); }
 #endif
 
 /* ---------------- GPT-2 byte <-> unicode ---------------- */
@@ -72,56 +76,60 @@ static int utf8_encode(uint32_t cp, char *out)
     return 4;
 }
 
-static int is_direct(int b)
+namespace {
+
+/* GPT-2 的字节 <-> unicode 映射是纯常量表：编译期建表，运行时零分支查表。
+ * 直接映射 188 个可打印字节，其余 68 个映射到 U+0100.. 区间。 */
+constexpr bool is_direct(int b) noexcept
 {
     return (b >= 33 && b <= 126) || (b >= 161 && b <= 172) || (b >= 174 && b <= 255);
 }
 
-static uint32_t bytes_to_uni(int b)
+constexpr std::array<int16_t, 256> make_byte_to_uni() noexcept
 {
-    if (is_direct(b)) return (uint32_t)b;
-    int c = 0;
-    for (int i = 0; i < 256; i++) {
-        if (is_direct(i)) continue;
-        if (i == b) return (uint32_t)(256 + c);
-        c++;
+    std::array<int16_t, 256> table{};
+    int mapped = 0;
+    for (int b = 0; b < 256; b++) {
+        table[b] = static_cast<int16_t>(is_direct(b) ? b : 256 + mapped++);
     }
-    return 0;
+    return table;
 }
 
-static int uni_to_byte(uint32_t cp)
+constexpr std::array<int16_t, 324> make_uni_to_byte() noexcept
 {
-    if (cp < 256 && is_direct((int)cp)) return (int)cp;
-    if (cp >= 256 && cp < 324) {
-        int idx = (int)(cp - 256), c = 0;
-        for (int i = 0; i < 256; i++) {
-            if (is_direct(i)) continue;
-            if (c == idx) return i;
-            c++;
-        }
+    std::array<int16_t, 324> table{};
+    table.fill(-1);
+    for (int b = 0; b < 256; b++) {
+        const int cp = is_direct(b) ? b : -1;   /* 直接映射的码点 */
+        if (cp >= 0) table[cp] = static_cast<int16_t>(b);
     }
-    return -1;
+    int mapped = 0;
+    for (int b = 0; b < 256; b++) {
+        if (!is_direct(b)) table[256 + mapped++] = static_cast<int16_t>(b);
+    }
+    return table;
 }
+
+constexpr auto kByteToUni = make_byte_to_uni();
+constexpr auto kUniToByte = make_uni_to_byte();
+
+}  // namespace
 
 /* ---------------- helpers ---------------- */
 
-static int cmp_token(const feng_tok_t *t, int a, int b, const char *s, int len)
+[[nodiscard]] static int cmp_token(const feng_tok_t *t, int a, std::string_view s) noexcept
 {
-    const int la = t->token_len[a], lb = len;
-    const int m = la < lb ? la : lb;
-    const int c = memcmp(t->tokens[a], s, m);
-    if (c != 0) return c;
-    return la - lb;
+    return std::string_view{t->tokens[a], t->token_len[a]}.compare(s);
 }
 
 /* binary search over vocab_order[] */
-static int find_token(const feng_tok_t *t, const char *s, int len)
+[[nodiscard]] static int find_token(const feng_tok_t *t, std::string_view s) noexcept
 {
     int lo = 0, hi = t->vocab_size - 1;
     while (lo <= hi) {
         const int mid = (lo + hi) / 2;
         const int idx = t->vocab_order[mid];
-        const int c = cmp_token(t, idx, 0, s, len);
+        const int c = cmp_token(t, idx, s);
         if (c == 0) return idx;
         if (c < 0) lo = mid + 1;
         else hi = mid - 1;
@@ -145,43 +153,17 @@ static int pair_rank(const feng_tok_t *t, int left, int right)
 
 /* ---------------- load ---------------- */
 
-static int cmp_uint32(const void *a, const void *b)
-{
-    const uint32_t x = *(const uint32_t *)a, y = *(const uint32_t *)b;
-    return x < y ? -1 : (x > y ? 1 : 0);
-}
-
-static const feng_tok_t *g_sort_tokenizer = NULL;
-
-static int cmp_index(const void *a, const void *b)
-{
-    const feng_tok_t *t = g_sort_tokenizer;
-    const int ia = *(const int *)a, ib = *(const int *)b;
-    const int la = t->token_len[ia], lb = t->token_len[ib];
-    const int m = la < lb ? la : lb;
-    const int c = memcmp(t->tokens[ia], t->tokens[ib], m);
-    if (c != 0) return c;
-    return la - lb;
-}
-
-typedef struct { uint32_t key; int rank; } merge_entry_t;
-
-static int cmp_merge_entry(const void *a, const void *b)
-{
-    const merge_entry_t *x = (const merge_entry_t *)a, *y = (const merge_entry_t *)b;
-    if (x->key != y->key) return x->key < y->key ? -1 : 1;
-    return x->rank - y->rank;
-}
+struct merge_entry_t { uint32_t key; int rank; };
 
 int feng_tok_load(feng_tok_t *t, const void *data, size_t size)
 {
     const uint8_t *p = (const uint8_t *)data;
     size_t off = 0;
     uint32_t vocab = 0, n_merges = 0;
-    memset(t, 0, sizeof(*t));
+    std::memset(t, 0, sizeof(*t));
     if (size < 8) return -1;
-    memcpy(&vocab, p, 4);
-    memcpy(&n_merges, p + 4, 4);
+    std::memcpy(&vocab, p, 4);
+    std::memcpy(&n_merges, p + 4, 4);
     p += 8; off = 8;
     t->vocab_size = (int)vocab;
     t->tokens = (char **)tok_calloc((size_t)vocab * sizeof(char *));
@@ -195,7 +177,7 @@ int feng_tok_load(feng_tok_t *t, const void *data, size_t size)
         for (uint32_t i = 0; i < vocab; i++) {
             uint16_t len;
             if (o + 2 > size) return -3;
-            memcpy(&len, p + (o - off), 2); o += 2;
+            std::memcpy(&len, p + (o - off), 2); o += 2;
             if (o + len + 1 > size) return -3;
             strbytes += (size_t)len + 1;
             o += len;
@@ -203,21 +185,24 @@ int feng_tok_load(feng_tok_t *t, const void *data, size_t size)
     }
     char *strblob = (char *)tok_alloc(strbytes);
     if (!strblob) return -2;
+    t->token_blob = strblob;
     for (uint32_t i = 0; i < vocab; i++) {
         uint16_t len;
         if (off + 2 > size) return -3;
-        memcpy(&len, p, 2); p += 2; off += 2;
+        std::memcpy(&len, p, 2); p += 2; off += 2;
         if (off + len > size) return -3;
         t->tokens[i] = strblob;
-        memcpy(t->tokens[i], p, len);
+        std::memcpy(t->tokens[i], p, len);
         t->tokens[i][len] = 0;
         strblob += (size_t)len + 1;
         t->token_len[i] = len;
         t->vocab_order[i] = (int)i;
         p += len; off += len;
     }
-    g_sort_tokenizer = t;
-    qsort(t->vocab_order, vocab, sizeof(int), cmp_index);
+    std::sort(t->vocab_order, t->vocab_order + vocab, [t](int a, int b) noexcept {
+        return std::string_view{t->tokens[a], t->token_len[a]} <
+               std::string_view{t->tokens[b], t->token_len[b]};
+    });
 
     /* merges (rank order in file) */
     t->n_merges = (int)n_merges;
@@ -230,19 +215,19 @@ int feng_tok_load(feng_tok_t *t, const void *data, size_t size)
     for (uint32_t m = 0; m < n_merges; m++) {
         uint16_t la, lb;
         if (off + 4 > size) break;
-        memcpy(&la, p, 2); memcpy(&lb, p + 2, 2);
+        std::memcpy(&la, p, 2); std::memcpy(&lb, p + 2, 2);
         p += 4; off += 4;
         if (off + la + lb > size) break;
         const char *ls = (const char *)p; p += la;
         const char *rs = (const char *)p; p += lb; off += la + lb;
-        const int li = find_token(t, ls, la);
-        const int ri = find_token(t, rs, lb);
+        const int li = find_token(t, {ls, la});
+        const int ri = find_token(t, {rs, lb});
         if (li < 0 || ri < 0) continue;
-        char cat[640];
-        if ((int)(la + lb) >= (int)sizeof(cat)) continue;
-        memcpy(cat, ls, la);
-        memcpy(cat + la, rs, lb);
-        const int mi = find_token(t, cat, la + lb);
+        std::array<char, 640> cat{};
+        if ((size_t)(la + lb) >= cat.size()) continue;
+        std::memcpy(cat.data(), ls, la);
+        std::memcpy(cat.data() + la, rs, lb);
+        const int mi = find_token(t, {cat.data(), (size_t)(la + lb)});
         if (mi < 0) continue;
         t->pair_key[n_ok] = ((uint32_t)li << 16) | (uint32_t)ri;
         t->pair_result[n_ok] = (uint16_t)mi;
@@ -251,55 +236,59 @@ int feng_tok_load(feng_tok_t *t, const void *data, size_t size)
     t->n_merges = (int)n_ok;
     /* sort (key, rank) so pair_rank() can binary search */
     {
-        merge_entry_t *ents = (merge_entry_t *)tok_alloc((n_ok ? n_ok : 1) * sizeof(merge_entry_t));
+        merge_entry_t *ents =
+            static_cast<merge_entry_t *>(tok_alloc((n_ok ? n_ok : 1) * sizeof(merge_entry_t)));
         if (!ents) return -4;
         for (uint32_t i = 0; i < n_ok; i++) {
             ents[i].key = t->pair_key[i];
             ents[i].rank = (int)i;
         }
-        qsort(ents, n_ok, sizeof(merge_entry_t), cmp_merge_entry);
+        std::sort(ents, ents + n_ok, [](const merge_entry_t &x, const merge_entry_t &y) noexcept {
+            return x.key != y.key ? x.key < y.key : x.rank < y.rank;
+        });
         for (uint32_t i = 0; i < n_ok; i++) {
             t->sorted_key[i] = ents[i].key;
             t->sorted_rank[i] = ents[i].rank;
         }
-        free(ents);
+        std::free(ents);
     }
 
     /* byte -> base token */
     for (int b = 0; b < 256; b++) {
-        char tmp[8];
-        const int n = utf8_encode(bytes_to_uni(b), tmp);
-        t->byte_to_token[b] = (int16_t)find_token(t, tmp, n);
+        std::array<char, 8> tmp{};
+        const int n = utf8_encode(static_cast<uint32_t>(kByteToUni[b]), tmp.data());
+        t->byte_to_token[b] =
+            static_cast<int16_t>(find_token(t, {tmp.data(), static_cast<size_t>(n)}));
     }
-    t->id_im_start = find_token(t, "<|im_start|>", 12);
-    t->id_im_end = find_token(t, "<|im_end|>", 10);
-    t->id_eot = find_token(t, "<|endoftext|>", 13);
+    t->id_im_start = find_token(t, "<|im_start|>");
+    t->id_im_end = find_token(t, "<|im_end|>");
+    t->id_eot = find_token(t, "<|endoftext|>");
     return 0;
 }
 
 void feng_tok_free(feng_tok_t *t)
 {
     if (!t) return;
-    if (t->tokens) {
-        for (int i = 0; i < t->vocab_size; i++) free(t->tokens[i]);
-        free(t->tokens);
-    }
-    free(t->token_len);
-    free(t->vocab_order);
-    free(t->pair_key);
-    free(t->pair_result);
-    free(t->sorted_key);
-    free(t->sorted_rank);
-    memset(t, 0, sizeof(*t));
+    /* 所有 token 字符串共用 token_blob 一块内存，必须整体释放一次。
+     * （旧实现逐个 free(tokens[i]) 会 double-free —— v3.20 C++23 迁移时修正。） */
+    std::free(t->token_blob);
+    std::free(t->tokens);
+    std::free(t->token_len);
+    std::free(t->vocab_order);
+    std::free(t->pair_key);
+    std::free(t->pair_result);
+    std::free(t->sorted_key);
+    std::free(t->sorted_rank);
+    std::memset(t, 0, sizeof(*t));
 }
 
 /* ---------------- encode / decode ---------------- */
 
-static int encode_segment(const feng_tok_t *t, const unsigned char *bytes, int nb, int *out,
-                          int max_out)
+static int encode_segment(const feng_tok_t *t, std::span<const unsigned char> bytes,
+                          std::span<int> out)
 {
-    static int sym[4096];
-    if (nb > 4096) nb = 4096;
+    static std::array<int, 4096> sym;   /* 单线程引擎的固定工作区；POD 静态，零构造 */
+    int nb = static_cast<int>(std::min(bytes.size(), sym.size()));
     for (int i = 0; i < nb; i++) {
         sym[i] = t->byte_to_token[bytes[i]];
         if (sym[i] < 0) sym[i] = 0;
@@ -319,7 +308,7 @@ static int encode_segment(const feng_tok_t *t, const unsigned char *bytes, int n
         nb--;
     }
     int n = 0;
-    for (int i = 0; i < nb && n < max_out; i++) out[n++] = sym[i];
+    for (int i = 0; i < nb && n < static_cast<int>(out.size()); i++) out[n++] = sym[i];
     return n;
 }
 
@@ -335,24 +324,28 @@ static int cat_of(unsigned char c)
 
 int feng_tok_encode(const feng_tok_t *t, const char *text, int *out, int max_out)
 {
+    if (text == nullptr || out == nullptr || max_out <= 0) return 0;
+    const std::string_view src{text};
+    const auto *s = reinterpret_cast<const unsigned char *>(src.data());
+    const int N = static_cast<int>(src.size());
+    const std::span<int> out_span{out, static_cast<size_t>(max_out)};
     int n = 0;
-    const unsigned char *s = (const unsigned char *)text;
-    int N = (int)strlen(text);
     int i = 0;
-    static unsigned char buf[2048];
+    static std::array<unsigned char, 2048> buf{};   /* 单线程固定工作区 */
     while (i < N && n < max_out) {
         /* special tokens are matched literally first */
-        if (t->id_im_start >= 0 && i + 12 <= N && strncmp((const char *)s + i, "<|im_start|>", 12) == 0) {
+        const std::string_view rest = src.substr(static_cast<size_t>(i));
+        if (t->id_im_start >= 0 && rest.starts_with("<|im_start|>")) {
             out[n++] = t->id_im_start;
             i += 12;
             continue;
         }
-        if (t->id_im_end >= 0 && i + 10 <= N && strncmp((const char *)s + i, "<|im_end|>", 10) == 0) {
+        if (t->id_im_end >= 0 && rest.starts_with("<|im_end|>")) {
             out[n++] = t->id_im_end;
             i += 10;
             continue;
         }
-        if (t->id_eot >= 0 && i + 13 <= N && strncmp((const char *)s + i, "<|endoftext|>", 13) == 0) {
+        if (t->id_eot >= 0 && rest.starts_with("<|endoftext|>")) {
             out[n++] = t->id_eot;
             i += 13;
             continue;
@@ -362,21 +355,21 @@ int feng_tok_encode(const feng_tok_t *t, const char *text, int *out, int max_out
             int k = 0;
             while (i + k < N && cat_of(s[i + k]) == 3) k++;
             if (i + k >= N) {                       /* trailing whitespace: whole run */
-                if (k > (int)sizeof(buf)) k = (int)sizeof(buf);
-                memcpy(buf, s + i, k);
-                n += encode_segment(t, buf, k, out + n, max_out - n);
+                k = std::min(k, static_cast<int>(buf.size()));
+                std::memcpy(buf.data(), s + i, static_cast<size_t>(k));
+                n += encode_segment(t, {buf.data(), static_cast<size_t>(k)}, out_span.subspan(n));
                 break;
             }
             if (k == 1) {                           /* single whitespace char is its own pre-token */
                 buf[0] = s[i];
-                n += encode_segment(t, buf, 1, out + n, max_out - n);
+                n += encode_segment(t, {buf.data(), 1}, out_span.subspan(n));
                 i += 1;
                 continue;
             }
             int emit = k - 1;                       /* all but the last; last attaches to next group */
-            if (emit > (int)sizeof(buf)) emit = (int)sizeof(buf);
-            memcpy(buf, s + i, emit);
-            n += encode_segment(t, buf, emit, out + n, max_out - n);
+            emit = std::min(emit, static_cast<int>(buf.size()));
+            std::memcpy(buf.data(), s + i, static_cast<size_t>(emit));
+            n += encode_segment(t, {buf.data(), static_cast<size_t>(emit)}, out_span.subspan(n));
             i += emit;
         }
         /* letter / number / other run, with one optional leading whitespace char */
@@ -393,9 +386,9 @@ int feng_tok_encode(const feng_tok_t *t, const char *text, int *out, int max_out
                 }
             }
             int len = j - start;
-            if (len > (int)sizeof(buf)) len = (int)sizeof(buf);
-            memcpy(buf, s + start, len);
-            n += encode_segment(t, buf, len, out + n, max_out - n);
+            len = std::min(len, static_cast<int>(buf.size()));
+            std::memcpy(buf.data(), s + start, static_cast<size_t>(len));
+            n += encode_segment(t, {buf.data(), static_cast<size_t>(len)}, out_span.subspan(n));
             i = start + len;
         }
     }
@@ -404,16 +397,18 @@ int feng_tok_encode(const feng_tok_t *t, const char *text, int *out, int max_out
 
 int feng_tok_decode_token(const feng_tok_t *t, int id, char *out, int max_out)
 {
+    if (out == nullptr || max_out <= 0) return 0;
     if (id < 0 || id >= t->vocab_size) return 0;
     if (id == t->id_im_start || id == t->id_im_end || id == t->id_eot) return 0;
-    const char *s = t->tokens[id];
+    const std::string_view tok{t->tokens[id], t->token_len[id]};
     int n = 0;
-    while (*s && n < max_out) {
-        uint32_t cp;
-        const int adv = utf8_decode(s, &cp);
-        const int b = uni_to_byte(cp);
-        if (b >= 0) out[n++] = (char)b;
-        s += adv;
+    size_t i = 0;
+    while (i < tok.size() && n < max_out) {
+        uint32_t cp = 0;
+        const int adv = utf8_decode(tok.data() + i, &cp);
+        const int b = (cp < kUniToByte.size()) ? kUniToByte[cp] : -1;
+        if (b >= 0) out[n++] = static_cast<char>(b);
+        i += static_cast<size_t>(adv);
     }
     return n;
 }

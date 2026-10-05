@@ -1,7 +1,7 @@
-"""计算 tool（Python 版）：和 C 引擎 feng_calc.c 同口径。
+"""计算 tool（Python 版）：和 C 引擎 feng_calc.cpp 同口径。
 
 算术不该由 30M 模型硬背——所有运行时（板端固件 / PC C 引擎 / Python 脚本）
-在把问题交给模型之前，先用本 tool 判断并计算。识别规则与 feng_calc.c 一致：
+在把问题交给模型之前，先用本 tool 判断并计算。识别规则与 feng_calc.cpp 一致：
 去掉「计算/帮我算/等于几/？/。」等外壳，只接受由数字与 + - * / × ÷ ( ) 组成的算式。
 
 用法：
@@ -26,7 +26,7 @@ _CN_UNITS = {"十": 10, "百": 100, "千": 1000, "万": 10000}
 
 
 def cn_to_ascii(s: str) -> str:
-    """把「五十九 / 一百零五 / 两千三」等中文数字段换成阿拉伯数字（与 feng_calc.c 同口径）。"""
+    """把「五十九 / 一百零五 / 两千三」等中文数字段换成阿拉伯数字（与 feng_calc.cpp 同口径）。"""
     out, i = [], 0
     while i < len(s):
         if s[i] in _CN_DIGITS or s[i] in _CN_UNITS:
@@ -99,7 +99,7 @@ def _fmt(v: float) -> str:
 
 def calc_answer(user: str):
     """算式请求返回中文回答；否则返回 None。"""
-    seq = seq_answer(user)                       # 序列数数（与 feng_calc.c 同口径）
+    seq = seq_answer(user)                       # 序列数数（与 feng_calc.cpp 同口径）
     if seq is not None:
         return seq
     expr = extract(user)

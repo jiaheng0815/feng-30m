@@ -5,7 +5,7 @@
 
 检查项：
   1. tools/check_md.py + tools/check_docs.py（文档数字必须对得上产物）
-  2. esp32s3-feng-llm/build_pc_chat.ps1（PC C 引擎构建 + 两个 tool 单测）
+  2. esp32s3-feng-llm/build_pc_chat.ps1（PC C++23 引擎构建 + 四套 tool 单测）
   3. 套件（需要 model_export 目录，缺省自动跳过）：
      pc_mt_suite（报名字→身份/名字、12 题连续记忆）
      pc_kv_suite 32 题矩阵 + FENG_SUITE=arith 算术子集
@@ -70,7 +70,7 @@ def main() -> int:
     if not args.skip_build:
         ps = shutil.which("pwsh") or "powershell"
         results.append(("build_pc", run(
-            "PC C 引擎构建 + tool 单测",
+            "PC C++23 引擎构建 + tool 单测",
             [ps, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
              str(ROOT / "esp32s3-feng-llm" / "build_pc_chat.ps1")])))
 

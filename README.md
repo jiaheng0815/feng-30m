@@ -5,7 +5,7 @@
 **一个 29.43M 参数的中文对话模型：从零训练、原生 32k 上下文，Q4 量化后能塞进 ESP32-S3 离线对话。**
 
 当前版本 **PC = v3.19（`v3_19/pc4`）、板端 = v3.19-embed 权重（`v3_19/board6`）+ v3.17 引擎（记忆 tool）**：
-**算式 / 网络时间(UTC+8) / 随机数 / 多轮记忆 四个 tool 写进 C 引擎**——板端与 PC 都 0.5 秒秒回、100% 正确，
+**算式 / 网络时间(UTC+8) / 随机数 / 多轮记忆 四个 tool 写进 C++ 引擎**——板端与 PC 都 0.5 秒秒回、100% 正确，
 模型不再学算术；PC = 范围 10/10 + 对话 42/42 + 留出 30 题 **19/30**（v3.14 为 16）+ 单类别检索 **110**，
 板端 = q2/2048 矩阵 27/27 + 4/4、工具 13/13、留出 30 题 **19/30**（v3.16-embed 为 17）；身份与常见事实记忆由引擎确定性作答
 （12 题连续记忆 **12/12**、7 轮换名身份序列 **7/7**，均 0.5 秒秒回） ｜ 代码与权重均 **Apache-2.0**
@@ -19,8 +19,8 @@
 权重（fp32 / ESP32 板端模型）与蒸馏数据集打包在 **[Releases](https://github.com/jiaheng0815/feng-30m/releases)**：
 `feng-30m-v3.19-release.zip`（PC 版：HF 权重 + 蒸馏数据集）、
 板端版 `feng-30m-v3.19-embed-release.zip`（含可直接烧录的 ESP32 `model.bin`/`tokenizer.bin`）、
-`feng-30m-v3.19-engine.zip`（PC C 引擎源码，v3.17 引擎）、
-`feng-30m-c-engine-model-v3.19-embed.zip`（**C 引擎预导出模型**，免装 torch 直接跑）、
+`feng-30m-v3.19-engine.zip`（PC C++ 引擎源码，v3.17 引擎）、
+`feng-30m-c-engine-model-v3.19-embed.zip`（**C++ 引擎预导出模型**，免装 torch 直接跑）、
 `feng-30m-v3.19-embed-firmware.zip`（**板端一包到底**：预编译固件 + 模型 + 烧录说明，免装 ESP-IDF）。
 旧的 v3.14 / v3.16-embed 附件保留在对应 Release 页。
 **本仓库只放代码与文档，训练数据与权重不入库。**
@@ -29,7 +29,7 @@
 
 - `weights/hf/` —— v3.19 完整权重（fp32 safetensors + 分词器 + chat template），transformers 直接加载
 - ~~`weights/gguf/`~~ —— **v3.14 起取消发行**：GGUF/llama.cpp 路径没有 tool，请用仓库自带的
-  PC C 引擎（`esp32s3-feng-llm/pc/pc_chat.c`）或 Python 脚本（`scripts/runtime_tools.py`）
+  PC C++ 引擎（`esp32s3-feng-llm/pc/pc_chat.cpp`）或 Python 脚本（`scripts/runtime_tools.py`）
 - `weights/esp32/` —— 板端 `model.bin`（14.93 MB）+ `tokenizer.bin`（413 KB）+ 参考 logits
 - `datasets/` —— 蒸馏训练数据（教师输出与提示词）
 
@@ -38,9 +38,9 @@
 ## 亮点
 
 - **引擎里的 tool（v3.14 起，v3.20 扩展）**：`算式`（多位数/小数/括号/中文数字/百分号，
-  以及**序列数数**："把 1 到 5 倒着数一遍" → `5、4、3、2、1。`，`feng_calc.c`）、
-  `网络时间→UTC+8`（宿主 SNTP 对时 + `\settime`，`feng_tools.c`）、
-  `随机数/骰子/硬币`（seed = 运行时间×1.54×1000，丢弃第一个，`feng_tools.c`）——
+  以及**序列数数**："把 1 到 5 倒着数一遍" → `5、4、3、2、1。`，`feng_calc.cpp`）、
+  `网络时间→UTC+8`（宿主 SNTP 对时 + `\settime`，`feng_tools.cpp`）、
+  `随机数/骰子/硬币`（seed = 运行时间×1.54×1000，丢弃第一个，`feng_tools.cpp`）——
   板端与 PC 都 **0.5 秒秒回**，实测 `4854+4411=9265`、`5.3+4.1=9.4`、`现在几点？→ 2026年10月04日 15:10:23（周日，UTC+8）`。
   `现在的时间戳是多少？` 会返回原始 Unix 秒 + UTC+8 换算；UTC+8 日历与
   「丢第一个取第二个」的随机数语义有 C 单测（53 项全过，`logs/pc_tools_test.txt`），
@@ -59,12 +59,12 @@
   文中没有答案时 **61/64（单类别）与 62/64（多类别）会说明"没有提到"**（v1~v3 是 0/64 全编造）。
   > 单类别历史最高是 v3.4（113/128）；v3.9→v3.12 把 16k 从 23/32 修到 26/32。
 - **算术边界可用（v3.13）**：281 题加/减/乘网格（含 0 操作数、结果 0/负）从 v3.9 的 **170 → 274/281**；
-  板端对应权重 C 引擎 q2 算术子集 **21/21**、板端算术 10/10。
+  板端对应权重 C++ 引擎 q2 算术子集 **21/21**、板端算术 10/10。
 - **末层微调零代价修行为（v3.9）**：只训练最后 2 层 + norm（4.02M/29.43M 参数）修股票拒答，
   **范围 8/10 → 10/10，检索/对话/拒答一个点都没掉**——全参修复此前要吃掉 3–5 个检索点。
 - **基础聊天可用（v3.6 起）**：42 题广谱日常探针 **42/42**（v3.8 保持），
   情绪回应 8/8，多轮 7 轮不同回答比例 **1.00**（v3.0~v3.4 只有 0.57 且第 3 轮起复读）；会拒答炸弹/诈骗请求
-- **同一套引擎**：C11 推理核心 PC 与板端共用，与 PyTorch(Q4) **逐位一致**（max|diff| = 0.0000），改内核有基线可回归
+- **同一套引擎**：C++23 推理核心 PC 与板端共用，与 PyTorch(Q4) **逐位一致**（max|diff| = 0.0000），改内核有基线可回归
 - **过程全公开**：每一代模型、每一次改动、每一次实测数字（含失败尝试）都写在文档里，数字都能对上脚本与日志
 
 ## 版本速览
@@ -81,7 +81,7 @@
 | 算式 / 时间 / 随机数 | 模型硬算 | 模型硬算 | 模型硬算 | 模型硬算 | 引擎 tool：0.5s 全对（含多位数/小数） | **同（tool）** |
 | GGUF Q4_K_M | 23.7 MB | 23.7 MB | 23.7 MB | 23.7 MB | 取消发行（llama.cpp 没有 tool） | **同（取消）** |
 | 嵌入式 32 题矩阵（q2 KV） | 27/27+4/4 | 27/27+4/4 | — | 27/27+4/4 | 27/27+4/4 | **27/27+4/4** |
-| 板端算术子集 21 题（q2，C 引擎） | 12/21 | 21/21 | — | 21/21 | 21/21（数学题由 tool 回答） | **21/21** |
+| 板端算术子集 21 题（q2，C++ 引擎） | 12/21 | 21/21 | — | 21/21 | 21/21（数学题由 tool 回答） | **21/21** |
 | ESP32-S3 实机 | 10/10 + 10/10 | 30/30 + 记忆 6/6 抽查 | — | 30/30 + 记忆 6/6 抽查 | 工具 8/8 + 30/30 + 记忆 10/12，1.80 tok/s | ✅ **工具 13/13 + 记忆 12/12 + 身份 7/7** |
 
 > 范围内评测为 `scripts/eval_planA_scope.py` 的同口径复测（结果 JSON 在 `eval/`）：
@@ -91,14 +91,14 @@
 > v3.9 针检索：单类别 29/29/23/27 = 108，多类别 28/25/32/23 = 108（`eval/longctx32*_v3_9sf2.json`）。
 > **v3.14（PC）**：单类别 28/28/25/27 = 108、多类别 107、记忆 **24/24**、范围 10/10、探针 42/42、
 > 身份 12/12（`eval/longctx32*_v3_14pc2.json`、`eval/memory_v3_14pc2.json`）。
-> **v3.14（板端）**：C 引擎 q2 矩阵 **27/27+4/4**、算术子集 **21/21**（数学题由 tool 回答）、
+> **v3.14（板端）**：C++ 引擎 q2 矩阵 **27/27+4/4**、算术子集 **21/21**（数学题由 tool 回答）、
 > 板端 工具 8/8 + 默认 10/10 + 情绪 10/10、记忆 12 题 **10/12**
 > （`logs/board_v3_14b6_tools.txt`、`logs/board_v3_14b6_memory12.txt`）；
 > v3.17 引擎记忆 tool 后板端 **12/12**（`logs/board_v3_16p3_memory12_engmem.txt`）。
 > **v3.19（PC）**：留出 30 题 **19/30**（strict-v5 判定；v3.14 = 16/30）、单类别 28/30/26/26 = 110、
 > 多类别 105、记忆 23/24、范围 10/10、探针 42/42、身份 12/12
 > （`eval/v3_19pc4_*.json`、`eval/longctx32*_v3_19pc4.json`）。
-> **v3.19-embed（板端）**：C 引擎 q2 矩阵 27/27+4/4、召回 4/4、算术 21/21、`pc_check` MATCH
+> **v3.19-embed（板端）**：C++ 引擎 q2 矩阵 27/27+4/4、召回 4/4、算术 21/21、`pc_check` MATCH
 > （`logs/pc_kv_suite32_v3_19b6_q2b8.txt`、`logs/pc_arith_suite_v3_19b6_q2b8.txt`）、
 > 留出 30 题 **19/30**（v3.16-embed = 17/30）、记忆 24/24；板端实机工具 13/13、记忆 12/12、7 轮身份 7/7
 > （`logs/board_tools_time_rand.txt`、`logs/board_v3_19b6_memory12.txt`、`logs/esp32_multi.txt`）。
@@ -114,7 +114,7 @@
 
 ## 验证与 CI
 
-本地一键验收（文档自检 → PC 引擎构建 + 四套单测 → 32 题矩阵 + 算术子集 → fp32 参考 logits）：
+本地一键验收（文档自检 → PC C++23 引擎构建 + 四套单测 → 32 题矩阵 + 算术子集 → fp32 参考 logits）：
 
 ```powershell
 python tools\check_all.py
@@ -123,12 +123,12 @@ python tools\check_all.py
 CI（GitHub Actions，每次 push/PR）跑 9 步，全部在**干净 clone**上执行——不依赖本机权重/日志：
 
 1. Python 语法检查（全部脚本）
-2. C 单测四套：算式 41 / 时间随机数 53 / 记忆 69 / 采样器 4
+2. C++23 单测四套：算式 41 / 时间随机数 53 / 记忆 69 / 采样器 4
 3. C/Python 算式+序列 一致性 29 条（`tools/check_tool_parity.py`）
 4. C/Python 记忆 tool 一致性 36 回合（`tools/check_mem_parity.py`）
 5. C/Python 随机数一致性 56 组（`tools/check_rand_parity.py`）
 6. C/Python 时间 tool 一致性 52 条（`tools/check_time_parity.py`）
-7. 全引擎编译（pc_chat / pc_kv_suite / pc_mt_suite / pc_check + 9 个核心源）
+7. C++23 全引擎编译（g++ -std=c++23、pc_chat / pc_kv_suite / pc_mt_suite / pc_check + 9 个核心源）
 8. 文档自检（`tools/check_md.py` + `tools/check_docs.py`，本机产物路径允许缺并计数）
 
 > 文档里引用的权重/日志/编译产物只在本机存在，自检会把它们归为 `local-only` 并跳过；
@@ -148,12 +148,12 @@ CI（GitHub Actions，每次 push/PR）跑 9 步，全部在**干净 clone**上�
 
 ## 快速开始
 
-**推荐：C 引擎 `pc_chat`（与板端同款引擎，自带算式/时间/随机数/记忆 tool）**——
+**推荐：C++ 引擎 `pc_chat`（与板端同款引擎，自带算式/时间/随机数/记忆 tool）**——
 下载 `feng-30m-v3.19-engine.zip`（引擎）与 `feng-30m-c-engine-model-v3.19-embed.zip`（已导出的模型），
 解压到相邻目录后：
 
 ```powershell
-.\build_pc_chat.ps1                      # MSYS2 gcc，编译 q2/2048 引擎
+.\build_pc_chat.ps1                      # 用 MSYS2 g++ 编译（C++23 严格模式，脚本自动加 -fno-exceptions/-fno-rtti）
 .\pc_chat_q2b8.exe ..\feng-30m-c-engine-model
 # you> 4854+4411         -> [tool] 4854 加 4411 等于 9265。
 # you> 现在的时间戳是多少？ -> [tool] 时间戳：1791134671 —— 2026年10月05日 01:24:31（周一，UTC+8）。
@@ -205,7 +205,7 @@ ESP32-S3-WROOM-2-N32R16V（32 MB Octal flash + 16 MB Octal PSRAM）的编译、�
 | v3.11 算术边界 + 双 QAT | 补齐 0 操作数/结果≤0 的算术网格（边界加权）+ 27 题验收锚点精修；训练时同时模拟 **Q4 权重（block64/fp16 scale）与 q2 KV** | 约 14M tokens（4,946 算术补丁 + 1,876 修复 + 锚点，2~4 epochs） | `scripts/eval_arith.py`、`scripts/v3_11_build_arith_patch.py`、`scripts/v3_11_build_repair.py`、`scripts/v3_7_kv_qat.py --wqat` |
 | v3.12 PC 算术修复 | 同一套算术数据走「末层微调」（最后 2 层 + norm）两轮：第一轮补网格，第二轮定点修漏题 + `×1` 乘法族 + 加法对照 | 约 12M tokens（两轮 patch 轮） | `scripts/v3_6_sft_patch.py --train-last 2`、`scripts/v3_11_build_repair.py --pc-fix` |
 | v3.13 记忆版 | 固件多轮上下文（KV 跨轮累积 + `\reset`）；合成 5,600 条记忆对话，PC 走末层微调、板端走 Q4+q2 双 QAT，混训含 27 题/算术/日常硬锚点 | 约 12M tokens（记忆混训两套权重） | `scripts/v3_13_build_memory.py`、`scripts/eval_memory.py`、`scripts/v3_6_sft_patch.py --train-last 2`、`scripts/v3_7_kv_qat.py --wqat` |
-| v3.14 tool 版 | 算术/时间/随机数做成 C 引擎 tool（`feng_calc.c` / `feng_tools.c`），所有运行时接入；训练数据用 tool 识别器过滤纯算式样本（模型不再学算术）；GGUF 发行取消 | 约 14M tokens（无算术混训）；tool 为纯 C，不占权重 | `scripts/v3_14_build_noarith_mix.py`、`esp32s3-feng-llm/main/feng_calc.c`、`feng_tools.c`、`scripts/runtime_tools.py`、`esp32s3-feng-llm/pc/pc_chat.c` |
+| v3.14 tool 版 | 算术/时间/随机数做成 C++ 引擎 tool（`feng_calc.cpp` / `feng_tools.cpp`），所有运行时接入；训练数据用 tool 识别器过滤纯算式样本（模型不再学算术）；GGUF 发行取消 | 约 14M tokens（无算术混训）；tool 为纯 C++，不占权重 | `scripts/v3_14_build_noarith_mix.py`、`esp32s3-feng-llm/main/feng_calc.cpp`、`feng_tools.cpp`、`scripts/runtime_tools.py`、`esp32s3-feng-llm/pc/pc_chat.cpp` |
 
 完整超参、每阶段 loss/耗时/显存见 [`DELIVERY.md`](DELIVERY.md) 与 [`CHANGELOG.md`](CHANGELOG.md)。
 
@@ -213,7 +213,7 @@ ESP32-S3-WROOM-2-N32R16V（32 MB Octal flash + 16 MB Octal PSRAM）的编译、�
 
 ```
 scripts/            数据构建 / 训练 / 评测 / 导出脚本（57 个 .py，路径解析见 scripts/paths.py）
-esp32s3-feng-llm/   ESP32 固件 + 可移植 C11 推理引擎 + PC 端一致性检查
+esp32s3-feng-llm/   ESP32 固件 + 可移植 C++23 推理引擎 + PC 端一致性检查
 student/ v2/ v3/    三代模型的训练记录（summary.json / train_log.jsonl / config.json / 分词器）
 eval/               评测结果 JSON（范围内 18 题、针检索、各阶段）
 logs/               构建 / 训练 / 烧录 / 板上测试日志（board_baseline_lut.txt 是板上精度基线）
@@ -245,12 +245,12 @@ tools/check_docs.py 文档事实校验（模型规格 / GGUF 体积与模板 / �
   但没覆盖到的自由问答仍可能答偏或编造；复杂推理、长链条计算、专业领域不可靠。
 - **推荐类只保训练分布内的**：书/电影推荐是补丁里逐条写的，换别的书名、要最新榜单会露馅。
 - 板端上下文 1024（int8 KV 占 9.93 MB PSRAM）或 2048（q2 KV 占 9.62 MB）；**32k 只在 PC 上可用**，板上 32k 受 KV 内存限制不可能。
-- **PC 用 v3.19（HF）；板端与 C 引擎用 v3.19-embed**：PC 版权重综合最好（范围 10/10、探针 42/42、
+- **PC 用 v3.19（HF）；板端与 C++ 引擎用 v3.19-embed**：PC 版权重综合最好（范围 10/10、探针 42/42、
   留出 19/30、记忆 23/24）；板端权重做了 Q4 权重 + q2 KV 双 QAT（引擎里矩阵满分、12 题记忆 12/12），PC 32k 弱。
-- **两个权重不能互换**：PC 的 HF 权重没做量化感知训练，导进 C 引擎（Q4+q2）会明显退化——
+- **两个权重不能互换**：PC 的 HF 权重没做量化感知训练，导进 C++ 引擎（Q4+q2）会明显退化——
   同套 32 题矩阵实测 **22/27 vs 27/27**（`logs/pc_kv_suite32_v3_14pc2_q2b8.txt`）；
-  C 引擎/固件用板端 QAT 权重（预导出包 `feng-30m-c-engine-model-v3.19-embed.zip`）。
-- **算式/时间/随机数只在带 tool 的运行时里**（板端固件、PC C 引擎 `pc_chat`、Python 脚本）；
+  C++ 引擎/固件用板端 QAT 权重（预导出包 `feng-30m-c-engine-model-v3.19-embed.zip`）。
+- **算式/时间/随机数只在带 tool 的运行时里**（板端固件、PC C++ 引擎 `pc_chat`、Python 脚本）；
   **GGUF/llama.cpp 没有 tool，v3.14 起不再发行 GGUF**。
 - **板端时间需要宿主对时**：串口脚本连接时会自动发 `\settime`（宿主走 NTP）；不跑脚本时
   需要手动发一次，否则时间 tool 回答"还没对上网络时间"。

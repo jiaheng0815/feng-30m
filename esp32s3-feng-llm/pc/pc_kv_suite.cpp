@@ -170,7 +170,10 @@ int main(int argc, char **argv)
     while (flen > 0 && (filler[flen] & 0xC0) == 0x80) flen--;   /* 循环周期落在字符边界上 */
 
     feng_model_t m;
-    if (feng_model_init(&m, mblob, mlen) != 0) { fprintf(stderr, "model init failed\n"); return 1; }
+    if (feng_model_init(
+            &m, {reinterpret_cast<const std::byte *>(mblob), mlen}) != 0) {
+        fprintf(stderr, "model init failed\n"); return 1;
+    }
     feng_tok_t tok;
     if (feng_tok_load(&tok, tblob, tlen) != 0) { fprintf(stderr, "tokenizer load failed\n"); return 1; }
 
@@ -258,7 +261,8 @@ int main(int argc, char **argv)
                 logits = feng_forward_ex(&m, &kv, &ws, ids[i], i, i + 1 == n);
             }
             for (int step = 0; step < max_new; step++) {
-                const int tk = feng_sample_greedy(logits, v, hist, nhist, 1.15f, 3);
+                const int tk = feng_sample_greedy({logits, static_cast<size_t>(v)},
+                                                  {hist, static_cast<size_t>(nhist)}, 1.15f, 3);
                 if (tk == tok.id_im_end || tk == tok.id_eot) break;
                 char b[16];
                 const int nb = feng_tok_decode_token(&tok, tk, b, sizeof(b));

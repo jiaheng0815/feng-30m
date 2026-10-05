@@ -9,5 +9,5 @@
   "esp_idf": "D:\\path\\to\\esp-idf",
   "idf_tools_path": "D:\\path\\to\\esp-tools",
   "esptool_py": "D:\\path\\to\\idf-python\\Scripts\\python.exe",
-  "gcc": "D:\\path\\to\\msys2\\ucrt64\\bin\\gcc.exe"
+  "gxx": "D:\\path\\to\\msys2\\ucrt64\\bin\\g++.exe"
 }

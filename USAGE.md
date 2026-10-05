@@ -3,7 +3,7 @@
 本说明对应 [Releases](https://github.com/jiaheng0815/feng-30m/releases)：
 **PC 用 `feng-30m-v3.19-release.zip`（HF 权重 + 蒸馏数据集），
 板端用 `feng-30m-v3.19-embed-release.zip`（q2 KV / 2048 ctx + 双 QAT + 多轮上下文 + tool + 身份稳定）**。
-在 PC 上跑 C 引擎（体验 tool）再取 `feng-30m-v3.19-engine.zip`（引擎源码）+
+在 PC 上跑 C++ 引擎（体验 tool）再取 `feng-30m-v3.19-engine.zip`（引擎源码）+
 `feng-30m-c-engine-model-v3.19-embed.zip`（**已导出的模型，免装 torch**）。
 仓库本身只放代码与文档；**权重、板端固件模型、蒸馏数据集都在 Release 包里**。
 
@@ -23,30 +23,31 @@ feng-30m-v3.19/
 
 > 板端的 `model.bin` / `tokenizer.bin` 不在 PC 包里，请下载 **v3.19-embed** 的 Release
 > （它的 `weights/esp32/` 就是可以直接烧录的板端模型）。
-> PC 上跑 C 引擎用同一份双 QAT 权重：已导出好的见 `feng-30m-c-engine-model-v3.19-embed.zip`。
+> PC 上跑 C++ 引擎用同一份双 QAT 权重：已导出好的见 `feng-30m-c-engine-model-v3.19-embed.zip`。
 
 模型规格：Qwen3 结构，11 层 / hidden 448 / 7 头 MHA（7 KV 头）/ head_dim 64 / FFN 896 /
 16k 词表 / tied embedding，**29.43M 参数**；训练上下文 32768，`rope_theta=1e6`。
 
 身份自述：**「我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI」**（v3.2 起）。
 
-## 2. 最快上手：C 引擎 `pc_chat`（自带 tool，取代 llama.cpp）
+## 2. 最快上手：C++ 引擎 `pc_chat`（自带 tool，取代 llama.cpp）
 
 ```powershell
 # 1) 取模型：直接下载 Release 的 feng-30m-c-engine-model-v3.19-embed.zip
 #    想自己导出：用【板端 v3.19-embed 权重包】的 weights/hf（做过 Q4+q2 双 QAT）
 python esp32s3-feng-llm\tools\export_model.py --model <v3.19-embed包>\weights\hf --out model_export
-# 2) 编译（MSYS2 gcc，q2 KV；不带 -D 则 int8/1024 ctx）
-gcc -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc_chat.exe `
-  esp32s3-feng-llm\pc\pc_chat.c esp32s3-feng-llm\main\feng_model.c `
-  esp32s3-feng-llm\main\feng_llm.c esp32s3-feng-llm\main\feng_quant.c `
-  esp32s3-feng-llm\main\feng_smp.c esp32s3-feng-llm\main\feng_tokenizer.c `
-  esp32s3-feng-llm\main\feng_calc.c esp32s3-feng-llm\main\feng_tools.c -Iesp32s3-feng-llm\main -lm
+# 2) 编译（MSYS2 g++，C++23 严格模式；不带 -D 则 int8/1024 ctx）
+g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc_chat.exe `
+  esp32s3-feng-llm\pc\pc_chat.cpp esp32s3-feng-llm\main\feng_model.cpp `
+  esp32s3-feng-llm\main\feng_llm.cpp esp32s3-feng-llm\main\feng_quant.cpp `
+  esp32s3-feng-llm\main\feng_smp.cpp esp32s3-feng-llm\main\feng_tokenizer.cpp `
+  esp32s3-feng-llm\main\feng_sample.cpp esp32s3-feng-llm\main\feng_calc.cpp `
+  esp32s3-feng-llm\main\feng_tools.cpp esp32s3-feng-llm\main\feng_memory.cpp -Iesp32s3-feng-llm\main -lm
 # 3) 聊天（算式/时间/随机数 0.5s 秒回，多轮上下文默认开）
 .\pc_chat.exe model_export
 ```
 
-> **别用 PC 的 v3.14 HF 权重导出给 C 引擎**：C 引擎的 `model.bin` 是 Q4 block-64 + q2 KV，
+> **别用 PC 的 v3.14 HF 权重导出给 C++ 引擎**：C++ 引擎的 `model.bin` 是 Q4 block-64 + q2 KV，
 > 只有做过双 QAT 的板端权重扛得住。实测同一套 32 题矩阵：PC 权重 **22/27**（翻译/情绪/推荐崩），
 > 板端 QAT 权重 **27/27 + 召回 4/4**（`logs/pc_kv_suite32_v3_14pc2_q2b8.txt` /
 > `logs/pc_kv_suite32_v3_16p3_recheck.txt`）。PC 的 HF 权重请走 transformers（第 3 节）或 Python 脚本。
@@ -105,7 +106,7 @@ PSRAM 必须 **16 MB**（8 MB 版本放不下 1024 ctx 的 KV）。
 见 `logs/board_v3_6_speed.txt`；v3.4 逐轮 10.2–28.9 s，未单独记录 tok/s）。
 
 v3.11 提供 **q2 KV（block8）固件**：把上下文从 1024 提到 **2048**（KV 9.62 MB），
-PC 端 C 引擎 32 题矩阵 **27/27 + 4/4**（与 int8 持平）、算术子集 **21/21**（q2 + Q4 同口径），
+PC 端 C++ 引擎 32 题矩阵 **27/27 + 4/4**（与 int8 持平）、算术子集 **21/21**（q2 + Q4 同口径），
 板端默认/情绪/算术三组 10 题 **10/10 + 10/10 + 10/10**、实测 **1.81 tok/s**
 （`logs/pc_kv_suite32_v3_11p8_q2b8.txt`、`logs/pc_arith_suite_v3_11p8_q2b8.txt`、
 `logs/board_v3_11p8_multi.txt`、`logs/board_v3_11p8_arith.txt`）。
@@ -215,7 +216,7 @@ python scripts\eval_longctx_many.py --models "<输出>" --n 32 --neg-n 16       
 | 「文中没有该信息」正确拒答 | **61/64（单类别）、62/64（多类别）** |
 | 留出 30 题（开发集，strict-v5 判定） | **19/30**（v3.14 为 16/30；`eval/v3_19pc4_heldout30.json`） |
 | 多轮记忆 24 题（说事实→追问） | **23/24**（v3.14 为 24/24；`eval/v3_19pc4_memory24.json`） |
-| 算式 / 网络时间 / 随机数 | **C 引擎 tool：0.5s 全对**（`4854+4411=9265`、`5.3+4.1=9.4`、UTC+8 时间、随机数） |
+| 算式 / 网络时间 / 随机数 | **C++ 引擎 tool：0.5s 全对**（`4854+4411=9265`、`5.3+4.1=9.4`、UTC+8 时间、随机数） |
 | 多轮记忆 / 身份（v3.17 引擎） | **12 题连续记忆 12/12**、`你叫什么名字？` 永不串名（0.5s 秒回）；`\mem` 查看 |
 
 嵌入式（v3.19-embed，q2 block8 / 2048 ctx）：32 题矩阵 **27/27 + 4/4**、
@@ -248,12 +249,12 @@ python scripts\eval_longctx_many.py --models "<输出>" --n 32 --neg-n 16       
   `\mem` 查看、`\reset`/重启/写满即忘；分布外的自由说法仍会错（30M 容量边界）。
 - **板端长文很慢**：单行输入上限 4095 字节，但 prefill 是 O(n²)——≈800 tokens 要 ~291 s
   （注意力本身就要 n² 次 KV 访问）。交互输入建议 ≤ ~150 tokens；长文/批量任务用 PC 版。
-- **tool 只在带 tool 的运行时里**：板端固件 / PC C 引擎 `pc_chat` / Python 脚本；
+- **tool 只在带 tool 的运行时里**：板端固件 / PC C++ 引擎 `pc_chat` / Python 脚本；
   GGUF、llama.cpp 没有 tool，v3.14 起不再发行 GGUF。
 - **板端时间靠宿主对时**：串口脚本会自动发 `\settime <unix秒>`（宿主走 NTP）；
   不跑脚本时要手动发一次，否则时间 tool 会回答"还没对上网络时间"。
-- **PC 用 v3.19（HF）；板端与 C 引擎用 v3.19-embed**：两个权重不能互换——PC 的 HF 权重没做
-  量化感知训练，导进 C 引擎（Q4+q2）会退化（同套 32 题矩阵实测 **22/27 vs 27/27**，
+- **PC 用 v3.19（HF）；板端与 C++ 引擎用 v3.19-embed**：两个权重不能互换——PC 的 HF 权重没做
+  量化感知训练，导进 C++ 引擎（Q4+q2）会退化（同套 32 题矩阵实测 **22/27 vs 27/27**，
   `logs/pc_kv_suite32_v3_14pc2_q2b8.txt`）；板端 QAT 权重在 PC 32k 长上下文上不如 PC 版。
 
 ## 9. 许可证

@@ -1,9 +1,17 @@
-/* feng-30m on ESP32-S3: model container + inference core (portable C11) */
+/* feng-30m on ESP32-S3: model container + inference core (portable C++23).
+ *
+ * C++23 约定（见 AGENTS.md）：
+ *  - 零堆分配：本头文件与核心模块不使用 new/delete/malloc/free；
+ *    唯一的例外是 tokenizer 的启动期 PSRAM 加载（一次性、固定大小）；
+ *  - 编译期 -fno-exceptions -fno-rtti，函数不抛异常；
+ *  - 不使用需要运行时构造的全局/静态对象（.init_array 为空）；
+ *  - 只使用无堆的标准库组件（<array>/<span>/<string_view>/<bit>/<type_traits> 等）。 */
 #ifndef FENG_H
 #define FENG_H
 
-#include <stdint.h>
-#include <stddef.h>
+#include <cstddef>
+#include <cstdint>
+#include <span>
 
 /* KV cache mode: fp32 / int8 / q2, selected at compile time.
  *   FENG_KV_INT8=1 : int8 values + fp16 scale per (layer, position, head) -> 4x less PSRAM than fp32
@@ -71,9 +79,10 @@
 #define FENG_HOT
 #endif
 
-#define FENG_MAGIC 0x46574E31u
-#define FENG_MAX_LAYERS 24
-#define FENG_MAX_TENSORS 168   /* 11 tensors/layer * layers + tok_embd + output_norm (+margin) */
+inline constexpr uint32_t FENG_MAGIC = 0x46574E31u;   /* "FWN1" */
+inline constexpr uint32_t FENG_MAX_LAYERS = 24;
+/* 11 tensors/layer * layers + tok_embd + output_norm (+margin) */
+inline constexpr uint32_t FENG_MAX_TENSORS = 168;
 
 typedef enum { FENG_DT_FP16 = 0, FENG_DT_Q4 = 1 } feng_dtype_t;
 
@@ -109,7 +118,7 @@ typedef struct {
 } feng_model_t;
 
 /* parse a memory image of model.bin; returns 0 on success */
-int feng_model_init(feng_model_t *m, const void *data, size_t size);
+[[nodiscard]] int feng_model_init(feng_model_t *m, std::span<const std::byte> data) noexcept;
 
 /* Q4 / fp16 GEMV: y[n_out] = W[n_out x n_in] * x[n_in] (+ optional bias=NULL) */
 void feng_gemv(const void *tensor, uint32_t dtype, const float *x, float *y,
@@ -162,7 +171,7 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
 int feng_argmax(const float *logits, int n);
 /* 共享贪心采样：对 hist 里的 token 施加重复惩罚；no_repeat_n>=2 时禁止补全已出现过的
  * n-gram（压复读循环）。板端与 PC 引擎同口径。 */
-int feng_sample_greedy(float *logits, int vocab, const int *hist, int nhist,
-                       float penalty, int no_repeat_n);
+[[nodiscard]] int feng_sample_greedy(std::span<float> logits, std::span<const int> hist,
+                                     float penalty, int no_repeat_n) noexcept;
 
 #endif /* FENG_H */

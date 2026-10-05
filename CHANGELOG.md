@@ -1,10 +1,34 @@
-# feng-30m 更新日志（v1 → v3.14）
+# feng-30m 更新日志（v1 → v3.20）
 
 一个 ~30M 参数中文对话模型的四个版本：从"能对话的玩具"到"能上 ESP32-S3 实机、
 并且真的能用长上下文"的完整记录。所有数字都是本机实测（RTX 5060 Ti 16GB、
 i7-12700KF、ESP32-S3-WROOM-2-N32R16V），命令见每节末尾。
 
 ---
+
+## v3.20（引擎）—— 全项目迁移到 C++23：零开销抽象，行为逐位不变
+
+按"用编译期换运行时、用确定性换灵活性"的嵌入式 C++ 原则，把引擎、固件与 PC 工具整体
+从 C11 迁到 **C++23 严格模式**（`-std=c++23`），保持数值与输出逐位不变：
+
+- **标准与工具链**：PC（MSYS2 g++ 16.2）与板端（ESP-IDF v5.5.5 / xtensa g++ 14.2）
+  统一加 `-fno-exceptions -fno-rtti -fno-threadsafe-statics`；27 个 `.c` 源全部改为 `.cpp`，
+  `main/CMakeLists.txt` 设 `CXX_STANDARD 23` + `CXX_EXTENSIONS OFF`。
+- **零堆审计**：8 个引擎核心对象无 `malloc/free/new/delete`、无 `__cxa_*` 异常/RTTI 符号；
+  唯一保留的分配是 tokenizer 启动期一次性 PSRAM 加载（固定大小）。
+- **零全局构造**：全组件 `.init_array` 为空，启动期不会跑任何静态对象构造。
+- **可读性改造（第一批）**：`feng.h` 常量改 `inline constexpr`；`feng_model_init` /
+  `feng_sample_greedy` 改 `std::span`；`feng_model` 用 `std::string_view` 查表、`std::array`
+  定长表；`feng_tokenizer` 的 GPT-2 字节映射改为**编译期常量表**（运行时零分支查表）、
+  `qsort`+全局比较器改 `std::sort`+lambda、编码/解码路径改 `std::string_view`/`std::span`。
+- **顺带修复**：`feng_tok_free` 旧实现逐个 `free(tokens[i])` 会 double-free（所有 token
+  字符串共享一块内存）；现在按 `token_blob` 单块释放，load/free ×3 实测通过。
+- **验证**：PC `check_all` 全绿（32 题矩阵 27/27+4/4、算术 21/21、`pc_check` MATCH、
+  多轮 7/10+12/12+8/10 与迁移前逐值一致）；固件 fullclean 后 app **315,968B**
+  （迁移前 307,392B，**+2.8%**：`std::sort` 实例化 + 编译期查表；1MB app 分区仍有 70% 余量）；
+  板端烧录实测记忆 **12/12**、tool **13/13**、7 题冒烟 7/7、末轮 4 题（含跨轮记名）4/4。
+- **文档**：README/AGENTS/USAGE/esp32 README 全部改为 C++23 口径与 `.cpp` 路径；
+  CI 9 步全部改用 g++ + C++23 标志。
 
 ## v3.20 续训实验（进行中）—— 从 pc4 续训 150M tokens + 完整恢复 SFT
 
@@ -25,7 +49,7 @@ i7-12700KF、ESP32-S3-WROOM-2-N32R16V），命令见每节末尾。
 ## v3.20（引擎）—— 序列数数 tool + 统一采样器（no-repeat 3-gram）
 
 板端实测："把 1 到 5 倒着数一遍" → "地球是地球。"（模型答错）。按项目"可枚举任务交给引擎"
-的既定路线，把**序列数数**加进 `feng_calc.c`：
+的既定路线，把**序列数数**加进 `feng_calc.cpp`：
 
 - `把 1 到 5 倒着数一遍` → `5、4、3、2、1。`；`从 3 数到 8` → `3、4、5、6、7、8。`
 - 支持中文数字（`把十到十五倒着数` → `15、14、…、10。`）、反向区间（`把 8 到 3 倒着数`）、
@@ -40,23 +64,23 @@ HF 留出分数不受影响——序列 tool 在 HF 推理路径之外，只提�
 
 **同一版还统一了采样口径**：此前板端用 1.15 重复惩罚，而 PC 引擎（`pc_chat`/`pc_kv_suite`）
 是**纯 argmax**——"同一套引擎"名不副实，PC 端更容易复读。现在四个运行时
-（固件 / `pc_chat` / `pc_kv_suite` / `pc_mt_suite`）统一走 `main/feng_sample.c`：
+（固件 / `pc_chat` / `pc_kv_suite` / `pc_mt_suite`）统一走 `main/feng_sample.cpp`：
 **1.15 重复惩罚 + 禁止补全已出现过的 3-gram**（`feng_sample_greedy`）。
 
 - 板端实测：`太阳是什么？` 从"太阳系×4 + 行星的行星"缩短到"太阳系×2 + 最亮的太阳"（循环被截断）；
 - PC 侧 32 题矩阵输出与改动前**逐字节相同**（0 行差异）、mt 套件 7/10 + mem12 12/12 + seq 8/10 不变、
-  `check_all` 7/7；新增 `pc/pc_sample_test.c` 4 项单测（板端与 PC 同口径）；
+  `check_all` 7/7；新增 `pc/pc_sample_test.cpp` 4 项单测（板端与 PC 同口径）；
 - 板端回归：tool 13/13、身份序列（你叫什么/我叫什么）2 处 0.5 s 引擎秒回正确；
 - 固件与引擎包已刷新（app 307,392 B / sha256 `331308FA…`）。
 
 **C/Python 口径自动化（同日）**：新增 `tools/check_tool_parity.py`——把同一批 29 条提示词
-同时喂给 C 引擎（`pc/pc_calc_ask.c` 驱动）与 Python `scripts/calc_tool.py`，逐条比较并接入 CI。
+同时喂给 C 引擎（`pc/pc_calc_ask.cpp` 驱动）与 Python `scripts/calc_tool.py`，逐条比较并接入 CI。
 检查立刻抓到一处真实分歧：`100的15%` 在 C 端输出"100 乘 15% 等于 15。"、Python 端却是
 "结果是 15。"——已按部署口径（C）修 Python 的句式逻辑（复刻 `split_binary` 的"最外层唯一运算符"
 规则，含首字符 '(' 不计 depth 的细节），现在 **29/29 一致**。
 
 **记忆 tool 也纳入交叉验证（同日）**：新增 `tools/check_mem_parity.py`（36 回合对话：
-学习/追问/换值/列表/遗忘/墓碑/重学），把 C 驱动 `pc/pc_mem_ask.c` 与 Python `runtime_tools.py`
+学习/追问/换值/列表/遗忘/墓碑/重学），把 C 驱动 `pc/pc_mem_ask.cpp` 与 Python `runtime_tools.py`
 一比，抓到 4 处分歧：
 
 - **C 真 bug**：`我最喜欢的书是《小王子》` 这类**陈述句**被当成追问，回了无名偏好槽
@@ -69,12 +93,12 @@ HF 留出分数不受影响——序列 tool 在 HF 推理路径之外，只提�
 **时间/随机数补齐交叉验证（同日）**：
 
 - **随机数算法统一**：Python 端原来用 Mersenne Twister，与 C 的 xorshift64* 并不同源——
-  已把 `runtime_tools.py` 换成与 `feng_tools.c` 完全相同的 xorshift64*（丢第一个取第二个），
-  同 seed/范围 **56/56 逐值一致**（新增 `pc/pc_rand_ask.c` + `tools/check_rand_parity.py`）；
+  已把 `runtime_tools.py` 换成与 `feng_tools.cpp` 完全相同的 xorshift64*（丢第一个取第二个），
+  同 seed/范围 **56/56 逐值一致**（新增 `pc/pc_rand_ask.cpp` + `tools/check_rand_parity.py`）；
 - **时间两个边界修复**：Python 对 `epoch<=0` 原本当成 1970 年（C 是"还没对时"），
   且负时间戳在 Windows 上会直接抛异常（`datetime.fromtimestamp`）——已改为固定基准 + `timedelta`
   并补上"未对时"提示与 C 同口径；固定 epoch 逐条对比 **52/52 一致**
-  （新增 `pc/pc_time_ask.c` + `tools/check_time_parity.py`）。
+  （新增 `pc/pc_time_ask.cpp` + `tools/check_time_parity.py`）。
 - 至此**四个 tool（算式/记忆/时间/随机数）全部有 C/Python 自动交叉验证**并接入 CI。
 
 **独立留出集复核（第二套 30 题，未参与任何训练/调参）**：新写 `scripts/chat_probe_heldout2.py`
@@ -216,7 +240,7 @@ v3.18 用手写模板答案修，只是把失败换了位置（见下文 v3.18 �
 
 **同日收尾**：
 
-- **PC 发布包重打包**（`feng-30m-v3.14-release.zip`）：包内 `USAGE.md`/`pc_chat.c` 更新到最新
+- **PC 发布包重打包**（`feng-30m-v3.14-release.zip`）：包内 `USAGE.md`/`pc_chat.cpp` 更新到最新
   （旧包的 C 引擎指引是错的），新增 `MANIFEST.sha256`；**权重与数据集未变**——
   `model.safetensors`、`teacher_distill.jsonl` 的 zip 内哈希与本地源逐字节一致。
 - **全量 md 审计**：PC=v3.14 / 板端=v3.16-embed 口径统一（板端记忆 12/12、身份序列 8/8、
@@ -235,7 +259,7 @@ v3.16-embed 的残余（p3–p7 五次实验证明是 30M 容量硬边界）都�
 
 ### 做了什么
 
-新增 `main/feng_memory.c/.h`（板端/PC/Python 三处同口径）：
+新增 `main/feng_memory.cpp/.h`（板端/PC/Python 三处同口径）：
 
 - **learn**：从用户陈述里抽取事实——`我叫X` / `我的名字是X` / `我是X`（限短名字）、
   `（最喜欢的）颜色是/改成X`、`（最喜欢的）运动是/换成X`、`住在X` / `搬到X`、
@@ -382,7 +406,7 @@ v3.15-embed 修掉了"闲聊几轮后问名字"的漂移，但还剩一类：用
 | PC 多轮回归套件（新增） | 7/10 | **8/10** |
 | PC 12 题连续记忆（新增） | 12/12 | **12/12** |
 
-新增回归工具：`esp32s3-feng-llm/pc/pc_mt_suite.c`（多轮套件：固件同款重复惩罚采样 +
+新增回归工具：`esp32s3-feng-llm/pc/pc_mt_suite.cpp`（多轮套件：固件同款重复惩罚采样 +
 10 个定向场景 + 12 题连续记忆），以后改模型先跑它。
 
 **残余**：8 轮序列里「先问'我叫什么名字'→答你叫小明 → 紧接着问'你叫什么名字'」时
@@ -540,7 +564,7 @@ python scripts\esp32_multi.py --port COM20 --no-reset --questions "推荐一本�
 
 **时间/随机数 tool 的确定性验收**（2026-10-04 补测）：
 
-- `pc/pc_tools_test.c` **53 项断言全过**（`logs/pc_tools_test.txt`）：
+- `pc/pc_tools_test.cpp` **53 项断言全过**（`logs/pc_tools_test.txt`）：
   UTC+8 日历（epoch 0、闰日 2024-02-29、跨年 UTC→+8、1999→2000 世纪边界）
   与 Python `datetime` + `timezone(+8)` 的结果**逐字符一致**；`现在几点？`/`3天后`/`明天`/`昨天`
   的问句路由与"还没对时"提示正确；`现在的时间戳是多少？` → 原始 Unix 秒 + UTC+8 换算；
@@ -553,7 +577,7 @@ python scripts\esp32_multi.py --port COM20 --no-reset --questions "推荐一本�
   证明 seed 来自运行时间而不是常量）；抛硬币与两个算式外壳 0.5 s 内正确。
 
 ```powershell
-# tool 单测（算式 41 项 + 时间/随机数 53 项；$env:FENG_GCC 指定 gcc）
+# tool 单测（算式 41 项 + 时间/随机数 53 项；$env:FENG_GXX 指定 g++）
 .\esp32s3-feng-llm\build_pc_chat.ps1
 # 板端专项（自动 NTP 对时；板子没有 RTC/WiFi 协议栈，时间戳由宿主推给固件）
 python scripts\esp32_tool_test.py --port COM20
@@ -714,9 +738,9 @@ V 段原来每个 KV 值要算 `(scores[t]·val)·vscale`（3 个 FP 运算）�
 ### 做了什么
 
 1. **三个 tool 写进 C 引擎**（板端与 PC 共用）：
-   - `feng_calc.c` —— 算式识别 + 递归下降求值（`+ - * / × ÷ ( )`、小数、中文"加减乘除"、
+   - `feng_calc.cpp` —— 算式识别 + 递归下降求值（`+ - * / × ÷ ( )`、小数、中文"加减乘除"、
      去掉"计算/帮我算/等于几/？/。"等外壳；`1/0` 给除零提示）。
-   - `feng_tools.c` —— 时间与随机数：
+   - `feng_tools.cpp` —— 时间与随机数：
      - 时间：UTC+8 日历（不依赖 libc 时区库）。板端放不下 WiFi 协议栈（app+model 已占满
        16MB mmap 窗口），所以由宿主连上后发 `\settime <unix秒>`（宿主走 **SNTP 网络时间戳**）
        对时，固件用 `esp_timer` 走时；
@@ -724,7 +748,7 @@ V 段原来每个 KV 值要算 `(scores[t]·val)·vscale`（3 个 FP 运算）�
        （xorshift64*，跨平台一致）。
 2. **所有运行时接入**：
    - 板端固件：算式/时间/随机数输入在送模型之前被 tool 拦下，**0.5 秒秒回、不占上下文**；
-   - PC C 引擎新增 `pc/pc_chat.c`（`pc_chat_q2b8.exe`）：同一套引擎 + 同一套 tool；
+   - PC C 引擎新增 `pc/pc_chat.cpp`（`pc_chat_q2b8.exe`）：同一套引擎 + 同一套 tool；
    - Python：`scripts/runtime_tools.py`（NTP 真网络时间戳 + 同口径随机数），
      `chat_student.py` / `chat_multi.py` 已接入；串口脚本连接时自动 `\settime` 给板端对时。
 3. **训练数据去掉算术**（`scripts/v3_14_build_noarith_mix.py`）：用 `calc_tool` 的识别器
@@ -779,9 +803,9 @@ python scripts\v3_7_kv_qat.py --init v3_11\pol8 --data v3_14\noarith_mix2.jsonl 
 python scripts\v3_7_kv_qat.py --init v3_14\board --data v3_14\board_memfix.jsonl `
   --identity-n 80 --out v3_14\board6 --epochs 2 --lr 4e-6 --batch 24 --max-len 2048 --wqat
 # 4) PC 运行时（自带 tool；GGUF 已取消）
-gcc -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc_chat_q2b8.exe pc_chat.c `
-  ../main/feng_model.c ../main/feng_llm.c ../main/feng_quant.c ../main/feng_smp.c `
-  ../main/feng_tokenizer.c ../main/feng_calc.c ../main/feng_tools.c -I../main -lm
+gcc -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc_chat_q2b8.exe pc_chat.cpp `
+  ../main/feng_model.cpp ../main/feng_llm.cpp ../main/feng_quant.cpp ../main/feng_smp.cpp `
+  ../main/feng_tokenizer.cpp ../main/feng_calc.cpp ../main/feng_tools.cpp -I../main -lm
 python scripts\esp32_multi.py --port COM20 --questions "现在几点？|给我个1到100的随机数|4854+4411"
 ```
 
@@ -802,7 +826,7 @@ PC 版保留 v3.14（记忆 24/24、工具全对、单类别 108/128 与多类�
 
 ### 附录 2：工具覆盖扩展 + PIE 路线的前置验证
 
-**工具覆盖**（`feng_calc.c` / `feng_tools.c` 与 Python 同口径）：
+**工具覆盖**（`feng_calc.cpp` / `feng_tools.cpp` 与 Python 同口径）：
 
 - **中文数字**：`五十九加一` → 59 加 1 等于 60；`一百零五加二十` → 125；支持 零/一…九/十/百/千/万/两；
 - **双字算符**：`乘以 / 除以 / 加上 / 减去`；
@@ -845,7 +869,7 @@ s8 版虽然指令数减半，但 PIE 的 s8 乘加语义不是"16 个乘积求�
 **压力测试暴露问题**：同一组 64 轮连续对话（`--no-reset`）跑板端，修复前 26 轮虽然全成功，
 但每轮耗时从 10 s 一路涨到 **108 / 64 / 128 s**（第 24/25/26 轮）——长对话实际不可用。
 
-**根因**（`feng_llm.c` 的 q2 V 路径）：
+**根因**（`feng_llm.cpp` 的 q2 V 路径）：
 
 1. 对每个输出维度 d 都按 `t*(h/4)` 的 **112 B 跨步**去 PSRAM 抓 1 个字节 → 缓存行利用率 1/32，
    PSRAM 有效带宽被放大约 32 倍；
@@ -897,7 +921,7 @@ C 单测 23/23（`pc_calc_test.exe`），Python 同口径（`logs/python_tools_s
 
 ### 做法
 
-1. **固件多轮上下文**（`esp32s3-feng-llm/main/main.c`）：
+1. **固件多轮上下文**（`esp32s3-feng-llm/main/main.cpp`）：
    - `generate()` 增加 keep 模式：不动 KV，从 `s_kv.len` 位置续写；
    - 每轮结束后把 `<|im_end|>` + 换行补进 KV，下一轮只 prefill 新增的用户片段；
    - 上下文将满时自动开新对话，新增 `\reset` 命令手动清空；
@@ -1439,7 +1463,7 @@ v3.6 的取舍：**用 2~5 题的检索（噪声级）换掉 13 处日常对话�
 
 v3.5 时 Q2 KV 被判"不能用"（对称 2bit、每 16 值一块 scale，长提示直接复读）。这轮把量化方案
 逐一在真模型上试掉（`scripts/kv_quant_experiment.py`、`scripts/kv_quant_suite.py`，GPU 模拟），
-再把胜出方案写进 C 引擎，用 **32 题矩阵**（`esp32s3-feng-llm/pc/pc_kv_suite.c`：28 个短任务 +
+再把胜出方案写进 C 引擎，用 **32 题矩阵**（`esp32s3-feng-llm/pc/pc_kv_suite.cpp`：28 个短任务 +
 4 个 1.5k token 长文取件码召回）在同一份 C 代码上按模式编译对比：
 
 | KV 模式 | 短任务 | 长文召回 | KV 内存 @2048 ctx | 备注 |

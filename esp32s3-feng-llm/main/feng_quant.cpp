@@ -28,7 +28,7 @@ static int16_t s_x16[A8_MAX_IN] __attribute__((aligned(16)));
 /* 256 项 pair LUT：打包字节 -> 两个 int16 权重 (lo-8, hi-8)，按 u32 packed */
 static uint32_t s_q4_pair32[256];
 static int s_q4_pair32_ready;
-extern int32_t pie_dot64(const int16_t *w, const int16_t *x);
+extern "C" int32_t pie_dot64(const int16_t *w, const int16_t *x);
 static void q4_pair32_init(void)
 {
     if (s_q4_pair32_ready) return;

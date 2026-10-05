@@ -1,13 +1,20 @@
 idf_component_register(
-    SRCS "main.c" "feng_model.c" "feng_llm.c" "feng_quant.c" "feng_smp.c" "feng_tokenizer.c"
-         "feng_sample.c"
-         "feng_calc.c" "feng_tools.c" "feng_memory.c" "gbk.c" "gbk_table.c"
+    SRCS "main.cpp" "feng_model.cpp" "feng_llm.cpp" "feng_quant.cpp" "feng_smp.cpp"
+         "feng_tokenizer.cpp"
+         "feng_sample.cpp"
+         "feng_calc.cpp" "feng_tools.cpp" "feng_memory.cpp" "gbk.cpp" "gbk_table.cpp"
          "feng_pie_bench.S" "feng_pie_gemv.S"
     INCLUDE_DIRS "."
 )
 
+# 全组件 C++23（严格模式）。嵌入式确定性要求：禁用异常与 RTTI，
+# 并关闭函数内静态对象的线程安全守卫（本工程只用编译期常量或 POD 静态数据，
+# 没有需要运行时构造的全局/静态对象，见 AGENTS.md「C++23 引擎约定」）。
+set_target_properties(${COMPONENT_LIB} PROPERTIES
+    CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
 # the inference kernels are the hot path: -O2 + FPU on the XL7
-target_compile_options(${COMPONENT_LIB} PRIVATE -O2)
+target_compile_options(${COMPONENT_LIB} PRIVATE
+    -O2 -fno-exceptions -fno-rtti -fno-threadsafe-statics)
 # KV cache mode: default int8 (1024 ctx). -DFENG_USE_Q2_KV=ON switches to the
 # 2-bit block-8 cache (2048 ctx in the same PSRAM budget; quality study in
 # scripts/kv_quant_experiment.py, PC regression exes pc_kv_test_*).

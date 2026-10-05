@@ -8,7 +8,7 @@ tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话*
 嵌入式 32 题矩阵 27/27 + 长文召回 4/4 + 算术 21/21；HF 留出 30 题 17/30 → **19/30**，
 见 `../CHANGELOG.md` 的 v3.19 节）。
 
-**固件自带四个 tool**（模型不再学算术，见 `main/feng_calc.c`、`feng_tools.c`、`feng_memory.c`）：
+**固件自带四个 tool**（模型不再学算术，见 `main/feng_calc.cpp`、`feng_tools.cpp`、`feng_memory.cpp`）：
 
 - **算式**：`4854+4411`、`5.3+4.1`、`(3+4)*2` → 0.5 秒秒回，SoC 运算器直接算；
 - **时间**：`现在几点？` → UTC+8 日历。板端放不下 WiFi 协议栈（app+model 占满 16MB mmap 窗口），
@@ -101,7 +101,7 @@ VDD_SPI 1.8 V（同系列 N16R8V / N32R8V 已 EOL）。
 ```
 
 实测（v3.6 + 本工程内核）：**1.85–1.86 tok/s**，GEMV 896×448 单核 13,187 µs / 双核 6,832 µs（1.93x），
-flash mmap 流式读 **108.3 MB/s**，C 引擎与 PyTorch(Q4) **逐位一致**。
+flash mmap 流式读 **108.3 MB/s**，C++ 引擎与 PyTorch(Q4) **逐位一致**。
 
 > 现行发布固件 = **q2 KV / 2048 ctx**（本工程默认 int8 / 1024，`idf.py -DFENG_USE_Q2_KV=ON build` 切 q2），
 > app 当前 306,624 B；一键刷机包见 Release 附件 `feng-30m-v3.19-embed-firmware.zip`。
@@ -110,7 +110,7 @@ flash mmap 流式读 **108.3 MB/s**，C 引擎与 PyTorch(Q4) **逐位一致**�
 
 ## 1. 拿模型（PC 上执行，二选一）
 
-推荐直接下载 Release 附件 **`feng-30m-c-engine-model-v3.19-embed.zip`**（已导出，板端/PC C 引擎通用）。
+推荐直接下载 Release 附件 **`feng-30m-c-engine-model-v3.19-embed.zip`**（已导出，板端/PC C++ 引擎通用）。
 想自己导出（当前板端权重 = v3.19-embed，Q4+q2 双 QAT）：
 
 ```powershell
@@ -121,22 +121,23 @@ $py = "python"                    # 换成装了 torch + transformers 的解释�
 #    ref_logits.bin / ref_ids.json / export_info.json
 ```
 
-> 注意：PC 的 v3.14 HF 权重没做量化感知训练，导出给 C 引擎会退化（同套 32 题矩阵 22/27 vs 27/27，
+> 注意：PC 的 v3.14 HF 权重没做量化感知训练，导出给 C++ 引擎会退化（同套 32 题矩阵 22/27 vs 27/27，
 > `../logs/pc_kv_suite32_v3_14pc2_q2b8.txt`）。
 
 ## 2. PC 端一致性自检（强烈建议先跑）
 
-同一套 C 核心在 PC 上编译运行，与 PyTorch 参考逐值比对：
+同一套 C++23 核心在 PC 上编译运行，与 PyTorch 参考逐值比对：
 
 ```powershell
 cd esp32s3-feng-llm
-$src = @('pc_check.c','..\main\feng_model.c','..\main\feng_llm.c','..\main\feng_quant.c',
-         '..\main\feng_smp.c','..\main\feng_tokenizer.c','-I..\main','-lm')
-& "<MSYS2>\ucrt64\bin\gcc.exe" -O2 -o pc\pc_check.exe @src
+$src = @('pc_check.cpp','..\main\feng_model.cpp','..\main\feng_llm.cpp','..\main\feng_quant.cpp',
+         '..\main\feng_smp.cpp','..\main\feng_tokenizer.cpp','-I..\main','-lm')
+& "<MSYS2>\ucrt64\bin\g++.exe" -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 `
+  -o pc\pc_check.exe @src
 .\pc\pc_check.exe ..\model_export_v3_19b6 ..\logs\c_logits_v3_19b6.bin
 ```
 
-> 上面两条命令里的 gcc 路径是作者机器的 MSYS2 路径，换成你本机的即可；
+> 上面两条命令里的 g++ 路径是作者机器的 MSYS2 路径，换成你本机的即可；
 > `model_export_v3_19b6` 若没自己导出，把它指向 Release 包（v3.19-embed 或预导出模型包）里的 `model.bin` 所在目录。
 
 期望输出（v3.19-embed 实测）：
@@ -207,37 +208,37 @@ PC 侧测试脚本：`python scripts\esp32_chat.py --port COM20 --question "你�
 
 | 项 | 值 | 说明 |
 |---|---|---|
-| 上下文 | **1024 token（int8 KV，默认）** | `main/main.c` 的 `MAX_CTX`；int8 KV = 9.93 MB。改回 fp32 则只够 256 ctx |
+| 上下文 | **1024 token（int8 KV，默认）** | `main/main.cpp` 的 `MAX_CTX`；int8 KV = 9.93 MB。改回 fp32 则只够 256 ctx |
 | KV 量化 | int8 + 每 (层,位置,头) 一个 fp16 scale；可选 **q2 block8（2048 ctx）** | 开关在 `main/CMakeLists.txt`：`FENG_KV_INT8=1`（默认）或 `idf.py -DFENG_USE_Q2_KV=ON build`（2bit、块 8，KV 9.62 MB / 2048 ctx） |
 | 生成长度 | 96 token | `MAX_NEW` |
 | 采样 | 贪心 + 重复惩罚 1.15 | `sample_next()` |
 | 量化 | Q4 block-64（4.25 bpw） | `tools/export_model.py`；改 `QK` 需同步改 C 的 `QK` |
-| 内核 | Q4 查表（256 项浮点 LUT）+ 4 累加器 + 双核分半 + IRAM | 见 `feng_quant.c` / `feng_smp.c` |
+| 内核 | Q4 查表（256 项浮点 LUT）+ 4 累加器 + 双核分半 + IRAM | 见 `feng_quant.cpp` / `feng_smp.cpp` |
 | 速度 | **1.85–1.86 tok/s**（v3.6 实机，`../logs/board_v3_6_speed.txt`） | PIE 路线已实测结案（整块内核只有 1.05×，见 `../CHANGELOG.md` v3.16-embed 附录）；标量 FPU 是 Q4 GEMV 的最优解 |
 
 ## 7. 目录
 
 ```
 esp32s3-feng-llm/
-├── main/            推理核心（可移植 C11）+ ESP-IDF 应用
+├── main/            推理核心（可移植 C++23）+ ESP-IDF 应用
 │   ├── feng.h            模型容器 / 推理 API / KV 模式开关
-│   ├── feng_model.c      model.bin 解析、张量定位
-│   ├── feng_quant.c      Q4 查表/fp16 GEMV
-│   ├── feng_llm.c        RMSNorm / QK-norm / RoPE / MHA / SwiGLU / tied head / int8 KV
-│   ├── feng_smp.c        双核 GEMV（PC 上退化为单核直通）
-│   ├── gbk.c / gbk_table.c  串口编码转换（UTF-8 ↔ GBK，表由词表生成）
-│   ├── feng_tokenizer.c  设备端 BPE（二分查找合并表）
-│   └── main.c            分区 mmap + PSRAM 分配 + 串口对话
+│   ├── feng_model.cpp      model.bin 解析、张量定位
+│   ├── feng_quant.cpp      Q4 查表/fp16 GEMV
+│   ├── feng_llm.cpp        RMSNorm / QK-norm / RoPE / MHA / SwiGLU / tied head / int8 KV
+│   ├── feng_smp.cpp        双核 GEMV（PC 上退化为单核直通）
+│   ├── gbk.cpp / gbk_table.cpp  串口编码转换（UTF-8 ↔ GBK，表由词表生成）
+│   ├── feng_tokenizer.cpp  设备端 BPE（二分查找合并表）
+│   └── main.cpp            分区 mmap + PSRAM 分配 + 串口对话
 ├── tools/export_model.py     HF → model.bin / tokenizer.bin / 参考 logits
 ├── tools/gen_gbk_table.py    生成 GBK 转换表
-├── pc/pc_check.c             PC 端一致性验证（对比 ref_logits / PyTorch）
-├── pc/pc_bench.c             PC 端速度基准（同引擎单线程）
-├── pc/gbk_selftest.c         编码转换自检
+├── pc/pc_check.cpp             PC 端一致性验证（对比 ref_logits / PyTorch）
+├── pc/pc_bench.cpp             PC 端速度基准（同引擎单线程）
+├── pc/gbk_selftest.cpp         编码转换自检
 └── partitions.csv / sdkconfig.defaults / CMakeLists.txt
 ```
 
 > 本引擎按 **MHA（7 个 Q 头 = 7 个 KV 头）** 实现；若改成 GQA/MQA（如 7 头 / 1 KV 头），
-> 需要在 `feng_llm.c` 里加 KV 头广播。（v1 也是 MHA，网上"v1 是 MQA"的说法不成立。）
+> 需要在 `feng_llm.cpp` 里加 KV 头广播。（v1 也是 MHA，网上"v1 是 MQA"的说法不成立。）
 
 ## 8. 已验证结果（v3.19-embed，2026-10-05 实机）
 

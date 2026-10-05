@@ -1,9 +1,9 @@
-"""C 引擎与 Python 的时间 tool 一致性检查（固定 epoch，逐条比对输出）。
+"""C++ 引擎与 Python 的时间 tool 一致性检查（固定 epoch，逐条比对输出）。
 
 Python 侧会比 C 多一个时间来源标注（"，网络时间"/"，系统时间…"），对比前剥掉。
 
 用法：
-    gcc -O2 -o pc_time_ask pc/pc_time_ask.c main/feng_tools.c -Imain -lm
+    g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -o pc_time_ask pc/pc_time_ask.cpp main/feng_tools.cpp -Imain -lm
     python tools/check_time_parity.py --c-bin pc_time_ask
 """
 import argparse

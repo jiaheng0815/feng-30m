@@ -6,6 +6,7 @@
 
 typedef struct {
     char **tokens;          /* vocab strings (byte-level encoded), index = token id */
+    char *token_blob;       /* tokens[i] 都指向这块单块内存；释放只能做一次 */
     uint16_t *token_len;
     int vocab_size;
     uint32_t *merge_key;    /* sorted keys: (left << 15) | right */

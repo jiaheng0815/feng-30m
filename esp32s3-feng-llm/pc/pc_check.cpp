@@ -44,7 +44,10 @@ int main(int argc, char **argv)
     unsigned char *ref = read_file(path, &rlen);
 
     feng_model_t m;
-    if (feng_model_init(&m, mblob, mlen) != 0) { fprintf(stderr, "model init failed\n"); return 1; }
+    if (feng_model_init(
+            &m, {reinterpret_cast<const std::byte *>(mblob), mlen}) != 0) {
+        fprintf(stderr, "model init failed\n"); return 1;
+    }
     printf("model: %u layers hidden %u heads %u x %u ffn %u vocab %u rope %.0f\n",
            m.hdr.n_layers, m.hdr.hidden, m.hdr.n_heads, m.hdr.head_dim, m.hdr.ffn, m.hdr.vocab,
            m.hdr.rope_theta);

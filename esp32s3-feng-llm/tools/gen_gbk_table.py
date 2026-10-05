@@ -1,7 +1,7 @@
 """Generate the UTF-8 <-> GBK tables used by the on-device serial output.
 Only characters the model's tokenizer can emit are needed: walk the vocabulary,
 decode each token to text and keep the ones with a 2-byte GBK form.
-Writes main/gbk_table.c (two sorted arrays for binary search).
+Writes main/gbk_table.cpp (two sorted arrays for binary search).
 """
 import sys
 from pathlib import Path
@@ -11,7 +11,7 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 def main():
     model_dir = sys.argv[1]
-    default_out = Path(__file__).resolve().parents[1] / "main" / "gbk_table.c"
+    default_out = Path(__file__).resolve().parents[1] / "main" / "gbk_table.cpp"
     out_c = Path(sys.argv[2]) if len(sys.argv) > 2 else default_out
     from transformers import AutoTokenizer
     tok = AutoTokenizer.from_pretrained(model_dir)
