@@ -42,7 +42,9 @@ feng-30m-v3.19/
 #    想自己导出：用【板端 v3.19-embed 权重包】的 weights/hf（做过 Q4+q2 双 QAT）
 python esp32s3-feng-llm\tools\export_model.py --model <v3.19-embed包>\weights\hf --out model_export
 
-# 2) 编译（MSYS2 g++，C++23 严格模式；不加 -D 则 int8/1024 ctx）
+# 2) 编译（Windows 默认 MSVC + C++23，脚本自动加载 vcvars64；产出 13 个 exe）
+esp32s3-feng-llm\build_pc_chat.ps1
+# MinGW g++ 备用路径（等价于 .\build_pc_chat.ps1 -MinGW）：
 g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc_chat.exe `
   esp32s3-feng-llm\pc\pc_chat.cpp esp32s3-feng-llm\main\feng_model.cpp `
   esp32s3-feng-llm\main\feng_llm.cpp esp32s3-feng-llm\main\feng_quant.cpp `

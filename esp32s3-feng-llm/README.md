@@ -116,6 +116,8 @@ $src = @('pc_check.cpp','..\main\feng_model.cpp','..\main\feng_llm.cpp','..\main
 ```
 
 > 路径换成你本机的即可；`model_export_v3_19b6` 也可指向 Release 包里 `model.bin` 所在目录。
+> 更省事：`.\build_pc_chat.ps1`（Windows 默认 **MSVC + C++23**，自动加载 vcvars64）
+> 一次构建全部 13 个 PC 产物；上面的 g++ 命令等价于 `-MinGW` 备用路径。
 
 期望输出（v3.19-embed 实测）：
 

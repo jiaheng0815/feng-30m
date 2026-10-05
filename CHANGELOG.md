@@ -13,6 +13,16 @@
 
 ---
 
+## v3.20（引擎）—— Windows 构建切换为 MSVC + C++23
+
+- `build_pc_chat.ps1` 默认改用 **MSVC（cl/link）+ C++23**（`/std:c++latest`；MSVC 没有单独的
+  `/std:c++23` 选项，c++latest 即其 C++23 模式），自动加载 vcvars64；输出与原来同名的
+  13 个 exe；`-MinGW` 保留原 g++（`-std=c++23`）路径备用。CUDA 构建本就是 MSVC + nvcc。
+- 验证：13 产物 + 4 套单测全过；`check_all` 7/7（矩阵 27/27+4/4、算术 21/21、
+  多轮 7/10+12/12+8/10）；**MSVC 构建与 PyTorch(Q4) 仍逐位一致**
+  （`[C vs torch(Q4)] max|diff|=0.0000`，argmax 5331 = 5331），fp32 参考误差与 MinGW
+  构建同为 2.6604——两条 Windows 工具链在功能与数值上等价。
+
 ## v3.20（引擎）—— CUDA 加速后端（PC 可选）+ GEMV 合并调用
 
 PC 引擎新增可选 CUDA 后端（`main/feng_cuda.cu` + `build_pc_cuda.ps1`；MSVC cl/link +

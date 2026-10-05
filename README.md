@@ -96,7 +96,7 @@
 （预导出模型），解压到相邻目录后：
 
 ```powershell
-.\build_pc_chat.ps1                      # MSYS2 g++，C++23 严格模式
+.\build_pc_chat.ps1                      # Windows 默认 MSVC + C++23（/std:c++latest，自动加载 vcvars；-MinGW 备用）
 .\pc_chat_q2b8.exe ..\feng-30m-c-engine-model
 # you> 4854+4411          -> [tool] 4854 加 4411 等于 9265。
 # you> 现在的时间戳是多少？  -> [tool] 时间戳：1791134671 —— 2026年10月05日 01:24:31（周一，UTC+8）。
@@ -279,7 +279,7 @@ tools/check_docs.py 文档事实校验（模型规格 / 评测数字与实际产
 | `FENG_PY` | Python 解释器（默认：当前解释器） |
 | `FENG_DATA_DIR` | 原始语料目录（**只有重建 v1/v2 语料时才需要**） |
 | `FENG_LLAMA_DIR` | llama.cpp 仓库目录（GGUF 转换 / benchmark，可选） |
-| `FENG_GXX` | PC 端 g++ 路径（默认 PATH 里的 `g++`，见 `build_pc_chat.ps1`） |
+| `FENG_GXX` | MinGW g++ 路径（仅 `-MinGW` 备用路径使用；默认构建走 MSVC，见 `build_pc_chat.ps1`） |
 
 复制 `scripts/local_paths.example.json` 为 `scripts/local_paths.json` 填自己的路径（后者已 gitignore）。
 自检命令：`python scripts/paths.py`，会逐条打印路径是否可用。

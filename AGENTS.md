@@ -160,7 +160,9 @@
 4. **错误处理**：返回错误码（现有 API 用 `int`），不抛异常；能标 `noexcept` 就标。
 5. **可读性工具**：优先用 `std::span`/`std::string_view`/`constexpr`/`std::array`/
    `if constexpr` 表达意图；热点内层循环保持手写，用 `-DFENG_*` 开关做 A/B。
-6. **工具链**：PC 用 MSYS2 g++（`FENG_GXX` 可覆盖路径，`build_pc_chat.ps1`）；
+6. **工具链**：PC 默认 **MSVC + C++23**（`build_pc_chat.ps1` 自动加载 vcvars64，
+   `/std:c++latest`——MSVC 没有单独的 `/std:c++23` 选项）；MinGW g++ 为备用路径
+   （`-MinGW`，`FENG_GXX` 覆盖 g++ 位置）；CUDA 版 `build_pc_cuda.ps1`（MSVC + nvcc）。
    固件由 ESP-IDF v5.5.5（xtensa g++ 14.2）编译，`main/CMakeLists.txt` 已设
    `CXX_STANDARD 23` + `CXX_EXTENSIONS OFF`。
 7. **体积纪律（板端实测）**：禁止 `std::sort`（每套比较器实例化一份 introsort，实测 ~2.6KB）、
@@ -245,7 +247,7 @@ g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -DFENG_KV_Q
   ../main/feng_model.cpp ../main/feng_llm.cpp ../main/feng_quant.cpp ../main/feng_smp.cpp `
   ../main/feng_tokenizer.cpp ../main/feng_calc.cpp ../main/feng_tools.cpp ../main/feng_memory.cpp `
   ../main/feng_sample.cpp -I../main -lm
-# 更省事：仓库根跑 esp32s3-feng-llm\build_pc_chat.ps1（编 13 个产物 + 跑四套单测）
+# 更省事：仓库根跑 esp32s3-feng-llm\build_pc_chat.ps1（Windows 默认 MSVC + C++23；-MinGW 备用）
 ```
 
 评测与导出：
