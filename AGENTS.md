@@ -15,9 +15,11 @@
   → v3.7（KV-QAT + q2 KV block8，板端 2048 上下文）→ v3.8（上下文专项升级）
   → v3.9 → v3.10 = v3.9 底座 + q2 KV-QAT → v3.11 = 算术边界修复 + Q4 权重/q2 KV 双 QAT
   → v3.12 = PC 算术修复 → v3.13 = 记忆版 → v3.14 = tool 版（算术/时间/随机数交给 C++ 引擎，
-  模型不再学算术；PC 当前发布）→ v3.15-embed（身份漂移修复）→ **v3.16-embed = 板端权重当前发布
-  （身份串名修复，现为上一版）** → v3.17 = 引擎/固件（记忆 tool：多轮记忆与身份问答确定性回答，权重未变）
-  → **v3.19 = 定向教师数据修"模板串台"（PC `v3_19/pc4`、板端 `v3_19/board6`；留出 30 题 16/17 → 19/19）**。
+  模型不再学算术）→ v3.15-embed（身份漂移修复）→ v3.16-embed（身份串名修复；p4–p7 证明是容量边界）
+  → v3.17 = 引擎/固件记忆 tool（可枚举问答确定性回答，权重未变）→ **v3.19 = 定向教师数据修"模板串台"
+  （PC `v3_19/pc4`、板端 `v3_19/board6`；留出 30 题 16/17 → 19/19，当前发布权重）**
+  → **v3.20 = 引擎全面升级（当前）：序列数数 tool + 统一采样器 + 全项目 C++23 迁移
+  （零堆/无异常/RTTI）+ 体积优化（固件 304,576 B，比 C 版小 2.8 KB）+ 标准基准 9 任务（lm-eval）**。
 - v3.19 现状（**当前发布**）：
   - PC `v3_19/pc4`：从 `v3_14/pc2` 出发，用 440 条定向教师数据（常识/列举/情绪/寒暄/推理/身份六类，
     `scripts/v3_19_build_target_prompts.py`）+ 多轮/身份回放做**末 2 层 15 epoch** 微调；
@@ -81,8 +83,13 @@
 - v3.11（板端上一版，`v3_11/pol8/`）：q2 矩阵 27/27+4/4、算术子集 21/21、板端 30/30、1.81 tok/s；
   关键技巧是 **Q4 权重/q2 KV 双 QAT**（`v3_7_kv_qat.py --wqat`），量化抗性对权重回插极敏感
   （掺 20% v3.9 权重就掉到 25/27），PC 32k 弱。
-- **PC 用 v3.19（`v3_19/pc4`）+ v3.17 引擎；板端用 v3.19-embed 权重（`v3_19/board6`）+ v3.17 固件/引擎**
-  （见 `CHANGELOG.md` 的 v3.19/v3.17 节）。
+- **PC 用 v3.19（`v3_19/pc4`）；板端用 v3.19-embed 权重（`v3_19/board6`）；两边同一套
+  v3.20 / C++23 引擎与固件**（q2/2048 固件 304,576 B、板端 2.26 tok/s；见 `CHANGELOG.md`
+  v3.19/v3.20 节与 `esp32s3-feng-llm/README.md`）。
+- **标准基准（英文，0-shot）**：SciQ 71.00/73.80、PIQA 53.37、ARC-E 26.60、ARC-C 21.93、
+  HellaSwag 28.99、Winogrande 49.33、OpenBookQA 14.00/24.00、BoolQ 37.83、SciCloze-900 25.56；
+  除 SciQ/PIQA 外基本贴近随机——如实呈现，不要拿去当卖点
+  （`eval/lm_eval_feng_v3_19_pc4.json`，复现 `scripts/bench_standard.py`）。
 - 硬件：RTX 5060 Ti 16GB（训练）+ i7-12700KF；ESP32-S3-**WROOM-2-N32R16V** 开发板（32MB Octal flash + 16MB Octal PSRAM，1.8V）。
 
 ## 2. 运行环境与路径解析（代码里已无硬编码盘符）
@@ -93,7 +100,7 @@
 | 用途 | 解析方式（本机实际值见 `scripts/local_paths.json`） |
 |---|---|
 | 仓库根目录 ROOT | 自动按脚本位置推导，可用 `FENG_ROOT` 覆盖 |
-| 原始语料（v1–v3 语料脚本共用）/ v1 教师 GGUF（仅 v1 蒸馏需要） | `FENG_DATA_DIR`、`FENG_TEACHER_GGUF` |
+| 原始语料（重建 v2/v3 语料时用；本机已随 v1 归档清理） | `FENG_DATA_DIR`（`FENG_TEACHER_GGUF` 键已废弃） |
 | Python 解释器（torch 2.13.0+cu132，CUDA 可用） | 默认当前解释器 `sys.executable`，可用 `FENG_PY` 覆盖 |
 | llama.cpp（GGUF 转换 / 量化 / benchmark） | `FENG_LLAMA_DIR` |
 | ESP-IDF / esptool / g++ | `flash.ps1 -EspIdfPath -EspToolPy` 或环境变量 `IDF_PATH`/`ESPTOOL_PY`/`FENG_GXX` |
@@ -129,12 +136,12 @@
 | `v3_15/` | v3.15-embed（历史，`v3_15/board_ctxid4/` 上下文身份锚点版）；数据 `identity_ctx*.jsonl` 不入库 |
 | `v3_16/` | 上一版板端权重 `v3_16/board_p3/`（v3.16-embed）+ p1/p2/p4–p7 实验（代价见 CHANGELOG）；补丁数据不入库 |
 | `v3_19/` | **当前发布权重**：PC `v3_19/pc4/`、板端 `v3_19/board6/` + board1–5 实验；定向数据与训练日志见 `data/`、`logs/`（不入库） |
-| `data/` | v1 的提示词集、教师蒸馏数据、公开语料（sharegpt/firefly/dolly/evol 等） |
-| `scripts/` | 全部数据构建 / 训练 / 评测 / 导出脚本（77 个 .py，含 `scripts/paths.py` 路径解析；另有 1 个教师启动脚本） |
-| `eval/` | 评测结果 JSON（`planA*_scope.json`、`v3_scope.json`、`longctx_*.json` 等） |
+| `data/` | v1 提示词集 / 教师蒸馏数据 / 公开语料的位置（**本机已随 v1 归档清理**；重建需自行下载） |
+| `scripts/` | 全部数据构建 / 训练 / 评测 / 导出脚本（87 个 .py，含 `scripts/paths.py` 与 `scripts/bench_standard.py` 基准入口） |
+| `eval/` | 评测结果 JSON（范围 / 针检索 / 记忆 / 留出 / `lm_eval_*.json` 标准基准）与 `eval/lm_eval_tasks/` 任务定义 |
 | `logs/` | 所有构建 / 训练 / 烧录 / 板上测试日志；`board_baseline_lut.txt` 是板上精度基线 |
-| `esp32s3-feng-llm/` | ESP32 固件工程 + 可移植 C 推理引擎 + PC 端一致性检查工具 |
-| `tools/check_md.py`、`tools/check_docs.py` | 文档自检：前者查围栏/路径/过时表述，后者把**全部 10 个 md 的关键数字与实际产物对齐**（参数量、GGUF 体积与 chat template、v3.6 探针/检索分数、范围评测、检索 loss） |
+| `esp32s3-feng-llm/` | ESP32 固件工程 + 可移植 C++23 推理引擎 + PC 端一致性检查与回归套件 |
+| `tools/check_md.py`、`tools/check_docs.py` | 文档自检：前者查围栏/路径/过时表述，后者把**全部 9 个 md 的关键数字与实际产物对齐**（参数量、GGUF 体积与 chat template、v3.6 探针/检索分数、范围评测、检索 loss） |
 
 ## 4. 工作约定
 
@@ -169,6 +176,13 @@
 - Python 脚本开头都 `sys.stdout.reconfigure(encoding="utf-8")`，新增脚本请保持一致；命令行输出用中文没问题（torch 的日志仍是英文）。
 
 ## 5. 常用命令
+
+当前版本快速路径（构建 + 全量回归 + 标准基准）：
+
+```powershell
+python tools\check_all.py                                  # 文档 → 构建 → 单测 → 矩阵 → 位精确
+python scripts\bench_standard.py --model v3_19/pc4 --tag v3_19_pc4   # 英文 9 任务（lm-eval）
+```
 
 数据与训练（Python 一律用上表的 venv 解释器）：
 
@@ -225,7 +239,7 @@ g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -DFENG_KV_Q
   ../main/feng_model.cpp ../main/feng_llm.cpp ../main/feng_quant.cpp ../main/feng_smp.cpp `
   ../main/feng_tokenizer.cpp ../main/feng_calc.cpp ../main/feng_tools.cpp ../main/feng_memory.cpp `
   ../main/feng_sample.cpp -I../main -lm
-# 更省事：仓库根跑 esp32s3-feng-llm\build_pc_chat.ps1（编 8 个产物 + 跑四套单测）
+# 更省事：仓库根跑 esp32s3-feng-llm\build_pc_chat.ps1（编 13 个产物 + 跑四套单测）
 ```
 
 评测与导出：
@@ -244,13 +258,13 @@ ESP32 固件（在 `esp32s3-feng-llm\` 下）：
 ```powershell
 # 0) 导出板端模型（从 HF 权重生成 model.bin / tokenizer.bin / ref_logits.bin）
 $py = "python"        # 换成装了 torch + transformers 的解释器
-& $py tools\export_model.py --model <仓库根>\v3_10\qat_pol3 --out model_export_v3_10p3
+& $py tools\export_model.py --model <仓库根>\v3_19\board6 --out model_export_v3_19b6
 
 # 1) PC 端一致性自检（改内核后必跑）
 & "<MSYS2>\ucrt64\bin\g++.exe" -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics `
     -O2 -o pc\pc_check.exe pc_check.cpp ..\main\feng_model.cpp `
     ..\main\feng_llm.cpp ..\main\feng_quant.cpp ..\main\feng_smp.cpp ..\main\feng_tokenizer.cpp -I..\main -lm
-.\pc\pc_check.exe ..\model_export_v3_10p3 ..\logs\c_logits_v3_10p3.bin
+.\pc\pc_check.exe ..\model_export_v3_19b6 ..\logs\c_logits_v3_19b6.bin
 
 # 1b) 带 tool 的 PC 运行时 / 板端代理套件（必须带 feng_calc.cpp + feng_tools.cpp + feng_memory.cpp）
 & "<MSYS2>\ucrt64\bin\g++.exe" -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics `
@@ -258,22 +272,22 @@ $py = "python"        # 换成装了 torch + transformers 的解释器
     pc_kv_suite.cpp ..\main\feng_model.cpp ..\main\feng_llm.cpp ..\main\feng_quant.cpp `
     ..\main\feng_smp.cpp ..\main\feng_tokenizer.cpp ..\main\feng_calc.cpp ..\main\feng_tools.cpp `
     ..\main\feng_memory.cpp ..\main\feng_sample.cpp -I..\main -lm
-.\pc\pc_kv_suite_q2b8.exe ..\model_export_v3_14b6 ..\pc\prompt_long.txt 5200    # 27/27 + 4/4
+.\pc\pc_kv_suite_q2b8.exe ..\model_export_v3_19b6 ..\pc\prompt_long.txt 5200    # 27/27 + 4/4
 
 # 2) 编译固件
 $env:IDF_TOOLS_PATH = "<IDF 工具链目录>"      # 本机路径见 scripts/local_paths.json
 & "<esp-idf>\export.ps1"
-idf.py build
+idf.py -DFENG_USE_Q2_KV=ON build      # 发布配置：q2 / 2048 ctx
 
 # 3) 烧录（固件；换模型只需后两条；偏移以 partitions.csv 为准）
 $esp = "python"                              # 换成带 esptool 的解释器
 & $esp -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash `
     0x0 build\bootloader\bootloader.bin 0x8000 build\partition_table\partition-table.bin 0x10000 build\feng_30m.bin
-& $esp -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000  model_export_v3_10p3\model.bin
-& $esp -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 model_export_v3_10p3\tokenizer.bin
+& $esp -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000  model_export_v3_19b6\model.bin
+& $esp -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 model_export_v3_19b6\tokenizer.bin
 
 # 或者直接用一键脚本（路径走参数/环境变量，偏移已对齐 partitions.csv）
-.\flash.ps1 -Port COM20 -EspIdfPath "<esp-idf>" -ModelDir .\model_export_v3_10p3
+.\flash.ps1 -Port COM20 -EspIdfPath "<esp-idf>" -ModelDir .\model_export_v3_19b6
 
 # 4) 串口对话 / 稳定性 / 编码自检
 python scripts\esp32_chat.py --port COM20 --question "你是谁？"
@@ -303,7 +317,7 @@ python scripts\esp32_enc_test.py COM20
    （`idf.py -DFENG_USE_Q2_KV=ON build`，`MAX_CTX=2048`，9.62MB，v3.19-embed 的 32 题 PC 矩阵 27/27 + 召回 4/4
    + 算术子集 21/21；固件默认多轮上下文、`\reset` 清空，见 `CHANGELOG.md` 的 v3.13 节）；板上 32k 上下文在 KV 内存上不可能，
    长文只能走滑窗/attention sink/线性注意力。
-8. **速度现状**：标量路径已到 S3 单发射天花板（每步 ~4-5 周期；短上下文 ~1.9 tok/s ≈ 500 ms/token）。默认开启三项小幅数值优化（`FENG_GEMV_MADD` 纯 madd 链、`FENG_FAST_EXP` 快速 exp、`FENG_Q2_VFOLD` V 段折叠）：三者累计 logits 差 **4.8e-6**（Q4 量化误差 2.94）、32 题矩阵输出与优化前**逐字相同**。**长上下文成本仍在注意力本体**（q2/2048 单次 forward **2.22 s** = K 0.84 + softmax 0.05 + V 0.83 + 权重等 0.51，本次会话累计 **-37%**）。q2 注意力另有四处位精确优化（字节 LUT + `[layer][head][t]` 顺序布局 + 内联 fp16→fp32 + 2-token 展开）；prefill 用 `feng_forward_ex(..., want_logits=0)` 跳过中间 token 的 lm head（每个省 ~115 ms，最后一个 token 必须算）。**A8 整数 GEMV 已实测：S3 上比 FPU 慢 36%（`mull` 慢），只在 PC 上快 20%，默认关闭**。改 GEMV/注意力/布局后必须用 PC 32 题矩阵与上一版对比（位精确改动要求**逐字节**，数值改动要求 27/27+4/4 且给出差异量级）。**PIE 路线已实测结案**：裸吞吐 0.63–1.38 周期/MAC 有空间，但 S3 没有字节移位指令、4-bit 权重必须靠 LUT 展开（≥1 次标量 load+store / 权重），正确的整块内核只做到 **1.05×**——不要再写 PIE 内核（`CHANGELOG.md` v3.16-embed 附录）；不要再做没有实测收益的内层微调。
+8. **速度现状**：标量路径已到 S3 单发射天花板（每步 ~4-5 周期；短上下文 2.26 tok/s ≈ 938 ms/token @ ctx 19（q2/2048 发布配置））。默认开启三项小幅数值优化（`FENG_GEMV_MADD` 纯 madd 链、`FENG_FAST_EXP` 快速 exp、`FENG_Q2_VFOLD` V 段折叠）：三者累计 logits 差 **4.8e-6**（Q4 量化误差 2.94）、32 题矩阵输出与优化前**逐字相同**。**长上下文成本仍在注意力本体**（q2/2048 单次 forward **2.22 s** = K 0.84 + softmax 0.05 + V 0.83 + 权重等 0.51，本次会话累计 **-37%**）。q2 注意力另有四处位精确优化（字节 LUT + `[layer][head][t]` 顺序布局 + 内联 fp16→fp32 + 2-token 展开）；prefill 用 `feng_forward_ex(..., want_logits=0)` 跳过中间 token 的 lm head（每个省 ~115 ms，最后一个 token 必须算）。**A8 整数 GEMV 已实测：S3 上比 FPU 慢 36%（`mull` 慢），只在 PC 上快 20%，默认关闭**。改 GEMV/注意力/布局后必须用 PC 32 题矩阵与上一版对比（位精确改动要求**逐字节**，数值改动要求 27/27+4/4 且给出差异量级）。**PIE 路线已实测结案**：裸吞吐 0.63–1.38 周期/MAC 有空间，但 S3 没有字节移位指令、4-bit 权重必须靠 LUT 展开（≥1 次标量 load+store / 权重），正确的整块内核只做到 **1.05×**——不要再写 PIE 内核（`CHANGELOG.md` v3.16-embed 附录）；不要再做没有实测收益的内层微调。
 8.5 **采样器统一**：`main/feng_sample.cpp` 的 `feng_sample_greedy`（1.15 重复惩罚 + no-repeat 3-gram）是
    固件 / `pc_chat` / `pc_kv_suite` / `pc_mt_suite` 的唯一采样入口；改采样器后必须重跑 PC 32 题矩阵
    并与上一版输出对比（v3.20 那次为**逐字节 0 差异**），再上板。
@@ -315,13 +329,13 @@ python scripts\esp32_enc_test.py COM20
 ## 7. 改动的验收清单
 
 - **改了训练脚本**：用 `--steps-cap 1`（或 `--steps`）跑冒烟，确认能落盘 `<阶段>/final/` 与 `summary.json`。
-- **改了 C 推理内核 / KV 量化**：必须重跑 `pc_check`（logits MATCH）→ `pc\verify_c_vs_torch.py`（fp32 路径要求 `max|diff| = 0.0000`）→ 板上 `scripts\esp32_multi.py`，并与 `logs\board_baseline_lut.txt` **逐字对比**回复。
+- **改了 C++ 推理内核 / KV 量化**：必须重跑 `pc_check`（logits MATCH）→ `pc\verify_c_vs_torch.py`（fp32 路径要求 `max|diff| = 0.0000`）→ 板上 `scripts\esp32_multi.py`，并与 `logs\board_baseline_lut.txt` **逐字对比**回复。
 - **改了文档**：跑 `python tools\check_md.py`（围栏/路径/过时数字）**和** `python tools\check_docs.py`
   （模型规格 / GGUF 体积与 chat template / v3.9~v3.12 探针、检索、算术分数 / 范围评测 / 检索 loss 与真实产物对齐）。
 - **写了数字**：数字必须能追到 `eval/*.json`、`summary.json` 或 `logs/` 里的实测；没有出处的一律删掉或标注"预期/估算"，
   不要写没有日志支撑的精确值。
 - **换了模型版本**：重跑 `eval_planA_scope.py` + `eval_longctx.py`，数字同步进 `CHANGELOG.md` / `README.md` / `USAGE.md`
--  （PC 与板端两套口径必须分别标清：PC=v3.19，板端=v3.19-embed + v3.17 引擎；算式的验收口径是
+-  （PC 与板端两套口径必须分别标清：PC=v3.19，板端=v3.19-embed + v3.20 引擎；算式的验收口径是
   **tool 回答**，不是模型算——pc_kv_suite 会把算式任务路由到 feng_calc）。
 
 ## 8. 排障速查

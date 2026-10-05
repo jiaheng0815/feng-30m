@@ -4,7 +4,7 @@
 **30.75M 参数**对话模型。Qwen3 架构：**8 层 / hidden 448 / 7 头（7 个 KV 头，MHA）/ head_dim 64 /
 FFN 896 / tied embedding，32k 词表 BPE**。
 
-> 权重下载：见 [Releases](https://github.com/jiaheng0815/feng-30m/releases)。当前 Release 发布 **PC v3.14 + 板端 v3.16-embed**（v3.17 引擎）；
+> 权重下载：见 [Releases](https://github.com/jiaheng0815/feng-30m/releases)。当前 Release 发布 **PC v3.19 + 板端 v3.19-embed**（v3.20 / C++23 引擎，四个 tool）；
 > v1 作为历史对照保留在文档与 `student/` 的训练记录里，未随包发布。
 
 - 训练：8k 指令阶段 37.9M + 续训 73.9M tokens（`student/stageA`、`stageA2` 的 summary.json），
@@ -28,6 +28,7 @@ FFN 896 / tied embedding，32k 词表 BPE**。
 | ESP32-S3 | ❌ 27.6 MB 超出 16 MB mmap 窗口，未部署 |
 
 > 后续版本：v2（16k 词表 + 11 层 + 1.5B 预训练 + 27B 教师，8/10）、
-> v3（渐进长上下文 + 合成检索 SFT，**10/10**，检索 3/3、3/3、2/3、2/3，已上 ESP32-S3 1.86 tok/s）、
-> v3.6（日常对话补丁：42 题探针 42/42、检索 27/29/24/22、板端 1.85–1.86 tok/s，**当前发布版**）。
+> v3（渐进长上下文 + 合成检索 SFT，10/10，检索 3/3、3/3、2/3、2/3，首次上板）、
+> v3.14（四个 tool 进引擎）→ **v3.19（当前发布：42 题探针 42/42、检索 110/128、记忆 23/24）
+> + v3.20 / C++23 引擎（板端 2.26 tok/s、固件 304,576 B）**。
 > 详见项目根目录 `CHANGELOG.md` / `COMPARISON.md`。

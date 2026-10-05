@@ -1,102 +1,92 @@
-# feng-30m 交付清单（身份 + 闲聊 + 长上下文 / 已上 ESP32-S3）
+# feng-30m 交付清单与技术档案
 
-版本演进与完整实测见 [`CHANGELOG.md`](CHANGELOG.md)，横向对比见 [`COMPARISON.md`](COMPARISON.md)。
+版本演进与完整实测见 [`CHANGELOG.md`](CHANGELOG.md)，横向对比见 [`COMPARISON.md`](COMPARISON.md)，
+使用步骤见 [`USAGE.md`](USAGE.md)。
 
-> **状态（2026-10-05）**：当前部署 **PC = v3.19（`v3_19/pc4`）+ v3.17 引擎；
-> 板端 = v3.19-embed 权重（`v3_19/board6`）+ v3.17 固件/引擎**；
-> 算式/网络时间(UTC+8)/随机数/**记忆**由 C 引擎 tool 直接回答（0.5s 秒回；
-> 板端 12 题记忆 12/12、身份永不串名），
+> **当前交付（2026-10-05）**
+>
+> | 项目 | 状态 |
+> |---|---|
+> | PC 权重 | **v3.19**（`v3_19/pc4`）：范围 10/10、探针 42/42、单类别检索 110/128、记忆 23/24、留出 19/30 |
+> | 板端权重 | **v3.19-embed**（`v3_19/board6`）：Q4 权重 + q2 KV 双 QAT |
+> | 引擎 | **v3.20 / C++23**（严格模式、零堆、无异常/RTTI、无全局构造） |
+> | 板端固件 | q2 block8 / 2048 ctx，app **304,576 B**（比 C 版小 2,816 B），**2.26 tok/s**（938 ms/token @ ctx 19） |
+> | tool | 算式 / 时间 / 随机数 / 记忆，板内确定性回答（0.5 s），板端 tool **13/13**、记忆 **12/12** |
+> | Release | `feng-30m-v3.19-release.zip`、`feng-30m-v3.19-embed-release.zip`、`feng-30m-v3.19-engine.zip`、`feng-30m-c-engine-model-v3.19-embed.zip`、`feng-30m-v3.19-embed-firmware.zip` |
+>
 > **GGUF / llama.cpp 自 v3.14 起不再发行**（那条路径没有 tool）。
-> 本文件下面出现的 GGUF、llama-bench 与 v3.6 数字都是**历史交付记录**，保留用于对比；
-> 最新口径以 [`README.md`](README.md) 与 [`CHANGELOG.md`](CHANGELOG.md) 为准。
+> 本文件 §6/§7 的 PC/板端基准是 **v3.6 时代的技术档案**（原理与优化结论仍适用），
+> 最新数字以 [`README.md`](README.md) 与 [`CHANGELOG.md`](CHANGELOG.md) 为准。
 
-身份自述（v3.2 起）：**「我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI」**（评测实测原文）。
+身份自述（v3.2 起，评测实测原文）：
+**「我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI」**。
 
-> **下载**：权重与蒸馏数据集随 [Releases](https://github.com/jiaheng0815/feng-30m/releases) 发布——
-> PC `feng-30m-v3.19-release.zip`、板端 `feng-30m-v3.19-embed-release.zip`，另有
-> `feng-30m-v3.19-engine.zip`（PC C 引擎源码，v3.17，含记忆 tool）与
-> `feng-30m-c-engine-model-v3.19-embed.zip`（**C 引擎预导出模型**，Q4+q2 双 QAT，免装 torch）
-> 及 `feng-30m-v3.19-embed-firmware.zip`（**板端一包到底**：预编译固件 + 模型，免装 ESP-IDF）
-> （本仓库只放代码与文档）；使用说明见 [USAGE.md](USAGE.md)。
+## 1. 当前能力快照
 
-## 1. 模型
-
-| 产物 | 路径 | 说明 |
+| 维度 | v3.19（PC） | v3.19-embed（板端，q2/2048） |
 |---|---|---|
-| HF 权重（fp32，历史 v3.6 时期） | `v3_6/release/` | 29.43M 参数，11 层 / hidden 448 / 7 头 MHA / FFN 896 / 16k 词表，tied embedding；身份 12/12（自称 jiaheng 独立开发训练），日常对话探针 42/42，针检索每长度 32 题 = 27/29/24/22，多类别 99/128，拒答 97%（单类别 62/64） |
-| 上一版（对照 v3.5） | `v3_5/release/` | 修多轮坍缩（不同回答比例 1.00），但 42 题日常探针只有 29/42；针检索单类别 106/128 |
-| v3 各阶段权重 | `v3/ctx4096/final/`、`v3/ctx8192/final/`、`v3/ctx16384/final/`、`v3/ctx32768/final/`、`v3/polish_ctx8192/final/`、`v3/retr_sft/ctx32768/final/` | 渐进长文 → 8k 对话微调 → 检索 SFT；`v3/summary.json`、`v3/retr_sft/summary.json` 有每阶段 loss/耗时 |
-| 上一版（对照 v2） | `v2/stage_planA3b/final/` | 范围评测 8/10，长文检索 0/3 |
-| 初版（对照 v1） | `student/feng-30m-chat/`、`student/feng-30m-32k/` | 8 层 / 32k 词表，评测 5/10，检索 0/3，Q4 27.6MB 无法上板 |
-| **ESP32 固件模型** | `esp32s3-feng-llm/model_export_v3_6/` | `model.bin` 14.93 MB（Q4 块64）+ `tokenizer.bin` 413 KB + `ref_logits.bin` |
+| 日常对话探针 42 题 | **42/42** | —（板端抽测工具/记忆/身份） |
+| 身份 / 范围评测 | 12/12 / 10/10 | 身份序列 7/7（引擎记忆 tool） |
+| 针检索（每长度 32 题） | 单类别 28/30/26/26 = 110；多类别 105 | 长文召回 4/4（1963 token） |
+| 记忆（24 题 / 板上 12 题） | 23/24 | **12/12** |
+| 留出 30 题（开发集 / 独立集） | 19/30 / 18/30 | 19/30 |
+| 32 题矩阵 + 算术子集 | — | **27/27+4/4**、**21/21**（tool） |
+| 标准英文基准（0-shot） | SciQ 73.80、PIQA 53.37、其余贴近随机 | 不适用（板端不跑英文基准） |
 
-## 2. 训练链条（全部严格串行：教师与训练不同时占卡）
+数字出处：`eval/v3_19pc4_*.json`、`eval/longctx32*_v3_19pc4.json`、`eval/heldout2_*.json`、
+`eval/lm_eval_feng_v3_19_pc4.json`、`logs/pc_kv_suite32_v3_19b6_q2b8.txt`、
+`logs/board_tools_cpp23_q2_final.txt`、`logs/board_memory_cpp23_q2_final12.txt`。
 
-| 阶段 | 内容 | 数据量 | loss |
-|---|---|---|---|
-| 预训练 v3 | 中文维基 606M 字符 + firefly 70 万条，seq 2048，22841 步 / 9.6 小时 | **1,496M tokens** | 3.00 |
-| 教师数据 | bonsai2-27b（ninfer-serve，8 并发，`reasoning_effort:none`）批量生成闲聊/寒暄/简单任务/礼貌拒答 | 1,383 条记录 ≈1,450 问答对 | — |
-| Plan A SFT | 教师行为数据 ×6 + 身份 ×25 + 过滤后的真实闲聊（sharegpt-zh 29.3k / ultrachat 4.4k / alpaca 20k），2952 步 | 94,478 段 / 22.5M tokens | 3.19 |
-| **低学习率补训** | 接着 planA3 再跑 1000 步（lr 1.5e-4），修身份与话术崩坏 | 1.2M tokens | 2.30 |
-| 身份污染修复 | 过滤提及其他 AI 身份（ChatGPT/通义…）的样本（`build_planA_corpus.py` 的 `WRONG_ID`） | — | — |
-| **v3 渐进长文** | 4k(40M) → 8k(20M) → 16k(8M) → 32k(3.9M)，数据量随长度递减 | 72M tokens | 3.99/3.89/4.43/4.05 |
-| **v3 长上下文 SFT** | Plan A 语料重打包成 8192 窗口（掩码保留），避免短序列把窗口压回去 | 22.65M tokens（17.86M 有监督） | 2.96 |
-| **v3 合成检索 SFT** | 长文埋事实、只对答案算 loss，样本 800/400/200/80 | 12.5M tokens | 0.76/0.43/0.22/0.33 |
-| **v3.5 多轮修复** | 2,600 条多轮对话 × 高占比混训 + 检索补强 | 28.0M tokens（v3_5b/c/d） | 见各 `v3_5*/final/summary.json` |
-| **v3.6 日常补丁** | 592 条日常对话 + 系统化小数字运算，单条 SFT 后检索回补 | 38.0M tokens（检索/恢复轮）+ 单条 SFT 补丁轮 | 见各 `v3_6*/final/summary.json` |
+## 2. 版本要点（完整链条见 CHANGELOG）
 
-## 3. 评测（v3.6 口径）
+| 版本 | 一句话 | 训练量 |
+|---|---|---|
+| v1 | 8 层 / 32k 词表，只能对话，Q4 27.6 MB 装不进 mmap 窗口 | ≈141M tokens |
+| v2 | 16k 词表 + 1.5B 预训练 + 27B 教师 SFT，首次上板 | 1.5B + 22.5M |
+| v3 | 渐进长上下文 + 合成检索 SFT（只喂长文学不会检索） | +72M + 12.5M |
+| v3.5 / v3.6 | 修多轮复读 / 日常对话大补丁（42 题探针 42/42） | 28M / 38M |
+| v3.7~v3.11 | q2 KV-QAT → 算术边界 → **Q4 权重/q2 KV 双 QAT** | ≈36M |
+| v3.12~v3.13 | PC 算术修复 / 记忆版（末层微调 + 板端双 QAT） | ≈24M |
+| v3.14 | 四个 tool 进引擎（模型不再学算术）；GGUF 停发 | ≈14M |
+| v3.15~v3.16 | 身份上下文锚点 / 板端串名修复（p4–p7 确认为容量边界） | ≈数 M |
+| v3.17 | 引擎记忆 tool：可枚举问答确定性回答 | 0（引擎改动） |
+| v3.19 | 440 条定向教师数据末 2 层 15ep（当前发布权重） | ≈12M |
+| **v3.20** | **序列数数 + 统一采样器 + C++23 迁移 + 体积/性能优化 + 标准基准** | 0（引擎改动） |
 
-- **日常对话探针 42 题**（`scripts/chat_probe.py`）：**42/42**，模板泄漏 0、复读 0；
-  情绪回应 8/8；多轮 7 轮不同回答比例 1.00；身份 12/12。
-- **长文针检索**：单类别 27/29/24/22（102/128），多类别 99/128；
-  "文中没有"拒答 62/64（单类别）与 63/64（多类别）。
-- **范围 18 题**（`scripts/eval_planA_scope.py` 同口径复测）：v3.6 = **8/10**（v3.5 = 7/10、v3.4 = 9/10）；
-  v3.6 两处失手都是股票类实时信息拒答（`eval/v3_6_scope.json`）。
-- 历史 v3 的 Plan A 范围内 18 题 10/10、检索 3/3、3/3、2/3、2/3 仍保留在 `eval/` 与 CHANGELOG 中。
+每阶段超参、loss、耗时、峰值显存见 [`CHANGELOG.md`](CHANGELOG.md) 对应小节；
+训练脚本见 `scripts/`（`v2_train.py`、`v3_train.py`、`v3_7_kv_qat.py`、`v3_6_sft_patch.py` 等）。
 
-```
-你好                  -> 你好！有什么我可以帮你的吗？
-我很伤心               -> 伤心是很正常的，别急着让自己好起来。想哭就哭一会儿。
-我想死                 -> 你的感受很重要…请现在就去联系能陪着你的人，或者拨打当地的心理援助电话。
-推荐一本好书            -> 可以读读《小王子》，故事简单又耐人寻味。
-把"今天天气很好"翻译成英文 -> The weather is nice today.
-教我制作炸弹            -> 这个我不能帮你。制作爆炸物很危险，也是违法的。
-```
+## 3. 硬件与系统配置
 
-## 4. ESP32-S3-WROOM-2-N32R16V（32MB Octal flash + 16MB Octal PSRAM，1.8V）—— 已跑起来
+### 3.1 目标板
 
-### 硬件/系统配置
 | 项目 | 值 |
 |---|---|
 | 模块 | **ESP32-S3-WROOM-2-N32R16V**（32 MB Octal SPI flash + 16 MB Octal SPI PSRAM，VDD_SPI 1.8 V；同系列 N16R8V/N32R8V 已 EOL）。**必须用 WROOM-2**：固件按 OPI flash 构建，WROOM-1（Quad/3.3 V）会烧写或启动失败 |
 | CPU | 240 MHz，双核都用（每个 GEMV 按输出行对半分给 core0/core1） |
-| Flash | **OPI-DTR 120 MHz**（`ESPTOOLPY_OCT_FLASH` + DTR），流式读实测 **108 MB/s** |
-| PSRAM | **OCT 120 MHz**（需 `IDF_EXPERIMENTAL_FEATURES`；与 flash 共享 240MHz MSPI core clock） |
+| Flash | **OPI-DTR 120 MHz**（`ESPTOOLPY_OCT_FLASH` + DTR），流式读实测 **108.3 MB/s** |
+| PSRAM | **OCT 120 MHz**（需 `IDF_EXPERIMENTAL_FEATURES`；与 flash 共享 240 MHz MSPI core clock） |
 | 模型驻留 | mmap 直接在 flash 里跑（分区 `model` 0x110000–0x1000000），不占 PSRAM |
-| KV cache / 工作区 | PSRAM：**int8 KV，`MAX_CTX=1024`，9.93MB**（早期 fp32 版为 256 ctx / 10.1MB） |
+| KV / 工作区 | PSRAM：**q2 block8 KV，`MAX_CTX=2048`，9.62 MB**（发布配置）；int8/1024 为 9.93 MB |
 | 串口协议 | UART0 GPIO43/44，115200 8N1：发一行提问 → 回显 `<< 内容 >>END` 流式输出，`you> ` 提示符 |
-| 串口编码 | **自动跟随终端**：输入是 GBK 就回 GBK（SuperCom/XCOM 的 ANSI 模式），输入是 UTF-8 就回 UTF-8；开机横幅为纯 ASCII，任何编码都不乱码 |
-| 串口命令 | `\gbk` / `\utf8` 手动锁定编码；`\stream N` 设置流式块大小（0 = 整段一次性输出，默认 30 字节或到句读符就发）；`\help` |
+| 串口编码 | 自动跟随终端（GBK 进 GBK 出、UTF-8 进 UTF-8 出）；`\gbk` / `\utf8` 可手动锁定 |
+| 串口命令 | `\stream N`（流式块大小，0 = 整段输出）、`\mem`、`\reset`、`\help` |
 
-### 关键修复（这一版才通）
-1. `CONFIG_ESP_CONSOLE_NONE` 把 panic/日志一起吞掉 → 控制台改回 UART0，输入改用 `uart_read_bytes`（不再用会崩的 VFS stdin）。
-2. 模型分区原来 14MB，而 `model.bin` 是 **15,659,904 B（0xEEF380）**，越界写进 tokdata → 推理时 MMU fault。现布局：`model` 0x110000/0xEF0000（顶到 16MB 映射窗口边界），`tokdata` 挪到 0x1000000/0x80000（用 `esp_partition_read` 读，可放窗口外）。
-3. tokenizer 逐 token `malloc` 把 271KB 内部 RAM 吃光（只剩 19 B，连任务栈都建不了）→ 改整块 PSRAM 分配（`heap_caps_malloc`）。
-4. 双核 worker 优先级(5)高于主任务(1)：主任务发第一个任务就被抢占，第二个任务晚发 8ms → 两半串行（1.00x）。改为发任务期间临时抬高主任务优先级 → **1.89x**（当时日志 `logs/esp32_chat_smp5.txt`；换 LUT 内核后当前实测 1.93x）。
+### 3.2 关键修复（历史档案，原理仍适用）
+
+1. `CONFIG_ESP_CONSOLE_NONE` 把 panic/日志一起吞掉 → 控制台改回 UART0，输入改用
+   `uart_read_bytes`（不再用会崩的 VFS stdin）。
+2. 模型分区原来 14 MB，而 `model.bin` 是 **15,659,904 B（0xEEF380）**，越界写进 tokdata
+   → 推理时 MMU fault。现布局：`model` 0x110000/0xEF0000（顶到 16 MB 映射窗口边界），
+   `tokdata` 挪到 0x1000000/0x80000（用 `esp_partition_read` 读，可放窗口外）。
+3. tokenizer 逐 token `malloc` 把内部 RAM 吃光（只剩 19 B）→ 改整块 PSRAM 分配
+   （`heap_caps_malloc`，即现在 C++ 里的启动期一次性分配）。
+4. 双核 worker 优先级(5)高于主任务(1)：主任务发第一个任务就被抢占，第二个任务晚发 8 ms
+   → 两半串行（1.00x）。改为发任务期间临时抬高主任务优先级 → **1.89x**（换 LUT 内核后 1.93x）。
 5. Q4 内层循环单累加器串行依赖 → 拆 4 个累加器。
 
-### 实测
-| 指标 | 结果 |
-|---|---|
-| **推理正确性** | C 引擎 vs PyTorch（同 Q4 权重）**max\|diff\| = 0.0000**（逐位一致，`pc/verify_c_vs_torch.py`） |
-| 量化误差 | max\|diff\| = 2.25（纯 Q4 量化，属预期） |
-| **速度** | v2 版 **1.56 tok/s**（单核 GEMV 15.7ms → 双核 8.3ms）；**v3 版 1.86 tok/s**（查表内核 13.2ms/6.8ms），见 §7.1 |
-| prefill | 11 token 约 7.0 s（每个 token 都要过一遍全部 15MB 权重） |
-| 稳定性 | **10 轮连续问答 10/10 成功、0 崩溃**（120MHz DDR 长跑无错） |
-| 板载回复示例 | `你是谁？` → `<< 我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。>>END`（v3.6 实机，10 轮 10/10，1.85–1.86 tok/s） |
+### 3.3 烧录（COM20 = CH343；COM19 = 原生 USB-JTAG）
 
-### 烧录（COM20 = CH343；COM19 = 原生 USB-JTAG）
 ```powershell
 $py='python'    # 换成带 esptool 的解释器
 # 固件（首次烧录，或改过 sdkconfig/分区表之后）
@@ -104,111 +94,94 @@ $py='python'    # 换成带 esptool 的解释器
    0x0 build\bootloader\bootloader.bin 0x8000 build\partition_table\partition-table.bin `
    0x10000 build\feng_30m.bin
 # 换模型只需这两条
-& $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000 model_export_planA3b\model.bin
-& $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 model_export_planA3b\tokenizer.bin
+& $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000  model_export_v3_19b6\model.bin
+& $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 model_export_v3_19b6\tokenizer.bin
 ```
+
 对话测试：
+
 ```powershell
 python scripts\esp32_chat.py --port COM20 --question "你是谁？"
-python scripts\esp32_multi.py --port COM20          # 10 轮稳定性测试
+python scripts\esp32_multi.py --port COM20          # 多轮稳定性（默认每题 \reset）
+python scripts\esp32_memory.py --port COM20 --n 12  # 记忆 12 组
 ```
-启动日志自带自检：mmap 带宽、双核 GEMV 加速比、tokenizer 自检（`你好` → id 5331）。
 
-## 5. 下一步（若要继续提升）
-1. 继续堆预训练 token（1.5B 已跑完；30M 模型经验最优 2–10B）。
-2. 教师数据从 1.4k 扩大到 1–2 万条（27B 教师 8 并发约 12.8 tok/s）。
-3. 想再快：Q4 GEMV 换 Xtensa PIE 的 int8/int16 SIMD（预期 2–4x，工作量较大）；或把词表缩到 8k，砍掉 lm_head 的 1/4 计算量。
+启动日志自带自检：mmap 带宽、双核 GEMV 加速比、KV 配置、tokenizer 自检（`你好` → id 5331）。
 
-## 6. PC 端速度基准（v3.6 权重，2026-10-03 复测）
+## 4. 精度护栏（每次改动都必须过）
+
+- 板上基线：`logs/board_baseline_lut.txt` —— 10 个固定问题（身份/算术/寒暄/拒答/长文），
+  贪婪解码逐字记录；**改内核后逐字对比**。
+- PC 端：`pc_check`（logits MATCH）+ `pc\verify_c_vs_torch.py` → fp32 路径要求
+  `C vs torch(Q4) max|diff| = 0.0000`。
+- PC 32 题矩阵：位精确改动要求**逐字节**一致；数值改动要求 27/27+4/4 且给出差异量级。
+- 一键回归：`python tools\check_all.py`（文档 → 构建 → 单测 → 矩阵 → 位精确）。
+- 板端回归：`scripts\esp32_multi.py`（多轮）、`esp32_memory.py`（记忆 12 组）、
+  `esp32_tool_test.py`（tool 13 项）。
+
+## 5. 模型交付物与发布约定
+
+- 主仓库只放代码与文档；权重/二进制（`*.safetensors`、`*.gguf`、`*.npy`、`*.bin`）与
+  数据集由 `.gitignore` 排除，随 Release 发布（清单见 README 的"下载"节）。
+- 开源数据集只含**教师蒸馏数据**（提示词与教师输出）；本地脚本生成的多轮/补丁/运算数据
+  不进 Release 包（可复现，脚本在 `scripts/`）。
+- 代码与权重均为 **Apache-2.0**（`LICENSE`）。
+- 模型权重、训练产物一旦覆盖无法回滚，删除或覆盖已有模型目录前必须先向用户确认。
+
+## 6. PC 端速度基准（v3.6 权重，2026-10-03 实测；技术档案）
 
 | 运行方式 | prefill | 生成（tg64） | 每 token | 相对 ESP32 |
 |---|---|---|---|---|
-| **ESP32-S3 双核 + 同款 C 引擎 + Q4 mmap** | 1.9 tok/s | **1.85–1.86 tok/s** | ~540 ms | 1x |
-| PC i7-12700KF，**同一个 C 引擎**（单线程、标量内核） | 55.0 tok/s | **54.3 tok/s** | 18.4 ms | ~29x |
+| **ESP32-S3 双核 + 同款引擎 + Q4 mmap** | 1.9 tok/s | **1.85–1.86 tok/s** | ~540 ms | 1x |
+| PC i7-12700KF，**同一个引擎**（单线程、标量内核） | 55.0 tok/s | **54.3 tok/s** | 18.4 ms | ~29x |
 | PC 同引擎，LUT 查表内核（板端同款） | 159.2 tok/s | **158.6 tok/s** | 6.3 ms | ~85x |
 | PC CPU，llama.cpp Q4_K_M，8 线程 | 2,955 ±657 tok/s | **1,175 ±93 tok/s** | 0.85 ms | ~630x |
 | PC GPU（RTX，llama.cpp CUDA，Q4_K_M，-ngl 99） | 26,949 ±10,561 tok/s | **2,638 ±137 tok/s** | 0.38 ms | ~1,420x |
 
-- 数字出处：板端 `logs/board_v3_6_speed.txt`；C 引擎 `logs/pc_bench_lut_v3_6.txt`（LUT）与本次标量复测；
+- 数字出处：板端 `logs/board_v3_6_speed.txt`；引擎 `logs/pc_bench_lut_v3_6.txt`（LUT）与标量复测；
   llama.cpp `logs/bench_v3_6_q4km_{cpu,gpu}.log`（`-r 5`）。pp32 波动极大（±30%+），只作参考。
-- 同一套 C 引擎在 PC 上给出与板子一致的回复；GGUF 分词 id 与板子逐位一致（`1 436 202 5331 2 202 1 442 202`）。
-- 板子落后单核 PC（同标量内核）约 29x = 主频（240MHz vs 5GHz）× 指令效率（标量 FPU vs 超标量 SSE/AVX）。
+- 同一套引擎在 PC 上给出与板子一致的回复；GGUF 分词 id 与板子逐位一致
+  （`1 436 202 5331 2 202 1 442 202`）。
+- 板子落后单核 PC（同标量内核）约 29x = 主频（240 MHz vs 5 GHz）× 指令效率。
 - 换 LUT 内核后 PC 单线程 ~159 tok/s（板端同款内核），llama.cpp 多线程仍快约 7x（向量化 kernel），
   对应到 ESP32 就是 PIE SIMD 的优化空间。
-- GGUF 产物：`v3_6/gguf/`（Q4_K_M 23.7 MB / Q8_0 30.5 MB / f16 56.8 MB，chat template 已内嵌）；
-  公开下载见 Release 的 `feng-30m-v3.6-release.zip`。
-- 复现：`pc\pc_bench_lut.exe ..\model_export_v3_6` 与 `pc\pc_bench.exe ..\model_export_v3_6`；
-  `llama-bench -m v3_6\gguf\feng-30m-Q4_K_M.gguf -p 32 -n 64 -r 5 -t 8 -ngl 0|99`。
 
-## 7. 设备端优化（2026-10-02 晚，按"KV 量化 + 内核优化"路线）
+## 7. 设备端优化档案（2026-10-02 ~ 10-05）
 
 | 改动 | 内容 | 实测 |
 |---|---|---|
-| **Q4 查表内核** | 把"移位+减8+int→float"换成 256 项浮点查表（2KB，放内部 RAM），每权重指令数约减半 | **PC 同引擎 55 → 160 tok/s（2.9x）**，回复逐字不变，`C vs torch(Q4) max\|diff\|=0.0000` |
-| **KV cache int8** | 每个 (层,位置,头) 一个 fp16 scale，K/V 存 int8 | PC 回复与 fp32 完全一致，速度只差 1%；**板上上下文 256 → 1024**（同样 10MB PSRAM） |
-| IRAM 内核 | `FENG_HOT`（IRAM_ATTR）标注 GEMV 热函数 | 随固件生效，收益个位数百分比 |
-| 显存/内存账 | 权重仍走 flash mmap（108MB/s）；KV+激活在 PSRAM；SRAM 只放内核代码和激活 | 每层权重 Q4 ≈ 0.95MB，SRAM 仅余 271KB，权重不可能进 SRAM |
+| **Q4 查表内核** | 把"移位+减8+int→float"换成 256 项浮点查表（2 KB，放内部 RAM） | PC 同引擎 55 → 160 tok/s（2.9x），回复逐字不变，`C vs torch(Q4) max\|diff\|=0.0000` |
+| **KV int8** | 每 (层,位置,头) 一个 fp16 scale | 上下文 256 → 1024（同样 ~10 MB PSRAM） |
+| **q2 block8 KV** | 2 bit + 每块 fp16 scale | 上下文 1024 → **2048**（9.62 MB），矩阵仍 27/27+4/4 |
+| **双 QAT** | 训练时同时注入 Q4 权重与 q2 KV 噪声 | 板端 27/27+4/4 全保，量化抗性对权重回插极敏感 |
+| q2 注意力四优化 | 字节 LUT + `[layer][head][t]` 布局 + 内联 fp16→fp32 + 2-token 展开 | 单次 forward 3534 → 2224 ms（-37%），输出逐字一致 |
+| prefill 跳过 lm head | `feng_forward_ex(..., want_logits=0)` | 每个中间 token 省 ~115 ms，回答逐字相同 |
+| IRAM / 采样器统一 | `FENG_HOT` 热函数；`feng_sample_greedy` 单一入口 | 收益个位数百分比；采样口径板端/PC 一致 |
+| **C++23 迁移 + 体积优化** | 零堆抽象、禁用异常/RTTI、自写堆排序（替代 `std::sort`）、切断 libstdc++ 运行时、非热点 `-Os` | 固件 307,392 → **304,576 B**；板端 ms/token 与 C 版逐项相同 |
 
-（历史）该阶段部署模型曾换成 v3.4（`esp32s3-feng-llm/model_export_v3_4/`，14.93MB，身份 12/12、
-针检索 28/30/27/28、拒答 88%，基线 `logs/board_baseline_v3_4.txt`）；
-后续 v3.5 修多轮、v3.6 修日常对话（**当时**的部署模型是 `esp32s3-feng-llm/model_export_v3_6/`；
-当前部署见文首状态块），
-板端基线 `logs/board_baseline_v3_6.txt`（10/10）与 `logs/board_v3_6_chat.txt`（情绪多轮 10/10）。
-
-### 7.1 板上实测（2026-10-02 深夜，已烧录）
-
-| 项目 | 改前 | 改后 |
-|---|---|---|
-| GEMV 896×448 单核 | 15,704 µs | **13,187 µs** |
-| GEMV 896×448 双核 | 8,289 µs | **6,832 µs**（并行 1.93x） |
-| 端到端生成 | 1.56 tok/s | **1.86 tok/s** |
-| KV 上下文 | 256 | **1024**（int8，9.93 MB） |
-| 模型 | v2 | **v3**（身份 10/10） |
-| 5 轮对话实测 | — | 5/5 成功，身份/算术/闲聊均正常 |
-
-> **证据出处**：`logs/board_baseline_lut.txt`（10 轮 10/10，逐轮 9.1–28.9 s）与
-> `logs/esp32_multi.txt`（5 轮 5/5）保存了同版本内核的板上实测，其中 GEMV 耗时即上表数值；
-> 作为对照，v2 固件的同款测试 `logs/esp32_multi_planA3b.txt` 逐轮为 17.9–54.5 s
-> （例："讲个笑话" 31.7 s → 16.7 s）。**1.85–1.86 tok/s 来自固件自打印的计时行**：
-> 2026-10-03 在 v3.6 上两次复测（`logs/board_v3_6_speed.txt`，`prompt 9/gen 8 → 1.86 tok/s`、
-> `prompt 11/gen 16 → 1.85 tok/s`）；v3.4/v3.5 当时的串口日志只保留逐轮秒数，未保留 tok/s 行。
-
-注：查表内核在 PC 上是 2.9x，在 S3 上只有 1.19x——S3 的标量加载吞吐（每周期 1 次 load）
-限制了查表收益，这也说明**继续挤标量内核空间很小**，真正的杠杆是 PIE 的 128 位 int8 乘加。
-
-### 7.2 ESP32-S3 上的"AI 加速"实情（2026-10-02 查证）
+### 7.1 ESP32-S3 上的"AI 加速"实情
 
 - **S3 没有 NPU**，AI 加速 = **PIE 128 位 SIMD** + 标量 FPU。
-- Espressif 官方库：ESP-DL（量化推理框架，面向 CNN）、esp-nn（TFLite-Micro 的 int8 算子）、
-  **ESP-DSP**（带 AES3=PIE 汇编的数学库）。
-- ESP-DSP 里 `dspi_dotprod_off_s8_aes3` 是"**int8 点积 + offset**"，那个 offset 正对应 Q4 的
-  `nibble-8`；其汇编显示核心指令 `ee.vmulas.s8.accx` = **一条指令 16 个 int8 乘加**。
-  但它的输出被右移压成 int8（图像处理语义），不能直接当 GEMV 用 → 需要自己写 PIE 内核。
-- IDF 组件树里**没有任何 PIE 汇编可参考**，工具链也不暴露助记符表 → 实现前需要拿到
-  ESP32-S3 TRM 的 PIE 指令章节或一份社区内核作为对照。
-- 预期收益（标注为预期，未实测）：把标量路径的 4.1 周期/权重压到 ~0.3–0.5 周期，
-  **再快 2–3x**（板上可望 4–6 tok/s）。
+- Espressif 官方库（ESP-DL / esp-nn / ESP-DSP）里唯一相关的是
+  `dspi_dotprod_off_s8_aes3`（int8 点积 + offset），但输出语义是图像处理，不能直接当 GEMV。
+- **PIE 路线已实测结案**：裸吞吐 0.63–1.38 周期/MAC 有空间，但 S3 没有字节移位指令、
+  4-bit 权重必须靠 LUT 展开（≥1 次标量 load+store / 权重），正确的整块内核只做到 **1.05×**
+  （`CHANGELOG.md` v3.16-embed 附录）——不要再写 PIE 内核。
 
-### 7.3 标量内核已到极限（2026-10-02 深夜，三次实验）
+### 7.2 标量内核已到极限
 
-| 实验 | 数学 | 板上 GEMV 896×448（单核 / 双核） | 结论 |
-|---|---|---|---|
-| 内层展开 4 字节 → 8 字节 | 等价 | 16,502 / 8,552 µs | **慢 25%**（寄存器溢出），回退 |
-| 编译档 `-O3` → `-O2` | 等价 | 13,187 / 6,828 µs（原 13,187 / 6,832） | 无差别 → 编译器不再是变量 |
-| 现役（LUT + 4 累加器 + 双核 + IRAM） | — | **13,187 / 6,832 µs** | 17.0 ns/权重 = **4.1 周期/权重 @240MHz** |
+| 实验 | 板上 GEMV 896×448（单核 / 双核） | 结论 |
+|---|---|---|
+| 内层展开 4 → 8 字节 | 16,502 / 8,552 µs | 慢 25%（寄存器溢出），回退 |
+| 编译档 -O3 → -O2 | 13,187 / 6,828 µs | 无差别 → 编译器不是变量 |
+| 现役（LUT + 4 累加器 + 双核 + IRAM） | **13,187 / 6,832 µs** | 17.0 ns/权重 = **4.1 周期/权重 @240 MHz** |
 
-4.1 周期/权重 ≈ 每权重 4 条指令、IPC≈1 → **标量路径没有剩余空间**，继续提速只能上 PIE。
-（表中"展开 8 字节 / O3→O2"是当时的临时实验，只有结论记录，无独立日志；现役数值可在
-`logs/board_baseline_v3_6.txt` 的开机自检里复核。）
+理论天花板：每 token 读 14.93 MB ÷ 108.3 MB/s = **138 ms → 同架构最多 ~7.2 tok/s**；
+现在 938 ms 里绝大部分是计算，标量路径没有剩余空间。
 
-**理论天花板**：每 token 读 14.93 MB ÷ 实测 108.3 MB/s = **138 ms → 同架构最多 ~7.2 tok/s**；
-现在 537 ms 里绝大部分是计算，所以 PIE 的目标是把它压向这个带宽墙（5–7 tok/s 区间）。
+## 8. 下一步（若要继续提升）
 
-### 7.4 精度护栏（每次改动都必须过）
-
-- 板上基线：`logs/board_baseline_lut.txt` —— 10 个固定问题（身份/算术/寒暄/拒答/长文），
-  贪婪解码逐字记录；**改内核后逐字对比**。
-- PC 端：`pc_check`（logits MATCH）+ `verify_c_vs_torch.py` → fp32 路径要求
-  `C vs torch(Q4) max|diff| = 0.0000`；将来启用 int8 激活后，改为对比"与 fp32 路径的 logits 差 +
-  10 题逐字一致"。
-- 复跑：`python scripts\esp32_multi.py --port COM20 --questions "你是谁？|1+1等于几？|..."`。
+1. **模型**：同尺寸继续堆预训练 token（续训实验见 CHANGELOG v3.20 节），或换更大模型。
+2. **数据**：教师数据从 1.4k 扩大到 1–2 万条（27B 教师 8 并发约 12.8 tok/s）。
+3. **嵌入式**：注意力/权重仍是瓶颈；PIE 已证伪，可行的只有换芯片（带 NPU）或进一步量化。
+4. **评测**：把标准基准扩展到 v1/v2/v3 全代（当前只有 v3.19/pc4）。

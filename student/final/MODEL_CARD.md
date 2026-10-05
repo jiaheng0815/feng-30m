@@ -5,7 +5,7 @@
 
 它主要用于对比和续训起点，**不是**推荐的对话模型：
 
-> 权重下载：见 [Releases](https://github.com/jiaheng0815/feng-30m/releases)。当前 Release 发布 **PC v3.14 + 板端 v3.16-embed**（v3.17 引擎）；
+> 权重下载：见 [Releases](https://github.com/jiaheng0815/feng-30m/releases)。当前 Release 发布 **PC v3.19 + 板端 v3.19-embed**（v3.20 / C++23 引擎，四个 tool）；
 > v1 作为历史对照保留在文档与 `student/` 的训练记录里，未随包发布。
 
 - 推荐使用 `student/feng-30m-chat/`（对话微调后，非打包 SFT，效果更稳）
