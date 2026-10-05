@@ -23,16 +23,19 @@ i7-12700KF、ESP32-S3-WROOM-2-N32R16V），命令见每节末尾。
   `qsort`+全局比较器改 `std::sort`+lambda、编码/解码路径改 `std::string_view`/`std::span`。
 - **顺带修复**：`feng_tok_free` 旧实现逐个 `free(tokens[i])` 会 double-free（所有 token
   字符串共享一块内存）；现在按 `token_blob` 单块释放，load/free ×3 实测通过。
-- **体积**（统一按发布配置 q2 KV / 2048 ctx）：app **316,544B**，迁移前 **307,392B**，
-  **+9,152B（+2.98%）**——来自 `std::sort` 实例化与编译期字节表；1MB app 分区仍有 70% 余量。
-- **性能 A/B**（同一块板、同一道题、同一 q2/2048 配置、连续三组）：
-  板端 C 版 **2.27 / 4.63 / 8.06 tok/s**（ctx 19/38/54）对 C++ 版 **2.26 / 4.62 / 8.05 tok/s**，
-  每项差 ≤0.4%（≤1ms/token）——**推理性能完全一致，迁移没有性能收益也没有损失**；
-  PC 同引擎 `pc_bench` 5 轮交替（训练占 62% CPU、噪声大）中位数 C 125.5 vs C++ 128.8 tok/s，
-  分布完全重叠，同判为无差异。
+- **体积**（统一按发布配置 q2 KV / 2048 ctx）：首版 C++ 比 C 版大 9,152B（`std::sort` 两份
+  introsort 实例化 + 编译期表 + `string_view::substr` 拖进的 libstdc++ 异常/字符串/pthread 运行时）。
+  逐项优化后 app **304,576B**，**比 C 版（307,392B）小 2,816B（−0.92%）**：
+  ① 自写零堆堆排序替代 `std::sort`（−2.6KB）；② `string_view::substr` 改指针构造，切断
+  `std::__throw_out_of_range_fmt` → libstdc++ 运行时整链（−5.1KB）；③ unicode→字节表 648B→68B；
+  ④ 非热点模块（tokenizer/tool/model/gbk/main）改 `-Os`，推理热点保持 `-O2`（−3.7KB）。
+- **性能 A/B**（同一块板、同一道题、同一 q2/2048 配置、连续三组）：优化后 C++ 版
+  **2.27 / 4.62 / 8.05 tok/s**（938 / 973 / 1291 ms/token）对 C 版
+  **2.27 / 4.63 / 8.06 tok/s**（938 / 973 / 1291 ms/token）——**ms/token 逐项完全相同**，
+  性能零损失；PC `check_all` 7/7、32 题矩阵逐值一致。
 - **验收**：PC `check_all` 全绿（32 题矩阵 27/27+4/4、算术 21/21、`pc_check` MATCH、
-  多轮 7/10+12/12+8/10 与迁移前逐值一致）；板端 q2/2048 发布固件实测记忆 **12/12**、
-  tool **13/13**；int8/1024 配置另测 7 题冒烟 7/7、跨轮记名 4/4。
+  多轮 7/10+12/12+8/10 与迁移前逐值一致）；板端优化固件实测记忆 **12/12**、tool **13/13**、
+  冒烟 3/3（`logs/board_memory_cpp23_opt12.txt`、`logs/board_tools_cpp23_opt.txt`）。
 - **文档**：README/AGENTS/USAGE/esp32 README 全部改为 C++23 口径与 `.cpp` 路径；
   CI 9 步全部改用 g++ + C++23 标志。
 

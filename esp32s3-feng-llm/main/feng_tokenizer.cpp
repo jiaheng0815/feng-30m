@@ -78,40 +78,71 @@ static int utf8_encode(uint32_t cp, char *out)
 
 namespace {
 
-/* GPT-2 的字节 <-> unicode 映射是纯常量表：编译期建表，运行时零分支查表。
- * 直接映射 188 个可打印字节，其余 68 个映射到 U+0100.. 区间。 */
+/* GPT-2 的字节 <-> unicode 映射：直接映射 188 个可打印字节，
+ * 其余 68 个映射到 U+0100.. 区间。 */
 constexpr bool is_direct(int b) noexcept
 {
     return (b >= 33 && b <= 126) || (b >= 161 && b <= 172) || (b >= 174 && b <= 255);
 }
 
-constexpr std::array<int16_t, 256> make_byte_to_uni() noexcept
+/* 只在 tokenizer 加载时对 256 个字节各调用一次，不值得为它常驻一张表。 */
+constexpr int bytes_to_uni(int b) noexcept
 {
-    std::array<int16_t, 256> table{};
+    if (is_direct(b)) return b;
     int mapped = 0;
+    for (int i = 0; i < 256; i++) {
+        if (is_direct(i)) continue;
+        if (i == b) return 256 + mapped;
+        mapped++;
+    }
+    return 0;
+}
+
+/* 非直接字节按 GPT-2 映射顺序排列：cp = 256 + 序号。整表只要 68 字节。 */
+constexpr std::array<uint8_t, 68> make_non_direct_bytes() noexcept
+{
+    std::array<uint8_t, 68> table{};
+    int n = 0;
     for (int b = 0; b < 256; b++) {
-        table[b] = static_cast<int16_t>(is_direct(b) ? b : 256 + mapped++);
+        if (!is_direct(b)) table[n++] = static_cast<uint8_t>(b);
     }
     return table;
 }
 
-constexpr std::array<int16_t, 324> make_uni_to_byte() noexcept
+constexpr auto kNonDirectBytes = make_non_direct_bytes();
+
+constexpr int uni_to_byte(uint32_t cp) noexcept
 {
-    std::array<int16_t, 324> table{};
-    table.fill(-1);
-    for (int b = 0; b < 256; b++) {
-        const int cp = is_direct(b) ? b : -1;   /* 直接映射的码点 */
-        if (cp >= 0) table[cp] = static_cast<int16_t>(b);
-    }
-    int mapped = 0;
-    for (int b = 0; b < 256; b++) {
-        if (!is_direct(b)) table[256 + mapped++] = static_cast<int16_t>(b);
-    }
-    return table;
+    if (cp < 256 && is_direct(static_cast<int>(cp))) return static_cast<int>(cp);
+    if (cp >= 256 && cp < 324) return kNonDirectBytes[cp - 256];
+    return -1;
 }
 
-constexpr auto kByteToUni = make_byte_to_uni();
-constexpr auto kUniToByte = make_uni_to_byte();
+/* 启动期专用堆排序：非递归、零分配、单一实现，避免 std::sort 为每个比较器
+ * 生成一份 introsort 实例（板端实测省 ~4KB flash）。只用于 tokenizer 加载。 */
+template <class T, class Less>
+void heap_sort(T *first, int n, Less less) noexcept
+{
+    const auto sift_down = [&](int root, int end) noexcept {
+        for (;;) {
+            int child = root * 2 + 1;
+            if (child >= end) return;
+            if (child + 1 < end && less(first[child], first[child + 1])) child++;
+            if (!less(first[root], first[child])) return;
+            const T tmp = first[root];
+            first[root] = first[child];
+            first[child] = tmp;
+            root = child;
+        }
+    };
+    for (int i = n / 2 - 1; i >= 0; i--) sift_down(i, n);
+    for (int end = n - 1; end > 0; end--) {
+        const T tmp = first[0];
+        first[0] = first[end];
+        first[end] = tmp;
+        sift_down(0, end);
+    }
+}
 
 }  // namespace
 
@@ -199,7 +230,7 @@ int feng_tok_load(feng_tok_t *t, const void *data, size_t size)
         t->vocab_order[i] = (int)i;
         p += len; off += len;
     }
-    std::sort(t->vocab_order, t->vocab_order + vocab, [t](int a, int b) noexcept {
+    heap_sort(t->vocab_order, (int)vocab, [t](int a, int b) noexcept {
         return std::string_view{t->tokens[a], t->token_len[a]} <
                std::string_view{t->tokens[b], t->token_len[b]};
     });
@@ -243,7 +274,7 @@ int feng_tok_load(feng_tok_t *t, const void *data, size_t size)
             ents[i].key = t->pair_key[i];
             ents[i].rank = (int)i;
         }
-        std::sort(ents, ents + n_ok, [](const merge_entry_t &x, const merge_entry_t &y) noexcept {
+        heap_sort(ents, (int)n_ok, [](const merge_entry_t &x, const merge_entry_t &y) noexcept {
             return x.key != y.key ? x.key < y.key : x.rank < y.rank;
         });
         for (uint32_t i = 0; i < n_ok; i++) {
@@ -256,7 +287,7 @@ int feng_tok_load(feng_tok_t *t, const void *data, size_t size)
     /* byte -> base token */
     for (int b = 0; b < 256; b++) {
         std::array<char, 8> tmp{};
-        const int n = utf8_encode(static_cast<uint32_t>(kByteToUni[b]), tmp.data());
+        const int n = utf8_encode(static_cast<uint32_t>(bytes_to_uni(b)), tmp.data());
         t->byte_to_token[b] =
             static_cast<int16_t>(find_token(t, {tmp.data(), static_cast<size_t>(n)}));
     }
@@ -334,7 +365,9 @@ int feng_tok_encode(const feng_tok_t *t, const char *text, int *out, int max_out
     static std::array<unsigned char, 2048> buf{};   /* 单线程固定工作区 */
     while (i < N && n < max_out) {
         /* special tokens are matched literally first */
-        const std::string_view rest = src.substr(static_cast<size_t>(i));
+        /* 不用 string_view::substr：它会引用 std::__throw_out_of_range_fmt，
+         * 把整个 libstdc++ 异常/字符串/pthread 运行时拖进固件（板端实测 ~4KB）。 */
+        const std::string_view rest{src.data() + i, src.size() - static_cast<size_t>(i)};
         if (t->id_im_start >= 0 && rest.starts_with("<|im_start|>")) {
             out[n++] = t->id_im_start;
             i += 12;
@@ -406,7 +439,7 @@ int feng_tok_decode_token(const feng_tok_t *t, int id, char *out, int max_out)
     while (i < tok.size() && n < max_out) {
         uint32_t cp = 0;
         const int adv = utf8_decode(tok.data() + i, &cp);
-        const int b = (cp < kUniToByte.size()) ? kUniToByte[cp] : -1;
+        const int b = uni_to_byte(cp);
         if (b >= 0) out[n++] = static_cast<char>(b);
         i += static_cast<size_t>(adv);
     }

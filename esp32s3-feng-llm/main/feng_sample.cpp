@@ -6,7 +6,7 @@
  * 纯栈上计算、零分配、无异常。 */
 #include "feng.h"
 
-#include <algorithm>
+#include <cstring>
 
 [[nodiscard]] int feng_sample_greedy(std::span<float> logits, std::span<const int> hist,
                                      float penalty, int no_repeat_n) noexcept
@@ -22,10 +22,9 @@
     }
     if (no_repeat_n >= 2 && nhist >= no_repeat_n - 1) {
         const int m = no_repeat_n - 1;                  /* 需要匹配的前缀长度 */
-        const auto tail = hist.last(static_cast<size_t>(m));
+        const int *tail = hist.data() + (nhist - m);
         for (int h = 0; h + m < nhist; h++) {           /* 候选 = hist[h+m] */
-            const auto window = hist.subspan(static_cast<size_t>(h), static_cast<size_t>(m));
-            if (std::ranges::equal(window, tail)) {
+            if (std::memcmp(hist.data() + h, tail, sizeof(int) * static_cast<size_t>(m)) == 0) {
                 const int cand = hist[h + m];
                 if (cand >= 0 && cand < vocab) logits[cand] = -1e30f;
             }

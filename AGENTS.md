@@ -156,6 +156,11 @@
 6. **工具链**：PC 用 MSYS2 g++（`FENG_GXX` 可覆盖路径，`build_pc_chat.ps1`）；
    固件由 ESP-IDF v5.5.5（xtensa g++ 14.2）编译，`main/CMakeLists.txt` 已设
    `CXX_STANDARD 23` + `CXX_EXTENSIONS OFF`。
+7. **体积纪律（板端实测）**：禁止 `std::sort`（每套比较器实例化一份 introsort，实测 ~2.6KB）、
+   `string_view::substr`（引用 `std::__throw_out_of_range_fmt`，拖进 libstdc++ 异常/字符串/
+   pthread 运行时 ~5KB）；非热点模块（tokenizer/tool/model/gbk/main）用 `-Os`，热点
+   （llm/quant/smp/sample）保持 `-O2`。改完对比固件体积：**不得超 C 版基线 307,392B
+   （q2/2048 配置）**，当前为 304,576B。
 
 - **训练产物目录结构**：`<版本>/<阶段>/final/`（HF 权重 + tokenizer + `config.json`），阶段汇总写 `summary.json`（steps / tokens / loss / 峰值显存 / 耗时），逐步日志写 `train_log.jsonl`；中途 checkpoint 放 `<阶段>/rolling/stepN/`。
 - **日志统一写 `logs/`**，评测结果统一写 `eval/`，不要散落在根目录。

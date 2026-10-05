@@ -15,6 +15,17 @@ set_target_properties(${COMPONENT_LIB} PROPERTIES
 # the inference kernels are the hot path: -O2 + FPU on the XL7
 target_compile_options(${COMPONENT_LIB} PRIVATE
     -O2 -fno-exceptions -fno-rtti -fno-threadsafe-statics)
+# 非热点模块用 -Os 压体积：它们不在每 token 的内层循环里（tool 秒回、
+# tokenizer 只在加载/解码时用），对推理 tok/s 无可测影响；
+# 推理热点 feng_llm/feng_quant/feng_smp/feng_sample 保持上面的 -O2。
+set(FENG_OS_SOURCES
+    "main.cpp" "feng_model.cpp" "feng_tokenizer.cpp"
+    "feng_tools.cpp" "feng_memory.cpp" "gbk.cpp" "gbk_table.cpp")
+set_source_files_properties(${FENG_OS_SOURCES} PROPERTIES COMPILE_OPTIONS "-Os")
+# feng_calc 里既有的 snprintf 拼接在 -Os 的值域分析下会报保守的 format-truncation
+# （snprintf 本身有界，行为不变），只关掉这一条 -Werror。
+set_source_files_properties("feng_calc.cpp" PROPERTIES
+    COMPILE_OPTIONS "-Os;-Wno-error=format-truncation")
 # KV cache mode: default int8 (1024 ctx). -DFENG_USE_Q2_KV=ON switches to the
 # 2-bit block-8 cache (2048 ctx in the same PSRAM budget; quality study in
 # scripts/kv_quant_experiment.py, PC regression exes pc_kv_test_*).
