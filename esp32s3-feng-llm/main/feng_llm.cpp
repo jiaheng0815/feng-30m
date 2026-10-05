@@ -1,6 +1,10 @@
 /* Transformer forward pass for the feng-30m (Qwen3 architecture, MHA, tied head). */
 #include "feng.h"
 
+#if defined(FENG_USE_CUDA)
+#include "feng_cuda.h"
+#endif
+
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -208,6 +212,14 @@ float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int to
 float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int token, int pos,
                        int want_logits)
 {
+#if defined(FENG_USE_CUDA)
+    /* 完整 GPU forward（q2 KV）：权重/KV/激活常驻显存，单 token 一次提交。
+     * 不可用或失败时回退下面的 CPU 路径（失败发生在资源分配阶段，KV 状态未污染）。 */
+    if (feng_cuda_forward_supported(m, kv) && feng_cuda_forward_ready()) {
+        float *lg = feng_cuda_forward(m, kv, ws, token, pos, want_logits);
+        if (lg) return lg;
+    }
+#endif
     const int h = m->hdr.hidden, nh = m->hdr.n_heads, hd = m->hdr.head_dim;
     const int f = m->hdr.ffn;
     float *x = ws->x, *xn = ws->xn, *q = ws->q, *k = ws->k, *v = ws->v;

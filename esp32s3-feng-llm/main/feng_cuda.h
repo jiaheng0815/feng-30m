@@ -11,6 +11,8 @@
 
 #include <stdint.h>
 
+#include "feng.h"       /* feng_model_t / feng_kv_t / feng_workspace_t */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -29,6 +31,14 @@ void feng_cuda_gemv3(const void *w0, const void *w1, const void *w2, uint32_t dt
 
 /* 设备名 / 已上传张量数与显存占用，用于启动打印 */
 void feng_cuda_info(char *buf, int buf_sz);
+
+/* 完整 GPU forward（仅 q2 KV 布局）：1 = 可用。 */
+int feng_cuda_forward_ready(void);
+int feng_cuda_forward_supported(const feng_model_t *m, const feng_kv_t *kv);
+/* 在 GPU 上跑完整个 token 前向（权重/KV/激活常驻显存），结果写回 ws->logits。
+ * 成功返回 ws->logits；不可用/失败返回 NULL（调用方回退 CPU 路径）。 */
+float *feng_cuda_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws,
+                         int token, int pos, int want_logits);
 
 /* 释放全部设备内存 */
 void feng_cuda_shutdown(void);

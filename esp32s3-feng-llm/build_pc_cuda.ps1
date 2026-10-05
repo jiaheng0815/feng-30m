@@ -82,7 +82,8 @@ try {
     Write-Host "[3/4] nvcc 编译 feng_cuda.cu（-fmad=false 保证与 CPU 同序）..." -ForegroundColor Cyan
     $cudaObj = Join-Path $objRoot "feng_cuda.obj"
     & $nvcc "-arch=$Arch" -O3 -std=c++20 -fmad=false `
-        -Xcompiler "/utf-8 /O2 /EHs-c-" -DFENG_USE_CUDA=1 -Imain `
+        -Xcompiler "/utf-8 /O2 /EHs-c-" -DFENG_USE_CUDA=1 `
+        -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -Imain `
         -c main\feng_cuda.cu -o $cudaObj
     if ($LASTEXITCODE -ne 0) { throw "nvcc 编译失败" }
 

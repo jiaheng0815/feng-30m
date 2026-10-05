@@ -1,0 +1,16 @@
+完整 GPU forward 基准（RTX 5060 Ti / q2 KV / i7-12700KF）
+模型: model_export_v3_19b6 | 问题 '你好' | decode 29-32 token
+
+== CUDA（完整 forward + CUDA Graph + warp GEMV）==
+prefill 12 tok in 135.9 ms (88.3 tok/s) | decode 29 tok in 18.2 ms -> 1591.10 tok/s (0.6 ms/token)
+prefill 12 tok in 87.9 ms (136.5 tok/s) | decode 29 tok in 18.2 ms -> 1596.36 tok/s (0.6 ms/token)
+prefill 12 tok in 89.7 ms (133.8 tok/s) | decode 29 tok in 18.0 ms -> 1607.73 tok/s (0.6 ms/token)
+
+== 对照 ==
+混合模式（GEMV on GPU，其余 CPU）: decode 322 tok/s
+PC CPU 多线程（OpenMP）:           decode 654 tok/s
+PC CPU 单线程:                     decode 157 tok/s
+
+== 正确性 ==
+32 题矩阵 27/27+4/4，与 CPU 版输出逐字一致（logs/pc_kv_suite32_cuda_warpgemv.txt）
+多轮套件 7/10 + mem12 12/12 + seq 8/10（与 CPU 一致）

@@ -13,6 +13,27 @@
 
 ---
 
+## v3.20（引擎）—— 完整 GPU forward：decode 1500+ tok/s（达成 1000 目标）
+
+- **架构**：`feng_cuda.cu` 新增整模型 GPU forward——Q4/fp16 权重、q2 KV、全部激活
+  常驻显存；每 token 只提交一次 **CUDA Graph**（token/pos 做成 device 参数、D2H 收进图），
+  CPU 侧每 token 仅 1 次同步；不可用或失败自动回退 CPU 路径（`FENG_CUDA=0|gemv` 可强制）。
+- **数值**：所有 kernel 复刻 CPU 的运算顺序（RMSNorm/softmax/attention 用单线程串行归约、
+  RoPE 用 host libm 预算表、KV scale 用截断式 f16、fast_expf 多项式原样）；
+  逐层 logits 与 CPU **完全一致（max|diff| = 0，含全模型 11 层）**。
+  最终 GEMV 改「每行一个 warp」（并行度 ×32、隐藏显存延迟）后 logits 有 ~1e-6 差异，
+  **32 题矩阵输出与 CPU 逐字一致**（27/27+4/4）、多轮 7/10+12/12+8/10 持平、
+  `pc_chat` 回复逐字一致。
+- **性能**（RTX 5060 Ti / q2 KV / 32 token）：decode **1591–1608 tok/s（0.6 ms/token）**——
+  较混合模式（322）**4.9×**、较 PC CPU 多线程（654）**2.4×**、较单线程（157）**10×**；
+  prefill 88–136 ms / 12 token（含首次图实例化 ~70 ms）。日志 `logs/pc_bench_cuda_full_fwd.txt`。
+- **修复记录**（三个 bug 均由 A/B 调试定位）：
+  ① KV scale 写入用 `ksc[...] = __float2half_rz(...)`，`__half → int` 隐式转换把 scale
+  截断成 0（attention 全 0、输出乱码）→ 改 `__half_as_ushort`；
+  ② `fwd_kv_quant_kernel` 的量化索引重复叠加 block 偏移（block 0 对、block≥1 全错）；
+  ③ warp GEMV 的 grid 按 128 行/block 计算（实际每 warp 一行），只算了 1/32 的行。
+  调试入口：`FENG_CUDA_PROF=1`（图执行计时）、`FENG_CUDA_DUMP=1`（中间值回读）。
+
 ## v3.20（引擎）—— PC CPU 多线程：157 → 654 tok/s（达成 500 目标）
 
 - `feng_quant.cpp` 的 GEMV 行循环支持 OpenMP（`FENG_USE_OMP=1`；`build_pc_chat.ps1`
