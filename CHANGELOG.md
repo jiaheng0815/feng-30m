@@ -6,6 +6,30 @@ i7-12700KF、ESP32-S3-WROOM-2-N32R16V），命令见每节末尾。
 
 ---
 
+## v3.20（评测）—— 标准英文基准首测（lm-eval-harness，0-shot）
+
+新增 `scripts/bench_standard.py`（复现入口）与 `eval/lm_eval_tasks/scicloze_900.yaml`
+（SciCloze-900 任务定义），对 v3.19/pc4 跑 8 个 lm-eval 内置任务 + SciCloze-900：
+0-shot、fp32、`prefix_token_id=0`（自训 tokenizer 没有 bos/eos，lm-eval 默认会取到 None 崩）。
+共 76,706 个 loglikelihood 请求 / 3 分 29 秒（RTX 5060 Ti），结果
+`eval/lm_eval_feng_v3_19_pc4.json`：
+
+| 基准 | 指标 | 结果 |
+|---|---|---|
+| SciCloze-900 | Accuracy | 25.56% |
+| SciQ | Accuracy / Normalized | 71.00% / 73.80% |
+| PIQA | Normalized Accuracy | 53.37% |
+| ARC-Easy | Normalized Accuracy | 26.60% |
+| ARC-Challenge | Normalized Accuracy | 21.93% |
+| HellaSwag | Normalized Accuracy | 28.99% |
+| Winogrande | Accuracy | 49.33% |
+| OpenBookQA | Accuracy / Normalized | 14.00% / 24.00% |
+| BoolQ | Accuracy | 37.83% |
+
+解读：英文任务上大多贴近随机（模型是中文语料蒸馏的 30M）；SciQ 73.8% 明显高于 4 选 1
+随机线，PIQA 53.4% 略高，BoolQ 37.8% 低于二选一随机线（yes/no 偏置）。这是能力边界，
+不是回归——与"中文日常对话 + 嵌入式部署"的项目定位一致。
+
 ## v3.20（引擎）—— 全项目迁移到 C++23：零开销抽象，行为逐位不变
 
 按"用编译期换运行时、用确定性换灵活性"的嵌入式 C++ 原则，把引擎、固件与 PC 工具整体

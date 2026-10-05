@@ -112,6 +112,31 @@
 
 横向对比与全部实测见 [`COMPARISON.md`](COMPARISON.md)，逐版本演进（含失败记录）见 [`CHANGELOG.md`](CHANGELOG.md)。
 
+## 标准基准（lm-eval-harness，0-shot）
+
+用 EleutherAI lm-evaluation-harness v0.4.13 测 8 个内置任务 + 自定义 SciCloze-900
+（`eval/lm_eval_tasks/scicloze_900.yaml`），模型 v3.19/pc4（fp32，`prefix_token_id=0`——
+自训 tokenizer 没有 bos/eos），共 76,706 个 loglikelihood 请求 / 3 分 29 秒（RTX 5060 Ti）。
+复现：`python scripts/bench_standard.py --model v3_19/pc4 --tag v3_19_pc4`；
+结果 `eval/lm_eval_feng_v3_19_pc4.json`。
+
+| 基准 | 指标 | 结果 |
+|---|---|---|
+| SciCloze-900 | Accuracy | **25.56%** ±1.45 |
+| SciQ | Accuracy / Normalized | **71.00%** ±1.44 / **73.80%** ±1.39 |
+| PIQA | Normalized Accuracy | **53.37%** ±1.16 |
+| ARC-Easy | Normalized Accuracy | **26.60%** ±0.91 |
+| ARC-Challenge | Normalized Accuracy | **21.93%** ±1.21 |
+| HellaSwag | Normalized Accuracy | **28.99%** ±0.45 |
+| Winogrande | Accuracy | **49.33%** ±1.41 |
+| OpenBookQA | Accuracy / Normalized | **14.00%** ±1.55 / **24.00%** ±1.91 |
+| BoolQ | Accuracy | **37.83%** ±0.85 |
+
+> 这些是**英文**基准，而 feng-30m 是中文教师蒸馏的 30M 模型：除 SciQ（明显高于 4 选 1
+> 随机线）和 PIQA（略高于 2 选 1 随机线）外，其余任务基本贴近随机水平（ARC / HellaSwag /
+> OpenBookQA / SciCloze ≈ 25%，Winogrande ≈ 50%，BoolQ 37.8% 低于随机线，yes/no 偏置）。
+> 这是能力边界的如实呈现，不构成对中文对话能力的评价。
+
 ## 验证与 CI
 
 本地一键验收（文档自检 → PC C++23 引擎构建 + 四套单测 → 32 题矩阵 + 算术子集 → fp32 参考 logits）：
