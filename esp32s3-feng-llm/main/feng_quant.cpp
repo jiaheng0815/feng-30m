@@ -11,6 +11,11 @@
 #include <math.h>
 #include <string.h>
 
+#if defined(FENG_USE_OMP)
+#include <omp.h>            /* PC 多线程：输出行之间完全独立，逐位结果与单线程相同 */
+#include <cstdlib>
+#endif
+
 #define QK 64
 
 /* byte -> (low nibble - 8, high nibble - 8) as floats, built once into internal RAM.
@@ -177,9 +182,26 @@ uint16_t feng_f32_to_f16(float f)
 FENG_HOT static void gemv_range_cpu(const void *tensor, uint32_t dtype, const float *x, float *y,
                                     int r0, int r1, int n_in)
 {
+#if defined(FENG_USE_OMP)
+    /* 默认线程数：OMP_NUM_THREADS 未显式设置时取逻辑核的 3/4。实测 i7-12700KF
+     * （20 逻辑核）默认全开会因 SMT/E 核拖累掉速（475 vs 664 tok/s）；用户可用
+     * OMP_NUM_THREADS 覆盖。 */
+    static int s_omp_ready = 0;         /* POD 静态，无运行期构造 */
+    if (!s_omp_ready) {
+        s_omp_ready = 1;
+        if (std::getenv("OMP_NUM_THREADS") == nullptr) {
+            const int procs = omp_get_num_procs();
+            const int cap = procs > 1 ? (procs * 3) / 4 : 1;
+            if (cap < omp_get_max_threads()) omp_set_num_threads(cap);
+        }
+    }
+#endif
     const uint8_t *base = (const uint8_t *)tensor;
     if (dtype == FENG_DT_FP16) {
         const uint16_t *w = (const uint16_t *)tensor;
+#if defined(FENG_USE_OMP)
+#pragma omp parallel for schedule(static) if (r1 - r0 >= 128)
+#endif
         for (int o = r0; o < r1; o++) {
             const uint16_t *row = w + (size_t)o * n_in;
             float acc = 0.f;
@@ -272,6 +294,9 @@ FENG_HOT static void gemv_range_cpu(const void *tensor, uint32_t dtype, const fl
         y[o] = acc;
     }
     return;
+#endif
+#if defined(FENG_USE_OMP)
+#pragma omp parallel for schedule(static) if (r1 - r0 >= 128)
 #endif
     for (int o = r0; o < r1; o++) {
         const uint8_t *row = base + (size_t)o * row_bytes;

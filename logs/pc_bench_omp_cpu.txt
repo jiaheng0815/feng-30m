@@ -1,0 +1,19 @@
+PC CPU 引擎多线程基准（OpenMP；MSVC /std:c++latest /openmp）
+机器: i7-12700KF（12 核 20 线程）| 模型: model_export_v3_19b6（q2 KV）| '你好' 32 token
+
+== 默认线程数（未设 OMP_NUM_THREADS，引擎自动取逻辑核 3/4 = 15）==
+prefill 12 tok in 13.8 ms (868.6 tok/s) | decode 29 tok in 39.7 ms -> 730.86 tok/s (1.4 ms/token)
+prefill 12 tok in 20.9 ms (573.8 tok/s) | decode 29 tok in 40.7 ms -> 712.93 tok/s (1.4 ms/token)
+prefill 12 tok in 15.9 ms (752.4 tok/s) | decode 29 tok in 43.5 ms -> 667.03 tok/s (1.5 ms/token)
+prefill 12 tok in 18.6 ms (645.6 tok/s) | decode 29 tok in 46.0 ms -> 630.09 tok/s (1.6 ms/token)
+prefill 12 tok in 14.7 ms (814.9 tok/s) | decode 29 tok in 40.9 ms -> 709.27 tok/s (1.4 ms/token)
+
+== 线程数扫描（各 3 次，中位数）==
+OMP_NUM_THREADS= 1 : 139.39 / 138.42 / 137.03  | 中位数 138.4 tok/s
+OMP_NUM_THREADS= 6 : 613.24 / 595.08 / 407.99  | 中位数 595.1 tok/s
+OMP_NUM_THREADS= 8 : 694.74 / 515.37 / 538.09  | 中位数 538.1 tok/s
+OMP_NUM_THREADS=12 : 615.55 / 600.12 / 621.34  | 中位数 615.5 tok/s
+OMP_NUM_THREADS=16 : 644.97 / 647.5 / 679.87  | 中位数 647.5 tok/s
+OMP_NUM_THREADS=20 : 721.57 / 720.91 / 527.99  | 中位数 720.9 tok/s
+
+对照（单线程历史基线，MSVC 无 OpenMP）: decode 157 tok/s（6.4 ms/token）

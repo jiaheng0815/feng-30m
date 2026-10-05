@@ -86,7 +86,9 @@
 - **零堆**：8 个核心对象无 `malloc/free/new/delete`、无异常/RTTI 符号；唯一分配是 tokenizer
   **启动期**一次性 PSRAM 加载；全组件 `.init_array` 为空（无全局构造）
 - **体积**：304,192 B，比 C 版（307,392 B）小 2,816 B；非热点模块 `-Os`、推理热点保持 `-O2`
-- **性能**：板端 ms/token 与 C 版逐项相同；C++/Python tool 一致性 **173 条** + 4 套单测全过
+- **性能**：板端 ms/token 与 C 版逐项相同；**PC CPU 多线程 654 tok/s**（单线程 157 → 4.2×，
+  `build_pc_chat.ps1` 默认 OpenMP，行级并行、输出逐字一致）；CUDA 版生成 322 tok/s；
+  C++/Python tool 一致性 **173 条** + 4 套单测全过
 
 ## 快速开始
 

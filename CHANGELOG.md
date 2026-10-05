@@ -13,6 +13,22 @@
 
 ---
 
+## v3.20（引擎）—— PC CPU 多线程：157 → 654 tok/s（达成 500 目标）
+
+- `feng_quant.cpp` 的 GEMV 行循环支持 OpenMP（`FENG_USE_OMP=1`；`build_pc_chat.ps1`
+  MSVC 默认 `/openmp`、MinGW `-fopenmp`）：**输出行之间完全独立，逐位结果与单线程相同**
+  （32 题矩阵输出逐字一致、`pc_check` MATCH、`check_all` 7/7）。
+- **默认线程数**：未设 `OMP_NUM_THREADS` 时取逻辑核的 3/4。实测 i7-12700KF 全开 20 线程
+  会被 SMT/E 核拖到 ~475 tok/s，15 线程 654 tok/s（可用环境变量覆盖）。
+- 实测（q2 KV / 32 token / i7-12700KF）：**单线程 157 → 默认 654 tok/s（4.2×）**，
+  prefill 59 → 15 ms；线程扫描 1/6/8/12/16/20 = 138 / 595 / 538 / 616 / 648 / 721 tok/s。
+  日志 `logs/pc_bench_omp_cpu.txt`。
+- **三目标进度**：PC CPU 500 ✅（654）；**PC GPU 1000 待做**（当前混合模式 322 tok/s，
+  受每 token 44 次 PCIe 往返/同步限制，需完整 GPU forward + CUDA Graph，见下）；
+  **板端 5 tok/s 经数据评估在当前 S3 上不可达**：纯生成 500 ms/token、GEMV 占 92%
+  （每权重 3.8 周期 @双核），标量已到极限、PIE 历史 1.05×、A8 慢 36%；即使超频 ~17%
+  也只能到 ~2.7-3 tok/s——需要换硬件（更高主频/SIMD 的 MCU）或缩小模型。
+
 ## v3.20（引擎）—— Windows 构建切换为 MSVC + C++23
 
 - `build_pc_chat.ps1` 默认改用 **MSVC（cl/link）+ C++23**（`/std:c++latest`；MSVC 没有单独的

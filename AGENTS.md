@@ -176,6 +176,10 @@
    `pc_check_cuda` argmax MATCH；实测 decode 157 → 322 tok/s（2.0×），prefill 变慢
    （PCIe 往返固定开销），如实记录，不要宣称全面加速。`FENG_CUDA=0` 强制 CPU 路径做 A/B；
    `feng_gemv3`（q/k/v、gate/up 合并调用）在板端等价于逐次 `feng_gemv_par`，双核不受影响。
+9. **PC 多线程（OpenMP）**：`FENG_USE_OMP=1` 时 GEMV 按输出行并行（逐位不变，
+   验收用 32 题矩阵逐字对比 + `pc_check` MATCH）；默认线程数 = 逻辑核 3/4
+   （全开会因 SMT/E 核掉速，可用 `OMP_NUM_THREADS` 覆盖）。PC CPU 性能基线：
+   **654 tok/s**（q2 KV / 32 token / i7-12700KF），低于 500 视为回归。
 
 - **训练产物目录结构**：`<版本>/<阶段>/final/`（HF 权重 + tokenizer + `config.json`），阶段汇总写 `summary.json`（steps / tokens / loss / 峰值显存 / 耗时），逐步日志写 `train_log.jsonl`；中途 checkpoint 放 `<阶段>/rolling/stepN/`。
 - **日志统一写 `logs/`**，评测结果统一写 `eval/`，不要散落在根目录。

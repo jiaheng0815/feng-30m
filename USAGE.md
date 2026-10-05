@@ -60,6 +60,9 @@ g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -DFENG_KV_Q
 验证构建与数字回归：`python tools\check_all.py`（文档自检 → 构建 → 四套单测 →
 32 题矩阵 27/27+4/4 → 算术 21/21 → `pc_check` MATCH）。
 
+> PC CPU 性能：**多线程 654 tok/s**（单线程 157，q2 KV / 32 token / i7-12700KF；
+> 输出行级并行、逐字不变）。默认线程数 = 逻辑核 3/4，可用 `OMP_NUM_THREADS` 覆盖。
+
 > **别用 PC 的 HF 权重导出给引擎**：引擎的 `model.bin` 是 Q4 权重 + q2 KV 双 QAT 格式，
 > 只有板端 v3.19-embed 权重扛得住。实测同套 32 题矩阵：PC 权重 **22/27**（翻译/情绪/推荐崩），
 > 板端 QAT 权重 **27/27 + 召回 4/4**（`logs/pc_kv_suite32_v3_14pc2_q2b8.txt`）。

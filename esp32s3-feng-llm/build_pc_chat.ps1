@@ -23,6 +23,7 @@ try {
     )
     $q2Drivers = @(
         "pc\pc_chat.cpp", "pc\pc_kv_suite.cpp", "pc\pc_mt_suite.cpp",
+        "pc\pc_bench.cpp",
         "pc\pc_calc_test.cpp", "pc\pc_tools_test.cpp", "pc\pc_mem_test.cpp",
         "pc\pc_sample_test.cpp", "pc\pc_calc_ask.cpp", "pc\pc_mem_ask.cpp",
         "pc\pc_rand_ask.cpp", "pc\pc_time_ask.cpp"
@@ -62,7 +63,8 @@ try {
 
         $cxxFlags = @(
             "/nologo", "/c", "/O2", "/std:c++latest", "/utf-8",
-            "/EHs-c-", "/GR-", "/D_HAS_EXCEPTIONS=0", "/wd4996", "/Imain"
+            "/EHs-c-", "/GR-", "/D_HAS_EXCEPTIONS=0", "/wd4996", "/Imain",
+            "/DFENG_USE_OMP=1", "/openmp"
         )
         $kvQ2 = @("/DFENG_KV_Q2=1", "/DFENG_KV_Q2_BLOCK=8")
 
@@ -113,7 +115,9 @@ try {
         # ---------------- MinGW g++ -std=c++23（备用） ----------------
         $gxx = $env:FENG_GXX
         if (-not $gxx) { $gxx = "g++" }
-        $flags = @("-std=c++23", "-fno-exceptions", "-fno-rtti", "-fno-threadsafe-statics", "-O2")
+        $flags = @("-std=c++23", "-fno-exceptions", "-fno-rtti", "-fno-threadsafe-statics",
+                   "-O2", "-DFENG_USE_OMP=1", "-fopenmp")
+        & $gxx @flags -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc\pc_bench.exe pc\pc_bench.cpp @base -Imain -lm
         & $gxx @flags -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc\pc_chat_q2b8.exe pc\pc_chat.cpp @base -Imain -lm
         & $gxx @flags -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc\pc_kv_suite_q2b8.exe pc\pc_kv_suite.cpp @base -Imain -lm
         & $gxx @flags -DFENG_KV_INT8=1 -o pc\pc_kv_suite_i8.exe pc\pc_kv_suite.cpp @base -Imain -lm
