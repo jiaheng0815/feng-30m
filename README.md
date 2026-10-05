@@ -8,7 +8,7 @@
 > **当前发布（2026-10-05）**
 >
 > - 权重：PC = **v3.19**（`v3_19/pc4`）｜ 板端 = **v3.19-embed**（`v3_19/board6`，Q4 权重 + q2 KV 双 QAT）
-> - 引擎：**v3.20 / C++23**（严格模式、零堆、无异常/RTTI、无全局构造）；板端固件 **304,576 B**，比 C 版还小 2,816 B
+> - 引擎：**v3.20 / C++23**（严格模式、零堆、无异常/RTTI、无全局构造）；板端固件 **304,192 B**，比 C 版还小 2,816 B
 > - 板端实测：q2/2048 矩阵 **27/27 + 4/4**、工具 **13/13**、记忆 **12/12**、**2.26 tok/s**（938 ms/token）
 > - 身份自述：**「我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI」**
 > - 代码与权重均 **Apache-2.0**；**GGUF 自 v3.14 起不再发行**（llama.cpp 路径没有 tool）
@@ -85,7 +85,7 @@
 - **严格 C++23**（`-std=c++23`，PC 与 ESP-IDF 双工具链），`-fno-exceptions -fno-rtti -fno-threadsafe-statics`
 - **零堆**：8 个核心对象无 `malloc/free/new/delete`、无异常/RTTI 符号；唯一分配是 tokenizer
   **启动期**一次性 PSRAM 加载；全组件 `.init_array` 为空（无全局构造）
-- **体积**：304,576 B，比 C 版（307,392 B）小 2,816 B；非热点模块 `-Os`、推理热点保持 `-O2`
+- **体积**：304,192 B，比 C 版（307,392 B）小 2,816 B；非热点模块 `-Os`、推理热点保持 `-O2`
 - **性能**：板端 ms/token 与 C 版逐项相同；C++/Python tool 一致性 **173 条** + 4 套单测全过
 
 ## 快速开始
@@ -107,6 +107,23 @@
 > 引擎的 `model.bin` 是 **Q4 权重 + q2 KV 双 QAT** 格式，必须用板端 v3.19-embed 权重导出
 > （预导出包已做好）。**PC 的 HF 权重没做量化感知训练，导出给引擎会明显退化**
 > （同套 32 题矩阵实测 22/27 vs 27/27，`logs/pc_kv_suite32_v3_14pc2_q2b8.txt`）。
+
+#### 可选：CUDA 加速（RTX 显卡）
+
+PC 引擎带一个**可选 CUDA 后端**：GEMV（Q4 block64 / fp16）交给 GPU，权重常驻显存，
+其余算子仍在 CPU；板上固件不含此路径。构建需要 VS Build Tools + CUDA Toolkit：
+
+```powershell
+cd esp32s3-feng-llm
+.\build_pc_cuda.ps1                       # MSVC(cl/link) + nvcc，产出 pc\*_cuda.exe
+.\pc\pc_bench_cuda.exe ..\model_export_v3_19b6 "你好" 32
+```
+
+实测（RTX 5060 Ti / q2 KV / 32 token）：生成 **157 → 322 tok/s（约 2.0×）**；
+prefill 反而变慢（59 → 110 ms / 12 token，每次 GEMV 的 PCIe 往返固定开销），
+适合"长回答生成"为主的场景。32 题矩阵输出与 CPU 版 **逐字一致**，
+`pc_check` argmax MATCH；`FENG_CUDA=0` 可让同一个二进制强制走 CPU 路径做对比
+（`main/feng_cuda.cu`、`build_pc_cuda.ps1`）。
 
 ### 2) HF 权重 + transformers
 

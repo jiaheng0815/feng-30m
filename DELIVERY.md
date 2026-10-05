@@ -10,7 +10,7 @@
 > | PC 权重 | **v3.19**（`v3_19/pc4`）：范围 10/10、探针 42/42、单类别检索 110/128、记忆 23/24、留出 19/30 |
 > | 板端权重 | **v3.19-embed**（`v3_19/board6`）：Q4 权重 + q2 KV 双 QAT |
 > | 引擎 | **v3.20 / C++23**（严格模式、零堆、无异常/RTTI、无全局构造） |
-> | 板端固件 | q2 block8 / 2048 ctx，app **304,576 B**（比 C 版小 2,816 B），**2.26 tok/s**（938 ms/token @ ctx 19） |
+> | 板端固件 | q2 block8 / 2048 ctx，app **304,192 B**（比 C 版小 2,816 B），**2.26 tok/s**（938 ms/token @ ctx 19） |
 > | tool | 算式 / 时间 / 随机数 / 记忆，板内确定性回答（0.5 s），板端 tool **13/13**、记忆 **12/12** |
 > | Release | `feng-30m-v3.19-release.zip`、`feng-30m-v3.19-embed-release.zip`、`feng-30m-v3.19-engine.zip`、`feng-30m-c-engine-model-v3.19-embed.zip`、`feng-30m-v3.19-embed-firmware.zip` |
 >
@@ -157,7 +157,7 @@ python scripts\esp32_memory.py --port COM20 --n 12  # 记忆 12 组
 | q2 注意力四优化 | 字节 LUT + `[layer][head][t]` 布局 + 内联 fp16→fp32 + 2-token 展开 | 单次 forward 3534 → 2224 ms（-37%），输出逐字一致 |
 | prefill 跳过 lm head | `feng_forward_ex(..., want_logits=0)` | 每个中间 token 省 ~115 ms，回答逐字相同 |
 | IRAM / 采样器统一 | `FENG_HOT` 热函数；`feng_sample_greedy` 单一入口 | 收益个位数百分比；采样口径板端/PC 一致 |
-| **C++23 迁移 + 体积优化** | 零堆抽象、禁用异常/RTTI、自写堆排序（替代 `std::sort`）、切断 libstdc++ 运行时、非热点 `-Os` | 固件 307,392 → **304,576 B**；板端 ms/token 与 C 版逐项相同 |
+| **C++23 迁移 + 体积优化** | 零堆抽象、禁用异常/RTTI、自写堆排序（替代 `std::sort`）、切断 libstdc++ 运行时、非热点 `-Os` | 固件 307,392 → **304,192 B**；板端 ms/token 与 C 版逐项相同 |
 
 ### 7.1 ESP32-S3 上的"AI 加速"实情
 

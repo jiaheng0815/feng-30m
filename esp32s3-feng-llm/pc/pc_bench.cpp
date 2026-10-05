@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
+#include <chrono>
 
 #include "feng.h"
 #include "feng_tokenizer.h"
@@ -32,9 +32,8 @@ static unsigned char *read_file(const char *path, size_t *len)
 
 static double now_s(void)
 {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (double)ts.tv_sec + (double)ts.tv_nsec * 1e-9;
+    const auto t = std::chrono::steady_clock::now().time_since_epoch();
+    return std::chrono::duration<double>(t).count();
 }
 
 int main(int argc, char **argv)

@@ -13,6 +13,27 @@
 
 ---
 
+## v3.20（引擎）—— CUDA 加速后端（PC 可选）+ GEMV 合并调用
+
+PC 引擎新增可选 CUDA 后端（`main/feng_cuda.cu` + `build_pc_cuda.ps1`；MSVC cl/link +
+nvcc 13.3、`sm_120`）：
+
+- **范围**：只加速 GEMV（Q4 block64 / fp16）——权重首次使用时整块上传显存并常驻，
+  激活按次拷贝；其余算子（attention / norm / rope / KV / tool）仍在 CPU。
+  **板端固件不含此路径**（ESP32 无 CUDA；`feng_gemv3` 在板端等价于逐次 `feng_gemv_par`）。
+- **数值**：kernel 与 CPU 使用同一套浮点运算顺序（4 累加器 + 块内 4 路 + `(a0+a1)+(a2+a3)`），
+  并以 `-fmad=false` 编译；CPU vs CUDA logits `max|diff| ≈ 0.1`（编译器重排量级），
+  **32 题矩阵输出逐字一致**、`pc_check` argmax MATCH。
+- **修复过程（记录）**：首版矩阵掉到 4/27——根因是 grid 按 256 线程取整，行数不是 256 倍数时
+  越界线程写 `g_dy` 显存、污染后续 GEMV 输入；加 `o >= r1` 边界返回后恢复 27/27+4/4。
+  新增 `FENG_CUDA=0` 调试开关：同一二进制可强制走 CPU 路径做 A/B 二分。
+- **性能**（RTX 5060 Ti / q2 KV / 32 token）：生成 **157 → 322 tok/s（约 2.0×）**；
+  prefill 变慢（59 → 110 ms / 12 token）——每次 GEMV 有 PCIe 往返 + kernel 同步（约 44 次/token），
+  适合以长回答生成为主的场景，不宣称全面加速。实测 pinned+async 在 Windows WDDM 下
+  反而慢一倍（150 vs 330 tok/s），因此固定用同步拷贝。
+- **调用合并**：新增 `feng_gemv3`（q/k/v、gate/up 共享输入的合并调用），CUDA 下省一次 H2D；
+  板端保持双核路径，固件反而小 384 B（**304,192 B**，q2/2048）。
+
 ## v3.20（评测）—— 标准英文基准首测（lm-eval-harness，0-shot）
 
 新增 `scripts/bench_standard.py`（复现入口）与 `eval/lm_eval_tasks/scicloze_900.yaml`

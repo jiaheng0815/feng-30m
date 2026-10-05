@@ -133,6 +133,12 @@ void feng_gemv_range(const void *tensor, uint32_t dtype, const float *x, float *
 /* two-core version of feng_gemv (falls back to single core if init failed) */
 void feng_gemv_par(const void *tensor, uint32_t dtype, const float *x, float *y,
                    int n_out, int n_in);
+/* 共享同一输入 x 的 2~3 个 GEMV 合并提交（q/k/v 或 gate/up 常成对出现）：
+ *   y_i = W_i * x；w_i == NULL 表示跳过。CPU/板端 = 顺序调用 feng_gemv_par；
+ * PC CUDA 后端 = 一次 H2D + 多次 kernel，减少每 token 的固定调度开销。 */
+void feng_gemv3(const void *w0, const void *w1, const void *w2, uint32_t dtype,
+                const float *x, float *y0, float *y1, float *y2,
+                int n_out0, int n_out1, int n_out2, int n_in);
 /* FENG_GEMV_A8=1 时：每个 GEMV 调用前准备一次 int8 激活（两核并发只读） */
 void feng_gemv_a8_prepare(const float *x, int n_in);
 

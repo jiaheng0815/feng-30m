@@ -11,7 +11,7 @@
 | `feng-30m-v3.19-embed-firmware.zip` | 板端一包到底 | 预编译固件 + 模型 + 烧录说明（免装 ESP-IDF） |
 
 仓库本身只放代码与文档；权重、板端模型与蒸馏数据集都在 Release 包里。
-引擎当前版本 **v3.20 / C++23**：板端固件 **304,576 B**，板端 **2.26 tok/s**（938 ms/token）。
+引擎当前版本 **v3.20 / C++23**：板端固件 **304,192 B**，板端 **2.26 tok/s**（938 ms/token）。
 
 ## 1. 包内结构
 
@@ -75,6 +75,25 @@ tool 覆盖：多位数/小数/括号/中文数字（`五十九加一`）/`乘�
 `现在几点`、`3天后是几号`、`时间戳`、`随机数`、`掷骰子`、`抛硬币`，
 以及记忆句式（`我叫X`、`我最喜欢Y`、`我住在Z`、`我养了W`、`我最喜欢的<键>是<值>`）。
 
+### 2.1 可选：CUDA 加速（RTX 显卡）
+
+```powershell
+cd esp32s3-feng-llm
+.\build_pc_cuda.ps1        # 需要 VS Build Tools + CUDA Toolkit；产出 pc\*_cuda.exe
+.\pc\pc_chat_cuda.exe ..\feng-30m-c-engine-model
+.\pc\pc_bench_cuda.exe ..\feng-30m-c-engine-model "你好" 32
+```
+
+| 指标（RTX 5060 Ti / q2 KV / 32 token） | CPU（MinGW g++） | CUDA |
+|---|---|---|
+| 生成 decode | 157 tok/s（6.4 ms/token） | **322 tok/s（3.1 ms/token）** |
+| prefill（12 token） | 59 ms | 110 ms |
+| 32 题矩阵 | 27/27 + 4/4 | **27/27 + 4/4（输出逐字一致）** |
+
+说明：CUDA 后端只加速 GEMV（权重常驻显存，激活按次拷贝）；prefill 慢是因为每次 GEMV
+都有一次 PCIe 往返 + kernel 同步（约 44 次/token），所以它更适合长回答生成。
+`FENG_CUDA=0` 环境变量可让同一二进制强制走 CPU 路径对比；板端固件不含 CUDA。
+
 ## 3. HF 格式权重（transformers）
 
 ```python
@@ -127,7 +146,7 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 | 32 题矩阵 + 长文召回 | **27/27 + 4/4** |
 | 工具 / 记忆 | **13/13** / **12/12** |
 | 速度 | **2.26 tok/s**（938 ms/token，ctx 19） |
-| 固件体积 | **304,576 B**（C++23 引擎，比 C 版小 2,816 B） |
+| 固件体积 | **304,192 B**（C++23 引擎，比 C 版小 2,816 B） |
 
 ### 分区偏移（与 `esp32s3-feng-llm/partitions.csv` 一致）
 
@@ -286,7 +305,7 @@ PC 的 HF 权重用在引擎上会 22/27；两个权重不能互换。
 **能上 32k 上下文吗？** 板端不能：2048 ctx 的 q2 KV 已占 9.62 MB PSRAM，
 32k 需要约 150 MB，超出硬件。32k 只在 PC 上可用。
 
-**固件多大？可以塞更多功能吗？** 当前 304,576 B，app 分区 1 MB（还剩 70%）。
+**固件多大？可以塞更多功能吗？** 当前 304,192 B，app 分区 1 MB（还剩 70%）。
 新增非热点模块用 `-Os`、热点保持 `-O2`；引擎约定见 [AGENTS.md](AGENTS.md) 的 C++23 条款。
 
 ## 10. 许可证

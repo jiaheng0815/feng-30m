@@ -19,7 +19,7 @@
   → v3.17 = 引擎/固件记忆 tool（可枚举问答确定性回答，权重未变）→ **v3.19 = 定向教师数据修"模板串台"
   （PC `v3_19/pc4`、板端 `v3_19/board6`；留出 30 题 16/17 → 19/19，当前发布权重）**
   → **v3.20 = 引擎全面升级（当前）：序列数数 tool + 统一采样器 + 全项目 C++23 迁移
-  （零堆/无异常/RTTI）+ 体积优化（固件 304,576 B，比 C 版小 2.8 KB）+ 标准基准 9 任务（lm-eval）**。
+  （零堆/无异常/RTTI）+ 体积优化（固件 304,192 B，比 C 版小 2.8 KB）+ 标准基准 9 任务（lm-eval）**。
 - v3.19 现状（**当前发布**）：
   - PC `v3_19/pc4`：从 `v3_14/pc2` 出发，用 440 条定向教师数据（常识/列举/情绪/寒暄/推理/身份六类，
     `scripts/v3_19_build_target_prompts.py`）+ 多轮/身份回放做**末 2 层 15 epoch** 微调；
@@ -84,7 +84,7 @@
   关键技巧是 **Q4 权重/q2 KV 双 QAT**（`v3_7_kv_qat.py --wqat`），量化抗性对权重回插极敏感
   （掺 20% v3.9 权重就掉到 25/27），PC 32k 弱。
 - **PC 用 v3.19（`v3_19/pc4`）；板端用 v3.19-embed 权重（`v3_19/board6`）；两边同一套
-  v3.20 / C++23 引擎与固件**（q2/2048 固件 304,576 B、板端 2.26 tok/s；见 `CHANGELOG.md`
+  v3.20 / C++23 引擎与固件**（q2/2048 固件 304,192 B、板端 2.26 tok/s；见 `CHANGELOG.md`
   v3.19/v3.20 节与 `esp32s3-feng-llm/README.md`）。
 - **标准基准（英文，0-shot）**：SciQ 71.00/73.80、PIQA 53.37、ARC-E 26.60、ARC-C 21.93、
   HellaSwag 28.99、Winogrande 49.33、OpenBookQA 14.00/24.00、BoolQ 37.83、SciCloze-900 25.56；
@@ -167,7 +167,13 @@
    `string_view::substr`（引用 `std::__throw_out_of_range_fmt`，拖进 libstdc++ 异常/字符串/
    pthread 运行时 ~5KB）；非热点模块（tokenizer/tool/model/gbk/main）用 `-Os`，热点
    （llm/quant/smp/sample）保持 `-O2`。改完对比固件体积：**不得超 C 版基线 307,392B
-   （q2/2048 配置）**，当前为 304,576B。
+   （q2/2048 配置）**，当前为 304,192B。
+8. **CUDA 后端（PC 可选，板端不含）**：`main/feng_cuda.cu` + `build_pc_cuda.ps1`
+   （MSVC + nvcc，`-fmad=false` 保证与 CPU 同运算顺序）；GEMV 权重常驻显存，其余算子在 CPU。
+   **验收口径**：32 题矩阵须 27/27+4/4 且与 CPU 版**输出逐字一致**（`pc_kv_suite_cuda.exe`），
+   `pc_check_cuda` argmax MATCH；实测 decode 157 → 322 tok/s（2.0×），prefill 变慢
+   （PCIe 往返固定开销），如实记录，不要宣称全面加速。`FENG_CUDA=0` 强制 CPU 路径做 A/B；
+   `feng_gemv3`（q/k/v、gate/up 合并调用）在板端等价于逐次 `feng_gemv_par`，双核不受影响。
 
 - **训练产物目录结构**：`<版本>/<阶段>/final/`（HF 权重 + tokenizer + `config.json`），阶段汇总写 `summary.json`（steps / tokens / loss / 峰值显存 / 耗时），逐步日志写 `train_log.jsonl`；中途 checkpoint 放 `<阶段>/rolling/stepN/`。
 - **日志统一写 `logs/`**，评测结果统一写 `eval/`，不要散落在根目录。

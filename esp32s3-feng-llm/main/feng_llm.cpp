@@ -137,7 +137,7 @@ static void rope(float *vec, int n_heads, int head_dim, int pos, float theta)
 #if FENG_FAST_EXP
 static inline float fast_expf(float x)
 {
-    if (x > 88.722839f) return __builtin_inff();
+    if (x > 88.722839f) return INFINITY;   /* math.h；g++ / Xtensa / MSVC 通用 */
     if (x < -87.336548f) return 0.f;
     const float log2e = 1.4426950408889634f;
     const float ln2 = 0.6931471805599453f;
@@ -255,9 +255,7 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
     for (int l = 0; l < (int)m->hdr.n_layers; l++) {
         const feng_layer_t *L = &m->layers[l];
         rmsnorm(xn, x, L->attn_norm, h, m->hdr.rms_eps);
-        feng_gemv_par(L->wq, FENG_DT_Q4, xn, q, h, h);
-        feng_gemv_par(L->wk, FENG_DT_Q4, xn, k, h, h);
-        feng_gemv_par(L->wv, FENG_DT_Q4, xn, v, h, h);
+        feng_gemv3(L->wq, L->wk, L->wv, FENG_DT_Q4, xn, q, k, v, h, h, h, h);
 
         /* per-head q/k RMSNorm (Qwen3) */
         {
@@ -623,8 +621,7 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
         for (int i = 0; i < h; i++) x[i] += proj[i];
 
         rmsnorm(xn, x, L->ffn_norm, h, m->hdr.rms_eps);
-        feng_gemv_par(L->gate, FENG_DT_Q4, xn, gate, f, h);
-        feng_gemv_par(L->up, FENG_DT_Q4, xn, up, f, h);
+        feng_gemv3(L->gate, L->up, nullptr, FENG_DT_Q4, xn, gate, up, nullptr, f, f, 0, h);
         silu_mul(ffn, gate, up, f);
         feng_gemv_par(L->down, FENG_DT_Q4, ffn, proj, h, f);
         for (int i = 0; i < h; i++) x[i] += proj[i];

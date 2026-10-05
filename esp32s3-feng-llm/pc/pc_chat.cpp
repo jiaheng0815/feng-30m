@@ -18,6 +18,7 @@
 #include "feng_tools.h"
 #include "feng_tokenizer.h"
 #include <time.h>
+#include <chrono>
 
 #if FENG_KV_Q2
 #define KV_MODE "q2"
@@ -55,9 +56,8 @@ static long long pc_epoch_now(void)
 
 static long long pc_uptime_us(void)
 {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (long long)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+    const auto t = std::chrono::steady_clock::now().time_since_epoch();
+    return (long long)std::chrono::duration_cast<std::chrono::microseconds>(t).count();
 }
 
 int main(int argc, char **argv)

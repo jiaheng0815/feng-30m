@@ -4,6 +4,10 @@
  */
 #include "feng.h"
 
+#if defined(FENG_USE_CUDA)
+#include "feng_cuda.h"
+#endif
+
 #include <math.h>
 #include <string.h>
 
@@ -24,7 +28,7 @@ static float s_a8_xscale[A8_MAX_IN / QK];
 static const float *s_a8_x;
 static int s_a8_nin;
 #if FENG_GEMV_PIE
-static int16_t s_x16[A8_MAX_IN] __attribute__((aligned(16)));
+alignas(16) static int16_t s_x16[A8_MAX_IN];
 /* 256 项 pair LUT：打包字节 -> 两个 int16 权重 (lo-8, hi-8)，按 u32 packed */
 static uint32_t s_q4_pair32[256];
 static int s_q4_pair32_ready;
@@ -52,7 +56,7 @@ int feng_gemv_pie_selfcheck(const void *tensor, int n_in)
     int32_t pie_sum = 0, ref_sum = 0;
     for (int b = 0; b < n_blocks; b++) {
         const uint8_t *p = packed + (size_t)b * 32;
-        int16_t w16[QK] __attribute__((aligned(16)));
+        alignas(16) int16_t w16[QK];
         uint32_t *st = (uint32_t *)w16;
         for (int j = 0; j < 32; j++) st[j] = s_q4_pair32[p[j]];
         pie_sum += pie_dot64(w16, s_x16 + (size_t)b * QK);
@@ -167,8 +171,9 @@ uint16_t feng_f32_to_f16(float f)
     return (uint16_t)((sign << 15) | ((uint32_t)(exp + 15) << 10) | (man >> 13));
 }
 
-FENG_HOT void feng_gemv_range(const void *tensor, uint32_t dtype, const float *x, float *y,
-                     int r0, int r1, int n_in)
+/* 真正的 CPU 实现（不做 CUDA dispatch）；feng_gemv_range / feng_gemv3 共用。 */
+static void gemv_range_cpu(const void *tensor, uint32_t dtype, const float *x, float *y,
+                           int r0, int r1, int n_in)
 {
     const uint8_t *base = (const uint8_t *)tensor;
     if (dtype == FENG_DT_FP16) {
@@ -203,7 +208,7 @@ FENG_HOT void feng_gemv_range(const void *tensor, uint32_t dtype, const float *x
                 memcpy(&hs, scales + b * 2, 2);
                 const float sw = f16_to_f32(hs);
                 const uint8_t *p = packed + (size_t)b * 32;
-                int16_t w16[QK] __attribute__((aligned(16)));
+                alignas(16) int16_t w16[QK];
                 uint32_t *st = (uint32_t *)w16;
                 for (int j = 0; j < 32; j++) st[j] = s_q4_pair32[p[j]];
                 const int32_t dot = pie_dot64(w16, s_x16 + (size_t)b * QK);
@@ -306,6 +311,43 @@ FENG_HOT void feng_gemv_range(const void *tensor, uint32_t dtype, const float *x
         }
         y[o] = (a0 + a1) + (a2 + a3);
     }
+}
+
+FENG_HOT void feng_gemv_range(const void *tensor, uint32_t dtype, const float *x, float *y,
+                     int r0, int r1, int n_in)
+{
+#if defined(FENG_USE_CUDA)
+    /* PC CUDA 后端：可用时 GEMV 全走 GPU；kernel 与 CPU 路径使用相同的浮点
+     * 运算顺序，数值一致（见 feng_cuda.cu 的文件头说明）。 */
+    if (feng_cuda_available()) {
+        feng_cuda_gemv_range(tensor, dtype, x, y, r0, r1, n_in);
+        return;
+    }
+#endif
+    gemv_range_cpu(tensor, dtype, x, y, r0, r1, n_in);
+}
+
+void feng_gemv3(const void *w0, const void *w1, const void *w2, uint32_t dtype,
+                const float *x, float *y0, float *y1, float *y2,
+                int n_out0, int n_out1, int n_out2, int n_in)
+{
+#if defined(FENG_USE_CUDA)
+    if (feng_cuda_available()) {
+        feng_cuda_gemv3(w0, w1, w2, dtype, x, y0, y1, y2, n_out0, n_out1, n_out2, n_in);
+        return;
+    }
+#endif
+    /* 板端：逐次 feng_gemv_par（保留双核）；PC：直接走 CPU 实现，避免依赖 feng_smp
+     * （pc_sample_test 这类只链 feng_quant.cpp 的单测不需要 feng_smp）。 */
+#if defined(ESP_PLATFORM)
+    if (w0) feng_gemv_par(w0, dtype, x, y0, n_out0, n_in);
+    if (w1) feng_gemv_par(w1, dtype, x, y1, n_out1, n_in);
+    if (w2) feng_gemv_par(w2, dtype, x, y2, n_out2, n_in);
+#else
+    if (w0) gemv_range_cpu(w0, dtype, x, y0, 0, n_out0, n_in);
+    if (w1) gemv_range_cpu(w1, dtype, x, y1, 0, n_out1, n_in);
+    if (w2) gemv_range_cpu(w2, dtype, x, y2, 0, n_out2, n_in);
+#endif
 }
 
 void feng_gemv(const void *tensor, uint32_t dtype, const float *x, float *y,
