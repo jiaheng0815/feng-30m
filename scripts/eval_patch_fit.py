@@ -1,7 +1,7 @@
 """检查补丁数据的"训练集自拟合"：给定补丁 jsonl，逐条生成并和目标比对。
 
-用法：python scripts/eval_patch_fit.py --model v3_6b\\final\\ctx8192\\final \
-        --data v3_6a\\daily_patch.jsonl [--limit 120]
+用法：python scripts/eval_patch_fit.py --model archive/v3_6b\\final\\ctx8192\\final \
+        --data archive/v3_6a\\daily_patch.jsonl [--limit 120]
 输出命中率（归一化后前缀/完全匹配）并逐条打印未命中样例。
 """
 import argparse

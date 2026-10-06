@@ -6,9 +6,9 @@
 并混入少量多轮/身份样本防止基本盘漂移。
 
 用法：
-    python scripts/v3_6_sft_patch.py --init v3_5d\\final\\ctx32768\\final \
-        --patch v3_6a\\daily_patch.jsonl --mt v3_5d\\mt_convs.jsonl \
-        --out v3_6d\\final --epochs 8 --lr 1e-4 --mt-n 600 --identity-n 200
+    python scripts/v3_6_sft_patch.py --init archive/v3_5d\\final\\ctx32768\\final \
+        --patch archive/v3_6a\\daily_patch.jsonl --mt archive/v3_5d\\mt_convs.jsonl \
+        --out archive/v3_6d\\final --epochs 8 --lr 1e-4 --mt-n 600 --identity-n 200
 """
 import argparse
 import json

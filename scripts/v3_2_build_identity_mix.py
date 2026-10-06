@@ -142,7 +142,7 @@ def embed_in_long(tok, conv, filler, L: int, rng: random.Random):
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=str(ROOT / "v3_2" / "data"))
+    ap.add_argument("--out", default=str(ROOT / "archive" / "v3_2" / "data"))
     ap.add_argument("--seed", type=int, default=20261006)
     ap.add_argument("--specs", default="4096:400,8192:200,16384:80,32768:30")
     ap.add_argument("--identity-frac", default="0.50,0.30,0.20,0.10")
@@ -150,7 +150,7 @@ def main() -> None:
     ap.add_argument("--chat-jsonl", action="append", default=[],
                     help="对话来源 jsonl（可重复给多个）；给了就现场过滤（去掉含 Qwen/微调 的样本）"
                          "后打包，否则用 v3 已打包的 sft8192（注意后者 98% 带旧身份）")
-    ap.add_argument("--retr-dir", default=str(ROOT / "v3_1d" / "data"),
+    ap.add_argument("--retr-dir", default=str(ROOT / "archive" / "v3_1d" / "data"),
                     help="检索数据目录（含 retr{L}_ids.npy / retr{L}_mask.npy）")
     ap.add_argument("--mt-jsonl", default="",
                     help="多轮对话数据（messages 格式）；会按 --mt-repeat 倍重复混入对话池")
@@ -171,8 +171,8 @@ def main() -> None:
     specs = [(int(a), int(b)) for a, b in (s.split(":") for s in args.specs.split(","))]
     id_fracs = [float(x) for x in args.identity_frac.split(",")]
     ch_fracs = [float(x) for x in args.chat_frac.split(",")]
-    chat_ids = np.load(ROOT / "v3" / "data" / "sft8192_ids.npy", mmap_mode="r")
-    chat_mask = np.load(ROOT / "v3" / "data" / "sft8192_mask.npy", mmap_mode="r")
+    chat_ids = np.load(ROOT / "archive" / "v3" / "data" / "sft8192_ids.npy", mmap_mode="r")
+    chat_mask = np.load(ROOT / "archive" / "v3" / "data" / "sft8192_mask.npy", mmap_mode="r")
     clean_pool: dict[int, list] = {}
     mt_convs = []
     mt_fracs = [float(x) for x in args.mt_frac.split(",")] if args.mt_frac else []

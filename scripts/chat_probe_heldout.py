@@ -7,7 +7,7 @@
 输出 JSON + 控制台摘要，可对多个模型跑同一套题做横向比较。
 
 用法：
-    python scripts/chat_probe_heldout.py --model v3_14\\pc2 --out eval/heldout_v3_14pc2.json
+    python scripts/chat_probe_heldout.py --model archive/v3_14\\pc2 --out eval/heldout_v3_14pc2.json
 """
 import argparse
 import json

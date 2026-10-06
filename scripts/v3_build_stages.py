@@ -16,7 +16,7 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from paths import ROOT  # noqa: E402
 STREAM = ROOT / "v2" / "pretrain_ids_v3.npy"
-OUT = ROOT / "v3" / "data"
+OUT = ROOT / "archive" / "v3" / "data"
 
 # (name, seq len, token budget) -- budget halves-ish as the context doubles
 STAGES = [

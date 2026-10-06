@@ -1,7 +1,7 @@
 """多轮对话测试：按给定话题顺序连续聊，检查模型会不会"复读自己上一轮的话"。
 
 用法：
-    python scripts/chat_multi.py --model v3_4\\release --turns "你是谁？;你可以干什么;我很高兴;我很伤心;我很难过"
+    python scripts/chat_multi.py --model archive/v3_4\\release --turns "你是谁？;你可以干什么;我很高兴;我很伤心;我很难过"
 可选：--rep 1.25（重复惩罚，默认 1.0 = 关闭，模拟 llama-cli 的默认行为）、--temp 0.0
 """
 import argparse

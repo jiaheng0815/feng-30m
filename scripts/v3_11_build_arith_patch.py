@@ -12,7 +12,7 @@
 再混入日常补丁与旧 drill 采样做锚点，防止低 lr 微调把别的能力带跑。
 
 用法：
-    python scripts/v3_11_build_arith_patch.py --out v3_11/arith_patch.jsonl
+    python scripts/v3_11_build_arith_patch.py --out archive/v3_11/arith_patch.jsonl
 """
 import argparse
 import json
@@ -72,12 +72,12 @@ def load_jsonl(path: Path, limit: int, rng: random.Random):
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=str(ROOT / "v3_11" / "arith_patch.jsonl"))
+    ap.add_argument("--out", default=str(ROOT / "archive" / "v3_11" / "arith_patch.jsonl"))
     ap.add_argument("--repeat", type=int, default=3, help="完整网格重复次数")
     ap.add_argument("--boundary-extra", type=int, default=4, help="边界情况额外重复次数")
-    ap.add_argument("--base", default=str(ROOT / "v3_6a" / "daily_patch.jsonl"),
+    ap.add_argument("--base", default=str(ROOT / "archive" / "v3_6a" / "daily_patch.jsonl"),
                     help="日常补丁锚点")
-    ap.add_argument("--drill", default=str(ROOT / "v3_6e" / "drill.jsonl"),
+    ap.add_argument("--drill", default=str(ROOT / "archive" / "v3_6e" / "drill.jsonl"),
                     help="旧 drill 采样锚点（保住已学会的非负减法/乘法）")
     ap.add_argument("--drill-limit", type=int, default=1200)
     ap.add_argument("--keep-emotion-anchors", action="store_true",

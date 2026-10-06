@@ -21,11 +21,11 @@
   → **v3.20 = 引擎全面升级（当前）：序列数数 tool + 统一采样器 + 全项目 C++23 迁移
   （零堆/无异常/RTTI）+ 体积优化（固件 304,192 B，比 C 版小 2.8 KB）+ 标准基准 9 任务（lm-eval）**。
 - v3.19 现状（**当前发布**）：
-  - PC `v3_19/pc4`：从 `v3_14/pc2` 出发，用 440 条定向教师数据（常识/列举/情绪/寒暄/推理/身份六类，
+  - PC `v3_19/pc4`：从 `archive/v3_14/pc2` 出发，用 440 条定向教师数据（常识/列举/情绪/寒暄/推理/身份六类，
     `scripts/v3_19_build_target_prompts.py`）+ 多轮/身份回放做**末 2 层 15 epoch** 微调；
     留出 30 题 **19/30**（strict-v4 判定；v3.14 = 16/30）、单类别检索 **110**（v3.14 = 108）、
     多类别 105（-2）、记忆 23/24（-1）、范围/身份/探针保持（`eval/v3_19pc4_*.json`）。
-  - 板端 `v3_19/board6`：在 `v3_16/board_p3` 上做 **Q4+q2 双 QAT（4 epoch / lr 6e-6）**；
+  - 板端 `v3_19/board6`：在 `archive/v3_16/board_p3` 上做 **Q4+q2 双 QAT（4 epoch / lr 6e-6）**；
     C++ 引擎矩阵 **27/27+4/4、召回 4/4、算术 21/21、pc_check MATCH**，HF 留出 **19/30**（v3.16 = 17）、
     记忆 24/24；实机 tool 13/13、记忆 12/12、7 轮换名身份 7/7（`logs/pc_kv_suite32_v3_19b6_q2b8.txt`、
     `logs/board_v3_19b6_memory12.txt`、`logs/esp32_multi.txt`）。
@@ -38,7 +38,7 @@
     头条数字必须人工过一遍 `rows[].a`，推荐解码对照存 `eval/heldout2_*_rec.json`；
     留出 30 题已被多轮迭代用作开发集，只作版本对比，不当无偏泛化分数。
   - 别再用 v3.16 时代的"往身份数据加精确链"套路（p4–p7 已证明只是重排失败点）。
-- v3.16-embed（上一版板端权重，`v3_16/board_p3/`）：在 v3.15/board_ctxid4 上做
+- v3.16-embed（上一版板端权重，`archive/v3_16/board_p3/`）：在 archive/v3_15/board_ctxid4 上做
   **上下文双向问名**补丁（报名字后问身份/问名字、同类事实取新、记忆保护），lr 1.5e-6 × 1 epoch；
   板端 12 题记忆 10/12（**v3.17 引擎侧记忆 tool 上线后 12/12**）、6 轮报名字→问身份序列从 3/6 修到 5/6、tool 13/13、
   PC 32 题矩阵 27/27+4/4；新增多轮回归套件 `pc/pc_mt_suite.cpp`（残余见 CHANGELOG v3.16-embed 节）。
@@ -51,7 +51,7 @@
   却把失败换到别的次序（「你好呀→我叫丽丽→你叫什么名字」答"我叫丽丽"）、mem12 掉 1 分。
   p3–p7 五个版本都只是重排失败点——**多轮"你我/事实"分辨不要再靠加数据解决**，
   要提升就得换更大的模型或改架构（见 `CHANGELOG.md` v3.16-embed 附录）。
-- v3.15-embed（历史，`v3_15/board_ctxid4/`）：在 v3.14/board6 上做
+- v3.15-embed（历史，`archive/v3_15/board_ctxid4/`）：在 archive/v3_14/board6 上做
   「闲聊前缀 + 身份问答」锚点（`scripts/v3_15_build_identity_ctx.py`）+ 召回 ×8、lr 3e-6 × 1 epoch、
   继续双 QAT；修掉多轮里「你叫什么名字 → 你叫小模型/小王子」的漂移
   （7 组前缀 6 组完全正确），矩阵 **27/27+4/4**、算术 21/21、记忆 10/12、工具 8/8 全部保持。
@@ -68,19 +68,19 @@
     重学解除）；只覆盖可枚举句式（C 单测 69 项）。**工具顺序：记忆要在时间之前**（"我的生日是几号？"）；
     板端 0.5s 秒回；PC C++ 引擎 `pc/pc_chat.cpp` 与 Python `scripts/runtime_tools.py` 同口径；
   - **训练数据不再含纯算式**（`scripts/v3_14_build_noarith_mix.py` 用 tool 识别器过滤）；
-  - PC `v3_14/pc2/`：记忆 24/24、范围 10/10、探针 42/42、身份 12/12、单类别 108、多类别 107；
-  - 板端 `v3_14/board6/`：q2 矩阵 27/27+4/4、工具 8/8、默认/情绪 10/10、记忆 12 题 10/12、1.80 tok/s；
+  - PC `archive/v3_14/pc2/`：记忆 24/24、范围 10/10、探针 42/42、身份 12/12、单类别 108、多类别 107；
+  - 板端 `archive/v3_14/board6/`：q2 矩阵 27/27+4/4、工具 8/8、默认/情绪 10/10、记忆 12 题 10/12、1.80 tok/s；
   - **GGUF 发行取消**：llama.cpp 路径没有 tool，Release 只发 hf + esp32。
 - v3.13（历史）：
-  - PC `v3_13/mem_pc3/`：单类别 28/29/29/27 = **113/128（并列历史最高）**、多类别 108，
+  - PC `archive/v3_13/mem_pc3/`：单类别 28/29/29/27 = **113/128（并列历史最高）**、多类别 108，
     算术 274/281、**记忆 21/24（v3.12 只有 5/24）**、范围 10/10、探针 42/42（0 未命中）、
     身份 12/12、多轮 1.00；
-    - 板端 `v3_15/board_ctxid4/`：q2/2048 矩阵 **27/27 + 4/4**、算术子集 **21/21**、
+    - 板端 `archive/v3_15/board_ctxid4/`：q2/2048 矩阵 **27/27 + 4/4**、算术子集 **21/21**、
     板端 默认/情绪/工具 **10/10 ｜ 10/10 ｜ 8/8**、跨轮记忆 10/12、1.80 tok/s；
   - **固件（main.cpp）默认多轮上下文**：KV 跨轮累积、`\reset` 清空、写满自动开新对话；
     `scripts/esp32_multi.py` 默认每题前 `\reset`（独立探针口径），`--no-reset` 测连续对话。
-- v3.12（PC 上一版，`v3_12/arith2l3/`）：算术 275/281、单类别 110、探针 42/42、记忆 5/24。
-- v3.11（板端上一版，`v3_11/pol8/`）：q2 矩阵 27/27+4/4、算术子集 21/21、板端 30/30、1.81 tok/s；
+- v3.12（PC 上一版，`archive/v3_12/arith2l3/`）：算术 275/281、单类别 110、探针 42/42、记忆 5/24。
+- v3.11（板端上一版，`archive/v3_11/pol8/`）：q2 矩阵 27/27+4/4、算术子集 21/21、板端 30/30、1.81 tok/s；
   关键技巧是 **Q4 权重/q2 KV 双 QAT**（`v3_7_kv_qat.py --wqat`），量化抗性对权重回插极敏感
   （掺 20% v3.9 权重就掉到 25/27），PC 32k 弱。
 - **PC 用 v3.19（`v3_19/pc4`）；板端用 v3.19-embed 权重（`v3_19/board6`）；两边同一套
@@ -126,22 +126,18 @@
 |---|---|
 | `student/` | **v1** 产物（8 层 / 32k 词表）：`student/final/`、`student/feng-30m-chat/`、`student/feng-30m-32k/`、各训练阶段 |
 | `v2/` | **v2** 产物：`v2/stage_planA3b/final/`（SFT 对照版）、`v2/gguf_planA3b/`、16k 分词器 `v2/tokenizer/`、预训练数据 |
-| `v3/`、`v3_5*/`、`v3_6*/` | v3 及其后续各轮训练记录（历史版本，含 v3.5/v3.6 的补丁链与失败尝试） |
-| `v3_7/`…`v3_9/` | v3.7（旧板端）、v3.8、v3.9（PC 上一版，`v3_9/release/`）的训练与评测产物 |
-| `v3_10/` | v3.10 板端中间版（`v3_10/qat_pol3/`），另有 cand1/m8k 等未采用实验 |
-| `v3_11/` | v3.11 板端权重（算术边界 + Q4 权重/q2 KV 双 QAT） |
-| `v3_12/` | v3.12 PC 权重（末层算术微调：275/281 + 单类别 110） |
-| `v3_13/` | v3.13 记忆版权重（PC `v3_13/mem_pc3/` + 板端 `v3_13/mem_board/`） |
-| `v3_14/` | 历史 PC 发布 `v3_14/pc2/` + 板端 v3.14 版 `v3_14/board6/`；数据不入库 |
-| `v3_15/` | v3.15-embed（历史，`v3_15/board_ctxid4/` 上下文身份锚点版）；数据 `identity_ctx*.jsonl` 不入库 |
-| `v3_16/` | 上一版板端权重 `v3_16/board_p3/`（v3.16-embed）+ p1/p2/p4–p7 实验（代价见 CHANGELOG）；补丁数据不入库 |
 | `v3_19/` | **当前发布权重**：PC `v3_19/pc4/`、板端 `v3_19/board6/` + board1–5 实验；定向数据与训练日志见 `data/`、`logs/`（不入库） |
+| `archive/` | **v3 历史版本目录**（v3.0→v3.18 共 58 个，2026-10 从根目录移入）：`archive/v3/` 是三代中的 v3 世代（v3.0 链条）；`archive/v3_1*/`…`archive/v3_6*/` 早期实验与 v3.5/v3.6 补丁链；`archive/v3_7/`…`archive/v3_16/` 板端 QAT / tool / 检索各版（含 `archive/v3_9/release/`、`archive/v3_14/pc2/`、`archive/v3_16/board_p3/`）；`archive/v3_18/` 身份语句实验 |
 | `data/` | v1 提示词集 / 教师蒸馏数据 / 公开语料的位置（**本机已随 v1 归档清理**；重建需自行下载） |
 | `scripts/` | 全部数据构建 / 训练 / 评测 / 导出脚本（87 个 .py，含 `scripts/paths.py` 与 `scripts/bench_standard.py` 基准入口） |
 | `eval/` | 评测结果 JSON（范围 / 针检索 / 记忆 / 留出 / `lm_eval_*.json` 标准基准）与 `eval/lm_eval_tasks/` 任务定义 |
 | `logs/` | 所有构建 / 训练 / 烧录 / 板上测试日志；`board_baseline_lut.txt` 是板上精度基线 |
 | `esp32s3-feng-llm/` | ESP32 固件工程 + 可移植 C++23 推理引擎 + PC 端一致性检查与回归套件 |
 | `tools/check_md.py`、`tools/check_docs.py` | 文档自检：前者查围栏/路径/过时表述，后者把**全部 9 个 md 的关键数字与实际产物对齐**（参数量、GGUF 体积与 chat template、v3.6 探针/检索分数、范围评测、检索 loss） |
+
+> **归档说明**：v3 历史版本自 2026-10 起位于 `archive/`（`v3_19/`、`v3_21/` 留在根目录）。
+> CHANGELOG 正文保留撰写当时的历史路径原文，**`v3_x/…` 一律对应 `archive/v3_x/…`**；
+> 其余文档、脚本与 `tools/check_*.py` 已更新为 `archive/` 前缀。
 
 ## 4. 工作约定
 
@@ -212,39 +208,39 @@ python scripts\v2_train.py --stage pretrain --out v2\stage_pre --lr 3e-3
 python scripts\v2_train.py --stage sft --model v2\stage_pre\final --out v2\stage_sft
 
 # v3.11 板端版（算术边界 + Q4 权重/q2 KV 双 QAT；完整命令见 CHANGELOG v3.11 节）
-python scripts\v3_7_kv_qat.py --init v3_9\stockfix2 --data v3_7\qat_data.jsonl `
-  --mt v3_5d\mt_convs.jsonl --mt-n 280 --identity-n 150 --out v3_10\qat_a `
-  --epochs 3 --lr 3e-5 --retr v3_8\retr --retr-n "4096:200:2,8192:60:1" --retr-lr 1e-5
+python scripts\v3_7_kv_qat.py --init archive/v3_9\stockfix2 --data archive/v3_7\qat_data.jsonl `
+  --mt archive/v3_5d\mt_convs.jsonl --mt-n 280 --identity-n 150 --out archive/v3_10\qat_a `
+  --epochs 3 --lr 3e-5 --retr archive/v3_8\retr --retr-n "4096:200:2,8192:60:1" --retr-lr 1e-5
 # 算术边界 + 双 QAT（发布版 pol8）
-python scripts\v3_11_build_arith_patch.py --out v3_11\arith_patch2.jsonl
-python scripts\v3_7_kv_qat.py --init v3_11\pol7 --data v3_11\arith_repair.jsonl `
-  --identity-n 100 --out v3_11\pol8 --epochs 2 --lr 8e-6 --batch 24 --max-len 1024 --wqat
+python scripts\v3_11_build_arith_patch.py --out archive/v3_11\arith_patch2.jsonl
+python scripts\v3_7_kv_qat.py --init archive/v3_11\pol7 --data archive/v3_11\arith_repair.jsonl `
+  --identity-n 100 --out archive/v3_11\pol8 --epochs 2 --lr 8e-6 --batch 24 --max-len 1024 --wqat
 
 # v3.12 PC 版（同一套算术数据走末层微调，完整命令见 CHANGELOG v3.12 节）
-python scripts\v3_6_sft_patch.py --init v3_9\stockfix2 --patch v3_11\arith_repair.jsonl `
-  --mt v3_5d\mt_convs.jsonl --mt-n 150 --identity-n 80 --out v3_12\arith2l `
+python scripts\v3_6_sft_patch.py --init archive/v3_9\stockfix2 --patch archive/v3_11\arith_repair.jsonl `
+  --mt archive/v3_5d\mt_convs.jsonl --mt-n 150 --identity-n 80 --out archive/v3_12\arith2l `
   --epochs 3 --lr 3e-5 --train-last 2
-python scripts\v3_6_sft_patch.py --init v3_12\arith2l --patch v3_12\pcfix2.jsonl `
-  --mt v3_5d\mt_convs.jsonl --mt-n 100 --identity-n 80 --out v3_12\arith2l3 `
+python scripts\v3_6_sft_patch.py --init archive/v3_12\arith2l --patch archive/v3_12\pcfix2.jsonl `
+  --mt archive/v3_5d\mt_convs.jsonl --mt-n 100 --identity-n 80 --out archive/v3_12\arith2l3 `
   --epochs 4 --lr 1.5e-5 --train-last 2
 
 # v3.13 记忆版（PC 末层微调 + 板端双 QAT；混训数据见 CHANGELOG v3.13 节）
-python scripts\v3_13_build_memory.py --out v3_13\memory.jsonl
-python scripts\v3_6_sft_patch.py --init v3_12\arith2l3 --patch v3_13\mem_mix2.jsonl `
-  --mt v3_5d\mt_convs.jsonl --mt-n 300 --identity-n 80 --out v3_13\mem_pc3 `
+python scripts\v3_13_build_memory.py --out archive/v3_13\memory.jsonl
+python scripts\v3_6_sft_patch.py --init archive/v3_12\arith2l3 --patch archive/v3_13\mem_mix2.jsonl `
+  --mt archive/v3_5d\mt_convs.jsonl --mt-n 300 --identity-n 80 --out archive/v3_13\mem_pc3 `
   --epochs 2 --lr 1.2e-5 --train-last 2
-python scripts\v3_7_kv_qat.py --init v3_11\pol8 --data v3_13\mem_mix2.jsonl `
-  --identity-n 80 --out v3_13\mem_board --epochs 2 --lr 8e-6 --batch 24 --max-len 1024 --wqat
+python scripts\v3_7_kv_qat.py --init archive/v3_11\pol8 --data archive/v3_13\mem_mix2.jsonl `
+  --identity-n 80 --out archive/v3_13\mem_board --epochs 2 --lr 8e-6 --batch 24 --max-len 1024 --wqat
 
 # v3.14 tool 版（无算术混训；tool 在 C++ 引擎里）
-python scripts\v3_14_build_noarith_mix.py --out v3_14\noarith_mix.jsonl
-python scripts\v3_6_sft_patch.py --init v3_9\stockfix2 --patch v3_14\noarith_mix2.jsonl `
-  --mt v3_5d\mt_convs.jsonl --mt-n 300 --identity-n 80 --out v3_14\pc2 `
+python scripts\v3_14_build_noarith_mix.py --out archive/v3_14\noarith_mix.jsonl
+python scripts\v3_6_sft_patch.py --init archive/v3_9\stockfix2 --patch archive/v3_14\noarith_mix2.jsonl `
+  --mt archive/v3_5d\mt_convs.jsonl --mt-n 300 --identity-n 80 --out archive/v3_14\pc2 `
   --epochs 2 --lr 1.2e-5 --train-last 2
-python scripts\v3_7_kv_qat.py --init v3_11\pol8 --data v3_14\noarith_mix2.jsonl `
-  --identity-n 80 --out v3_14\board --epochs 3 --lr 1e-5 --batch 24 --max-len 1024 --wqat
-python scripts\v3_7_kv_qat.py --init v3_14\board --data v3_14\board_memfix.jsonl `
-  --identity-n 80 --out v3_14\board6 --epochs 2 --lr 4e-6 --batch 24 --max-len 2048 --wqat
+python scripts\v3_7_kv_qat.py --init archive/v3_11\pol8 --data archive/v3_14\noarith_mix2.jsonl `
+  --identity-n 80 --out archive/v3_14\board --epochs 3 --lr 1e-5 --batch 24 --max-len 1024 --wqat
+python scripts\v3_7_kv_qat.py --init archive/v3_14\board --data archive/v3_14\board_memfix.jsonl `
+  --identity-n 80 --out archive/v3_14\board6 --epochs 2 --lr 4e-6 --batch 24 --max-len 2048 --wqat
 
 # PC C++23 引擎运行时（务必带 feng_calc.cpp + feng_tools.cpp + feng_memory.cpp + feng_sample.cpp）
 g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc_chat_q2b8.exe pc_chat.cpp `
@@ -257,12 +253,12 @@ g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -DFENG_KV_Q
 评测与导出：
 
 ```powershell
-python scripts\eval_planA_scope.py v3_9\stockfix2 eval\v3_9_scope_sf2.json
-python scripts\eval_longctx_many.py --models "v3_9sf2=v3_9/stockfix2" --n 32 --neg-n 16
-python scripts\chat_probe.py --model v3_10\qat_pol3 --out eval\chat_probe_v3_10p3.json
-python scripts\chat_multi.py --model v3_10\qat_pol3    # 多轮坍缩检查
-python scripts\chat_student.py --model v3_10\qat_pol3 --prompt "你是谁？"
-python scripts\export_student_gguf.py --model v3_10\qat_pol3 --out-dir v3_10\gguf
+python scripts\eval_planA_scope.py archive/v3_9\stockfix2 eval\v3_9_scope_sf2.json
+python scripts\eval_longctx_many.py --models "v3_9sf2=archive/v3_9/stockfix2" --n 32 --neg-n 16
+python scripts\chat_probe.py --model archive/v3_10\qat_pol3 --out eval\chat_probe_v3_10p3.json
+python scripts\chat_multi.py --model archive/v3_10\qat_pol3    # 多轮坍缩检查
+python scripts\chat_student.py --model archive/v3_10\qat_pol3 --prompt "你是谁？"
+python scripts\export_student_gguf.py --model archive/v3_10\qat_pol3 --out-dir archive/v3_10\gguf
 ```
 
 ESP32 固件（在 `esp32s3-feng-llm\` 下）：

@@ -92,7 +92,7 @@ TOPIC_CHAIN = [
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=str(ROOT / "v3_5b" / "mt_convs.jsonl"))
+    ap.add_argument("--out", default=str(ROOT / "archive" / "v3_5b" / "mt_convs.jsonl"))
     ap.add_argument("--seed", type=int, default=20261011)
     ap.add_argument("--n", type=int, default=2000, help="组合生成的多轮对话条数")
     args = ap.parse_args()

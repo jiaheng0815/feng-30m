@@ -16,7 +16,7 @@
   2) 续写一致性（与 fp32 的 token 序列首个分歧位置）
 
 用法：
-  python scripts/kv_quant_experiment.py --model v3_6\\release [--ctx-chars 600,2400,4800] [--schemes ...]
+  python scripts/kv_quant_experiment.py --model archive/v3_6\\release [--ctx-chars 600,2400,4800] [--schemes ...]
 """
 import argparse
 import json
@@ -207,7 +207,7 @@ def needle_prompt(n_chars: int, pos_frac: float, code: str) -> str:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", default=str(ROOT / "v3_6" / "release"))
+    ap.add_argument("--model", default=str(ROOT / "archive" / "v3_6" / "release"))
     ap.add_argument("--schemes", default="fp32,int8,sym2b16,asym2b16,asym2b8,q3b16,kivi32,kivi128,k8v2,k2v8")
     ap.add_argument("--ctx-chars", default="600,2400,4800")
     ap.add_argument("--out", default=str(ROOT / "eval" / "kv_quant_experiment.json"))

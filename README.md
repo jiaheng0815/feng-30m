@@ -263,7 +263,9 @@ CI（GitHub Actions，每次 push/PR）跑 9 步，全部在**干净 clone** 上
 ```
 scripts/            数据构建 / 训练 / 评测 / 导出脚本（路径解析见 scripts/paths.py）
 esp32s3-feng-llm/   ESP32 固件 + 可移植 C++23 推理引擎 + PC 端一致性检查
-student/ v2/ v3/    三代模型的训练记录（summary.json / train_log.jsonl / config.json / 分词器）
+v3_19/              当前发布权重（PC pc4 / 板端 board6）
+archive/            v3 历史版本目录（v3.1→v3.18 共 57 个，2026-10 从根目录归档）
+student/ v2/ archive/v3/   三代模型的训练记录（v1 / v2 / v3 世代；summary.json / config.json 等）
 eval/               评测结果 JSON（范围、针检索、记忆、标准基准）
 logs/               构建 / 训练 / 烧录 / 板上测试日志（board_baseline_lut.txt 是板上精度基线）
 tools/check_md.py   文档自检（代码围栏、路径、过时数字）

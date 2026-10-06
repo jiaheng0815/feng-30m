@@ -8,9 +8,9 @@
 评估/导出时不挂 hook，所以 fp32/int8 路径不受影响；q2 板上路径的鲁棒性来自训练。
 
 用法：
-  python scripts/v3_7_kv_qat.py --init v3_6r\\final\\ctx32768\\final \
-      --data v3_7\\qat_data.jsonl --mt v3_5d\\mt_convs.jsonl \
-      --out v3_7\\final --epochs 3 --lr 3e-5
+  python scripts/v3_7_kv_qat.py --init archive/v3_6r\\final\\ctx32768\\final \
+      --data archive/v3_7\\qat_data.jsonl --mt archive/v3_5d\\mt_convs.jsonl \
+      --out archive/v3_7\\final --epochs 3 --lr 3e-5
 """
 import argparse
 import math

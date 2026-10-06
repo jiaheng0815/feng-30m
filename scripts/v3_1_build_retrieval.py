@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from paths import ROOT  # noqa: E402
 
 STREAM = ROOT / "v2" / "pretrain_ids_v3.npy"      # v2 预训练 token 流（真实中文语料）
-OUT = ROOT / "v3_1" / "data"
+OUT = ROOT / "archive" / "v3_1" / "data"
 
 # 长度 → 样本数（v3.1b：短长度加权，修 4k/8k 回退）
 SPECS = [(4096, 2800), (8192, 1600), (16384, 700), (32768, 220)]

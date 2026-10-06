@@ -35,7 +35,7 @@ EOS_ID = 0
 MODELS = {
     "v1": "student/feng-30m-32k",
     "v2": "v2/stage_planA3b/final",
-    "v3": "v3/retr_sft/ctx32768/final",
+    "v3": "archive/v3/retr_sft/ctx32768/final",
 }
 
 

@@ -3,7 +3,7 @@
 覆盖 v3.6 drill 没训到的边界：结果为零的减法（a-a）、结果为负的减法（a<b）。
 
 用法：
-    python scripts/eval_arith.py --model v3_10\\qat_pol3 [--out eval/arith.json]
+    python scripts/eval_arith.py --model archive/v3_10\\qat_pol3 [--out eval/arith.json]
 """
 import argparse
 import json

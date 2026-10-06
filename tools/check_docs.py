@@ -88,7 +88,7 @@ def check_structure() -> None:
                 continue
             probes = [ROOT, ROOT / "esp32s3-feng-llm", ROOT.parent, doc.parent]
             if "*" in cand or "?" in cand:
-                # 通配写法（如 v3/retr_sft/ctx*/final/）：至少要能匹配到真实路径
+                # 通配写法（如 archive/v3/retr_sft/ctx*/final/）：至少要能匹配到真实路径
                 hit = any(len(list(base.glob(cand))) > 0 for base in probes)
             else:
                 hit = any((base / cand).exists() for base in probes)
@@ -116,7 +116,7 @@ def check_facts() -> None:
 
     # --- 参数量与结构：文档声称 vs config.json ---
     specs = {
-        "v3": (ROOT / "v3" / "retr_sft" / "ctx32768" / "final", 29.43, "11 层", 32768),
+        "v3": (ROOT / "archive" / "v3" / "retr_sft" / "ctx32768" / "final", 29.43, "11 层", 32768),
         "v1": (ROOT / "student" / "feng-30m-chat", 30.75, "8 层", 8192),
     }
     for name, (d, want_m, want_layers, want_ctx) in specs.items():
@@ -139,16 +139,16 @@ def check_facts() -> None:
     gguf_expect = {"feng-30m-Q4_K_M.gguf": 23.7, "feng-30m-Q8_0.gguf": 30.5,
                    "feng-30m-f16.gguf": 56.8}
     for fname, want_mb in gguf_expect.items():
-        f = ROOT / "v3" / "gguf" / fname
+        f = ROOT / "archive" / "v3" / "gguf" / fname
         if not f.exists():
-            warn.append(f"v3/gguf/{fname} 不存在（本地未导出？），跳过")
+            warn.append(f"archive/v3/gguf/{fname} 不存在（本地未导出？），跳过")
             continue
         got_mb = f.stat().st_size / 1024 ** 2
         if abs(got_mb - want_mb) > 0.5:
-            fail.append(f"v3/gguf/{fname}: 实测 {got_mb:.1f} MB != 文档 {want_mb} MB")
+            fail.append(f"archive/v3/gguf/{fname}: 实测 {got_mb:.1f} MB != 文档 {want_mb} MB")
         blob = f.read_bytes()
         if b"tokenizer.chat_template" not in blob:
-            fail.append(f"v3/gguf/{fname}: 未内嵌 chat template（文档声称已内嵌）")
+            fail.append(f"archive/v3/gguf/{fname}: 未内嵌 chat template（文档声称已内嵌）")
     print(f"    已校验 {len(gguf_expect)} 个 GGUF（体积 + chat template）")
 
     # --- 评测数字：以 eval/*.json 为唯一真值 ---
@@ -173,8 +173,8 @@ def check_facts() -> None:
             if got != "3/3、3/3、2/3、2/3":
                 fail.append(f"{doc.relative_to(ROOT)}: 针检索写法 {got} 与真值不符")
 
-    # --- 检索 SFT 的 loss 序列必须与 v3/retr_sft/summary.json 一致 ---
-    retr = json.loads((ROOT / "v3" / "retr_sft" / "summary.json").read_text(encoding="utf-8"))
+    # --- 检索 SFT 的 loss 序列必须与 archive/v3/retr_sft/summary.json 一致 ---
+    retr = json.loads((ROOT / "archive" / "v3" / "retr_sft" / "summary.json").read_text(encoding="utf-8"))
     want_loss = [f"{r['loss']:.2f}" for r in retr]          # ['0.76', '0.43', '0.22', '0.33']
 
     # --- v3.6：日常对话探针与针检索真值 ---
@@ -233,15 +233,15 @@ def check_facts() -> None:
     gguf6 = {"feng-30m-Q4_K_M.gguf": 23.7, "feng-30m-Q8_0.gguf": 30.5,
              "feng-30m-f16.gguf": 56.8}
     for fname, want_mb in gguf6.items():
-        f = ROOT / "v3_6" / "gguf" / fname
+        f = ROOT / "archive" / "v3_6" / "gguf" / fname
         if not f.exists():
-            warn.append(f"v3_6/gguf/{fname} 不存在（本地未导出？），跳过")
+            warn.append(f"archive/v3_6/gguf/{fname} 不存在（本地未导出？），跳过")
             continue
         got_mb = f.stat().st_size / 1024 ** 2
         if abs(got_mb - want_mb) > 0.5:
-            fail.append(f"v3_6/gguf/{fname}: 实测 {got_mb:.1f} MB != 文档 {want_mb} MB")
+            fail.append(f"archive/v3_6/gguf/{fname}: 实测 {got_mb:.1f} MB != 文档 {want_mb} MB")
         if b"tokenizer.chat_template" not in f.read_bytes():
-            fail.append(f"v3_6/gguf/{fname}: 未内嵌 chat template")
+            fail.append(f"archive/v3_6/gguf/{fname}: 未内嵌 chat template")
     print("    已校验 v3.6 GGUF（体积 + chat template）")
 
     # --- v3.7：嵌入式 32 题矩阵 + 范围评测 + 检索口径 ---
@@ -279,13 +279,13 @@ def check_facts() -> None:
             print("    v3.7 范围评测 10/10（与文档一致）")
     for fname, want_mb in {"feng-30m-Q4_K_M.gguf": 23.7, "feng-30m-Q8_0.gguf": 30.5,
                            "feng-30m-f16.gguf": 56.8}.items():
-        f = ROOT / "v3_7" / "gguf" / fname
+        f = ROOT / "archive" / "v3_7" / "gguf" / fname
         if not f.exists():
-            warn.append(f"v3_7/gguf/{fname} 不存在，跳过")
+            warn.append(f"archive/v3_7/gguf/{fname} 不存在，跳过")
             continue
         got_mb = f.stat().st_size / 1024 ** 2
         if abs(got_mb - want_mb) > 0.5 or b"tokenizer.chat_template" not in f.read_bytes():
-            fail.append(f"v3_7/gguf/{fname}: 体积/模板与文档不一致")
+            fail.append(f"archive/v3_7/gguf/{fname}: 体积/模板与文档不一致")
     print("    已校验 v3.7 GGUF（体积 + chat template）")
 
     # --- v3.8：上下文专项（单/多类别、拒答、对话），真值来自 eval/*.json ---
@@ -323,9 +323,9 @@ def check_facts() -> None:
             fail.append(f"eval/{scope8.name}: 范围评测 {got}/10 != 文档 8/10")
         else:
             print("    v3.8 范围评测 8/10（与文档一致）")
-    for f in (ROOT / "v3_8" / "gguf").glob("*.gguf"):
+    for f in (ROOT / "archive" / "v3_8" / "gguf").glob("*.gguf"):
         if b"tokenizer.chat_template" not in f.read_bytes():
-            fail.append(f"v3_8/gguf/{f.name}: 未内嵌 chat template")
+            fail.append(f"archive/v3_8/gguf/{f.name}: 未内嵌 chat template")
 
     # --- v3.9：末层微调后的范围 10/10 + 上下文保持 ---
     scope9 = ROOT / "eval" / "v3_9_scope_sf2.json"
@@ -357,9 +357,9 @@ def check_facts() -> None:
             fail.append(f"eval/{probe9.name}: {len(rows)-miss}/42，文档声称 42/42")
         else:
             print("    v3.9 日常探针 42/42（与文档一致）")
-    for f in (ROOT / "v3_9" / "gguf").glob("*.gguf"):
+    for f in (ROOT / "archive" / "v3_9" / "gguf").glob("*.gguf"):
         if b"tokenizer.chat_template" not in f.read_bytes():
-            fail.append(f"v3_9/gguf/{f.name}: 未内嵌 chat template")
+            fail.append(f"archive/v3_9/gguf/{f.name}: 未内嵌 chat template")
 
     # --- v3.10：板端版（v3.9 底座 + q2 KV-QAT + 日常回补） ---
     scope10 = ROOT / "eval" / "v3_10p3_scope.json"
@@ -420,9 +420,9 @@ def check_facts() -> None:
             fail.append(f"logs/{fname}: 未记录 10/10 成功")
         else:
             print(f"    v3.10 板端 {fname} 10/10（与文档一致）")
-    for f in (ROOT / "v3_10" / "gguf").glob("*.gguf"):
+    for f in (ROOT / "archive" / "v3_10" / "gguf").glob("*.gguf"):
         if b"tokenizer.chat_template" not in f.read_bytes():
-            fail.append(f"v3_10/gguf/{f.name}: 未内嵌 chat template")
+            fail.append(f"archive/v3_10/gguf/{f.name}: 未内嵌 chat template")
 
     # --- v3.11：板端当前版（算术边界 + Q4 权重/q2 KV 双 QAT） ---
     arith11 = ROOT / "eval" / "arith_v3_11pol8.json"
@@ -507,9 +507,9 @@ def check_facts() -> None:
             fail.append(f"logs/{fname}: 未记录 10/10 成功")
         else:
             print(f"    v3.11 板端 {fname} 10/10（与文档一致）")
-    for f in (ROOT / "v3_11" / "gguf").glob("*.gguf"):
+    for f in (ROOT / "archive" / "v3_11" / "gguf").glob("*.gguf"):
         if b"tokenizer.chat_template" not in f.read_bytes():
-            fail.append(f"v3_11/gguf/{f.name}: 未内嵌 chat template")
+            fail.append(f"archive/v3_11/gguf/{f.name}: 未内嵌 chat template")
 
     # --- v3.12：PC 当前版（末层算术微调） ---
     arith12 = ROOT / "eval" / "arith_v3_12a2l3.json"
@@ -564,9 +564,9 @@ def check_facts() -> None:
             fail.append(f"eval/{ident12.name}: 身份 {d.get('score')} != 文档 12/12")
         else:
             print("    v3.12 身份 12/12（与文档一致）")
-    for f in (ROOT / "v3_12" / "gguf").glob("*.gguf"):
+    for f in (ROOT / "archive" / "v3_12" / "gguf").glob("*.gguf"):
         if b"tokenizer.chat_template" not in f.read_bytes():
-            fail.append(f"v3_12/gguf/{f.name}: 未内嵌 chat template")
+            fail.append(f"archive/v3_12/gguf/{f.name}: 未内嵌 chat template")
 
     # --- v3.13：记忆版（PC + 板端两套权重） ---
     mem13 = ROOT / "eval" / "memory_v3_13pc3.json"
@@ -667,9 +667,9 @@ def check_facts() -> None:
     else:
         warn.append("logs/board_v3_13b_memory.txt 不存在，跳过 v3.13 记忆校验")
     for d in ("gguf_pc", "gguf_board"):
-        for f in (ROOT / "v3_13" / d).glob("*.gguf"):
+        for f in (ROOT / "archive" / "v3_13" / d).glob("*.gguf"):
             if b"tokenizer.chat_template" not in f.read_bytes():
-                fail.append(f"v3_13/{d}/{f.name}: 未内嵌 chat template")
+                fail.append(f"archive/v3_13/{d}/{f.name}: 未内嵌 chat template")
 
     # --- v3.14：tool 版（算术/时间/随机数交给 C 引擎；GGUF 取消发行） ---
     mem14 = ROOT / "eval" / "memory_v3_14pc2.json"

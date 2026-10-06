@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from student_utils import chunked_lm_loss  # noqa: E402
 
 from paths import ROOT  # noqa: E402
-V3 = ROOT / "v3"
+V3 = ROOT / "archive" / "v3"
 ATTN = [SDPBackend.EFFICIENT_ATTENTION, SDPBackend.FLASH_ATTENTION]
 
 

@@ -12,7 +12,7 @@
 与多轮数据、身份数据、检索数据一起混训。输出 JSONL：
     {"messages": [{"role": "user", ...}, {"role": "assistant", ...}]}
 
-用法：python scripts/v3_6_build_daily_patch.py --out v3_6a\\daily_patch.jsonl
+用法：python scripts/v3_6_build_daily_patch.py --out archive/v3_6a\\daily_patch.jsonl
 """
 import argparse
 import json
@@ -330,7 +330,7 @@ def build() -> list[dict]:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=str(ROOT / "v3_6a" / "daily_patch.jsonl"))
+    ap.add_argument("--out", default=str(ROOT / "archive" / "v3_6a" / "daily_patch.jsonl"))
     args = ap.parse_args()
     rows = build()
     dest = Path(args.out)

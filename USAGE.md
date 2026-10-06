@@ -226,18 +226,18 @@ python scripts\v3_build_stages.py                                   # 渐进长�
 python scripts\v3_train.py                                          # 训练（从 v2 权重出发）
 python scripts\v3_pack_sft.py ; python scripts\v3_polish.py         # 8k 长上下文对话微调
 python scripts\v3_build_retrieval.py ; python scripts\v3_retrieval_sft.py   # 合成检索 SFT
-python scripts\eval_planA_scope.py v3\retr_sft\ctx32768\final eval\v3_scope.json
-python scripts\eval_longctx.py --model v3\retr_sft\ctx32768\final --ctx 4096,8192,16384,32768
+python scripts\eval_planA_scope.py archive/v3\retr_sft\ctx32768\final eval\v3_scope.json
+python scripts\eval_longctx.py --model archive/v3\retr_sft\ctx32768\final --ctx 4096,8192,16384,32768
 ```
 
 v3.5 / v3.6 及其后的补丁链条：
 
 ```powershell
-python scripts\v3_5_build_multiturn.py --out v3_5d\mt_convs.jsonl --n 2600     # 多轮对话数据
-python scripts\v3_6_build_daily_patch.py --out v3_6a\daily_patch.jsonl          # 592 条日常补丁
-python scripts\v3_6_build_drill.py --out v3_6e\drill.jsonl                      # 运算/细节打磨
-python scripts\v3_6_sft_patch.py --init <起点> --patch v3_6e\drill.jsonl `
-  --mt v3_5d\mt_convs.jsonl --mt-n 400 --identity-n 150 --out <输出> --epochs 8 --lr 1e-4
+python scripts\v3_5_build_multiturn.py --out archive/v3_5d\mt_convs.jsonl --n 2600     # 多轮对话数据
+python scripts\v3_6_build_daily_patch.py --out archive/v3_6a\daily_patch.jsonl          # 592 条日常补丁
+python scripts\v3_6_build_drill.py --out archive/v3_6e\drill.jsonl                      # 运算/细节打磨
+python scripts\v3_6_sft_patch.py --init <起点> --patch archive/v3_6e\drill.jsonl `
+  --mt archive/v3_5d\mt_convs.jsonl --mt-n 400 --identity-n 150 --out <输出> --epochs 8 --lr 1e-4
 python scripts\eval_longctx_many.py --models "<输出>" --n 32 --neg-n 16          # 检索回归
 ```
 

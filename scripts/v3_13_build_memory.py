@@ -6,7 +6,7 @@
 含单事实、多事实与干扰项，用于末层微调。
 
 用法：
-    python scripts/v3_13_build_memory.py --out v3_13/memory.jsonl
+    python scripts/v3_13_build_memory.py --out archive/v3_13/memory.jsonl
 """
 import argparse
 import json
@@ -70,7 +70,7 @@ def ack(rng, kind, v):
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=str(ROOT / "v3_13" / "memory.jsonl"))
+    ap.add_argument("--out", default=str(ROOT / "archive" / "v3_13" / "memory.jsonl"))
     ap.add_argument("--n", type=int, default=2400, help="单事实对话条数")
     ap.add_argument("--multi-n", type=int, default=800, help="多事实（含干扰）条数")
     ap.add_argument("--seed", type=int, default=20261005)

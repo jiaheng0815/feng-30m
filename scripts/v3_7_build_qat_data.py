@@ -9,7 +9,7 @@ KV-QAT 微调时除了注入量化噪声，还要让这些题在数据里足够�
       + 书影推荐 ×6
       + 太阳东升西落对比句 ×12
 
-用法：python scripts/v3_7_build_qat_data.py --out v3_7\\qat_data.jsonl
+用法：python scripts/v3_7_build_qat_data.py --out archive/v3_7\\qat_data.jsonl
 """
 import argparse
 import json
@@ -31,8 +31,8 @@ def conv(q: str, a: str) -> dict:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--base", default=str(ROOT / "v3_6a" / "daily_patch.jsonl"))
-    ap.add_argument("--out", default=str(ROOT / "v3_7" / "qat_data.jsonl"))
+    ap.add_argument("--base", default=str(ROOT / "archive" / "v3_6a" / "daily_patch.jsonl"))
+    ap.add_argument("--out", default=str(ROOT / "archive" / "v3_7" / "qat_data.jsonl"))
     ap.add_argument("--seed", type=int, default=20261004)
     args = ap.parse_args()
 

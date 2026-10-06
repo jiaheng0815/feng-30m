@@ -1,7 +1,7 @@
 """多轮记忆评测：说一个事实 → 追问 → 看模型能不能复述。
 
 用法：
-    python scripts/eval_memory.py --model v3_13/mem_pc [--out eval/memory_v3_13.json]
+    python scripts/eval_memory.py --model archive/v3_13/mem_pc [--out eval/memory_v3_13.json]
 """
 import argparse
 import json

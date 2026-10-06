@@ -38,3 +38,7 @@ scripts/local_paths.json
 
 # ---- coder-auditor 运行时状态（任务文件 / 失败日志 / 验证输出）----
 .Codex/
+
+# ---- 归档例外：archive/v3/data 里 3 个历史元数据早于 data/ 规则入库，保持跟踪 ----
+# （必须重新包含目录本身，被排除目录下的文件无法单独 ! 例外；.npy 仍由上面的规则忽略）
+!archive/v3/data/

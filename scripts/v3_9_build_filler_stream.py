@@ -4,7 +4,7 @@
 训练检索数据改用真实语料填充——存在填充分布偏移。本脚本把评测同款 filler 重复成 token 流，
 让 16k 专项训练看到与评测一致的填充分布。
 
-用法：python scripts/v3_9_build_filler_stream.py --out v3_9/filler_eval.npy --tokens 4000000
+用法：python scripts/v3_9_build_filler_stream.py --out archive/v3_9/filler_eval.npy --tokens 4000000
 """
 import argparse
 import json
@@ -20,7 +20,7 @@ from paths import ROOT  # noqa: E402
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=str(ROOT / "v3_9" / "filler_eval.npy"))
+    ap.add_argument("--out", default=str(ROOT / "archive" / "v3_9" / "filler_eval.npy"))
     ap.add_argument("--tokens", type=int, default=4_000_000)
     ap.add_argument("--tokenizer", default=str(ROOT / "v2" / "tokenizer" / "tokenizer.json"))
     args = ap.parse_args()

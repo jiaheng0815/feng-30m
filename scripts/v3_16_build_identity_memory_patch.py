@@ -11,7 +11,7 @@
 generic_memory（保护）/ identity_anchor（保护），全部沿用 v3.15 的身份口径。
 
 用法：
-    python scripts/v3_16_build_identity_memory_patch.py --out v3_16/patch.jsonl
+    python scripts/v3_16_build_identity_memory_patch.py --out archive/v3_16/patch.jsonl
 """
 import argparse
 import json
@@ -110,8 +110,8 @@ def answer_for(kind, value):
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--base", default=str(ROOT / "v3_6a" / "daily_patch.jsonl"))
-    ap.add_argument("--out", default=str(ROOT / "v3_16" / "patch.jsonl"))
+    ap.add_argument("--base", default=str(ROOT / "archive" / "v3_6a" / "daily_patch.jsonl"))
+    ap.add_argument("--out", default=str(ROOT / "archive" / "v3_16" / "patch.jsonl"))
     ap.add_argument("--name-identity", type=int, default=500)
     ap.add_argument("--name-memory", type=int, default=300)
     ap.add_argument("--both-ways", type=int, default=0, help="同一对话里双向问名（防反向串名）")

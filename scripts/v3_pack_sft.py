@@ -21,7 +21,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tag", default="_planA2")
     ap.add_argument("--seq", type=int, default=8192)
-    ap.add_argument("--out", default=str(ROOT / "v3" / "data"))
+    ap.add_argument("--out", default=str(ROOT / "archive" / "v3" / "data"))
     args = ap.parse_args()
 
     ids = np.load(V2 / f"sft_ids{args.tag}.npy")

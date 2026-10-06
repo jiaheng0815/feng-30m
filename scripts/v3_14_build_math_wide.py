@@ -5,7 +5,7 @@
 （两位数是单 token）生成可学的训练分布。
 
 用法：
-    python scripts/v3_14_build_math_wide.py --out v3_14/math_wide.jsonl
+    python scripts/v3_14_build_math_wide.py --out archive/v3_14/math_wide.jsonl
 """
 import argparse
 import json
@@ -47,7 +47,7 @@ MUL_FORMS = [(lambda a, b: f"{a}乘{b}等于几？", lambda a, b, ans, sym: f"{a
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=str(ROOT / "v3_14" / "math_wide.jsonl"))
+    ap.add_argument("--out", default=str(ROOT / "archive" / "v3_14" / "math_wide.jsonl"))
     ap.add_argument("--three-digit", type=int, default=4000, help="三位数采样条数（加减各一半）")
     ap.add_argument("--decimal", type=int, default=1500, help="一位小数加法条数")
     ap.add_argument("--seed", type=int, default=20261006)

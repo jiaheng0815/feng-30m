@@ -4,7 +4,7 @@
 复读/半截话。比 eval_chat.py 覆盖面更宽（问候/告别/能力/情绪/写作/常识/安全）。
 
 用法：
-    python scripts/chat_probe.py --model v3_5\\release [--out eval\\probe.json]
+    python scripts/chat_probe.py --model archive/v3_5\\release [--out eval\\probe.json]
 可选项：--rep（重复惩罚，默认 1.0 与 llama-cli 默认一致）、--temp、--max-new。
 """
 import argparse

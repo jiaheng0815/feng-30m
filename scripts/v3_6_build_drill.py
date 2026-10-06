@@ -6,7 +6,7 @@
   2. 追加电影/睡眠/天气/计划等细节打磨样本；
   3. 原始 daily_patch 原样保留，防止其他映射漂移。
 
-用法：python scripts/v3_6_build_drill.py --base v3_6a\\daily_patch.jsonl --out v3_6e\\drill.jsonl
+用法：python scripts/v3_6_build_drill.py --base archive/v3_6a\\daily_patch.jsonl --out archive/v3_6e\\drill.jsonl
 """
 import argparse
 import json
@@ -65,8 +65,8 @@ def conv(q: str, a: str) -> dict:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--base", default=str(ROOT / "v3_6a" / "daily_patch.jsonl"))
-    ap.add_argument("--out", default=str(ROOT / "v3_6e" / "drill.jsonl"))
+    ap.add_argument("--base", default=str(ROOT / "archive" / "v3_6a" / "daily_patch.jsonl"))
+    ap.add_argument("--out", default=str(ROOT / "archive" / "v3_6e" / "drill.jsonl"))
     ap.add_argument("--repeat", type=int, default=6)
     ap.add_argument("--profile", default="full", choices=["full", "books"],
                     help="books：只输出书籍推荐专项（强重复）+ 原补丁锚点")

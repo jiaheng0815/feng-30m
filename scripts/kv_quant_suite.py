@@ -48,7 +48,7 @@ def degenerate(text: str) -> bool:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", default=str(ROOT / "v3_6" / "release"))
+    ap.add_argument("--model", default=str(ROOT / "archive" / "v3_6" / "release"))
     ap.add_argument("--schemes", default="fp32,int8,sym2b16,asym2b16,asym2b8,q3b16,k8v2,k2v8")
     ap.add_argument("--needle-chars", default="9600,19200")
     ap.add_argument("--out", default=str(ROOT / "eval" / "kv_quant_suite.json"))

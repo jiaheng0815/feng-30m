@@ -13,7 +13,7 @@
   D 身份/记忆保护（沿用 v3_16 的锚点与问答，防止把底座带坏）。
 
 用法：
-    python scripts/v3_18_build_statement_patch.py --out v3_18/stmt_patch.jsonl
+    python scripts/v3_18_build_statement_patch.py --out archive/v3_18/stmt_patch.jsonl
 """
 import argparse
 import json
@@ -60,8 +60,8 @@ def conv(*msgs):
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--base", default=str(ROOT / "v3_6a" / "daily_patch.jsonl"))
-    ap.add_argument("--out", default=str(ROOT / "v3_18" / "stmt_patch.jsonl"))
+    ap.add_argument("--base", default=str(ROOT / "archive" / "v3_6a" / "daily_patch.jsonl"))
+    ap.add_argument("--out", default=str(ROOT / "archive" / "v3_18" / "stmt_patch.jsonl"))
     ap.add_argument("--a-n", type=int, default=420, help="情绪/生活陈述")
     ap.add_argument("--b-n", type=int, default=140, help="礼貌寒暄")
     ap.add_argument("--c-n", type=int, default=260, help="明确要求记住 -> 确认")

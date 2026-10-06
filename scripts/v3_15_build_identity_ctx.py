@@ -8,7 +8,7 @@
 「闲聊前缀 + 我叫X → 你叫X」的记忆样本，防止把记忆能力带坏。
 
 用法：
-    python scripts/v3_15_build_identity_ctx.py --out v3_15/identity_ctx.jsonl
+    python scripts/v3_15_build_identity_ctx.py --out archive/v3_15/identity_ctx.jsonl
 """
 import argparse
 import json
@@ -43,9 +43,9 @@ def conv(*msgs):
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--base", default=str(ROOT / "v3_6a" / "daily_patch.jsonl"),
+    ap.add_argument("--base", default=str(ROOT / "archive" / "v3_6a" / "daily_patch.jsonl"),
                     help="闲聊前缀来源（用户/助手成对）")
-    ap.add_argument("--out", default=str(ROOT / "v3_15" / "identity_ctx.jsonl"))
+    ap.add_argument("--out", default=str(ROOT / "archive" / "v3_15" / "identity_ctx.jsonl"))
     ap.add_argument("--n", type=int, default=900, help="身份锚点条数")
     ap.add_argument("--mem-n", type=int, default=400, help="记忆保护条数")
     ap.add_argument("--seed", type=int, default=20261008)

@@ -1,12 +1,12 @@
 """v3.11 验收锚点修复数据：把 C 引擎 27 题的"已通过回答" + 算术漏题 + 通用锚点打包。
 
-用途：算术补丁（v3_11/arith_patch2.jsonl）会把 27 题矩阵里的某一题
+用途：算术补丁（archive/v3_11/arith_patch2.jsonl）会把 27 题矩阵里的某一题
 （情绪-伤心 或 翻译-再见）抖掉一分。本脚本从一次全通过的 q2 矩阵日志里抽出
 「题目 -> 通过回答」，按高权重混入修复轮，把矩阵拉回 27/27 的同时保住算术增益。
 
 用法：
     python scripts/v3_11_build_repair.py --suite-log logs/pc_kv_suite32_v3_10p3_q2b8.txt `
-        --misses eval/arith_v3_11pol4.json --out v3_11/repair.jsonl
+        --misses eval/arith_v3_11pol4.json --out archive/v3_11/repair.jsonl
 """
 import argparse
 import json
@@ -52,12 +52,12 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--suite-log", default=str(ROOT / "logs" / "pc_kv_suite32_v3_10p3_q2b8.txt"))
     ap.add_argument("--misses", default="", help="eval_arith.py 结果 JSON，取其中 ok=false 的题")
-    ap.add_argument("--qat", default=str(ROOT / "v3_7" / "qat_data.jsonl"))
+    ap.add_argument("--qat", default=str(ROOT / "archive" / "v3_7" / "qat_data.jsonl"))
     ap.add_argument("--qat-n", type=int, default=1500)
     ap.add_argument("--anchor-repeat", type=int, default=8)
     ap.add_argument("--miss-repeat", type=int, default=20)
-    ap.add_argument("--out", default=str(ROOT / "v3_11" / "repair.jsonl"))
-    ap.add_argument("--arith", default=str(ROOT / "v3_11" / "arith_patch2.jsonl"),
+    ap.add_argument("--out", default=str(ROOT / "archive" / "v3_11" / "repair.jsonl"))
+    ap.add_argument("--arith", default=str(ROOT / "archive" / "v3_11" / "arith_patch2.jsonl"),
                     help="--mix 时并入的算术补丁数据")
     ap.add_argument("--mix", action="store_true",
                     help="输出 = 本修复集 + 算术补丁（pol8 的 arith_repair.jsonl）")
@@ -65,7 +65,7 @@ def main() -> None:
                     help="PC 末层修复集：漏题 ×miss-repeat + ×1 乘法族 + 水的化学式 + 高危锚点")
     ap.add_argument("--surgical", action="store_true",
                     help="只保留 8 个高危题（×2）+ 取件码召回（×2）（pol7 的 repair3.jsonl）")
-    ap.add_argument("--needle", default=str(ROOT / "v3_7" / "needle_qat.jsonl"))
+    ap.add_argument("--needle", default=str(ROOT / "archive" / "v3_7" / "needle_qat.jsonl"))
     ap.add_argument("--seed", type=int, default=20261004)
     args = ap.parse_args()
 

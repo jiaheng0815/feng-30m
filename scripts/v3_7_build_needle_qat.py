@@ -2,7 +2,7 @@
 
 用途：q2 KV 下 25% 位置的召回偶发失败，补一批同分布样本做量化感知微调。
 
-用法：python scripts/v3_7_build_needle_qat.py --out v3_7\\needle_qat.jsonl [--n 12]
+用法：python scripts/v3_7_build_needle_qat.py --out archive/v3_7\\needle_qat.jsonl [--n 12]
 """
 import argparse
 import json
@@ -19,7 +19,7 @@ FILLER = (ROOT / "esp32s3-feng-llm" / "pc" / "prompt_long.txt").read_text(encodi
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=str(ROOT / "v3_7" / "needle_qat.jsonl"))
+    ap.add_argument("--out", default=str(ROOT / "archive" / "v3_7" / "needle_qat.jsonl"))
     ap.add_argument("--n", type=int, default=12, help="每个位置生成几条")
     ap.add_argument("--chars", type=int, default=4200, help="正文长度（字符）")
     ap.add_argument("--seed", type=int, default=20261004)

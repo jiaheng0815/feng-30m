@@ -23,7 +23,8 @@ STALE = ["0x310000", "0x1A10000", "stage_32k", "29.66", "MQA(1 KV) / head", "3 M
 RELEASE_PREFIXES = ("weights/", "datasets/", "feng-30m-v3/", "feng-30m-v3.6/")
 
 # 本机训练/编译产物：干净 clone 里没有是正常的（跟踪文件缺失仍会报错）
-LOCAL_PREFIXES = ("v3_", "v3/", "v2/data/", "data/", "model_export_",
+# archive/v3_* 是 2026-10 归档的历史版本目录；v3_/v3/ 前缀留给 CHANGELOG 里的历史路径原文
+LOCAL_PREFIXES = ("v3_", "v3/", "archive/v3_", "archive/v3/", "v2/data/", "data/", "model_export_",
                   "esp32s3-feng-llm/model_export_", "logs/", "scripts/local_paths.json",
                   "feng_cont/")            # 续训/恢复实验的训练产物目录（本机外置盘）
 

@@ -54,8 +54,8 @@ def write(path: Path, base: list[dict], items: list[tuple[str, str]], repeat: in
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out-dir", default=str(ROOT / "v3_8"))
-    ap.add_argument("--base", default=str(ROOT / "v3_6a" / "daily_patch.jsonl"))
+    ap.add_argument("--out-dir", default=str(ROOT / "archive" / "v3_8"))
+    ap.add_argument("--base", default=str(ROOT / "archive" / "v3_6a" / "daily_patch.jsonl"))
     args = ap.parse_args()
     base = [json.loads(l) for l in open(args.base, encoding="utf-8") if l.strip()]
     out = Path(args.out_dir)
