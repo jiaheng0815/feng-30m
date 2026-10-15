@@ -1,12 +1,13 @@
 """C++ 引擎与 Python 工具的口径一致性检查。
 
 把同一批提示词分别喂给：
-  - C++：`pc/pc_calc_ask.cpp` 驱动 + `main/feng_calc.cpp`（stdin 一行一题，输出回答或 NONE）
+  - C++：`pc/pc_calc_ask.cpp` 驱动 + `main/feng_calc.c`（stdin 一行一题，输出回答或 NONE）
   - Python：`scripts/calc_tool.py`
 逐条比较，输出不一致就退出码 1。CI 里编译好 C 驱动并传 --c-bin。
 
 用法：
-    g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -o pc_calc_ask pc/pc_calc_ask.cpp main/feng_calc.cpp -Imain -lm
+    gcc -std=c23 -O2 -c main/feng_calc.c -o /tmp/feng_calc.o -Imain
+    g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -o pc_calc_ask pc/pc_calc_ask.cpp /tmp/feng_calc.o -Imain -lm
     python tools/check_tool_parity.py --c-bin pc_calc_ask
 """
 import argparse

@@ -54,16 +54,22 @@ try {
     $objFp32 = Join-Path $objRoot "fp32"
     New-Item -ItemType Directory -Force -Path $objQ2, $objFp32 | Out-Null
 
-    $baseFlags = @(
-        "/nologo", "/c", "/O2", "/std:c++latest", "/utf-8",
+    # v4.0 起核心是 C23、驱动是 C++23，两个 /std: 选项互斥（同给会报
+    # error D8016），所以核心与驱动分开编译；nvcc 没有 C 模式，feng_cuda.cu 永久留 C++。
+    $cFlags = @(
+        "/nologo", "/c", "/O2", "/std:clatest", "/TC", "/utf-8", "/wd4996",
+        "/DFENG_USE_CUDA=1", "/Imain"
+    )
+    $cxxFlags = @(
+        "/nologo", "/c", "/O2", "/std:c++latest", "/TP", "/utf-8",
         "/EHs-c-", "/GR-", "/D_HAS_EXCEPTIONS=0", "/wd4996",
         "/DFENG_USE_CUDA=1", "/Imain"
     )
     $kvQ2 = @("/DFENG_KV_Q2=1", "/DFENG_KV_Q2_BLOCK=8")
     $core = @(
-        "main\feng_model.cpp", "main\feng_llm.cpp", "main\feng_quant.cpp",
-        "main\feng_smp.cpp", "main\feng_tokenizer.cpp", "main\feng_sample.cpp",
-        "main\feng_calc.cpp", "main\feng_tools.cpp", "main\feng_memory.cpp"
+        "main\feng_model.c", "main\feng_llm.c", "main\feng_quant.c",
+        "main\feng_smp.c", "main\feng_tokenizer.c", "main\feng_sample.c",
+        "main\feng_calc.c", "main\feng_tools.c", "main\feng_memory.c"
     )
     $driversQ2 = @(
         "pc\pc_chat.cpp", "pc\pc_bench.cpp", "pc\pc_kv_suite.cpp", "pc\pc_mt_suite.cpp"
@@ -71,13 +77,17 @@ try {
     $continue = $ErrorActionPreference
     $ErrorActionPreference = "Continue"     # 原生命令的 stderr 不能中断脚本
 
-    Write-Host "[1/4] cl 编译 q2 组（核心 + 4 个驱动）..." -ForegroundColor Cyan
-    & cl @baseFlags @kvQ2 @core @driversQ2 "/Fo$objQ2\"
-    if ($LASTEXITCODE -ne 0) { throw "cl 编译失败（q2 组）" }
+    Write-Host "[1/4] cl 编译核心（C23）q2 / fp32 两套 ..." -ForegroundColor Cyan
+    & cl @cFlags @kvQ2 @core "/Fo$objQ2\"
+    if ($LASTEXITCODE -ne 0) { throw "cl 编译失败（核心 q2）" }
+    & cl @cFlags @core "/Fo$objFp32\"
+    if ($LASTEXITCODE -ne 0) { throw "cl 编译失败（核心 fp32）" }
 
-    Write-Host "[2/4] cl 编译 fp32 组（核心 + pc_check）..." -ForegroundColor Cyan
-    & cl @baseFlags @core "pc\pc_check.cpp" "/Fo$objFp32\"
-    if ($LASTEXITCODE -ne 0) { throw "cl 编译失败（fp32 组）" }
+    Write-Host "[2/4] cl 编译驱动（C++23）..." -ForegroundColor Cyan
+    & cl @cxxFlags @kvQ2 @driversQ2 "/Fo$objQ2\"
+    if ($LASTEXITCODE -ne 0) { throw "cl 编译失败（驱动 q2）" }
+    & cl @cxxFlags "pc\pc_check.cpp" "/Fo$objFp32\"
+    if ($LASTEXITCODE -ne 0) { throw "cl 编译失败（pc_check）" }
 
     Write-Host "[3/4] nvcc 编译 feng_cuda.cu（-fmad=false 保证与 CPU 同序）..." -ForegroundColor Cyan
     $cudaObj = Join-Path $objRoot "feng_cuda.obj"

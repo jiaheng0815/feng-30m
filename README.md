@@ -3,12 +3,12 @@
 [![CI](https://github.com/jiaheng0815/feng-30m/actions/workflows/ci.yml/badge.svg)](https://github.com/jiaheng0815/feng-30m/actions/workflows/ci.yml)
 
 **一个 29.43M 参数的中文对话模型：从零训练、原生 32k 上下文；Q4 量化后运行在 ESP32-S3 上，
-算术 / 时间 / 随机数 / 记忆四个 tool 由板内 C++23 引擎确定性作答。**
+算术 / 时间 / 随机数 / 记忆四个 tool 由板内严格 C23 引擎确定性作答。**
 
 > **当前发布（2026-10-05）**
 >
 > - 权重：PC = **v3.19**（`v3_19/pc4`）｜ 板端 = **v3.19-embed**（`v3_19/board6`，Q4 权重 + q2 KV 双 QAT）
-> - 引擎：**v3.20 / C++23**（严格模式、零堆、无异常/RTTI、无全局构造）；板端固件 **304,192 B**，比 C 版还小 2,816 B
+> - 引擎：**v4.0 / 严格 C23**（嵌入式侧，零堆、零全局构造；PC 侧 C++23 + CUDA）；板端固件 **303,696 B**，比 v3.20 的 C++23 版还小 496 B
 > - 板端实测：q2/2048 矩阵 **27/27 + 4/4**、工具 **13/13**、记忆 **12/12**、**2.26 tok/s**（938 ms/token）
 > - 身份自述：**「我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI」**
 > - 代码与权重均 **Apache-2.0**；**GGUF 自 v3.14 起不再发行**（llama.cpp 路径没有 tool）
@@ -80,9 +80,9 @@
 | 速度 | **2.26 tok/s**（938 ms/token，ctx 19）/ 973 ms @ ctx 38 / 1291 ms @ ctx 54 |
 | 内存 | 权重 flash mmap（不占 PSRAM）；KV + 激活 9.62 MB PSRAM；内部 SRAM 仅留内核与工作区 |
 
-### 引擎（v3.20 / C++23）
+### 引擎（v4.0 / 严格 C23）
 
-- **严格 C++23**（`-std=c++23`，PC 与 ESP-IDF 双工具链），`-fno-exceptions -fno-rtti -fno-threadsafe-statics`
+- **严格 C23 核心**（`-std=c23`，板端与 PC 共用）+ **C++23 驱动**（`pc/*.cpp`）与 **CUDA**（`feng_cuda.cu`，nvcc）；两趟编译（两个 `/std:` 互斥，见 AGENTS.md）
 - **零堆**：8 个核心对象无 `malloc/free/new/delete`、无异常/RTTI 符号；唯一分配是 tokenizer
   **启动期**一次性 PSRAM 加载；全组件 `.init_array` 为空（无全局构造）
 - **体积**：304,192 B，比 C 版（307,392 B）小 2,816 B；非热点模块 `-Os`、推理热点保持 `-O2`
@@ -98,7 +98,7 @@
 （预导出模型），解压到相邻目录后：
 
 ```powershell
-.\build_pc_chat.ps1                      # Windows 默认 MSVC + C++23（/std:c++latest，自动加载 vcvars；-MinGW 备用）
+.\build_pc_chat.ps1                      # Windows 默认 MSVC 两趟：核心 /std:clatest、驱动 /std:c++latest；-MinGW 备用
 .\pc_chat_q2b8.exe ..\feng-30m-c-engine-model
 # you> 4854+4411          -> [tool] 4854 加 4411 等于 9265。
 # you> 现在的时间戳是多少？  -> [tool] 时间戳：1791134671 —— 2026年10月05日 01:24:31（周一，UTC+8）。
@@ -147,8 +147,8 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 
 ### 3) ESP32-S3（WROOM-2-N32R16V）
 
-编译、烧录、串口协议的完整步骤见 [`USAGE.md`](USAGE.md) 与
-[`esp32s3-feng-llm/README.md`](esp32s3-feng-llm/README.md)；免装 IDF 的一包到底固件
+编译、烧录、串口协议的完整步骤见 [`docs/USAGE.md`](USAGE.md) 与
+[`docs/esp32-firmware.md`](esp32s3-feng-llm/README.md)；免装 IDF 的一包到底固件
 见 Release 的 `feng-30m-v3.19-embed-firmware.zip`。
 
 ## 标准基准（英文，0-shot）
@@ -185,7 +185,7 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 |---|---|
 | `feng-30m-v3.19-release.zip` | PC 版：HF 权重 + 蒸馏数据集 |
 | `feng-30m-v3.19-embed-release.zip` | 板端版：Q4+q2 双 QAT 权重 + 可直接烧录的 `model.bin` / `tokenizer.bin` |
-| `feng-30m-v3.19-engine.zip` | PC 引擎源码（C++23） |
+| `feng-30m-v3.19-engine.zip` | PC 引擎源码（v3.19 时为 C++23；v4.0 起核心转 C23） |
 | `feng-30m-c-engine-model-v3.19-embed.zip` | 引擎预导出模型（免装 torch 直接跑） |
 | `feng-30m-v3.19-embed-firmware.zip` | 板端一包到底：预编译固件 + 模型 + 烧录说明（免装 ESP-IDF） |
 
@@ -215,7 +215,7 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 
 ## 验证与 CI
 
-本地一键验收（文档自检 → PC C++23 引擎构建 + 四套单测 → 32 题矩阵 + 算术子集 → fp32 参考 logits）：
+本地一键验收（文档自检 → PC 引擎两趟构建 + 四套单测 → 32 题矩阵 + 算术子集 → fp32 参考 logits）：
 
 ```powershell
 python tools\check_all.py
@@ -251,12 +251,12 @@ CI（GitHub Actions，每次 push/PR）跑 9 步，全部在**干净 clone** 上
 | v3.9 零代价修行为 | 末层微调（最后 2 层 + norm）用 40× 股票拒答数据修范围评测 | ≤1M tokens | `scripts/v3_6_sft_patch.py --train-last 2` |
 | v3.10~v3.11 嵌入式 QAT | q2 KV-QAT → 算术边界补丁 → **Q4 权重/q2 KV 双 QAT** | 约 20M tokens | `scripts/v3_7_kv_qat.py --wqat`、`scripts/v3_11_build_arith_patch.py` |
 | v3.12~v3.13 算术/记忆 | 算术走末层微调；合成 5,600 条记忆对话（PC 末层 / 板端双 QAT） | 约 24M tokens | `scripts/v3_11_build_repair.py --pc-fix`、`scripts/v3_13_build_memory.py` |
-| v3.14 tool 版 | 算术/时间/随机数做成引擎 tool；训练数据过滤纯算式样本；GGUF 发行取消 | 约 14M tokens（无算术混训） | `scripts/v3_14_build_noarith_mix.py`、`esp32s3-feng-llm/main/feng_calc.cpp` |
+| v3.14 tool 版 | 算术/时间/随机数做成引擎 tool；训练数据过滤纯算式样本；GGUF 发行取消 | 约 14M tokens（无算术混训） | `scripts/v3_14_build_noarith_mix.py`、`esp32s3-feng-llm/main/feng_calc.c` |
 | v3.15~v3.19 打磨 | 身份上下文锚点 → 板端串名修复实验（未采用路线已记录）→ 引擎记忆 tool → 440 条定向数据末 2 层 15ep | 约 12M tokens | `scripts/v3_15_build_identity_ctx.py`、`scripts/v3_19_build_mix.py` |
-| v3.20 引擎 | 序列数数 tool + 统一采样器；**全项目迁移 C++23**（零堆/无异常/RTTI）并做体积/性能优化 | tool 为 C++ 零堆实现，不占权重 | `esp32s3-feng-llm/main/`、`CHANGELOG.md` v3.20 节 |
+| v3.20 引擎 | 序列数数 tool + 统一采样器；**全项目迁移 C++23**（零堆/无异常/RTTI）并做体积/性能优化 | tool 为 C++ 零堆实现，不占权重 | `esp32s3-feng-llm/main/`、`docs/CHANGELOG.md` v3.20 节 |
 
-完整超参、每阶段 loss/耗时/显存见 [`CHANGELOG.md`](CHANGELOG.md) 与
-[`DELIVERY.md`](DELIVERY.md)。
+完整超参、每阶段 loss/耗时/显存见 [`docs/CHANGELOG.md`](CHANGELOG.md) 与
+[`docs/DELIVERY.md`](DELIVERY.md)。
 
 ## 仓库结构
 
@@ -265,7 +265,7 @@ scripts/            数据构建 / 训练 / 评测 / 导出脚本（路径解析
 esp32s3-feng-llm/   ESP32 固件 + 可移植 C++23 推理引擎 + PC 端一致性检查
 v3_19/              当前发布权重（PC pc4 / 板端 board6）
 archive/            v3 历史版本目录（v3.1→v3.18 共 57 个，2026-10 从根目录归档）
-student/ v2/ archive/v3/   三代模型的训练记录（v1 / v2 / v3 世代；summary.json / config.json 等）
+archive/v1/ v2/ archive/v3/   三代模型的训练记录（v1 / v2 / v3 世代；summary.json / config.json 等）
 eval/               评测结果 JSON（范围、针检索、记忆、标准基准）
 logs/               构建 / 训练 / 烧录 / 板上测试日志（board_baseline_lut.txt 是板上精度基线）
 tools/check_md.py   文档自检（代码围栏、路径、过时数字）

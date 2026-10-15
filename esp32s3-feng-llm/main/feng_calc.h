@@ -9,6 +9,10 @@
 #ifndef FENG_CALC_H
 #define FENG_CALC_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* 从 user 抽算式到 expr；返回 1 表示确实是算术请求 */
 int feng_calc_extract(const char *user, char *expr, int expr_sz);
 /* 求值：1 成功；-1 除零；-2 语法错误 */
@@ -17,5 +21,9 @@ int feng_calc_eval(const char *expr, double *out);
 int feng_calc_answer(const char *user, char *answer, int answer_sz);
 /* 数字转字符串（整数不带小数点，小数最多 4 位并去尾零） */
 void feng_calc_fmt(double v, char *buf, int buf_sz);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

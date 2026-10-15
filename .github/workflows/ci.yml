@@ -15,19 +15,35 @@ jobs:
       - name: Python 语法检查
         run: python3 -m py_compile scripts/*.py tools/*.py
 
-      - name: C++23 单测（算式 / 时间随机数 / 记忆 / 采样器）
+      # v4.0 起引擎分两层，编译也必须分两趟：
+      #   main/*.c   推理核心，严格 C23（板端与 PC 共用）
+      #   pc/*.cpp   PC 侧驱动/套件，C++23
+      # g++ 会把 .c 当 C++ 编，反之亦然，所以核心一律用 gcc -std=c23 先编成 .o。
+      - name: 编译核心（C23）
+        working-directory: esp32s3-feng-llm
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/core
+          for f in feng_model feng_llm feng_quant feng_smp feng_tokenizer \
+                   feng_sample feng_calc feng_tools feng_memory; do
+            gcc -std=c23 -O2 -c main/$f.c -o /tmp/core/$f.o -Imain
+          done
+          echo "C23 核心 9 个目标文件编译通过"
+
+      - name: 单测（算式 / 时间随机数 / 记忆 / 采样器）
         working-directory: esp32s3-feng-llm
         run: |
           set -euo pipefail
           CXXFLAGS="-std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2"
-          g++ $CXXFLAGS -o /tmp/pc_calc_test   pc/pc_calc_test.cpp   main/feng_calc.cpp -Imain -lm
-          g++ $CXXFLAGS -o /tmp/pc_tools_test  pc/pc_tools_test.cpp  main/feng_tools.cpp -Imain -lm
-          g++ $CXXFLAGS -o /tmp/pc_mem_test    pc/pc_mem_test.cpp    main/feng_memory.cpp -Imain -lm
-          g++ $CXXFLAGS -o /tmp/pc_sample_test pc/pc_sample_test.cpp main/feng_sample.cpp main/feng_quant.cpp -Imain -lm
-          g++ $CXXFLAGS -o /tmp/pc_calc_ask    pc/pc_calc_ask.cpp    main/feng_calc.cpp -Imain -lm
-          g++ $CXXFLAGS -o /tmp/pc_mem_ask     pc/pc_mem_ask.cpp     main/feng_memory.cpp -Imain -lm
-          g++ $CXXFLAGS -o /tmp/pc_rand_ask    pc/pc_rand_ask.cpp    main/feng_tools.cpp -Imain -lm
-          g++ $CXXFLAGS -o /tmp/pc_time_ask    pc/pc_time_ask.cpp    main/feng_tools.cpp -Imain -lm
+          g++ $CXXFLAGS -o /tmp/pc_calc_test   pc/pc_calc_test.cpp   /tmp/core/feng_calc.o -Imain -lm
+          g++ $CXXFLAGS -o /tmp/pc_tools_test  pc/pc_tools_test.cpp  /tmp/core/feng_tools.o -Imain -lm
+          g++ $CXXFLAGS -o /tmp/pc_mem_test    pc/pc_mem_test.cpp    /tmp/core/feng_memory.o -Imain -lm
+          g++ $CXXFLAGS -o /tmp/pc_sample_test pc/pc_sample_test.cpp /tmp/core/feng_sample.o \
+              /tmp/core/feng_quant.o -Imain -lm
+          g++ $CXXFLAGS -o /tmp/pc_calc_ask    pc/pc_calc_ask.cpp    /tmp/core/feng_calc.o -Imain -lm
+          g++ $CXXFLAGS -o /tmp/pc_mem_ask     pc/pc_mem_ask.cpp     /tmp/core/feng_memory.o -Imain -lm
+          g++ $CXXFLAGS -o /tmp/pc_rand_ask    pc/pc_rand_ask.cpp    /tmp/core/feng_tools.o -Imain -lm
+          g++ $CXXFLAGS -o /tmp/pc_time_ask    pc/pc_time_ask.cpp    /tmp/core/feng_tools.o -Imain -lm
           for t in pc_calc_test pc_tools_test pc_mem_test pc_sample_test; do
             echo "== $t"
             /tmp/$t | tail -n 1
@@ -45,20 +61,19 @@ jobs:
       - name: C/Python 时间 tool 一致性（52 条，固定 epoch）
         run: python3 tools/check_time_parity.py --c-bin /tmp/pc_time_ask
 
-      - name: 编译 PC 引擎（C++23 核心源码 + 三个套件 + 一致性检查）
+      - name: 编译 PC 引擎（C23 核心 + C++23 套件 + 一致性检查）
         working-directory: esp32s3-feng-llm
         run: |
           set -euo pipefail
           CXXFLAGS="-std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2"
-          CORE="main/feng_model.cpp main/feng_llm.cpp main/feng_quant.cpp main/feng_smp.cpp
-                main/feng_tokenizer.cpp main/feng_calc.cpp main/feng_tools.cpp
-                main/feng_memory.cpp main/feng_sample.cpp"
           Q2="-DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8"
-          g++ $CXXFLAGS $Q2 -o /tmp/pc_chat_q2b8       pc/pc_chat.cpp     $CORE -Imain -lm
-          g++ $CXXFLAGS $Q2 -o /tmp/pc_kv_suite_q2b8   pc/pc_kv_suite.cpp $CORE -Imain -lm
-          g++ $CXXFLAGS $Q2 -o /tmp/pc_mt_suite        pc/pc_mt_suite.cpp $CORE -Imain -lm
-          g++ $CXXFLAGS     -o /tmp/pc_check           pc/pc_check.cpp main/feng_model.cpp \
-              main/feng_llm.cpp main/feng_quant.cpp main/feng_smp.cpp main/feng_tokenizer.cpp -Imain -lm
+          CORE="/tmp/core/feng_model.o /tmp/core/feng_llm.o /tmp/core/feng_quant.o \
+                /tmp/core/feng_smp.o /tmp/core/feng_tokenizer.o /tmp/core/feng_calc.o \
+                /tmp/core/feng_tools.o /tmp/core/feng_memory.o /tmp/core/feng_sample.o"
+          g++ $CXXFLAGS $Q2 -o /tmp/pc_chat_q2b8     pc/pc_chat.cpp     $CORE -Imain -lm
+          g++ $CXXFLAGS $Q2 -o /tmp/pc_kv_suite_q2b8 pc/pc_kv_suite.cpp $CORE -Imain -lm
+          g++ $CXXFLAGS $Q2 -o /tmp/pc_mt_suite      pc/pc_mt_suite.cpp $CORE -Imain -lm
+          g++ $CXXFLAGS     -o /tmp/pc_check         pc/pc_check.cpp    $CORE -Imain -lm
           echo "PC 引擎全部编译通过"
 
       - name: 文档自检（干净 clone 口径）

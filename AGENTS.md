@@ -44,19 +44,19 @@
   PC 32 题矩阵 27/27+4/4；新增多轮回归套件 `pc/pc_mt_suite.cpp`（残余见 CHANGELOG v3.16-embed 节）。
   **注意**：再往上加"精确链"数据（p4–p6）能把 8 轮序列修到 8/8，但会丢长文召回
   （90% 深度）或在板端出现 "我user" 伪影——试过且未采用，别再重复这条路线
-  （`CHANGELOG.md` v3.16-embed 附录）。
+  （`docs/CHANGELOG.md` v3.16-embed 附录）。
   （**v3.17 起改用引擎侧记忆 tool 解决**：身份/常见事实追问由 C++ 引擎确定性回答，
   板端 12 题记忆 12/12、8 轮身份序列 8/8——不要再拿训练数据去磨这类可枚举问答。）
   **p7（lr 5e-7 最小干预）已确认这是容量硬边界**：它保住 27/27+4/4 并把 8 轮序列修到 10/10，
   却把失败换到别的次序（「你好呀→我叫丽丽→你叫什么名字」答"我叫丽丽"）、mem12 掉 1 分。
   p3–p7 五个版本都只是重排失败点——**多轮"你我/事实"分辨不要再靠加数据解决**，
-  要提升就得换更大的模型或改架构（见 `CHANGELOG.md` v3.16-embed 附录）。
+  要提升就得换更大的模型或改架构（见 `docs/CHANGELOG.md` v3.16-embed 附录）。
 - v3.15-embed（历史，`archive/v3_15/board_ctxid4/`）：在 archive/v3_14/board6 上做
   「闲聊前缀 + 身份问答」锚点（`scripts/v3_15_build_identity_ctx.py`）+ 召回 ×8、lr 3e-6 × 1 epoch、
   继续双 QAT；修掉多轮里「你叫什么名字 → 你叫小模型/小王子」的漂移
   （7 组前缀 6 组完全正确），矩阵 **27/27+4/4**、算术 21/21、记忆 10/12、工具 8/8 全部保持。
 - v3.14（历史 PC 发布）：
-  - **tool**（`main/feng_calc.cpp`、`main/feng_tools.cpp`、`main/feng_memory.cpp`）：算式（多位数/小数/括号）、
+  - **tool**（`main/feng_calc.c`、`main/feng_tools.c`、`main/feng_memory.c`）：算式（多位数/小数/括号）、
     **序列数数**（"把 1 到 5 倒着数一遍"→`5、4、3、2、1。`、"从 3 数到 8"；只在祈使句触发，
     "我从1数到100也数不完"这类陈述仍交给模型）、
     UTC+8 时间（宿主 `\settime` 对时 + esp_timer 走时）、随机数（运行时间×1.54×1000，丢第一个取第二个）；
@@ -84,8 +84,8 @@
   关键技巧是 **Q4 权重/q2 KV 双 QAT**（`v3_7_kv_qat.py --wqat`），量化抗性对权重回插极敏感
   （掺 20% v3.9 权重就掉到 25/27），PC 32k 弱。
 - **PC 用 v3.19（`v3_19/pc4`）；板端用 v3.19-embed 权重（`v3_19/board6`）；两边同一套
-  v3.20 / C++23 引擎与固件**（q2/2048 固件 304,192 B、板端 2.26 tok/s；见 `CHANGELOG.md`
-  v3.19/v3.20 节与 `esp32s3-feng-llm/README.md`）。
+  v3.20 / C++23 引擎与固件**（q2/2048 固件 304,192 B、板端 2.26 tok/s；见 `docs/CHANGELOG.md`
+  v3.19/v3.20 节与 `docs/esp32-firmware.md`）。
 - **标准基准（英文，0-shot）**：SciQ 71.00/73.80、PIQA 53.37、ARC-E 26.60、ARC-C 21.93、
   HellaSwag 28.99、Winogrande 49.33、OpenBookQA 14.00/24.00、BoolQ 37.83、SciCloze-900 25.56；
   除 SciQ/PIQA 外基本贴近随机——如实呈现，不要拿去当卖点
@@ -117,50 +117,78 @@
 开源数据集只含**教师蒸馏数据**（提示词与教师输出）；本地脚本生成的多轮/补丁/运算数据不入 Release 包。
 模型权重、训练产物一旦覆盖无法回滚，删除或覆盖已有模型目录前必须先向用户确认。
 
-改动发布物时记得同步：`USAGE.md`（下载/推理/烧录说明）、Release 包内 `weights/`、`datasets/` 的清单，
+改动发布物时记得同步：`docs/USAGE.md`（下载/推理/烧录说明）、Release 包内 `weights/`、`datasets/` 的清单，
 以及 GGUF 的 chat template（用 `$FENG_LLAMA_DIR\gguf-py\gguf\scripts\gguf_new_metadata.py --chat-template-file` 写入）。
 
 ## 3. 目录地图
 
+> **v4.0 起根目录只留 `README.md`（仓库首页）与 `AGENTS.md`（本文件）**，
+> 其余说明文档全部归到 `docs/`。历史版本目录一律进 `archive/`。
+
 | 路径 | 内容 |
 |---|---|
-| `student/` | **v1** 产物（8 层 / 32k 词表）：`student/final/`、`student/feng-30m-chat/`、`student/feng-30m-32k/`、各训练阶段 |
-| `v2/` | **v2** 产物：`v2/stage_planA3b/final/`（SFT 对照版）、`v2/gguf_planA3b/`、16k 分词器 `v2/tokenizer/`、预训练数据 |
-| `v3_19/` | **当前发布权重**：PC `v3_19/pc4/`、板端 `v3_19/board6/` + board1–5 实验；定向数据与训练日志见 `data/`、`logs/`（不入库） |
-| `archive/` | **v3 历史版本目录**（v3.0→v3.18 共 58 个，2026-10 从根目录移入）：`archive/v3/` 是三代中的 v3 世代（v3.0 链条）；`archive/v3_1*/`…`archive/v3_6*/` 早期实验与 v3.5/v3.6 补丁链；`archive/v3_7/`…`archive/v3_16/` 板端 QAT / tool / 检索各版（含 `archive/v3_9/release/`、`archive/v3_14/pc2/`、`archive/v3_16/board_p3/`）；`archive/v3_18/` 身份语句实验 |
-| `data/` | v1 提示词集 / 教师蒸馏数据 / 公开语料的位置（**本机已随 v1 归档清理**；重建需自行下载） |
-| `scripts/` | 全部数据构建 / 训练 / 评测 / 导出脚本（87 个 .py，含 `scripts/paths.py` 与 `scripts/bench_standard.py` 基准入口） |
+| `README.md` | 仓库首页：是什么、跑分、快速上手 |
+| `AGENTS.md` | 本文件：工作约定、硬性约束、命令速查 |
+| `docs/` | **全部说明文档**（索引见 `docs/README.md`）：`USAGE.md`（跑起来）、`CHANGELOG.md`（版本演进，失败尝试也保留）、`COMPARISON.md`（四代横向对比）、`DELIVERY.md`（交付与验收口径）、`esp32-firmware.md`（固件工程） |
+| `v4/` | **唯一的模型线**。`v4/base/` = 4.0 SFT 起点（HF 格式：`model.safetensors` + `config.json` + 自带 `tokenizer.json`/`tokenizer_config.json`/`chat_template.jinja`，来自 v3.19 pc4 的 Release）。训练输出按阶段建子目录（`v4/sft/`、`v4/qat/`…），产物结构与 v2/v3 时代一致：`<阶段>/final/` + `summary.json` + `train_log.jsonl` |
+| `data/` | 提示词池 / 教师蒸馏数据 / 公开语料（**不入库**，`.gitignore` 排除）。v4.0 重建：5 个公开语料从 HF 拉取，提示词池由 `scripts/v4_build_prompts.py` 生成，教师输出由 `scripts/v4_teacher_gen.py` 写入 |
+| `scripts/` | 全部数据构建 / 训练 / 评测 / 导出脚本（含 `scripts/paths.py` 路径解析、`scripts/bench_standard.py` 基准入口） |
 | `eval/` | 评测结果 JSON（范围 / 针检索 / 记忆 / 留出 / `lm_eval_*.json` 标准基准）与 `eval/lm_eval_tasks/` 任务定义 |
 | `logs/` | 所有构建 / 训练 / 烧录 / 板上测试日志；`board_baseline_lut.txt` 是板上精度基线 |
-| `esp32s3-feng-llm/` | ESP32 固件工程 + 可移植 C++23 推理引擎 + PC 端一致性检查与回归套件 |
-| `tools/check_md.py`、`tools/check_docs.py` | 文档自检：前者查围栏/路径/过时表述，后者把**全部 9 个 md 的关键数字与实际产物对齐**（参数量、GGUF 体积与 chat template、v3.6 探针/检索分数、范围评测、检索 loss） |
+| `esp32s3-feng-llm/` | ESP32 固件工程 + 可移植 C23 推理引擎（PC 侧 C++23 + CUDA）+ 一致性检查与回归套件；工程说明见 `docs/esp32-firmware.md` |
+| `phone/` | 手机端（Termux CLI + Android APK），复用同一套 C23 引擎；详见 `phone/README.md` |
+| `tools/check_md.py`、`tools/check_docs.py` | 文档自检：前者查围栏/路径/过时表述，后者把**全部 md 的关键数字与实际产物对齐**（参数量、固件体积、各版评测分数、检索 loss） |
 
-> **归档说明**：v3 历史版本自 2026-10 起位于 `archive/`（`v3_19/`、`v3_21/` 留在根目录）。
-> CHANGELOG 正文保留撰写当时的历史路径原文，**`v3_x/…` 一律对应 `archive/v3_x/…`**；
-> 其余文档、脚本与 `tools/check_*.py` 已更新为 `archive/` 前缀。
+> **历史目录已删除（2026-10-15）**：v1（原 `student/`）、v2、v3.19 与全部 v3 历史版本
+> 目录（原 `archive/`，52 个）从工作区移除，仓库只保留 v4 一条线；训练起点收进 `v4/base/`。
+> **`docs/CHANGELOG.md` 等文档里对 `archive/…`、`v2/…`、`student/…` 的引用是历史原文，
+> 不再指向本机存在的路径**——按约定不改写（改写历史记录比留一个失效路径更糟）。
+> `tools/check_md.py` 的 `LOCAL_PREFIXES` 已把这三个前缀列为"允许缺失"。
+> 需要旧版权重时从 GitHub Release 取（走 `ghfast.top` 镜像，实测 11 MB/s）。
 
 ## 4. 工作约定
 
-### C++23 引擎约定（硬性，v3.20 起）
+### 引擎语言约定（硬性，v4.0 起）
 
-引擎、固件与 PC 工具统一用**严格 C++23**（`-std=c++23`，不用 GNU 扩展），PC 与 IDF
-都加 `-fno-exceptions -fno-rtti -fno-threadsafe-statics`。写引擎代码必须遵守：
+引擎分两层，**语言不同、必须分两趟编译**：
 
-1. **零堆分配**：核心源码禁止 `new`/`delete`/`malloc`/`free`。唯一例外是 tokenizer 的
-   **启动期**一次性 PSRAM 加载（`feng_tokenizer.cpp` 的 `tok_alloc`，固定大小、之后不释放）。
-2. **零全局构造**：不使用需要运行时构造的全局/静态对象；静态数据只允许 POD 或 `constexpr`
-   （全组件 `.init_array` 必须为空）。
-3. **标准库白名单**：只用无堆组件（`<array>` `<span>` `<string_view>` `<bit>` `<optional>`
-   `<expected>` `<type_traits>` `<algorithm>` 等）；禁止 `<iostream>`、`std::string`、
-   `std::vector`、`std::map` 等会分配的类型。
-4. **错误处理**：返回错误码（现有 API 用 `int`），不抛异常；能标 `noexcept` 就标。
-5. **可读性工具**：优先用 `std::span`/`std::string_view`/`constexpr`/`std::array`/
-   `if constexpr` 表达意图；热点内层循环保持手写，用 `-DFENG_*` 开关做 A/B。
-6. **工具链**：PC 默认 **MSVC + C++23**（`build_pc_chat.ps1` 自动加载 vcvars64，
-   `/std:c++latest`——MSVC 没有单独的 `/std:c++23` 选项）；MinGW g++ 为备用路径
-   （`-MinGW`，`FENG_GXX` 覆盖 g++ 位置）；CUDA 版 `build_pc_cuda.ps1`（MSVC + nvcc）。
+| 层 | 文件 | 语言 | 说明 |
+|---|---|---|---|
+| 推理核心 | `esp32s3-feng-llm/main/*.c` `*.h` | **严格 C23** | 板端与 PC 共用同一份源码 |
+| PC 驱动 | `pc/*.cpp` | **C++23** | 套件/单测/基准，可用 `std::chrono`/`std::span` |
+| GPU 后端 | `main/feng_cuda.cu` | **C++**（nvcc 无 C 模式） | 与 C 核心用 `extern "C"` 对接 |
+
+```powershell
+gcc -std=c23 -O2 -c main/feng_llm.c -o feng_llm.o -Imain          # 核心
+g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Imain -lm       # 驱动 + 链接
+```
+
+**为什么必须分开**（实测，别再踩）：MSVC 一条命令里同给 `/std:clatest` 与
+`/std:c++latest` 会报 `error D8016: 选项不兼容`；只给 `/std:clatest` 则 C++ 驱动里
+`<span>` 用不了。所以 MSVC 侧核心走 `/std:clatest /TC`、驱动走 `/std:c++latest /TP`，
+`build_pc_chat.ps1` / `build_pc_cuda.ps1` 已按此实现。`g++` 会把 `.c` 当 C++ 编，同理。
+
+写核心代码（C23）必须遵守：
+
+1. **零堆分配**：核心源码禁止 `malloc`/`calloc`/`free`。唯一例外是 tokenizer 的
+   **启动期**一次性 PSRAM 加载（`feng_tokenizer.c` 的 `tok_alloc`，固定大小、之后不释放）。
+2. **零全局构造**：静态数据只允许 POD 或编译期常量（全组件 `.init_array` 必须为空）。
+   C23 没有 `constexpr` 函数，需要的小表（如 GPT-2 的非直接字节表）在加载期算一次。
+3. **标准库白名单**：只用 `<stddef.h>` `<stdint.h>` `<stdbool.h>` `<stdarg.h>` `<string.h>`
+   `<math.h>` `<stdio.h>` `<stdlib.h>`；禁止任何会分配的类型。
+4. **错误处理**：返回错误码（现有 API 用 `int`）；C 本来无异常，不需要 `noexcept`。
+   `[[nodiscard]]` 在 C23 是标准属性，继续用。
+5. **可读性工具**：C 核心用 `stdbool.h`/定长数组/`static inline`/`enum` 表达意图；
+   PC 驱动可以用 `std::span`/`std::string_view`/`constexpr`/`if constexpr`。
+   热点内层循环保持手写，用 `-DFENG_*` 开关做 A/B。
+6. **工具链**：PC 默认 **MSVC 两趟**（`build_pc_chat.ps1` 自动加载 vcvars64）：
+   核心 `/std:clatest /TC`（MSVC 的 C23 模式）、驱动 `/std:c++latest /TP`（MSVC 没有
+   单独的 `/std:c++23`，c++latest 就是）；两个 `/std:` **不能同时给**（D8016）。
+   MinGW 为备用路径（`-MinGW`，`FENG_GXX`/`FENG_GCC` 覆盖位置）。
+   CUDA 版 `build_pc_cuda.ps1`（MSVC + nvcc，nvcc 侧仍 `-std=c++20`）。
    固件由 ESP-IDF v5.5.5（xtensa g++ 14.2）编译，`main/CMakeLists.txt` 已设
-   `CXX_STANDARD 23` + `CXX_EXTENSIONS OFF`。
+   `C_STANDARD 23` + `C_EXTENSIONS OFF`，并且**不能**再带
+   `-fno-exceptions -fno-rtti -fno-threadsafe-statics`（gcc 对 C 文件报错，且会误命中 `.S`）。
 7. **体积纪律（板端实测）**：禁止 `std::sort`（每套比较器实例化一份 introsort，实测 ~2.6KB）、
    `string_view::substr`（引用 `std::__throw_out_of_range_fmt`，拖进 libstdc++ 异常/字符串/
    pthread 运行时 ~5KB）；非热点模块（tokenizer/tool/model/gbk/main）用 `-Os`，热点
@@ -242,12 +270,12 @@ python scripts\v3_7_kv_qat.py --init archive/v3_11\pol8 --data archive/v3_14\noa
 python scripts\v3_7_kv_qat.py --init archive/v3_14\board --data archive/v3_14\board_memfix.jsonl `
   --identity-n 80 --out archive/v3_14\board6 --epochs 2 --lr 4e-6 --batch 24 --max-len 2048 --wqat
 
-# PC C++23 引擎运行时（务必带 feng_calc.cpp + feng_tools.cpp + feng_memory.cpp + feng_sample.cpp）
-g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc_chat_q2b8.exe pc_chat.cpp `
-  ../main/feng_model.cpp ../main/feng_llm.cpp ../main/feng_quant.cpp ../main/feng_smp.cpp `
-  ../main/feng_tokenizer.cpp ../main/feng_calc.cpp ../main/feng_tools.cpp ../main/feng_memory.cpp `
-  ../main/feng_sample.cpp -I../main -lm
-# 更省事：仓库根跑 esp32s3-feng-llm\build_pc_chat.ps1（Windows 默认 MSVC + C++23；-MinGW 备用）
+# PC 运行时：核心 C23 + 驱动 C++23，两趟编译（务必带 feng_calc + feng_tools + feng_memory + feng_sample）
+gcc -std=c23 -O2 -c ../main/feng_llm.c -o feng_llm.o -I../main    # 每个核心 .c 各来一次
+g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 `
+  -o pc_chat_q2b8.exe pc_chat.cpp feng_*.o -I../main -lm
+# 更省事：esp32s3-feng-llm 下跑 build_pc_chat.ps1（MSVC 两趟：核心 /std:clatest /TC、驱动 /std:c++latest /TP；
+#         -MinGW 备用，走 gcc -std=c23 + g++ -std=c++23）
 ```
 
 评测与导出：
@@ -269,17 +297,20 @@ $py = "python"        # 换成装了 torch + transformers 的解释器
 & $py tools\export_model.py --model <仓库根>\v3_19\board6 --out model_export_v3_19b6
 
 # 1) PC 端一致性自检（改内核后必跑）
+& "<MSYS2>\ucrt64\bin\gcc.exe" -std=c23 -O2 -c ..\main\feng_model.c -o fm.o -I..\main   # 核心逐个编成 .o
+& "<MSYS2>\ucrt64\bin\gcc.exe" -std=c23 -O2 -c ..\main\feng_llm.c   -o fl.o -I..\main
+& "<MSYS2>\ucrt64\bin\gcc.exe" -std=c23 -O2 -c ..\main\feng_quant.c -o fq.o -I..\main
+& "<MSYS2>\ucrt64\bin\gcc.exe" -std=c23 -O2 -c ..\main\feng_smp.c   -o fs.o -I..\main
+& "<MSYS2>\ucrt64\bin\gcc.exe" -std=c23 -O2 -c ..\main\feng_tokenizer.c -o ft.o -I..\main
 & "<MSYS2>\ucrt64\bin\g++.exe" -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics `
-    -O2 -o pc\pc_check.exe pc_check.cpp ..\main\feng_model.cpp `
-    ..\main\feng_llm.cpp ..\main\feng_quant.cpp ..\main\feng_smp.cpp ..\main\feng_tokenizer.cpp -I..\main -lm
+    -O2 -o pc\pc_check.exe pc_check.cpp fm.o fl.o fq.o fs.o ft.o -I..\main -lm
 .\pc\pc_check.exe ..\model_export_v3_19b6 ..\logs\c_logits_v3_19b6.bin
 
-# 1b) 带 tool 的 PC 运行时 / 板端代理套件（必须带 feng_calc.cpp + feng_tools.cpp + feng_memory.cpp）
+# 1b) 带 tool 的 PC 运行时 / 板端代理套件（必须带 feng_calc.c + feng_tools.c + feng_memory.c）
+#    （核心同样是 gcc -std=c23 逐个编成 .o 后交给 g++ 链接，见上面 pc_check 那段）
 & "<MSYS2>\ucrt64\bin\g++.exe" -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics `
     -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc\pc_kv_suite_q2b8.exe `
-    pc_kv_suite.cpp ..\main\feng_model.cpp ..\main\feng_llm.cpp ..\main\feng_quant.cpp `
-    ..\main\feng_smp.cpp ..\main\feng_tokenizer.cpp ..\main\feng_calc.cpp ..\main\feng_tools.cpp `
-    ..\main\feng_memory.cpp ..\main\feng_sample.cpp -I..\main -lm
+    pc_kv_suite.cpp fm.o fl.o fq.o fs.o ft.o feng_calc.o feng_tools.o feng_memory.o feng_sample.o -I..\main -lm
 .\pc\pc_kv_suite_q2b8.exe ..\model_export_v3_19b6 ..\pc\prompt_long.txt 5200    # 27/27 + 4/4
 
 # 2) 编译固件
@@ -304,7 +335,7 @@ python scripts\esp32_enc_test.py COM20
 ```
 
 文档自检：`python tools\check_md.py` + `python tools\check_docs.py`（改文档后两个都要跑）。
-**一键验收**：`python tools\check_all.py`——按顺序跑 文档自检 → PC C++23 引擎构建 + tool 单测 →
+**一键验收**：`python tools\check_all.py`——按顺序跑 文档自检 → PC 引擎两趟构建 + tool 单测 →
 多轮回归套件（`pc_mt_suite`）→ 32 题矩阵 + 算术子集（`pc_kv_suite`）→ fp32 参考 logits
 （`pc_check`）；模型导出目录缺失时自动跳过套件。提交前建议至少跑一次。
 
@@ -317,16 +348,16 @@ python scripts\esp32_enc_test.py COM20
 1. **教师生成与训练严格串行**，绝不同时占卡；27B 教师用 `--no-cuda-graph`、`reasoning_effort:none`、并发 8。
 2. **llama.cpp `--parallel N` 会把 `-c` 均分给 N 个槽**：总上下文必须写成「每槽上下文 × N」，否则长提示被静默截断（v1 曾因此作废 2 万条教师数据）。
 3. **显存安全**：lm_head + 交叉熵必须走 `scripts/student_utils.py::chunked_lm_loss`（512 token 分块 + checkpoint），32k 阶段峰值 10.28 GiB，16GB 卡上不要并发跑其他任务。
-4. **注意力后端**：训练用 `torch.nn.attention.sdpa_kernel` 的 EFFICIENT/FLASH 后端；该 torch 构建的 SDPA 不支持 GQA，所以学生用 MHA（7=7），改 GQA 需同步改 C++ 引擎（`feng_llm.cpp` 里要加 KV 头广播）。
+4. **注意力后端**：训练用 `torch.nn.attention.sdpa_kernel` 的 EFFICIENT/FLASH 后端；该 torch 构建的 SDPA 不支持 GQA，所以学生用 MHA（7=7），改 GQA 需同步改 C++ 引擎（`feng_llm.c` 里要加 KV 头广播）。
 5. **身份不能掉**：训练语料里身份样本过采样（v1 是 15×），并过滤提及其他 AI 身份（ChatGPT/通义…）的样本；每次出模型都要用 `eval_planA_scope.py` 验证身份题。
 6. **flash 前 16MB 的 mmap 窗口是硬边界**（NOR flash 24 位地址上限，**不是模块容量**——模块是 32MB）：`model.bin`（15,659,904 B = 0xEEF380）必须结束在 0x1000000 之前；现行分区为 `model 0x110000/0xEF0000`、`tokdata 0x1000000/0x80000`（tokdata 用 `esp_partition_read` 读，可放窗口外）。烧录偏移必须与 `esp32s3-feng-llm/partitions.csv` 保持一致：`flash.ps1` 已按此修正为 `model=0x110000` / `tokdata=0x1000000`，改动分区表时要同步改脚本。
 7. **板端内存账**：权重只能 flash mmap 流式读，不能预载进 SRAM（每层 Q4 ≈0.95MB，内部 SRAM 只剩 ~271KB）；
    KV 默认 int8（`FENG_KV_INT8=1`，`MAX_CTX=1024`，9.93MB PSRAM），可选 q2 block8
    （`idf.py -DFENG_USE_Q2_KV=ON build`，`MAX_CTX=2048`，9.62MB，v3.19-embed 的 32 题 PC 矩阵 27/27 + 召回 4/4
-   + 算术子集 21/21；固件默认多轮上下文、`\reset` 清空，见 `CHANGELOG.md` 的 v3.13 节）；板上 32k 上下文在 KV 内存上不可能，
+   + 算术子集 21/21；固件默认多轮上下文、`\reset` 清空，见 `docs/CHANGELOG.md` 的 v3.13 节）；板上 32k 上下文在 KV 内存上不可能，
    长文只能走滑窗/attention sink/线性注意力。
-8. **速度现状**：标量路径已到 S3 单发射天花板（每步 ~4-5 周期；短上下文 2.26 tok/s ≈ 938 ms/token @ ctx 19（q2/2048 发布配置））。默认开启三项小幅数值优化（`FENG_GEMV_MADD` 纯 madd 链、`FENG_FAST_EXP` 快速 exp、`FENG_Q2_VFOLD` V 段折叠）：三者累计 logits 差 **4.8e-6**（Q4 量化误差 2.94）、32 题矩阵输出与优化前**逐字相同**。**长上下文成本仍在注意力本体**（q2/2048 单次 forward **2.22 s** = K 0.84 + softmax 0.05 + V 0.83 + 权重等 0.51，本次会话累计 **-37%**）。q2 注意力另有四处位精确优化（字节 LUT + `[layer][head][t]` 顺序布局 + 内联 fp16→fp32 + 2-token 展开）；prefill 用 `feng_forward_ex(..., want_logits=0)` 跳过中间 token 的 lm head（每个省 ~115 ms，最后一个 token 必须算）。**A8 整数 GEMV 已实测：S3 上比 FPU 慢 36%（`mull` 慢），只在 PC 上快 20%，默认关闭**。改 GEMV/注意力/布局后必须用 PC 32 题矩阵与上一版对比（位精确改动要求**逐字节**，数值改动要求 27/27+4/4 且给出差异量级）。**PIE 路线已实测结案**：裸吞吐 0.63–1.38 周期/MAC 有空间，但 S3 没有字节移位指令、4-bit 权重必须靠 LUT 展开（≥1 次标量 load+store / 权重），正确的整块内核只做到 **1.05×**——不要再写 PIE 内核（`CHANGELOG.md` v3.16-embed 附录）；不要再做没有实测收益的内层微调。
-8.5 **采样器统一**：`main/feng_sample.cpp` 的 `feng_sample_greedy`（1.15 重复惩罚 + no-repeat 3-gram）是
+8. **速度现状**：标量路径已到 S3 单发射天花板（每步 ~4-5 周期；短上下文 2.26 tok/s ≈ 938 ms/token @ ctx 19（q2/2048 发布配置））。默认开启三项小幅数值优化（`FENG_GEMV_MADD` 纯 madd 链、`FENG_FAST_EXP` 快速 exp、`FENG_Q2_VFOLD` V 段折叠）：三者累计 logits 差 **4.8e-6**（Q4 量化误差 2.94）、32 题矩阵输出与优化前**逐字相同**。**长上下文成本仍在注意力本体**（q2/2048 单次 forward **2.22 s** = K 0.84 + softmax 0.05 + V 0.83 + 权重等 0.51，本次会话累计 **-37%**）。q2 注意力另有四处位精确优化（字节 LUT + `[layer][head][t]` 顺序布局 + 内联 fp16→fp32 + 2-token 展开）；prefill 用 `feng_forward_ex(..., want_logits=0)` 跳过中间 token 的 lm head（每个省 ~115 ms，最后一个 token 必须算）。**A8 整数 GEMV 已实测：S3 上比 FPU 慢 36%（`mull` 慢），只在 PC 上快 20%，默认关闭**。改 GEMV/注意力/布局后必须用 PC 32 题矩阵与上一版对比（位精确改动要求**逐字节**，数值改动要求 27/27+4/4 且给出差异量级）。**PIE 路线已实测结案**：裸吞吐 0.63–1.38 周期/MAC 有空间，但 S3 没有字节移位指令、4-bit 权重必须靠 LUT 展开（≥1 次标量 load+store / 权重），正确的整块内核只做到 **1.05×**——不要再写 PIE 内核（`docs/CHANGELOG.md` v3.16-embed 附录）；不要再做没有实测收益的内层微调。
+8.5 **采样器统一**：`main/feng_sample.c` 的 `feng_sample_greedy`（1.15 重复惩罚 + no-repeat 3-gram）是
    固件 / `pc_chat` / `pc_kv_suite` / `pc_mt_suite` 的唯一采样入口；改采样器后必须重跑 PC 32 题矩阵
    并与上一版输出对比（v3.20 那次为**逐字节 0 差异**），再上板。
 9. **量化格式耦合**：Q4 block-64（4.25 bpw）；改 `QK` 必须同步改 C 侧 `QK`，且 `tools/export_model.py` 会生成 `ref_ids.json` / `ref_logits.bin` 供一致性校验。
@@ -342,7 +373,7 @@ python scripts\esp32_enc_test.py COM20
   （模型规格 / GGUF 体积与 chat template / v3.9~v3.12 探针、检索、算术分数 / 范围评测 / 检索 loss 与真实产物对齐）。
 - **写了数字**：数字必须能追到 `eval/*.json`、`summary.json` 或 `logs/` 里的实测；没有出处的一律删掉或标注"预期/估算"，
   不要写没有日志支撑的精确值。
-- **换了模型版本**：重跑 `eval_planA_scope.py` + `eval_longctx.py`，数字同步进 `CHANGELOG.md` / `README.md` / `USAGE.md`
+- **换了模型版本**：重跑 `eval_planA_scope.py` + `eval_longctx.py`，数字同步进 `docs/CHANGELOG.md` / `README.md` / `docs/USAGE.md`
 -  （PC 与板端两套口径必须分别标清：PC=v3.19，板端=v3.19-embed + v3.20 引擎；算式的验收口径是
   **tool 回答**，不是模型算——pc_kv_suite 会把算式任务路由到 feng_calc）。
 

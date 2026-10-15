@@ -11,6 +11,10 @@
 #ifndef FENG_TOOLS_H
 #define FENG_TOOLS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* epoch 秒提供者；返回 0 表示"还没对时" */
 typedef long long (*feng_epoch_fn)(void);
 /* 运行时间提供者（微秒，单调递增） */
@@ -29,5 +33,9 @@ void feng_time_format_utc8(long long epoch, char *buf, int buf_sz);
 /* 只输出日期（用于"N天后是几号"） */
 void feng_time_format_date_utc8(long long epoch, char *buf, int buf_sz);
 long long feng_rand_range(unsigned long long seed, long long lo, long long hi);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

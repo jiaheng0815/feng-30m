@@ -1,14 +1,22 @@
 # 编译 PC 端引擎运行时（带 tool）。
 #
-# Windows 默认用 **MSVC + C++23**（cl，/std:c++latest；MSVC 没有单独的 /std:c++23
-# 选项，c++latest 就是它的 C++23 模式）：
+# **v4.0 起是两趟构建**：核心是纯 C23，驱动是 C++23，两者标准互斥、必须分开编译。
+#   - 实测 MSVC：一条命令里同时给 /std:clatest 和 /std:c++latest 会报
+#     `error D8016: 选项不兼容`；只给 /std:clatest 则 C++ 驱动挂（<span> 需要 C++20+）。
+#   - MinGW 同理：g++ 会把 .c 当 C++ 编，所以核心走 gcc -std=c23、驱动走 g++ -std=c++23。
+#
+# 分工（详见根 AGENTS.md）：
+#   main\feng_*.c   推理核心，板端与 PC 共用，严格 C23、零堆、无全局构造
+#   pc\*.cpp        PC 侧驱动/套件，C++23（std::chrono / std::span / 花括号初始化等）
+#   main\feng_cuda.cu  GPU 后端，nvcc（无 C 模式，永久留 C++），见 build_pc_cuda.ps1
+#
+# Windows 默认 MSVC：
 #   .\build_pc_chat.ps1
-# 备用路径（MinGW g++ -std=c++23）：
+# 备用路径（MinGW gcc/g++）：
 #   .\build_pc_chat.ps1 -MinGW
-# CUDA 版见 build_pc_cuda.ps1（同样走 MSVC + nvcc）。
 #
 # 产物（两种工具链输出同名 exe）：
-#   pc_chat_q2b8 / pc_kv_suite_q2b8 / pc_kv_suite_i8 / pc_mt_suite / pc_check
+#   pc_chat_q2b8 / pc_kv_suite_q2b8 / pc_kv_suite_i8 / pc_mt_suite / pc_check / pc_bench
 #   pc_calc_test / pc_tools_test / pc_mem_test / pc_sample_test
 #   pc_calc_ask / pc_mem_ask / pc_rand_ask / pc_time_ask
 param([switch]$MinGW)
@@ -16,11 +24,13 @@ $ErrorActionPreference = "Stop"
 
 Push-Location $PSScriptRoot
 try {
-    $base = @(
-        "main\feng_model.cpp", "main\feng_llm.cpp", "main\feng_quant.cpp",
-        "main\feng_smp.cpp", "main\feng_tokenizer.cpp", "main\feng_sample.cpp",
-        "main\feng_calc.cpp", "main\feng_tools.cpp", "main\feng_memory.cpp"
+    # 共用推理核心（C23）
+    $core = @(
+        "main\feng_model.c", "main\feng_llm.c", "main\feng_quant.c",
+        "main\feng_smp.c", "main\feng_tokenizer.c", "main\feng_sample.c",
+        "main\feng_calc.c", "main\feng_tools.c", "main\feng_memory.c"
     )
+    # PC 侧驱动（C++23）
     $q2Drivers = @(
         "pc\pc_chat.cpp", "pc\pc_kv_suite.cpp", "pc\pc_mt_suite.cpp",
         "pc\pc_bench.cpp",
@@ -39,7 +49,7 @@ try {
     }
 
     if (-not $MinGW) {
-        # ---------------- MSVC + C++23（默认） ----------------
+        # ---------------- MSVC（C23 核心 + C++23 驱动，两趟编译） ----------------
         if ($env:VSCMD_VER) { } else {
             $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
             if (-not (Test-Path $vswhere)) {
@@ -61,32 +71,43 @@ try {
         $objI8 = Join-Path $objRoot "i8"
         New-Item -ItemType Directory -Force -Path $objQ2, $objFp32, $objI8 | Out-Null
 
-        $cxxFlags = @(
-            "/nologo", "/c", "/O2", "/std:c++latest", "/utf-8",
-            "/EHs-c-", "/GR-", "/D_HAS_EXCEPTIONS=0", "/wd4996", "/Imain",
-            "/DFENG_USE_OMP=1", "/openmp"
-        )
+        # 核心走 C23：/TC 强制按 C 编译，/std:clatest 打开 C23（[[nodiscard]] 等要它）
+        $cFlags = @("/nologo", "/c", "/O2", "/std:clatest", "/TC", "/utf-8", "/wd4996", "/Imain")
+        # 驱动走 C++23：/TP 强制按 C++ 编译；异常/RTTI 对纯 C 核心无意义，
+        # 但 PC 驱动自己也遵守"零异常"约定，所以保留关闭开关
+        $cxxFlags = @("/nologo", "/c", "/O2", "/std:c++latest", "/TP", "/utf-8",
+                      "/EHs-c-", "/GR-", "/D_HAS_EXCEPTIONS=0", "/wd4996", "/Imain",
+                      "/DFENG_USE_OMP=1", "/openmp")
         $kvQ2 = @("/DFENG_KV_Q2=1", "/DFENG_KV_Q2_BLOCK=8")
 
-        Write-Host "[1/4] cl 编译 q2 组（核心 + 11 个驱动）..." -ForegroundColor Cyan
-        if ((Invoke-Native "cl" ($cxxFlags + $kvQ2 + $base + $q2Drivers + "/Fo$objQ2\")) -ne 0) {
-            throw "cl 编译失败（q2 组）"
+        Write-Host "[1/5] 编译核心（C23）q2 / fp32 / i8 三套 ..." -ForegroundColor Cyan
+        if ((Invoke-Native "cl" ($cFlags + $kvQ2 + $core + "/Fo$objQ2\")) -ne 0) {
+            throw "cl 编译失败（核心 q2）"
         }
-        Write-Host "[2/4] cl 编译 fp32 组（核心 + pc_check）..." -ForegroundColor Cyan
-        if ((Invoke-Native "cl" ($cxxFlags + $base + @("pc\pc_check.cpp") + "/Fo$objFp32\")) -ne 0) {
-            throw "cl 编译失败（fp32 组）"
+        if ((Invoke-Native "cl" ($cFlags + $core + "/Fo$objFp32\")) -ne 0) {
+            throw "cl 编译失败（核心 fp32）"
         }
-        Write-Host "[3/4] cl 编译 i8 组（核心 + pc_kv_suite）..." -ForegroundColor Cyan
-        if ((Invoke-Native "cl" ($cxxFlags + @("/DFENG_KV_INT8=1") + $base + @("pc\pc_kv_suite.cpp") +
+        if ((Invoke-Native "cl" ($cFlags + @("/DFENG_KV_INT8=1") + $core + "/Fo$objI8\")) -ne 0) {
+            throw "cl 编译失败（核心 i8）"
+        }
+        Write-Host "[2/5] 编译驱动（C++23）q2 组 ..." -ForegroundColor Cyan
+        if ((Invoke-Native "cl" ($cxxFlags + $kvQ2 + $q2Drivers + "/Fo$objQ2\")) -ne 0) {
+            throw "cl 编译失败（驱动 q2）"
+        }
+        Write-Host "[3/5] 编译 pc_check / pc_kv_suite_i8 驱动 ..." -ForegroundColor Cyan
+        if ((Invoke-Native "cl" ($cxxFlags + @("pc\pc_check.cpp") + "/Fo$objFp32\")) -ne 0) {
+            throw "cl 编译失败（pc_check）"
+        }
+        if ((Invoke-Native "cl" ($cxxFlags + @("/DFENG_KV_INT8=1") + @("pc\pc_kv_suite.cpp") +
                 "/Fo$objI8\")) -ne 0) {
-            throw "cl 编译失败（i8 组）"
+            throw "cl 编译失败（pc_kv_suite i8）"
         }
 
-        Write-Host "[4/4] 链接 13 个产物 ..." -ForegroundColor Cyan
+        Write-Host "[4/5] 链接 13 个产物 ..." -ForegroundColor Cyan
         function Get-Objs([string]$dir, [string[]]$sources) {
             $sources | ForEach-Object { Join-Path $dir ([IO.Path]::GetFileNameWithoutExtension($_) + ".obj") }
         }
-        $q2Core = Get-Objs $objQ2 $base
+        $q2Core = Get-Objs $objQ2 $core
         foreach ($d in $q2Drivers) {
             $name = [IO.Path]::GetFileNameWithoutExtension($d)
             $out = switch ($name) {
@@ -102,38 +123,69 @@ try {
         }
         if ((Invoke-Native "link" (@("/nologo",
                 ("/OUT:" + (Join-Path $PSScriptRoot "pc\pc_check.exe")),
-                (Join-Path $objFp32 "pc_check.obj")) + (Get-Objs $objFp32 $base))) -ne 0) {
+                (Join-Path $objFp32 "pc_check.obj")) + (Get-Objs $objFp32 $core))) -ne 0) {
             throw "链接失败：pc_check"
         }
         if ((Invoke-Native "link" (@("/nologo",
                 ("/OUT:" + (Join-Path $PSScriptRoot "pc\pc_kv_suite_i8.exe")),
-                (Join-Path $objI8 "pc_kv_suite.obj")) + (Get-Objs $objI8 $base))) -ne 0) {
+                (Join-Path $objI8 "pc_kv_suite.obj")) + (Get-Objs $objI8 $core))) -ne 0) {
             throw "链接失败：pc_kv_suite_i8"
         }
-        Write-Host "已生成 13 个产物（MSVC /std:c++latest）" -ForegroundColor Green
+        Write-Host "[5/5] 已生成 13 个产物（核心 C23 + 驱动 C++23）" -ForegroundColor Green
     } else {
-        # ---------------- MinGW g++ -std=c++23（备用） ----------------
-        $gxx = $env:FENG_GXX
-        if (-not $gxx) { $gxx = "g++" }
-        $flags = @("-std=c++23", "-fno-exceptions", "-fno-rtti", "-fno-threadsafe-statics",
-                   "-O2", "-DFENG_USE_OMP=1", "-fopenmp")
-        & $gxx @flags -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc\pc_bench.exe pc\pc_bench.cpp @base -Imain -lm
-        & $gxx @flags -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc\pc_chat_q2b8.exe pc\pc_chat.cpp @base -Imain -lm
-        & $gxx @flags -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc\pc_kv_suite_q2b8.exe pc\pc_kv_suite.cpp @base -Imain -lm
-        & $gxx @flags -DFENG_KV_INT8=1 -o pc\pc_kv_suite_i8.exe pc\pc_kv_suite.cpp @base -Imain -lm
-        & $gxx @flags -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc\pc_mt_suite.exe pc\pc_mt_suite.cpp @base -Imain -lm
-        & $gxx @flags -o pc\pc_calc_test.exe pc\pc_calc_test.cpp main\feng_calc.cpp -Imain -lm
-        & $gxx @flags -o pc\pc_tools_test.exe pc\pc_tools_test.cpp main\feng_tools.cpp -Imain -lm
-        & $gxx @flags -o pc\pc_mem_test.exe pc\pc_mem_test.cpp main\feng_memory.cpp -Imain -lm
-        & $gxx @flags -o pc\pc_sample_test.exe pc\pc_sample_test.cpp main\feng_sample.cpp main\feng_quant.cpp -Imain -lm
-        & $gxx @flags -o pc\pc_calc_ask.exe pc\pc_calc_ask.cpp main\feng_calc.cpp -Imain -lm
-        & $gxx @flags -o pc\pc_mem_ask.exe pc\pc_mem_ask.cpp main\feng_memory.cpp -Imain -lm
-        & $gxx @flags -o pc\pc_rand_ask.exe pc\pc_rand_ask.cpp main\feng_tools.cpp -Imain -lm
-        & $gxx @flags -o pc\pc_time_ask.exe pc\pc_time_ask.cpp main\feng_tools.cpp -Imain -lm
-        & $gxx @flags -o pc\pc_check.exe pc\pc_check.cpp main\feng_model.cpp main\feng_llm.cpp `
-            main\feng_quant.cpp main\feng_smp.cpp main\feng_tokenizer.cpp -Imain -lm
-        if ($LASTEXITCODE -ne 0) { throw "g++ 编译失败" }
-        Write-Host "已生成 13 个产物（MinGW g++ -std=c++23）" -ForegroundColor Green
+        # ---------------- MinGW：gcc -std=c23 核心 + g++ -std=c++23 驱动 ----------------
+        $gcc = $env:FENG_GCC; if (-not $gcc) { $gcc = "gcc" }
+        $gxx = $env:FENG_GXX; if (-not $gxx) { $gxx = "g++" }
+        $cFlags = @("-std=c23", "-O2", "-Imain")
+        $cxxFlags = @("-std=c++23", "-fno-exceptions", "-fno-rtti", "-fno-threadsafe-statics",
+                      "-O2", "-DFENG_USE_OMP=1", "-fopenmp", "-Imain")
+        $objRoot = Join-Path $PSScriptRoot "pc\mingw_obj"
+        $objQ2 = Join-Path $objRoot "q2"
+        $objFp32 = Join-Path $objRoot "fp32"
+        $objI8 = Join-Path $objRoot "i8"
+        New-Item -ItemType Directory -Force -Path $objQ2, $objFp32, $objI8 | Out-Null
+
+        function Compile-Group([string]$objDir, [string[]]$defs) {
+            foreach ($src in $core) {
+                $o = Join-Path $objDir ([IO.Path]::GetFileNameWithoutExtension($src) + ".o")
+                if ((Invoke-Native $gcc (@("-c") + $defs + $cFlags + @($src, "-o", $o))) -ne 0) {
+                    throw "gcc 编译失败：$src"
+                }
+            }
+        }
+        Write-Host "[1/3] gcc -std=c23 编译核心三套 ..." -ForegroundColor Cyan
+        Compile-Group $objQ2 @("-DFENG_KV_Q2=1", "-DFENG_KV_Q2_BLOCK=8")
+        Compile-Group $objFp32 @()
+        Compile-Group $objI8 @("-DFENG_KV_INT8=1")
+
+        Write-Host "[2/3] g++ -std=c++23 编译并链接 13 个产物 ..." -ForegroundColor Cyan
+        $q2Core = $core | ForEach-Object { Join-Path $objQ2 ([IO.Path]::GetFileNameWithoutExtension($_) + ".o") }
+        $fp32Core = $core | ForEach-Object { Join-Path $objFp32 ([IO.Path]::GetFileNameWithoutExtension($_) + ".o") }
+        $i8Core = $core | ForEach-Object { Join-Path $objI8 ([IO.Path]::GetFileNameWithoutExtension($_) + ".o") }
+        $drv = Join-Path $objQ2 "drv"
+        New-Item -ItemType Directory -Force -Path $drv | Out-Null
+        foreach ($d in $q2Drivers) {
+            $name = [IO.Path]::GetFileNameWithoutExtension($d)
+            $out = switch ($name) {
+                "pc_chat"    { "pc\pc_chat_q2b8.exe" }
+                "pc_kv_suite" { "pc\pc_kv_suite_q2b8.exe" }
+                "pc_mt_suite" { "pc\pc_mt_suite.exe" }
+                default      { "pc\$name.exe" }
+            }
+            if ((Invoke-Native $gxx ($cxxFlags + @("-DFENG_KV_Q2=1", "-DFENG_KV_Q2_BLOCK=8") +
+                    @($d, "-o", $out) + $q2Core + @("-lm"))) -ne 0) {
+                throw "g++ 链接失败：$name"
+            }
+        }
+        if ((Invoke-Native $gxx ($cxxFlags + @("pc\pc_kv_suite.cpp", "-DFENG_KV_INT8=1",
+                "-o", "pc\pc_kv_suite_i8.exe") + $i8Core + @("-lm"))) -ne 0) {
+            throw "g++ 链接失败：pc_kv_suite_i8"
+        }
+        if ((Invoke-Native $gxx ($cxxFlags + @("pc\pc_check.cpp", "-o", "pc\pc_check.exe") +
+                $fp32Core + @("-lm"))) -ne 0) {
+            throw "g++ 链接失败：pc_check"
+        }
+        Write-Host "[3/3] 已生成 13 个产物（核心 gcc -std=c23 + 驱动 g++ -std=c++23）" -ForegroundColor Green
     }
 
     Write-Host "跑一下 tool 单测：" -ForegroundColor Cyan

@@ -1,0 +1,243 @@
+# phone/ —— 让 feng-30m 在手机上跑
+
+同一套引擎（v4.0 起的 C23 核心），给手机两条路：
+
+| 路径 | 形态 | 适合谁 |
+|---|---|---|
+| **Termux CLI** | 在手机上原生编译的 `phone_chat`，命令行对话 + 基准 | 想在终端里用、想自己改/调参 |
+| **Android APK** | Kotlin + Jetpack Compose 界面，JNI 调同一个引擎 | 只是想装个 App 用 |
+
+两条路用的是**同一批源文件**（`phone/engine/`），不存在「CLI 一个引擎、App 另一个引擎」。
+
+- 完全离线：APK 不申请任何权限，模型随包打进去；Termux 侧只读本地文件。
+- 四个 tool 全保留：算式、记忆、时间、随机数走引擎侧确定性回答，不交给模型硬算。
+
+---
+
+## 1. 快速开始：Termux
+
+```bash
+pkg install -y clang
+git clone <仓库地址> feng-30m && cd feng-30m/phone/cli
+./build.sh                       # 产出 build/phone_chat
+
+# 模型：从 Release 的 feng-30m-c-engine-model-v3.19-embed.zip 解出 model.bin / tokenizer.bin
+mkdir -p ~/.feng && cp model.bin tokenizer.bin ~/.feng/
+
+./build/phone_chat ~/.feng                      # 开始对话
+./build/phone_chat --bench 32 ~/.feng            # 测 tok/s
+FENG_PHONE_THREADS=4 ./build/phone_chat ~/.feng  # 指定线程数
+```
+
+REPL 里：`\reset` 清空上下文与记忆、`\mem` 看记忆、`\stats` 看运行状态、`\exit` 退出。
+
+常用参数：
+
+| 参数 | 说明 |
+|---|---|
+| `--ctx N` | 上下文长度，默认 2048（上限 = 编译期 `FENG_PHONE_MAX_CTX`，默认 4096） |
+| `--threads N` | 线程数，默认 `min(4, 在线 CPU 数)` |
+| `--neon 0\|1` | 强制 NEON 内核开关（A/B 用） |
+| `--bench [N]` | 基准：固定问题生成 N 个 token 并打印 tok/s |
+| `--ab` | 自检：NEON 开/关各跑一遍，比对 logits 与 argmax |
+| `--prompt TEXT` | 问一句就退出（脚本化用） |
+
+环境变量：`FENG_PHONE_THREADS`、`FENG_PHONE_NEON`（运行时覆盖编译期默认）。
+
+---
+
+## 2. 快速开始：APK
+
+```powershell
+# 需要 JDK 17~21（AGP 8.x 不支持 24+）与 Android SDK；脚本会自动下缺的部分
+.\phone\tools\build_apk.ps1
+```
+
+脚本做四件事：找/装工具链 → 把模型拷进 `phone/android/` 的 assets → 下载 Gradle → `gradle assembleRelease`，
+最后打印 APK 路径。装到手机：`adb install -r <apk>`。
+
+也可以直接用 Android Studio 打开 `phone/android/` 构建，但要先把模型拷进去——
+那一步只有 `phone/tools/build_apk.ps1` 会做，所以先跑它一次（`-SkipModel` 默认就是关的），
+或者自己把 `model.bin` 与 `tokenizer.bin` 放进 `phone/android/app/src/main/assets/`。
+
+**注意**：模型文件不入库（仓库约定：主仓库只放代码与文档），所以 `assets/` 里平时是空的，
+必须由构建脚本填充。
+
+**体积（估算，未实测）**：模型 16.1 MB（15.66 + 0.42）已经是硬底，加上原生库
+（`check_android_native.sh` 实测 `libfeng.so` 80.7 KB）与 Compose 运行时，APK 预计
+落在 20 MB 上下。没有实机构建环境，这个数字以你构建出来的为准。
+
+---
+
+## 3. 性能与内存
+
+### 3.1 实测数字（都能追到 `logs/`）
+
+| 场景 | 数字 | 出处 |
+|---|---|---|
+| 32 题矩阵（q2/block8，2048 ctx） | **27/27 + 4/4 长文召回** | `logs/phone_4t_kv.txt` |
+| 算术子集（tool 口径） | **21/21** | `logs/phone_arith.txt` |
+| 多轮记忆 | **mem12 12/12** | `logs/phone_mt.txt` |
+| 与板端原始引擎输出对比 | **逐字节相同**（单线程与 4 线程都是） | `logs/phone_base_kv.txt` vs `logs/phone_1t_kv.txt`、`logs/phone_4t_kv.txt` |
+| 与 gcc 版对比：**clang 构建**（Termux 用的就是 clang） | 32 题 27/27，输出**逐字节相同** | `logs/phone_clang_kv.txt` |
+| NEON 内核 vs 标量 A8 路径 | **max\|diff\| = 0.000e+00**（逐位一致） | `logs/phone_a64_ab_a8.txt` |
+| NEON 内核 vs 标量 fp32 路径 | max\|diff\| = 1.683，argmax 一致 | `logs/phone_a64_ab.txt` |
+| Android 原生层（NDK clang，arm64-v8a） | 编出 `libfeng.so` 80.7 KB，8 个 JNI 符号齐全，含 `sdot` | `phone/tools/check_android_native.sh` |
+| 内存：权重 | 14.93 MiB（文件 mmap，不计入匿名内存） | 模型导出目录 |
+| 内存：KV（q2/block8 @2048） | 9.62 MiB | `feng_kv_bytes()` |
+
+### 3.2 线程扩展（本机 x86_64，不是手机）
+
+`phone/cli/bench.sh` 的产出（`logs/phone_bench_jiaheng.txt`）：
+
+| 线程 | 1 | 2 | 4 | 6 | 8 |
+|---|---|---|---|---|---|
+| tok/s | 140 | 244 | 403 | 496 | 501 |
+| 相对单线程 | 1.00x | 1.73x | 2.87x | 3.54x | 3.57x |
+
+单线程 → 8 线程约 **3.6 倍**。手机上的绝对数字取决于 SoC（大核主频、内存带宽）
+与散热，**必须在手机上用 `--bench` 复测**，不要拿这张表当手机性能。
+
+并行只在**输出行**维度切分（q/k/v 与 gate/up 三个矩阵合并成一个并行区间，其余
+逐层提交），所以结果与单线程逐位相同；每次领任务按 32 行一块，避免高线程数下
+几万个行号挤在同一个原子计数器上。
+
+### 3.3 aarch64 上把两个变量拆开（qemu 模拟，**只有比值有意义**）
+
+`phone/cli/build_wsl_aarch64.sh` 的产出（`logs/phone_a64_t*_n*.txt`），同一个问题
+生成 30 个 token：
+
+| 配置 | 1 线程 | 4 线程 |
+|---|---|---|
+| NEON 关 | 4.7 tok/s | 16.3 tok/s |
+| NEON 开 | 17.8 tok/s | **51.0 tok/s** |
+
+读法：**NEON 单独约 3.8 倍**（1 线程 4.7 → 17.8）、**多线程单独约 3.5 倍**
+（NEON 关 4.7 → 16.3）、两者叠加约 10.9 倍。四种配置的回答**逐字相同**。
+
+⚠️ 这里的绝对 tok/s 是 qemu 逐条翻译指令跑出来的，**不能当手机性能**，能看的是
+「NEON 有没有用、线程有没有用」这两个比值，以及回答是否一致。
+
+而且 qemu 会把 `vdotq_s32` 拆成一串标量乘加来模拟，真机上这条指令有专门的
+dotprod 硬件通路——所以 **3.8 倍是个下界式的参考**，不是真机预期值的上限。
+确切数字只能在手机上跑 `--bench` 得到（`FENG_PHONE_NEON=0` 与 `=1` 各跑一次即为
+NEON 的真实收益）。
+
+### 3.4 工具链
+
+| 工具链 | 验证情况 |
+|---|---|
+| x86_64 gcc-14（-O2） | 全部套件 + 基准，见上表 |
+| x86_64 clang 18 | 同一份源码构建通过，32 题输出与 gcc 版**逐字节相同** |
+| aarch64 gcc-14（交叉 + qemu） | NEON / 多线程正确性，见 `logs/phone_a64_*.txt` |
+| Android NDK r27c clang 18（arm64-v8a） | `libfeng.so` 编译通过、JNI 符号齐全 |
+| Termux 上的 clang | 未在本机实测（无设备），但上面两行覆盖了同一类工具链 |
+
+### 3.5 为什么 NEON 内核走 int8 点积而不是 fp32 SIMD
+
+ARM64 的 fp32 FMA 只有 4 个通道，而 4-bit 权重必须先「拆 nibble → 扩宽到 u32 → 转 float」
+——这套转换本身就吃掉大部分收益（粗算每 64 个权重约 75 条 SIMD 指令，和标量 madd 链的
+约 96 条几乎打平）。
+
+改用 `vdotq_s32`（ARMv8.2 dotprod）：一条指令做 16 次 int8 乘加，每 64 个权重只剩
+4 条 sdot + 4 条 `vqtbl1q_s8` 查表（nibble → int8 权重）+ 10 条 nibble 展开 ≈ 18 条。
+
+代价是激活要先量化成 int8——**这不是新引入的近似**：引擎本来就有一条 `FENG_GEMV_A8`
+标量路径用同一套公式（`scale = max|x|/127`，`acc += (float)dot * (sw * sx)`，同块顺序），
+NEON 内核刻意保持同样的式子与顺序，因此两者**逐位一致**（`logs/phone_a64_ab_a8.txt` 的
+`max|diff| = 0` 就是这条）。没有 dotprod 的老核（Cortex-A53/A72）运行期探测后自动回退标量。
+
+A8 带来的数值变化量级：与纯 fp32 路径比 `max|diff| = 1.683`，而这份权重本身的 Q4 量化误差
+是 **2.9443**（`pc_check` 口径，见 `logs/pc_check_v3_15ci4_inl.txt` 等）——**激活量化的误差
+比权重量化还小**，32 题矩阵结论不变（27/27 + 4/4）。
+
+---
+
+## 4. 与板端引擎的分叉清单（改引擎前必读）
+
+`phone/engine/` 是 `esp32s3-feng-llm/main/` 的**派生副本**，板端文件一行未改。
+每个文件头部都标了来源，原版校验值在 `phone/engine/SOURCE.sha256`。
+
+手机端只改了四处，同步板端改动时照这张表处理：
+
+| 文件 | 改了什么 | 为什么 |
+|---|---|---|
+| `feng_smp.c` | 整份重写：FreeRTOS 双核 → pthread 线程池（`feng_phone_parallel_for`），并新增 `feng_gemv3_par` | 手机有 4~8 核，板端那套只覆盖 2 核 |
+| `feng_quant.c` | ① NEON 内核分派；② `feng_gemv3` 改走 `feng_gemv3_par` | ② 是移植最容易踩的坑：原版非 ESP 分支直接调 `gemv_range_cpu`，会让 q/k/v 与 gate/up **绕开多线程**，提速少一大半 |
+| `feng_llm.c` | `g_scores[4096]` → `g_scores[FENG_PHONE_MAX_CTX]` | 原值把上下文硬上限钉死在 4096 |
+| `feng.h` | 加 `feng_gemv3_par` 声明 | 上面那条 |
+
+新增文件（板端没有）：`feng_phone.c` / `feng_neon.c` 及其头文件。
+
+**同步配方**：先跑漂移检查，再逐文件看差异，只把「不属于上表四处」的改动搬过来：
+
+```bash
+python phone/tools/check_drift.py        # 哪些文件板端改了、手机端没跟
+python phone/tools/check_drift.py --write  # 同步完成后重建校验基准
+
+for f in feng_model feng_llm feng_quant feng_tokenizer feng_sample feng_calc feng_tools feng_memory; do
+  diff -u --strip-trailing-cr esp32s3-feng-llm/main/$f.c phone/engine/$f.c | head -40
+done
+```
+
+`--strip-trailing-cr` 不能省：仓库里 CRLF 与 LF 混着（板端的 `feng_llm.c` 是 CRLF、
+`feng.h` 是 LF），不带这个参数会整份文件都报成「已改」，真正的改动反而被淹没。
+
+---
+
+## 5. 目录结构
+
+```
+phone/
+├── engine/         引擎派生副本（C23）+ 手机端新增的平台层与 NEON 内核
+├── cli/            Termux CLI、验收套件、构建与基准脚本
+├── android/        Kotlin + Compose 工程（含 JNI 薄壳）
+└── tools/          APK 一键构建、NDK 原生层编译自检
+```
+
+---
+
+## 6. 验证与验收
+
+```bash
+# PC/Linux：手机引擎 vs 板端原始引擎逐字节比对 + 三个验收套件
+./phone/cli/build_baseline.sh && ./phone/cli/build.sh && ./phone/cli/verify.sh
+
+# 换编译器结果不变（Termux 用的是 clang，开发机默认 gcc）
+./phone/cli/verify_clang.sh
+
+# 线程扩展基准（数字写 logs/）
+./phone/cli/bench.sh
+
+# aarch64 + NEON 正确性（WSL / Linux，需要 qemu-user-static）
+./phone/cli/build_wsl_aarch64.sh          # 加 --full 再跑一遍 32 题矩阵
+
+# Android 原生层：用 NDK 单独编 libfeng.so（不建 APK）
+./phone/tools/check_android_native.sh
+```
+
+判据：`verify.sh` 要求手机引擎在 NEON 关时与板端原始引擎**逐字节相同**（含多线程——
+按输出行切分是位精确的），且三个套件同分。
+
+---
+
+## 7. 已知限制
+
+1. **真机性能未实测**。开发机没有 Android 设备也没有 adb，aarch64 只能靠 qemu 验证**正确性**
+   （qemu 逐条翻译指令，它的 tok/s 没有参考价值）。手机上的数字请在 Termux 里跑
+   `phone_chat --bench` 得到。
+2. **上下文默认 2048**，与板端 QAT 训练的工作点一致。`--ctx` 可以放大到编译期上限
+   （默认 4096），但**没有验证过**放大后的质量，用之前先自己测。
+3. **要求 arm64 + ARMv8.2 dotprod**（Cortex-A55/A76 及以后的核）。没有 dotprod 的老设备
+   能跑，但只能走标量路径，速度会明显下降。
+4. **APK 只出 arm64-v8a**，32 位设备不打包。
+5. **引擎单实例、非重入**：CLI 与 App 都只维护一个会话，并发调用会被锁串行化。
+6. **Kotlin/Compose 层没有本地构建验证**（开发机 JDK 是 26，AGP 8.x 只支持 17~21）。
+   native 层已用 NDK 编过，Gradle/Kotlin 部分由你第一次构建暴露问题。
+7. **还没做的进一步优化**（按预计收益排序，都不是必需的）：
+   - **注意力按 head 并行**：现在 `feng_llm.c` 的 head 循环是串行的（7 个头顺序跑），
+     长上下文时它是剩下的主要串行部分。按 head 并行是**位精确**的（每个 head 内部的
+     累加顺序不变），改动量中等。
+   - **q2 注意力的 K/V 段做 NEON**：现在只做了 Q4 GEMV，q2 内层仍是标量 LUT；
+     短上下文时收益有限，长上下文下值得做。
+   - **fp16 激活的 sdot（A16/F16 混合）**：能省掉激活量化那点精度损失，但收益要看实测。

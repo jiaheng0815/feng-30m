@@ -1,0 +1,12 @@
+{"config": "spec8", "conc": 8, "error": "startup_failed"}
+{"config": "nospec8", "conc": 8, "error": "startup_failed"}
+{"config": "nospec8_cudagraph", "conc": 8, "error": "startup_failed"}
+{"config": "spec1", "conc": 1, "error": "startup_failed"}
+{"requests": 16, "tokens": 1578, "wall_s": 47.7, "agg_tok_s": 33.1, "lat_mean_s": 2.98, "failed": 0, "config": "nospec1", "conc": 1, "extra": "--no-cuda-graph"}
+{"requests": 16, "tokens": 0, "wall_s": 0.6, "agg_tok_s": 0.0, "lat_mean_s": null, "failed": 16, "config": "nospec8", "conc": 8, "extra": "--no-cuda-graph"}
+{"requests": 16, "tokens": 1598, "wall_s": 65.0, "agg_tok_s": 24.6, "lat_mean_s": 29.75, "failed": 0, "config": "spec8", "conc": 8, "extra": "--spec mtp --draft-tokens 3 --lm-head-draft --no-cuda-graph"}
+{"config": "nospec8_cudagraph", "conc": 8, "error": "startup_failed"}
+{"requests": 16, "tokens": 1601, "wall_s": 28.9, "agg_tok_s": 55.5, "lat_mean_s": 1.8, "failed": 0, "config": "spec1", "conc": 1, "extra": "--spec mtp --draft-tokens 3 --lm-head-draft --no-cuda-graph"}
+{"requests": 16, "tokens": 1584, "wall_s": 26.7, "agg_tok_s": 59.3, "lat_mean_s": 1.67, "failed": 0, "config": "spec1_cudagraph", "conc": 1, "extra": "--spec mtp --draft-tokens 3 --lm-head-draft"}
+{"requests": 16, "tokens": 1607, "wall_s": 68.4, "agg_tok_s": 23.5, "lat_mean_s": 8.45, "failed": 0, "config": "spec2", "conc": 2, "extra": "--spec mtp --draft-tokens 3 --lm-head-draft --no-cuda-graph"}
+{"requests": 16, "tokens": 1613, "wall_s": 67.9, "agg_tok_s": 23.8, "lat_mean_s": 16.41, "failed": 0, "config": "spec4", "conc": 4, "extra": "--spec mtp --draft-tokens 3 --lm-head-draft --no-cuda-graph"}

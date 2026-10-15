@@ -11,9 +11,12 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 ROOT = Path(__file__).resolve().parents[1]
 TICK = chr(96)
-DOCS = [ROOT / "README.md", ROOT / "DELIVERY.md", ROOT / "COMPARISON.md",
-        ROOT / "CHANGELOG.md", ROOT / "AGENTS.md", ROOT / "esp32s3-feng-llm" / "README.md"]
-DOCS += sorted((ROOT / "student").glob("*/MODEL_CARD.md"))
+# v4.0 起全部说明文档归到 docs/：根目录只留 README.md（仓库首页）与 AGENTS.md（代理约定）。
+# 模型卡跟着模型目录走（archive/v1/*/MODEL_CARD.md 等）。
+DOCS = [ROOT / "README.md", ROOT / "AGENTS.md"]
+DOCS += sorted((ROOT / "docs").glob("*.md"))
+# v4.0 起历史目录已删；模型卡跟着当前模型目录走
+DOCS += sorted((ROOT / "v4").glob("*/*/MODEL_CARD.md"))
 
 # strings that must not appear any more (superseded facts)
 STALE = ["0x310000", "0x1A10000", "stage_32k", "29.66", "MQA(1 KV) / head", "3 MB 分区",
@@ -23,10 +26,20 @@ STALE = ["0x310000", "0x1A10000", "stage_32k", "29.66", "MQA(1 KV) / head", "3 M
 RELEASE_PREFIXES = ("weights/", "datasets/", "feng-30m-v3/", "feng-30m-v3.6/")
 
 # 本机训练/编译产物：干净 clone 里没有是正常的（跟踪文件缺失仍会报错）
-# archive/v3_* 是 2026-10 归档的历史版本目录；v3_/v3/ 前缀留给 CHANGELOG 里的历史路径原文
-LOCAL_PREFIXES = ("v3_", "v3/", "archive/v3_", "archive/v3/", "v2/data/", "data/", "model_export_",
+#
+# **v4.0 起仓库只保留 v4 一条线**：v1（原 student/）、v2、v3.19 与全部 v3 历史版本目录
+# （原 archive/，52 个）已删除，所需权重收进 v4/base/。因此文档里对这些目录的引用
+# **是历史记录，不再指向本机存在的路径**——CHANGELOG 正文按约定保留撰写当时的原文，
+# 不去改写它们（改写历史记录比留一个失效路径更糟）。新写的文档请不要再引用这些前缀。
+LOCAL_PREFIXES = ("archive/", "v2/", "student/", "v3_", "v3/", "data/", "v4/sft/",
+                  "v4/qat/", "model_export_",
                   "esp32s3-feng-llm/model_export_", "logs/", "scripts/local_paths.json",
-                  "feng_cont/")            # 续训/恢复实验的训练产物目录（本机外置盘）
+                  "feng_cont/",            # 续训/恢复实验的训练产物目录（本机外置盘）
+                  # 手机端（phone/）的构建产物：干净 clone 里没有是正常的
+                  "phone/cli/build/", "phone/cli/build-baseline/", "phone/cli/build-aarch64/",
+                  "phone/cli/build-android/", "phone/cli/build-clang/",
+                  "phone/android/app/build/", "phone/android/build/",
+                  "phone/android/.gradle/", "phone/android/local.properties")
 
 PATH_RE = re.compile(TICK + r"([^" + TICK + r"\n]+)" + TICK)
 FILE_RE = re.compile(r"^[\w./\\-]+\.(md|py|c|exe|json|npy|gguf|bin|csv|ps1|txt|safetensors)$")

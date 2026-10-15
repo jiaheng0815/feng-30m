@@ -1,0 +1,45 @@
+# feng-30m 文档
+
+一个 ~30M 参数中文对话模型的完整记录：从零预训练、用 27B 教师蒸馏、量化到 Q4 后
+在 **ESP32-S3（32MB flash / 16MB PSRAM）上离线跑**。所有数字都是本机实测
+（RTX 5060 Ti 16GB、i7-12700KF、ESP32-S3-WROOM-2-N32R16V）。
+
+## 从哪里开始
+
+| 你想干什么 | 看这个 |
+|---|---|
+| 先看看这是什么 | 根 [`README.md`](../README.md) |
+| **把这个模型跑起来**（PC / 板端 / 烧录） | [`USAGE.md`](USAGE.md) |
+| 看版本演进与每次改动的实测数字 | [`CHANGELOG.md`](CHANGELOG.md) |
+| 三代模型横向对比 | [`COMPARISON.md`](COMPARISON.md) |
+| 交付物清单与验收口径 | [`DELIVERY.md`](DELIVERY.md) |
+| ESP32 固件工程细节 | [`esp32-firmware.md`](esp32-firmware.md) |
+| 改代码前的工作约定 | [`../AGENTS.md`](../AGENTS.md) |
+
+## 全部文档
+
+| 文件 | 内容 |
+|---|---|
+| [`USAGE.md`](USAGE.md) | 下载 / 推理 / 烧录 / 串口协议，以及本地一键验收 |
+| [`CHANGELOG.md`](CHANGELOG.md) | 按时间倒序的完整更新日志（**失败尝试也保留**，供避免重复踩坑） |
+| [`COMPARISON.md`](COMPARISON.md) | v1 / v2 / v3 / v4 四代的架构、语料、评测横向对比 |
+| [`DELIVERY.md`](DELIVERY.md) | 交付清单、验收口径、硬件约束与踩过的坑 |
+| [`esp32-firmware.md`](esp32-firmware.md) | 固件工程：硬件要求、引擎结构、编译烧录、串口协议、实测结果 |
+
+根目录另外两个：
+- [`../README.md`](../README.md) —— 仓库首页（GitHub 会渲染它，所以留在根）
+- [`../AGENTS.md`](../AGENTS.md) —— AI 编码代理的工作约定与硬性约束
+
+模型卡跟着模型目录走，不在这里：`archive/v1/*/MODEL_CARD.md`、`v3_19/*/MODEL_CARD.md`。
+
+## 数字的可追溯性
+
+文档里的每个数字都能追到 `eval/*.json`、`*/summary.json` 或 `logs/` 里的实测日志。
+两个自检脚本确保这件事一直成立：
+
+```powershell
+python tools\check_md.py      # 反引号路径是否存在、代码围栏是否成对、有没有过时表述
+python tools\check_docs.py    # 关键数字（参数量 / 固件体积 / 各版评测分数）与真实产物对齐
+```
+
+改完文档两个都要跑（`python tools\check_all.py` 会一起跑，并附带引擎构建与回归）。

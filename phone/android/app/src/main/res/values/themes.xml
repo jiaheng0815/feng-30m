@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 只用 Compose 的 Material3，窗口主题不需要 AppCompat / Material Components 依赖，
+     只要一个 NoActionBar 的框架主题即可（取消 ActionBar，颜色由 Compose 决定）。 -->
+<resources>
+    <style name="Theme.Feng30m" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@android:color/background_light</item>
+    </style>
+</resources>

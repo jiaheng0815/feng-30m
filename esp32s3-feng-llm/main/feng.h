@@ -1,17 +1,25 @@
-/* feng-30m on ESP32-S3: model container + inference core (portable C++23).
+/* feng-30m on ESP32-S3: model container + inference core (portable C23).
  *
- * C++23 约定（见 AGENTS.md）：
- *  - 零堆分配：本头文件与核心模块不使用 new/delete/malloc/free；
+ * C23 约定（见 AGENTS.md，v4.0 起）：
+ *  - 零堆分配：本头文件与核心模块不使用 malloc/calloc/free；
  *    唯一的例外是 tokenizer 的启动期 PSRAM 加载（一次性、固定大小）；
- *  - 编译期 -fno-exceptions -fno-rtti，函数不抛异常；
- *  - 不使用需要运行时构造的全局/静态对象（.init_array 为空）；
- *  - 只使用无堆的标准库组件（<array>/<span>/<string_view>/<bit>/<type_traits> 等）。 */
+ *  - 不使用需要运行时构造的全局/静态对象（.init_array 必须为空）；
+ *  - 标准库只用无堆组件：<stddef.h>/<stdint.h>/<stdbool.h>/<string.h>/<math.h>；
+ *  - 错误处理靠返回码（int），无异常（C 本来就没有）。
+ *
+ * 本头文件同时被板端（纯 C23）和 PC 端（C++23 薄封装 + CUDA）包含，
+ * 所以带 extern "C" 守卫。数组一律用「指针 + 长度」表达，不用 C++ 的 span。
+ */
 #ifndef FENG_H
 #define FENG_H
 
-#include <cstddef>
-#include <cstdint>
-#include <span>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* KV cache mode: fp32 / int8 / q2, selected at compile time.
  *   FENG_KV_INT8=1 : int8 values + fp16 scale per (layer, position, head) -> 4x less PSRAM than fp32
@@ -79,10 +87,13 @@
 #define FENG_HOT
 #endif
 
-inline constexpr uint32_t FENG_MAGIC = 0x46574E31u;   /* "FWN1" */
-inline constexpr uint32_t FENG_MAX_LAYERS = 24;
-/* 11 tensors/layer * layers + tok_embd + output_norm (+margin) */
-inline constexpr uint32_t FENG_MAX_TENSORS = 168;
+/* 编译期常量：用 enum 而不是 const 变量，保证零存储、且没有 C 的「文件作用域 const
+ * 是外部链接」问题（C++ 里是内部链接，C 里不是——迁移时踩过这个区别）。 */
+enum {
+    FENG_MAGIC       = 0x46574E31,   /* "FWN1" */
+    FENG_MAX_LAYERS  = 24,
+    FENG_MAX_TENSORS = 168           /* 11 tensors/layer * layers + tok_embd + output_norm */
+};
 
 typedef enum { FENG_DT_FP16 = 0, FENG_DT_Q4 = 1 } feng_dtype_t;
 
@@ -118,7 +129,7 @@ typedef struct {
 } feng_model_t;
 
 /* parse a memory image of model.bin; returns 0 on success */
-[[nodiscard]] int feng_model_init(feng_model_t *m, std::span<const std::byte> data) noexcept;
+[[nodiscard]] int feng_model_init(feng_model_t *m, const void *data, size_t size);
 
 /* Q4 / fp16 GEMV: y[n_out] = W[n_out x n_in] * x[n_in] (+ optional bias=NULL) */
 void feng_gemv(const void *tensor, uint32_t dtype, const float *x, float *y,
@@ -176,8 +187,14 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
 /* greedy-sample helpers */
 int feng_argmax(const float *logits, int n);
 /* 共享贪心采样：对 hist 里的 token 施加重复惩罚；no_repeat_n>=2 时禁止补全已出现过的
- * n-gram（压复读循环）。板端与 PC 引擎同口径。 */
-[[nodiscard]] int feng_sample_greedy(std::span<float> logits, std::span<const int> hist,
-                                     float penalty, int no_repeat_n) noexcept;
+ * n-gram（压复读循环）。板端与 PC 引擎同口径。
+ * logits 长度由 n_logits 给出、hist 长度由 n_hist 给出（C 版不再用 span）。 */
+[[nodiscard]] int feng_sample_greedy(float *logits, int n_logits,
+                                     const int *hist, int n_hist,
+                                     float penalty, int no_repeat_n);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FENG_H */

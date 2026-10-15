@@ -1,6 +1,0 @@
-{
-  "pretrain_sequences": 98401,
-  "pretrain_tokens": 201623649,
-  "sft_conversations": 94478,
-  "sft_tokens": 22651229
-}

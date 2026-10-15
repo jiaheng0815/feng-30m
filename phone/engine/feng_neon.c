@@ -1,0 +1,123 @@
+/* aarch64 NEON 内核：Q4 block-64 GEMV 走 ARMv8.2 int8 点积（SDOT）。
+ * 设计说明见 feng_neon.h 头部注释。 */
+
+/* 同 feng_phone.c：-std=c23 下要显式打开特性宏才能拿到 getauxval / sys/auxv.h */
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE 1
+#endif
+
+#include "feng_neon.h"
+
+#if defined(__aarch64__) || defined(_M_ARM64)
+
+#include "feng.h"          /* feng_f16_to_f32：与标量路径共用同一份 fp16 转换 */
+
+#include <arm_neon.h>
+#include <string.h>
+
+#if defined(__linux__) || defined(__ANDROID__)
+#include <sys/auxv.h>
+#ifndef HWCAP_ASIMDDP
+#define HWCAP_ASIMDDP (1UL << 20)
+#endif
+#endif
+
+/* 只给这两个函数打开 dotprod：这样单个二进制既能跑在 A53/A72（回退标量），
+ * 又能在 A55/A76+ 上用上 sdot，不需要给整包加 -march=armv8.2-a+dotprod
+ * （那会让老机器直接 SIGILL）。
+ * 注意 GCC 要求扩展名带 '+' 前缀（Clang 两种写法都收）。 */
+#if defined(__GNUC__) || defined(__clang__)
+#define FENG_DOTPROD_FN __attribute__((target("+dotprod")))
+#else
+#define FENG_DOTPROD_FN
+#endif
+
+int feng_neon_sdot_ok(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+#if defined(__linux__) || defined(__ANDROID__)
+        cached = (getauxval(AT_HWCAP) & HWCAP_ASIMDDP) ? 1 : 0;
+#else
+        cached = 0;
+#endif
+    }
+    return cached;
+}
+
+/* nibble(0..15) -> 有符号权重(-8..7) 的 16 项查表常量。
+ * 字节序：低 8 字节是 -8..-1（0xF8..0xFF），高 8 字节是 0..7 —— 小端下正好按
+ * 下标 0..15 顺序排列。 */
+static const uint64_t k_w_tbl[2] = { 0xFFFEFDFCFBFAF9F8ull, 0x0706050403020100ull };
+
+/* 64 个权重 = 32 个打包字节：拆 nibble -> 还原 d 顺序 -> 查表成 int8 -> sdot。
+ * 展开顺序说明（与 feng_quant.c 的行布局一致）：
+ *   字节 j 的低半字节 = 权重下标 2j，高半字节 = 2j+1；
+ *   vzip1q(lo, hi) 给出 d 0..15，vzip2q(lo, hi) 给出 d 16..31。 */
+FENG_DOTPROD_FN static void q4_block_sdot(const uint8_t *p, const int8_t *xq,
+                                          const int8x16_t wtbl, int32x4_t *acc)
+{
+    const uint8x16_t p0 = vld1q_u8(p);          /* 打包字节 0..15  -> d 0..31  */
+    const uint8x16_t p1 = vld1q_u8(p + 16);     /* 打包字节 16..31 -> d 32..63 */
+    const uint8x16_t mask = vdupq_n_u8(0x0F);
+
+    const uint8x16_t lo0 = vandq_u8(p0, mask);
+    const uint8x16_t hi0 = vshrq_n_u8(p0, 4);
+    const uint8x16_t lo1 = vandq_u8(p1, mask);
+    const uint8x16_t hi1 = vshrq_n_u8(p1, 4);
+
+    const int8x16_t w0 = vqtbl1q_s8(wtbl, vzip1q_u8(lo0, hi0));   /* d 0..15  */
+    const int8x16_t w1 = vqtbl1q_s8(wtbl, vzip2q_u8(lo0, hi0));   /* d 16..31 */
+    const int8x16_t w2 = vqtbl1q_s8(wtbl, vzip1q_u8(lo1, hi1));   /* d 32..47 */
+    const int8x16_t w3 = vqtbl1q_s8(wtbl, vzip2q_u8(lo1, hi1));   /* d 48..63 */
+
+    *acc = vdotq_s32(*acc, w0, vld1q_s8(xq + 0));
+    *acc = vdotq_s32(*acc, w1, vld1q_s8(xq + 16));
+    *acc = vdotq_s32(*acc, w2, vld1q_s8(xq + 32));
+    *acc = vdotq_s32(*acc, w3, vld1q_s8(xq + 48));
+}
+
+void feng_neon_q4_gemv(const uint8_t *base, const int8_t *xq, const float *xscale,
+                       float *y, int r0, int r1, int n_in)
+{
+    const int n_blocks = n_in / 64;
+    const size_t row_bytes = (size_t)n_blocks * (2 + 32);
+    const int8x16_t wtbl = vreinterpretq_s8_u64(vld1q_u64(k_w_tbl));
+
+    for (int o = r0; o < r1; o++) {
+        const uint8_t *row = base + (size_t)o * row_bytes;
+        const uint8_t *scales = row;
+        const uint8_t *packed = row + (size_t)n_blocks * 2;
+        float acc = 0.f;
+
+        for (int b = 0; b < n_blocks; b++) {
+            const float sx = xscale[b];
+            if (sx == 0.f) continue;        /* 与标量 A8 路径同口径：整块激活为 0 则跳过 */
+
+            uint16_t hs;
+            memcpy(&hs, scales + b * 2, 2);
+            const float sw = feng_f16_to_f32(hs);
+            const uint8_t *p = packed + (size_t)b * 32;
+            const int8_t *xb = xq + (size_t)b * 64;
+
+            int32x4_t dacc = vdupq_n_s32(0);
+            q4_block_sdot(p, xb, wtbl, &dacc);
+            /* 整数点积是精确的（分组不同不影响结果），所以这里的 (float)dot
+             * 与标量 A8 逐位相同；下面的累加顺序也与标量一致。 */
+            acc += (float)vaddvq_s32(dacc) * (sw * sx);
+        }
+        y[o] = acc;
+    }
+}
+
+#else  /* 非 aarch64：空实现，保证链接通过（调用方本来就只在 FENG_PHONE_NEON=1 时用） */
+
+int feng_neon_sdot_ok(void) { return 0; }
+
+void feng_neon_q4_gemv(const uint8_t *base, const int8_t *xq, const float *xscale,
+                       float *y, int r0, int r1, int n_in)
+{
+    (void)base; (void)xq; (void)xscale; (void)y; (void)r0; (void)r1; (void)n_in;
+}
+
+#endif

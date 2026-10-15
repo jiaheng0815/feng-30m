@@ -33,7 +33,7 @@ EOS_ID = 0
 
 # 三个要对比的模型（与文档里的口径一致）
 MODELS = {
-    "v1": "student/feng-30m-32k",
+    "v1": "archive/v1/feng-30m-32k",
     "v2": "v2/stage_planA3b/final",
     "v3": "archive/v3/retr_sft/ctx32768/final",
 }

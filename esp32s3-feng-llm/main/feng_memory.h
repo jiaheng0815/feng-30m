@@ -9,6 +9,10 @@
 #ifndef FENG_MEMORY_H
 #define FENG_MEMORY_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* 清空记忆（\reset 或 \mem clear 时调用） */
 void feng_mem_clear(void);
 /* 从用户输入里学习事实；返回 1 = 新记录/更新了某条事实 */
@@ -17,5 +21,9 @@ int feng_mem_learn(const char *user);
 int feng_mem_answer(const char *user, char *answer, int answer_sz);
 /* 供 \mem 命令展示：把当前已知事实写进 buf（没有事实时写"（空）"） */
 void feng_mem_snapshot(char *buf, int buf_sz);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -26,13 +26,17 @@ from check_md import is_local_artifact, normalize, tracked_files  # noqa: E402
 
 
 def _tracked_docs() -> list[Path]:
-    """只审 git 跟踪的 markdown（.Codex/ 等运行时目录不算项目文档）。"""
+    """只审 git 跟踪、**且工作区里实际存在**的 markdown。
+
+    只过滤 git 跟踪还不够：`git ls-files` 会把「已从工作区删除、但尚未提交」的文件
+    也算进来（v4.0 删掉 v1/v2/v3 历史目录时就踩到了），后面读它们会直接 FileNotFound。
+    """
     try:
         out = subprocess.run(["git", "ls-files", "-z", "*.md"], cwd=ROOT,
                              capture_output=True, check=True).stdout
         names = [n.decode("utf-8") for n in out.split(b"\0") if n]
         if names:
-            return sorted(ROOT / n for n in names)
+            return sorted(p for p in (ROOT / n for n in names) if p.exists())
     except Exception as exc:
         print(f"[警告] git ls-files 失败（{exc}），退化为全目录扫描")
     return sorted(p for p in ROOT.rglob("*.md")
@@ -111,13 +115,18 @@ def _params(config: dict) -> int:
     return v * h + config["num_hidden_layers"] * per_layer + h
 
 
-def check_facts() -> None:
-    print("[2] 事实检查（模型规格 / GGUF / 评测数字）")
+def _check_facts_legacy() -> None:
+    """把文档里的关键数字与 **v1/v2/v3 历史产物**对齐（参数量 / GGUF / 各版评测）。
+
+    这一千多行是 v3 时代逐版累积起来的，核验对象全部在 `archive/`、`v2/`、`v3_19/` 里。
+    v4.0 起那些目录已从工作区删除，所以它平时不会被执行（见下面 check_facts）。
+    需要时从 GitHub Release 取回旧产物，本节会自动恢复。"""
+    print("[2] 事实检查（历史产物 / 模型规格 / GGUF / 评测数字）")
 
     # --- 参数量与结构：文档声称 vs config.json ---
     specs = {
         "v3": (ROOT / "archive" / "v3" / "retr_sft" / "ctx32768" / "final", 29.43, "11 层", 32768),
-        "v1": (ROOT / "student" / "feng-30m-chat", 30.75, "8 层", 8192),
+        "v1": (ROOT / "archive" / "v1" / "feng-30m-chat", 30.75, "8 层", 8192),
     }
     for name, (d, want_m, want_layers, want_ctx) in specs.items():
         cfg_path = d / "config.json"
@@ -1115,7 +1124,38 @@ def check_facts() -> None:
         elif p.exists():
             print(f"    {label}（与文档一致）")
 
+def check_facts() -> None:
+    """事实检查。
+
+    v1/v2/v3 的模型产物已随 v4.0 删除（仓库只保留 v4 一条线），因此那一千多行
+    针对旧产物的核验没有对象可查——**明确跳过并说明**，比让它在干净 clone 上
+    直接抛 FileNotFoundError 好。文本类核验（不依赖旧产物）照常执行。
+
+    ⚠️ v4 产出自己的权重与评测后，应当在这里补 v4 的核验，
+       否则「文档数字与产物对齐」这件事在 v4 时代事实上是没人守的。
+    """
+    if (ROOT / "archive").exists() or (ROOT / "v2").exists():
+        _check_facts_legacy()
+    else:
+        print("[2] 事实检查（历史产物核验已跳过）")
+        print("    v1/v2/v3 的模型产物已删除，针对它们的参数量/GGUF/各版评测核验无对象可查")
+        print("    需要时从 GitHub Release 取回旧产物，本节自动恢复")
+        print("    ⚠️ v4 产出权重与评测后，应在此补 v4 的核验")
+    _check_wording()
+
+
+def _check_wording() -> None:
+    """不依赖历史产物的核验：文档自身一致性 + `logs/` 里的实测证据。
+
+    这些在 v4.0 删掉旧模型产物后依然有意义，所以始终执行。
+    """
+    # 检索 SFT 的 loss 序列：v4.0 前是从 `archive/v3/retr_sft/summary.json` 读出来的，
+    # 该产物已删除，这里固化成**当时核验过的那组值**（CHANGELOG v3 检索节同口径）。
+    # 作用是防止文档回潮到编造的数字；真要重跑检索 SFT 就得同步改这里。
+    want_loss = ["0.76", "0.43", "0.22", "0.33"]
+
     # --- 身份表述：写了"身份自述"的文档必须是 v3.2 的新说法 ---
+
     new_identity = "独立开发训练的 AI"
     for doc in DOCS:
         t = doc.read_text(encoding="utf-8")
@@ -1132,8 +1172,9 @@ def check_facts() -> None:
     print(f"    检索 SFT loss 序列 {'/'.join(want_loss)}（与 summary.json 一致）")
 
     # --- 当前版本口径：防止 README/USAGE/DELIVERY 回潮到旧版本或旧指引 ---
-    current_docs = [ROOT / "README.md", ROOT / "USAGE.md", ROOT / "DELIVERY.md",
-                    ROOT / "COMPARISON.md", ROOT / "AGENTS.md"]
+    current_docs = [ROOT / "README.md", ROOT / "AGENTS.md",
+                    ROOT / "docs" / "USAGE.md", ROOT / "docs" / "DELIVERY.md",
+                    ROOT / "docs" / "COMPARISON.md"]
     stale_claims = ("板端用 v3.16-embed", "板端用 v3.14-embed", "板端用 v3.13-embed",
                     "PC 用 v3.14", "PC 用 v3.13", "最终版 v3.6", "--model weights\\hf",
                     "c-engine-model-v3.16-embed")
@@ -1143,10 +1184,10 @@ def check_facts() -> None:
         for bad in stale_claims:
             if bad in t:
                 fail.append(f"{rel}: 出现旧版本口径「{bad}」（当前 PC=v3.14、板端=v3.16-embed）")
-    for doc in (ROOT / "README.md", ROOT / "USAGE.md", ROOT / "DELIVERY.md"):
+    for doc in (ROOT / "README.md", ROOT / "docs" / "USAGE.md", ROOT / "docs" / "DELIVERY.md"):
         if "v3.19-embed" not in doc.read_text(encoding="utf-8"):
             fail.append(f"{doc.relative_to(ROOT)}: 未标注当前板端版 v3.19-embed")
-    for doc in (ROOT / "README.md", ROOT / "USAGE.md"):
+    for doc in (ROOT / "README.md", ROOT / "docs" / "USAGE.md"):
         if "c-engine-model-v3.19-embed" not in doc.read_text(encoding="utf-8"):
             fail.append(f"{doc.relative_to(ROOT)}: 未指向 C 引擎预导出模型包")
     # --- v3.19 证据：板端 QAT 矩阵/算术/实机记忆 ---

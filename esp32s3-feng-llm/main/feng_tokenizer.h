@@ -4,6 +4,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* 实现在 feng_tokenizer.c（纯 C23）；PC 端的 C++ 驱动也包含本头文件，
+ * 所以带 extern "C" 守卫。 */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
     char **tokens;          /* vocab strings (byte-level encoded), index = token id */
     char *token_blob;       /* tokens[i] 都指向这块单块内存；释放只能做一次 */
@@ -29,5 +35,9 @@ int feng_tok_encode(const feng_tok_t *t, const char *text, int *out, int max_out
 
 /* decode one token to raw bytes (byte-level -> original bytes); returns byte count */
 int feng_tok_decode_token(const feng_tok_t *t, int id, char *out, int max_out);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

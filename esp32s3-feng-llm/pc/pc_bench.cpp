@@ -49,8 +49,7 @@ int main(int argc, char **argv)
     unsigned char *tblob = read_file(path, &tlen);
 
     feng_model_t m;
-    if (feng_model_init(
-            &m, {reinterpret_cast<const std::byte *>(mblob), mlen}) != 0) {
+    if (feng_model_init(&m, mblob, mlen) != 0) {
         fprintf(stderr, "model init failed\n"); return 1;
     }
     feng_tok_t tok;

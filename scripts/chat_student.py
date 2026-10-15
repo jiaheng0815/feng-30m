@@ -13,7 +13,7 @@ from runtime_tools import tool_answer  # noqa: E402
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", default=str(ROOT / "student/stageB/final"))
+    ap.add_argument("--model", default=str(ROOT / "archive" / "v1" / "feng-30m-chat"))
     ap.add_argument("--prompt", default=None, help="single prompt; omit for interactive")
     ap.add_argument("--max-new", type=int, default=128)
     ap.add_argument("--temp", type=float, default=0.0)

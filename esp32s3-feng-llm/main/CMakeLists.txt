@@ -1,30 +1,37 @@
 idf_component_register(
-    SRCS "main.cpp" "feng_model.cpp" "feng_llm.cpp" "feng_quant.cpp" "feng_smp.cpp"
-         "feng_tokenizer.cpp"
-         "feng_sample.cpp"
-         "feng_calc.cpp" "feng_tools.cpp" "feng_memory.cpp" "gbk.cpp" "gbk_table.cpp"
+    SRCS "main.c" "feng_model.c" "feng_llm.c" "feng_quant.c" "feng_smp.c"
+         "feng_tokenizer.c"
+         "feng_sample.c"
+         "feng_calc.c" "feng_tools.c" "feng_memory.c" "gbk.c" "gbk_table.c"
+         "feng_gemv_bench.c"
          "feng_pie_bench.S" "feng_pie_gemv.S"
     INCLUDE_DIRS "."
 )
 
-# 全组件 C++23（严格模式）。嵌入式确定性要求：禁用异常与 RTTI，
-# 并关闭函数内静态对象的线程安全守卫（本工程只用编译期常量或 POD 静态数据，
-# 没有需要运行时构造的全局/静态对象，见 AGENTS.md「C++23 引擎约定」）。
+# 全组件严格 C23（v4.0 起，嵌入式侧从 C++23 迁到 C23）。
+# C_EXTENSIONS OFF = -std=c23 而不是 -std=gnu23，与 PC 侧口径一致。
+#
+# 注意：原来的 -fno-exceptions / -fno-rtti / -fno-threadsafe-statics 是 C++ 专属选项，
+# gcc 对 .c 文件会报 "valid for C++ but not for C"；而且它们同时会命中 .S 汇编文件。
+# 迁到 C 之后这些约束天然成立（C 没有异常/RTTI），直接删掉。
 set_target_properties(${COMPONENT_LIB} PROPERTIES
-    CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+    C_STANDARD 23 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
 # the inference kernels are the hot path: -O2 + FPU on the XL7
-target_compile_options(${COMPONENT_LIB} PRIVATE
-    -O2 -fno-exceptions -fno-rtti -fno-threadsafe-statics)
+target_compile_options(${COMPONENT_LIB} PRIVATE -O2)
 # 非热点模块用 -Os 压体积：它们不在每 token 的内层循环里（tool 秒回、
 # tokenizer 只在加载/解码时用），对推理 tok/s 无可测影响；
 # 推理热点 feng_llm/feng_quant/feng_smp/feng_sample 保持上面的 -O2。
 set(FENG_OS_SOURCES
-    "main.cpp" "feng_model.cpp" "feng_tokenizer.cpp"
-    "feng_tools.cpp" "feng_memory.cpp" "gbk.cpp" "gbk_table.cpp")
+    "main.c" "feng_model.c" "feng_tokenizer.c"
+    "feng_tools.c" "feng_memory.c" "gbk.c" "gbk_table.c")
 set_source_files_properties(${FENG_OS_SOURCES} PROPERTIES COMPILE_OPTIONS "-Os")
 # feng_calc 里既有的 snprintf 拼接在 -Os 的值域分析下会报保守的 format-truncation
 # （snprintf 本身有界，行为不变），只关掉这一条 -Werror。
-set_source_files_properties("feng_calc.cpp" PROPERTIES
+# 迁到 C23 后 gcc 的值域分析会变，feng_memory / feng_tools / main 里串联的
+# snprintf 也可能触发同类误报，一并抑制（snprintf 都带长度上限，行为不变）。
+set_source_files_properties("feng_calc.c" PROPERTIES
+    COMPILE_OPTIONS "-Os;-Wno-error=format-truncation")
+set_source_files_properties("feng_memory.c" "feng_tools.c" "main.c" PROPERTIES
     COMPILE_OPTIONS "-Os;-Wno-error=format-truncation")
 # KV cache mode: default int8 (1024 ctx). -DFENG_USE_Q2_KV=ON switches to the
 # 2-bit block-8 cache (2048 ctx in the same PSRAM budget; quality study in
@@ -34,6 +41,12 @@ option(FENG_USE_Q2_KV "use 2-bit block-8 KV cache (2048 ctx on 16MB PSRAM)" OFF)
 set(FENG_MAX_CTX_OVERRIDE 0 CACHE STRING "override MAX_CTX for testing (0 = default)")
 if(NOT FENG_MAX_CTX_OVERRIDE EQUAL 0)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_MAX_CTX_OVERRIDE=${FENG_MAX_CTX_OVERRIDE})
+endif()
+# 测试用：-DFENG_BENCH_GEMV=1 开机跑 Q4 GEMV 的**周期级**剖析
+# （6 个变体把 7.52 周期/权重的停顿归因到 LUT / 激活 / flash 流式读 / FPU，见 feng_gemv_bench.c）
+option(FENG_BENCH_GEMV "cycle-level Q4 GEMV inner-loop profiling on boot" OFF)
+if(FENG_BENCH_GEMV)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_BENCH_GEMV=1)
 endif()
 # 测试用：-DFENG_BENCH_CTX=1 在开机时测 256/1024/2048 上下文的单次 forward 耗时
 option(FENG_BENCH_CTX "benchmark attention at 256/1024/2048 ctx on boot" OFF)

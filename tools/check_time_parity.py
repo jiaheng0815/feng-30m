@@ -3,7 +3,8 @@
 Python 侧会比 C 多一个时间来源标注（"，网络时间"/"，系统时间…"），对比前剥掉。
 
 用法：
-    g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -o pc_time_ask pc/pc_time_ask.cpp main/feng_tools.cpp -Imain -lm
+    gcc -std=c23 -O2 -c main/feng_tools.c -o /tmp/feng_tools.o -Imain
+    g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -o pc_time_ask pc/pc_time_ask.cpp /tmp/feng_tools.o -Imain -lm
     python tools/check_time_parity.py --c-bin pc_time_ask
 """
 import argparse
