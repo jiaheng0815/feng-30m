@@ -6,12 +6,12 @@
 |---|---|---|
 | `feng-30m-v3.19-release.zip` | PC（transformers） | HF fp32 权重 + 蒸馏数据集 |
 | `feng-30m-v3.19-embed-release.zip` | 板端权重 | Q4+q2 双 QAT 权重 + 可直接烧录的 `model.bin` / `tokenizer.bin` |
-| `feng-30m-v3.19-engine.zip` | PC 引擎源码 | C++23 引擎（v3.20，自带四个 tool） |
+| `feng-30m-v3.19-engine.zip` | PC 引擎源码 | v3.19 时的 C++23 引擎（自带四个 tool）；v4.0 起核心转严格 C23 |
 | `feng-30m-c-engine-model-v3.19-embed.zip` | 引擎预导出模型 | 免装 torch，直接跑 `pc_chat` |
 | `feng-30m-v3.19-embed-firmware.zip` | 板端一包到底 | 预编译固件 + 模型 + 烧录说明（免装 ESP-IDF） |
 
 仓库本身只放代码与文档；权重、板端模型与蒸馏数据集都在 Release 包里。
-引擎当前版本 **v3.20 / C++23**：板端固件 **304,192 B**，板端 **2.26 tok/s**（938 ms/token）。
+引擎当前版本 **v4.0 / 严格 C23**（PC 侧仍 C++23 + CUDA）：板端固件 **303,824 B**，板端 **2.33 tok/s**。
 
 ## 1. 包内结构
 

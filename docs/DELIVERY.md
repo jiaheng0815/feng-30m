@@ -10,7 +10,7 @@
 > | PC 权重 | **v3.19**（`v3_19/pc4`）：范围 10/10、探针 42/42、单类别检索 110/128、记忆 23/24、留出 19/30 |
 > | 板端权重 | **v3.19-embed**（`v3_19/board6`）：Q4 权重 + q2 KV 双 QAT |
 > | 引擎 | **v4.0 / 严格 C23**（嵌入式核心；PC 侧 C++23 + CUDA）|
-> | 板端固件 | q2 block8 / 2048 ctx，app **304,192 B**（比 C 版小 2,816 B），**2.26 tok/s**（938 ms/token @ ctx 19） |
+> | 板端固件 | q2 block8 / 2048 ctx，app **303,824 B**（比 C 版基线小 3,568 B），**2.33 tok/s**（真实 decode 507 ms/token @ ctx 19） |
 > | tool | 算式 / 时间 / 随机数 / 记忆，板内确定性回答（0.5 s），板端 tool **13/13**、记忆 **12/12** |
 > | Release | `feng-30m-v3.19-release.zip`、`feng-30m-v3.19-embed-release.zip`、`feng-30m-v3.19-engine.zip`、`feng-30m-c-engine-model-v3.19-embed.zip`、`feng-30m-v3.19-embed-firmware.zip` |
 >

@@ -84,7 +84,7 @@
   关键技巧是 **Q4 权重/q2 KV 双 QAT**（`v3_7_kv_qat.py --wqat`），量化抗性对权重回插极敏感
   （掺 20% v3.9 权重就掉到 25/27），PC 32k 弱。
 - **PC 用 v3.19（`v3_19/pc4`）；板端用 v3.19-embed 权重（`v3_19/board6`）；两边同一套
-  v3.20 / C++23 引擎与固件**（q2/2048 固件 304,192 B、板端 2.26 tok/s；见 `docs/CHANGELOG.md`
+  v4.0 / 严格 C23 引擎与固件**（q2/2048 固件 303,824 B、板端 2.33 tok/s；见 `docs/CHANGELOG.md`
   v3.19/v3.20 节与 `docs/esp32-firmware.md`）。
 - **标准基准（英文，0-shot）**：**只有 SciQ 71.00/73.80 与 PIQA 53.37**。
   ARC/HellaSwag/OpenBookQA/Winogrande/BoolQ/SciCloze 六项曾跑过，但在这个 30M 中文模型上
@@ -196,7 +196,7 @@ g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Imain -lm       # 驱动 + 链
    `string_view::substr`（引用 `std::__throw_out_of_range_fmt`，拖进 libstdc++ 异常/字符串/
    pthread 运行时 ~5KB）；非热点模块（tokenizer/tool/model/gbk/main）用 `-Os`，热点
    （llm/quant/smp/sample）保持 `-O2`。改完对比固件体积：**不得超 C 版基线 307,392B
-   （q2/2048 配置）**，当前为 304,192B。
+   （q2/2048 配置）**，当前为 303,824 B。
 8. **CUDA 后端（PC 可选，板端不含）**：`main/feng_cuda.cu` + `build_pc_cuda.ps1`
    （MSVC + nvcc，`-fmad=false` 保证与 CPU 同运算顺序）；GEMV 权重常驻显存，其余算子在 CPU。
    **验收口径**：32 题矩阵须 27/27+4/4 且与 CPU 版**输出逐字一致**（`pc_kv_suite_cuda.exe`），
@@ -400,7 +400,7 @@ python scripts\esp32_enc_test.py COM20
 - **写了数字**：数字必须能追到 `eval/*.json`、`summary.json` 或 `logs/` 里的实测；没有出处的一律删掉或标注"预期/估算"，
   不要写没有日志支撑的精确值。
 - **换了模型版本**：重跑 `eval_planA_scope.py` + `eval_longctx.py`，数字同步进 `docs/CHANGELOG.md` / `README.md` / `docs/USAGE.md`
--  （PC 与板端两套口径必须分别标清：PC=v3.19，板端=v3.19-embed + v3.20 引擎；算式的验收口径是
+-  （PC 与板端两套口径必须分别标清：**权重** PC=v3.19 / 板端=v3.19-embed，**引擎**=v4.0（严格 C23）；算式的验收口径是
   **tool 回答**，不是模型算——pc_kv_suite 会把算式任务路由到 feng_calc）。
 
 ## 8. 排障速查
