@@ -12,6 +12,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ubuntu-latest 的默认 gcc 是 13，**只认 -std=c2x，不认 -std=c23**，
+      # 直接用会报 `gcc: error: unrecognized command-line option '-std=c23'`。
+      # 显式装 gcc-14：它才真正支持 C23，而且与板端工具链（ESP-IDF v5.5.5 的
+      # xtensa g++ 14.2）以及本机 MinGW gcc 16 是同一代，CI 才有代表性。
+      - name: 安装 GCC 14（C23 需要 gcc 14+）
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gcc-14 g++-14
+          gcc-14 --version | head -1
+
       - name: Python 语法检查
         run: python3 -m py_compile scripts/*.py tools/*.py
 
@@ -26,7 +36,7 @@ jobs:
           mkdir -p /tmp/core
           for f in feng_model feng_llm feng_quant feng_smp feng_tokenizer \
                    feng_sample feng_calc feng_tools feng_memory; do
-            gcc -std=c23 -O2 -c main/$f.c -o /tmp/core/$f.o -Imain
+            gcc-14 -std=c23 -O2 -c main/$f.c -o /tmp/core/$f.o -Imain
           done
           echo "C23 核心 9 个目标文件编译通过"
 
@@ -35,15 +45,15 @@ jobs:
         run: |
           set -euo pipefail
           CXXFLAGS="-std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2"
-          g++ $CXXFLAGS -o /tmp/pc_calc_test   pc/pc_calc_test.cpp   /tmp/core/feng_calc.o -Imain -lm
-          g++ $CXXFLAGS -o /tmp/pc_tools_test  pc/pc_tools_test.cpp  /tmp/core/feng_tools.o -Imain -lm
-          g++ $CXXFLAGS -o /tmp/pc_mem_test    pc/pc_mem_test.cpp    /tmp/core/feng_memory.o -Imain -lm
-          g++ $CXXFLAGS -o /tmp/pc_sample_test pc/pc_sample_test.cpp /tmp/core/feng_sample.o \
+          g++-14 $CXXFLAGS -o /tmp/pc_calc_test   pc/pc_calc_test.cpp   /tmp/core/feng_calc.o -Imain -lm
+          g++-14 $CXXFLAGS -o /tmp/pc_tools_test  pc/pc_tools_test.cpp  /tmp/core/feng_tools.o -Imain -lm
+          g++-14 $CXXFLAGS -o /tmp/pc_mem_test    pc/pc_mem_test.cpp    /tmp/core/feng_memory.o -Imain -lm
+          g++-14 $CXXFLAGS -o /tmp/pc_sample_test pc/pc_sample_test.cpp /tmp/core/feng_sample.o \
               /tmp/core/feng_quant.o -Imain -lm
-          g++ $CXXFLAGS -o /tmp/pc_calc_ask    pc/pc_calc_ask.cpp    /tmp/core/feng_calc.o -Imain -lm
-          g++ $CXXFLAGS -o /tmp/pc_mem_ask     pc/pc_mem_ask.cpp     /tmp/core/feng_memory.o -Imain -lm
-          g++ $CXXFLAGS -o /tmp/pc_rand_ask    pc/pc_rand_ask.cpp    /tmp/core/feng_tools.o -Imain -lm
-          g++ $CXXFLAGS -o /tmp/pc_time_ask    pc/pc_time_ask.cpp    /tmp/core/feng_tools.o -Imain -lm
+          g++-14 $CXXFLAGS -o /tmp/pc_calc_ask    pc/pc_calc_ask.cpp    /tmp/core/feng_calc.o -Imain -lm
+          g++-14 $CXXFLAGS -o /tmp/pc_mem_ask     pc/pc_mem_ask.cpp     /tmp/core/feng_memory.o -Imain -lm
+          g++-14 $CXXFLAGS -o /tmp/pc_rand_ask    pc/pc_rand_ask.cpp    /tmp/core/feng_tools.o -Imain -lm
+          g++-14 $CXXFLAGS -o /tmp/pc_time_ask    pc/pc_time_ask.cpp    /tmp/core/feng_tools.o -Imain -lm
           for t in pc_calc_test pc_tools_test pc_mem_test pc_sample_test; do
             echo "== $t"
             /tmp/$t | tail -n 1
@@ -70,11 +80,20 @@ jobs:
           CORE="/tmp/core/feng_model.o /tmp/core/feng_llm.o /tmp/core/feng_quant.o \
                 /tmp/core/feng_smp.o /tmp/core/feng_tokenizer.o /tmp/core/feng_calc.o \
                 /tmp/core/feng_tools.o /tmp/core/feng_memory.o /tmp/core/feng_sample.o"
-          g++ $CXXFLAGS $Q2 -o /tmp/pc_chat_q2b8     pc/pc_chat.cpp     $CORE -Imain -lm
-          g++ $CXXFLAGS $Q2 -o /tmp/pc_kv_suite_q2b8 pc/pc_kv_suite.cpp $CORE -Imain -lm
-          g++ $CXXFLAGS $Q2 -o /tmp/pc_mt_suite      pc/pc_mt_suite.cpp $CORE -Imain -lm
-          g++ $CXXFLAGS     -o /tmp/pc_check         pc/pc_check.cpp    $CORE -Imain -lm
+          g++-14 $CXXFLAGS $Q2 -o /tmp/pc_chat_q2b8     pc/pc_chat.cpp     $CORE -Imain -lm
+          g++-14 $CXXFLAGS $Q2 -o /tmp/pc_kv_suite_q2b8 pc/pc_kv_suite.cpp $CORE -Imain -lm
+          g++-14 $CXXFLAGS $Q2 -o /tmp/pc_mt_suite      pc/pc_mt_suite.cpp $CORE -Imain -lm
+          g++-14 $CXXFLAGS     -o /tmp/pc_check         pc/pc_check.cpp    $CORE -Imain -lm
           echo "PC 引擎全部编译通过"
+
+      - name: 手机端引擎编译（同一批 C23 核心，aarch64 交叉）
+        working-directory: phone/cli
+        run: |
+          set -euo pipefail
+          # 复用 phone/cli/build.sh 的口径，但显式指定 gcc-14（脚本自己只会探测到 gcc-13）
+          CC=gcc-14 CXX=g++-14 OUT=/tmp/phone_build bash build.sh
+          echo "phone_chat 等产物："
+          ls -la /tmp/phone_build | grep -v '^d'
 
       - name: 文档自检（干净 clone 口径）
         run: |
