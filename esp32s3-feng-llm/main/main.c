@@ -20,6 +20,7 @@
 #include "sdkconfig.h"
 
 #include "feng.h"
+#include "feng_bonus.h"
 #include "feng_calc.h"
 #include "feng_memory.h"
 #include "feng_tools.h"
@@ -708,7 +709,15 @@ void app_main(void)
                 out_printf("stream chunk = %d bytes%s\n", v,
                            v == 0 ? " (whole reply at once)" : "");
             } else {
-                out_printf("unknown command, try \\help\n");
+                /* 隐藏命令走这里——**故意不列在 \help 里**。
+                 * 唯一的线索是 README 小字提到的 nobonus 编译选项（见 feng_bonus.c）。 */
+                char hidden[20];
+                if (feng_bonus_decode(line, hidden, sizeof(hidden))) {
+                    out_printf("\n  ~ %s ~\n", hidden);
+                    out_printf("  (senren * banka)  想关掉这个彩蛋：-DFENG_NO_BONUS=ON\n\n");
+                } else {
+                    out_printf("unknown command, try \\help\n");
+                }
             }
             continue;
         }

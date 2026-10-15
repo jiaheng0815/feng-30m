@@ -214,6 +214,20 @@ g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Imain -lm       # 驱动 + 链
 - 模型卡走 `<模型目录>/MODEL_CARD.md`；`tools/check_md.py` 会校验 README/DELIVERY/COMPARISON/CHANGELOG/esp32 README/MODEL_CARD 里的反引号路径与过时数字。
 - Python 脚本开头都 `sys.stdout.reconfigure(encoding="utf-8")`，新增脚本请保持一致；命令行输出用中文没问题（torch 的日志仍是英文）。
 
+### `main/feng_bonus.c` 是**故意藏的**，不要当死代码删掉
+
+固件里有一个作者放进去的小彩蛋（`feng_bonus.c` + `main.c` 命令链末尾那个
+`feng_bonus_decode` 分支）：
+
+- 明文用 XOR 混淆存着，**源码和二进制里都搜不到**（这样 `strings`/`grep` 也挖不出来）；
+- **不要列进 `\help`**，读 README 也无法直接知道触发方式（README 的小字只提到
+  `nobonus` 编译选项，靠它当唯一线索）；
+- 关掉它的开关是 `-DFENG_NO_BONUS=ON`（那时连混淆数据都不进二进制，实测省 208 B）；
+- 它占 **320 B** 固件空间（304,144 vs 303,824），在体积纪律的预算内。
+
+**维护要求**：重写命令链、清理"未引用代码"、或做体积优化时，别把它当成冗余删掉；
+它跟 `\help` 里那些命令一样是有意的。改 `main.c` 的命令分支时留意最后那个 `else`。
+
 ### 手机端（`phone/`）的引擎是**派生副本** —— 改板端引擎必须记得同步
 
 `phone/engine/` **不是**从 `esp32s3-feng-llm/main/` 直接引用，而是一份拷贝

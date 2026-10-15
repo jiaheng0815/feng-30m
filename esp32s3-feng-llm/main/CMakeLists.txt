@@ -3,7 +3,7 @@ idf_component_register(
          "feng_tokenizer.c"
          "feng_sample.c"
          "feng_calc.c" "feng_tools.c" "feng_memory.c" "gbk.c" "gbk_table.c"
-         "feng_gemv_bench.c"
+         "feng_gemv_bench.c" "feng_bonus.c"
          "feng_pie_bench.S" "feng_pie_gemv.S"
     INCLUDE_DIRS "."
 )
@@ -41,6 +41,13 @@ option(FENG_USE_Q2_KV "use 2-bit block-8 KV cache (2048 ctx on 16MB PSRAM)" OFF)
 set(FENG_MAX_CTX_OVERRIDE 0 CACHE STRING "override MAX_CTX for testing (0 = default)")
 if(NOT FENG_MAX_CTX_OVERRIDE EQUAL 0)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_MAX_CTX_OVERRIDE=${FENG_MAX_CTX_OVERRIDE})
+endif()
+# 彩蛋：固件里藏了一句话（见 feng_bonus.c）。默认开着，
+# `-DFENG_NO_BONUS=ON` 关掉——那时连混淆数据都不会进二进制。
+# 触发方式故意不写在 \help 里，README 的小字也只提到这个选项本身。
+option(FENG_NO_BONUS "关闭固件里的那个小彩蛋" OFF)
+if(FENG_NO_BONUS)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_NO_BONUS=1)
 endif()
 # 测试用：-DFENG_BENCH_GEMV=1 开机跑 Q4 GEMV 的**周期级**剖析
 # （6 个变体把 7.52 周期/权重的停顿归因到 LUT / 激活 / flash 流式读 / FPU，见 feng_gemv_bench.c）
