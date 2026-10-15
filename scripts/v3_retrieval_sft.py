@@ -45,7 +45,7 @@ def main():
     ap.add_argument("--seed", type=int, default=20261003)
     args = ap.parse_args()
     from transformers import AutoTokenizer, Qwen3ForCausalLM
-    tok = AutoTokenizer.from_pretrained(ROOT / "v2" / "tokenizer")
+    tok = AutoTokenizer.from_pretrained(ROOT / "v4" / "base")
     out_root = Path(args.out)
     data_root = Path(args.data_root)
     out_root.mkdir(parents=True, exist_ok=True)

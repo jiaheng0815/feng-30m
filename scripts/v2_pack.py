@@ -10,6 +10,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from paths import ROOT  # noqa: E402
 V2 = ROOT / "v2"
+V4 = ROOT / "v4"   # v4.0 起 v2/tokenizer 已删除，分词器跟着模型目录走
 DATA = V2 / "data"
 VOCAB = 16384
 SPECIALS = ["<|endoftext|>", "<|im_start|>", "<|im_end|>", "<|pad|>"]
@@ -17,8 +18,8 @@ SPECIALS = ["<|endoftext|>", "<|im_start|>", "<|im_end|>", "<|pad|>"]
 
 def main():
     from tokenizers import Tokenizer, models, trainers, pre_tokenizers, decoders
-    (V2 / "tokenizer").mkdir(parents=True, exist_ok=True)
-    tok_path = V2 / "tokenizer" / "tokenizer.json"
+    (V4 / "base").mkdir(parents=True, exist_ok=True)
+    tok_path = V4 / "base" / "tokenizer.json"
     if not tok_path.exists():
         tk = Tokenizer(models.BPE(unk_token=None))
         tk.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)

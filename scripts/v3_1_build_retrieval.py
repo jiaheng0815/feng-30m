@@ -112,7 +112,7 @@ def main() -> None:
               if args.kind_weights else None)
 
     from tokenizers import Tokenizer
-    tk = Tokenizer.from_file(str(ROOT / "v2" / "tokenizer" / "tokenizer.json"))
+    tk = Tokenizer.from_file(str(ROOT / "v4" / "base" / "tokenizer.json"))
     enc = lambda s: tk.encode(s).ids                                  # noqa: E731
 
     stream_path = Path(args.stream)

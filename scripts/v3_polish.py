@@ -46,7 +46,7 @@ def main():
     steps = max(1, int(n_all // (args.batch * args.accum) * args.epochs))
     log(f"[polish] {n_all} windows x {args.seq} | init {args.init} | "
         f"{args.batch}x{args.accum} | {steps} steps | lr {args.lr:g}")
-    tok = AutoTokenizer.from_pretrained(ROOT / "v2" / "tokenizer")
+    tok = AutoTokenizer.from_pretrained(ROOT / "v4" / "base")
     model = Qwen3ForCausalLM.from_pretrained(args.init, dtype=torch.float32)
     model.config.max_position_embeddings = args.seq
     model = model.to("cuda").train()

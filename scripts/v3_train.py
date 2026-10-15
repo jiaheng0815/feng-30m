@@ -56,7 +56,7 @@ def main():
     args = ap.parse_args()
 
     from transformers import AutoTokenizer, Qwen3ForCausalLM
-    tok = AutoTokenizer.from_pretrained(ROOT / "v2" / "tokenizer")
+    tok = AutoTokenizer.from_pretrained(ROOT / "v4" / "base")
     out_root = Path(args.out)
     out_root.mkdir(parents=True, exist_ok=True)
     want = set(args.stages.split(",")) if args.stages else None

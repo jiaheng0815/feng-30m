@@ -164,7 +164,7 @@ def main() -> None:
     args = ap.parse_args()
 
     from tokenizers import Tokenizer
-    tk = Tokenizer.from_file(str(ROOT / "v2" / "tokenizer" / "tokenizer.json"))
+    tk = Tokenizer.from_file(str(ROOT / "v4" / "base" / "tokenizer.json"))
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 

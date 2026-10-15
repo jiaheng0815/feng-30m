@@ -12,8 +12,9 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from paths import ROOT  # noqa: E402
 V2 = ROOT / "v2"
+V4 = ROOT / "v4"   # v4.0 起 v2/tokenizer 已删除，分词器跟着模型目录走
 DATA = V2 / "data"
-TOK = V2 / "tokenizer" / "tokenizer.json"
+TOK = V4 / "base" / "tokenizer.json"
 _tk = None
 
 

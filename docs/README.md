@@ -10,6 +10,7 @@
 |---|---|
 | 先看看这是什么 | 根 [`README.md`](../README.md) |
 | **把这个模型跑起来**（PC / 板端 / 烧录） | [`USAGE.md`](USAGE.md) |
+| 数据跑完了，要把 4.0 训出来 | [`v4-pipeline.md`](v4-pipeline.md) |
 | 看版本演进与每次改动的实测数字 | [`CHANGELOG.md`](CHANGELOG.md) |
 | 三代模型横向对比 | [`COMPARISON.md`](COMPARISON.md) |
 | 交付物清单与验收口径 | [`DELIVERY.md`](DELIVERY.md) |
@@ -21,6 +22,7 @@
 | 文件 | 内容 |
 |---|---|
 | [`USAGE.md`](USAGE.md) | 下载 / 推理 / 烧录 / 串口协议，以及本地一键验收 |
+| [`v4-pipeline.md`](v4-pipeline.md) | **4.0 训练链路**：数据合并 → 检索回放 → 全参 SFT → 板端 QAT → 导出 → 四道验收关卡（含每步该出现什么数字、对不上说明什么） |
 | [`CHANGELOG.md`](CHANGELOG.md) | 按时间倒序的完整更新日志（**失败尝试也保留**，供避免重复踩坑） |
 | [`COMPARISON.md`](COMPARISON.md) | v1 / v2 / v3 / v4 四代的架构、语料、评测横向对比 |
 | [`DELIVERY.md`](DELIVERY.md) | 交付清单、验收口径、硬件约束与踩过的坑 |

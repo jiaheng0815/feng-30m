@@ -16,7 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from paths import ROOT  # noqa: E402
 DATA = ROOT / "data"
 V2 = ROOT / "v2"
-TOK = V2 / "tokenizer" / "tokenizer.json"
+V4 = ROOT / "v4"   # v4.0 起 v2/tokenizer 已删除，分词器跟着模型目录走
+TOK = V4 / "base" / "tokenizer.json"
 L = 2049
 _tk = None
 

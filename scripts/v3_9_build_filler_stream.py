@@ -22,7 +22,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=str(ROOT / "archive" / "v3_9" / "filler_eval.npy"))
     ap.add_argument("--tokens", type=int, default=4_000_000)
-    ap.add_argument("--tokenizer", default=str(ROOT / "v2" / "tokenizer" / "tokenizer.json"))
+    ap.add_argument("--tokenizer", default=str(ROOT / "v4" / "base" / "tokenizer.json"))
     args = ap.parse_args()
 
     sys.path.insert(0, str(ROOT / "scripts"))

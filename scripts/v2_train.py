@@ -16,6 +16,7 @@ from student_utils import chunked_lm_loss  # noqa: E402
 
 from paths import ROOT  # noqa: E402
 V2 = ROOT / "v2"
+V4 = ROOT / "v4"   # v4.0 起 v2/tokenizer 已删除，分词器跟着模型目录走
 ATTN = [SDPBackend.EFFICIENT_ATTENTION]
 
 
@@ -73,7 +74,7 @@ def main():
     rng = np.random.default_rng(args.seed)
     torch.manual_seed(args.seed)
     from transformers import AutoTokenizer
-    tok = AutoTokenizer.from_pretrained(V2 / "tokenizer")
+    tok = AutoTokenizer.from_pretrained(V4 / "base")
 
     if args.stage == "pretrain":
         ids = np.load(Path(args.data) if args.data else (V2 / "pretrain_ids.npy"), mmap_mode="r")
