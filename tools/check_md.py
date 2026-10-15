@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TICK = chr(96)
 # v4.0 起全部说明文档归到 docs/：根目录只留 README.md（仓库首页）与 AGENTS.md（代理约定）。
 # 模型卡跟着模型目录走（archive/v1/*/MODEL_CARD.md 等）。
-DOCS = [ROOT / "README.md", ROOT / "AGENTS.md"]
+DOCS = [ROOT / "README.md", ROOT / "AGENTS.md", ROOT / "phone" / "README.md"]
 DOCS += sorted((ROOT / "docs").glob("*.md"))
 # v4.0 起历史目录已删；模型卡跟着当前模型目录走
 DOCS += sorted((ROOT / "v4").glob("*/*/MODEL_CARD.md"))

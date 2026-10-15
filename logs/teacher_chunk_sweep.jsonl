@@ -1,0 +1,3 @@
+{"chunk": 512, "n": 40, "tokens": 2668, "wall_s": 73.6, "tok_s": 36.3, "req_s": 0.544, "failed": 0}
+{"chunk": 2048, "n": 40, "tokens": 2528, "wall_s": 73.6, "tok_s": 34.4, "req_s": 0.544, "failed": 0}
+{"chunk": 8192, "n": 40, "tokens": 2483, "wall_s": 70.9, "tok_s": 35.0, "req_s": 0.564, "failed": 0}

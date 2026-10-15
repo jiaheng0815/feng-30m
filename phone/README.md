@@ -60,7 +60,7 @@ REPL 里：`\reset` 清空上下文与记忆、`\mem` 看记忆、`\stats` 看�
 那一步只有 `phone/tools/build_apk.ps1` 会做，所以先跑它一次（`-SkipModel` 默认就是关的），
 或者自己把 `model.bin` 与 `tokenizer.bin` 放进 `phone/android/app/src/main/assets/`。
 
-**注意**：模型文件不入库（仓库约定：主仓库只放代码与文档），所以 `assets/` 里平时是空的，
+**注意**：模型文件不入库（仓库约定：主仓库只放代码与文档），所以 `phone/android/app/src/main/assets/` 里平时是空的，
 必须由构建脚本填充。
 
 **体积（估算，未实测）**：模型 16.1 MB（15.66 + 0.42）已经是硬底，加上原生库

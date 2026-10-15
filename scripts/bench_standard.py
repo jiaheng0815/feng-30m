@@ -1,7 +1,11 @@
 """标准基准评测（lm-evaluation-harness）：8 个内置英文任务 + 自定义 SciCloze-900。
 
-任务：sciq / piqa / arc_easy / arc_challenge / hellaswag / winogrande /
-      openbookqa / boolq / scicloze_900（eval/lm_eval_tasks/scicloze_900.yaml）
+任务：**只跑 sciq / piqa**。
+
+2026-10-15 起删掉了 arc_easy / arc_challenge / hellaswag / winogrande / openbookqa /
+boolq / scicloze_900 —— 它们在 v3.19/pc4 上全部贴近或低于随机线（BoolQ 37.8% 甚至低于
+二选一随机，只有 yes/no 偏置），对这个 30M 中文对话模型**测不出任何能力差异**。
+留着一堆没信号的分数只会掩盖真实水平。原始结果仍在 eval/lm_eval_feng_v3_19_pc4.json 里。
 
 口径：0-shot、dtype=float32、prefix_token_id=0（自训 tokenizer 没有 bos/eos，
 lm-eval 默认会取到 None 而崩溃）。
@@ -20,8 +24,7 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 ROOT = Path(__file__).resolve().parents[1]
 
-TASKS = ("sciq,piqa,arc_easy,arc_challenge,hellaswag,winogrande,"
-         "openbookqa,boolq,scicloze_900")
+TASKS = "sciq,piqa"
 
 
 def main() -> int:
@@ -45,9 +48,14 @@ def main() -> int:
         "--tasks", TASKS,
         "--num_fewshot", str(args.fewshot),
         "--batch_size", str(args.batch_size),
-        "--include_path", str(ROOT / "eval" / "lm_eval_tasks"),
         "--output_path", str(out),
     ]
+    # 自建任务目录（曾放 scicloze_900.yaml，2026-10-15 随该任务一并删除）。
+    # 现在跑的都是 lm-eval 内置任务，但保留这个分支：以后再造自定义任务时把 yaml
+    # 放进 eval/lm_eval_tasks/ 就会自动生效。
+    include_dir = ROOT / "eval" / "lm_eval_tasks"
+    if include_dir.is_dir():
+        cmd += ["--include_path", str(include_dir)]
     if args.limit:
         cmd += ["--limit", str(args.limit)]
 

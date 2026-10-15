@@ -259,7 +259,7 @@ v1 语料脚本已随 v1 归档，重建 v2/v3 数据需要 `FENG_DATA_DIR`（�
 | 留出 30 题（开发集） | **19/30**（`eval/v3_19pc4_heldout30.json`） |
 | 独立留出 30 题（未参与调参） | **18/30**（`eval/heldout2_v3_19pc4.json`） |
 | 记忆 24 题 | **23/24**（`eval/v3_19pc4_memory24.json`） |
-| 标准英文基准（0-shot） | SciQ 71.00%/73.80%、PIQA 53.37%、ARC-E 26.60%、ARC-C 21.93%、HellaSwag 28.99%、Winogrande 49.33%、OpenBookQA 14.00%/24.00%、BoolQ 37.83%、SciCloze-900 25.56%（`eval/lm_eval_feng_v3_19_pc4.json`） |
+| 标准英文基准（0-shot） | SciQ 71.00%/73.80%、PIQA 53.37%（**只留这两项**：ARC/HellaSwag/OpenBookQA/Winogrande/BoolQ/SciCloze 在 30M 中文模型上贴随机线、测不出差异，已从套件删除，见 CHANGELOG v3.20 评测节）（`eval/lm_eval_feng_v3_19_pc4.json`） |
 
 ### 板端（v3.19-embed + q2 / 2048）
 

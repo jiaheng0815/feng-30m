@@ -50,5 +50,7 @@ phone/android/app/build/
 phone/android/build/
 phone/android/.gradle/
 phone/android/local.properties
+# AGP 原生构建缓存（externalNativeBuild 生成，含 CMake 探测结果，体积不小）
+phone/android/app/.cxx/
 # 打进 APK 的模型副本（由 phone/tools/build_apk.ps1 从模型目录拷入）
 phone/android/app/src/main/assets/*.bin

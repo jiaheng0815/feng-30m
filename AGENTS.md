@@ -86,10 +86,12 @@
 - **PC 用 v3.19（`v3_19/pc4`）；板端用 v3.19-embed 权重（`v3_19/board6`）；两边同一套
   v3.20 / C++23 引擎与固件**（q2/2048 固件 304,192 B、板端 2.26 tok/s；见 `docs/CHANGELOG.md`
   v3.19/v3.20 节与 `docs/esp32-firmware.md`）。
-- **标准基准（英文，0-shot）**：SciQ 71.00/73.80、PIQA 53.37、ARC-E 26.60、ARC-C 21.93、
-  HellaSwag 28.99、Winogrande 49.33、OpenBookQA 14.00/24.00、BoolQ 37.83、SciCloze-900 25.56；
-  除 SciQ/PIQA 外基本贴近随机——如实呈现，不要拿去当卖点
-  （`eval/lm_eval_feng_v3_19_pc4.json`，复现 `scripts/bench_standard.py`）。
+- **标准基准（英文，0-shot）**：**只有 SciQ 71.00/73.80 与 PIQA 53.37**。
+  ARC/HellaSwag/OpenBookQA/Winogrande/BoolQ/SciCloze 六项曾跑过，但在这个 30M 中文模型上
+  全部贴随机线（BoolQ 37.8% 甚至低于二选一随机，只有 yes/no 偏置），**测不出能力差异**，
+  已于 2026-10-15 从套件删除（`scripts/bench_standard.py` 的 `TASKS` 只剩 `sciq,piqa`）。
+  **不要再把那些数字加回来，也不要拿它们当卖点**——一堆没信号的分数只会盖住真实水平。
+  原始结果留档在 `eval/lm_eval_feng_v3_19_pc4.json`（复现 `scripts/bench_standard.py`）。
 - 硬件：RTX 5060 Ti 16GB（训练）+ i7-12700KF；ESP32-S3-**WROOM-2-N32R16V** 开发板（32MB Octal flash + 16MB Octal PSRAM，1.8V）。
 
 ## 2. 运行环境与路径解析（代码里已无硬编码盘符）
@@ -133,7 +135,7 @@
 | `v4/` | **唯一的模型线**。`v4/base/` = 4.0 SFT 起点（HF 格式：`model.safetensors` + `config.json` + 自带 `tokenizer.json`/`tokenizer_config.json`/`chat_template.jinja`，来自 v3.19 pc4 的 Release）。训练输出按阶段建子目录（`v4/sft/`、`v4/qat/`…），产物结构与 v2/v3 时代一致：`<阶段>/final/` + `summary.json` + `train_log.jsonl` |
 | `data/` | 提示词池 / 教师蒸馏数据 / 公开语料（**不入库**，`.gitignore` 排除）。v4.0 重建：5 个公开语料从 HF 拉取，提示词池由 `scripts/v4_build_prompts.py` 生成，教师输出由 `scripts/v4_teacher_gen.py` 写入 |
 | `scripts/` | 全部数据构建 / 训练 / 评测 / 导出脚本（含 `scripts/paths.py` 路径解析、`scripts/bench_standard.py` 基准入口） |
-| `eval/` | 评测结果 JSON（范围 / 针检索 / 记忆 / 留出 / `lm_eval_*.json` 标准基准）与 `eval/lm_eval_tasks/` 任务定义 |
+| `eval/` | 评测结果 JSON（范围 / 针检索 / 记忆 / 留出 / `lm_eval_*.json` 标准基准）；`eval/README.md` 记录命名约定 |
 | `logs/` | 所有构建 / 训练 / 烧录 / 板上测试日志；`board_baseline_lut.txt` 是板上精度基线 |
 | `esp32s3-feng-llm/` | ESP32 固件工程 + 可移植 C23 推理引擎（PC 侧 C++23 + CUDA）+ 一致性检查与回归套件；工程说明见 `docs/esp32-firmware.md` |
 | `phone/` | 手机端（Termux CLI + Android APK），复用同一套 C23 引擎；详见 `phone/README.md` |
@@ -189,6 +191,7 @@ g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Imain -lm       # 驱动 + 链
    固件由 ESP-IDF v5.5.5（xtensa g++ 14.2）编译，`main/CMakeLists.txt` 已设
    `C_STANDARD 23` + `C_EXTENSIONS OFF`，并且**不能**再带
    `-fno-exceptions -fno-rtti -fno-threadsafe-statics`（gcc 对 C 文件报错，且会误命中 `.S`）。
+
 7. **体积纪律（板端实测）**：禁止 `std::sort`（每套比较器实例化一份 introsort，实测 ~2.6KB）、
    `string_view::substr`（引用 `std::__throw_out_of_range_fmt`，拖进 libstdc++ 异常/字符串/
    pthread 运行时 ~5KB）；非热点模块（tokenizer/tool/model/gbk/main）用 `-Os`，热点
@@ -210,6 +213,29 @@ g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Imain -lm       # 驱动 + 链
 - 训练脚本对已完成的阶段是**跳过式**的（检测到 `<阶段>/final/` 已存在就不重跑）；要重跑先用 `--out` 指向新目录，或显式删除旧目录（需用户确认）。
 - 模型卡走 `<模型目录>/MODEL_CARD.md`；`tools/check_md.py` 会校验 README/DELIVERY/COMPARISON/CHANGELOG/esp32 README/MODEL_CARD 里的反引号路径与过时数字。
 - Python 脚本开头都 `sys.stdout.reconfigure(encoding="utf-8")`，新增脚本请保持一致；命令行输出用中文没问题（torch 的日志仍是英文）。
+
+### 手机端（`phone/`）的引擎是**派生副本** —— 改板端引擎必须记得同步
+
+`phone/engine/` **不是**从 `esp32s3-feng-llm/main/` 直接引用，而是一份拷贝
+（带 `phone/engine/SOURCE.sha256` 溯源清单记录原版哈希）。10 个共用文件里
+**6 个只差头部注释、4 个有实质改动（合计约 110 行）**：
+
+| 文件 | 手机端改了什么 |
+|---|---|
+| `feng_smp.c` | FreeRTOS 双核信号量 → pthread 线程池（手机 4~8 核） |
+| `feng_quant.c` | 加 aarch64 NEON（`vdotq_s32`）Q4 GEMV 内核 |
+| `feng.h` | 新增 `feng_gemv3_par` 声明（q/k/v、gate/up 合并提交） |
+| `feng_llm.c` | `FENG_PHONE_MAX_CTX` 解除板端 4096 上下文上限 |
+
+**改 `main/` 下任何被共用的文件后，必须同步这 10 个副本**，否则两边漂移。
+同步之后用 `phone/cli/build.sh` 验一遍：它复用 `esp32s3-feng-llm/pc/` 的
+**同一份 32 题矩阵套件源码**（不另写题表），所以在开发机上就能把两边的输出
+**逐字节对比**。当前基线：手机端 32 题 27/27 + 4/4，单线程与多线程输出均与板端一致。
+
+> Windows（MSYS2）上也能编手机引擎：`feng_phone.c` 有 `_WIN32` 分支，走"读进堆"
+> 回退（MSYS2 没有 `sys/mman.h`），pthread/信号量由 winpthreads 提供。
+> 目的就是让手机端能在开发机上直接编译与验证，不必绕 WSL。
+
 
 ## 5. 常用命令
 

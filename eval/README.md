@@ -14,8 +14,7 @@
 | `longctx32*` | 32k 长文针检索（单轮 / 多轮） | `eval_longctx_many.py` |
 | `identity_*` | 身份题专项 | `eval_identity.py` |
 | `arith_*` | 算术子集（tool 口径） | `pc_kv_suite`（`FENG_SUITE=arith`） |
-| `lm_eval_*` | 英文标准基准 9 任务（lm-eval） | `scripts/bench_standard.py` |
-| `lm_eval_tasks/` | lm-eval 的任务定义 | — |
+| `lm_eval_*` | 英文标准基准（lm-eval，**现只跑 SciQ 与 PIQA**） | `scripts/bench_standard.py` |
 
 ## 读这些数字时注意
 

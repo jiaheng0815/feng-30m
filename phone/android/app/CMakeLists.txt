@@ -30,8 +30,11 @@ set(FENG_COLD
     ${ENGINE_DIR}/feng_tools.c
     ${ENGINE_DIR}/feng_memory.c)
 
+# JNI 壳必须写全路径：AGP 的 externalNativeBuild 下，add_library 里的**相对路径**
+# 是相对本 CMakeLists 所在目录（app/）解析的，而 feng_jni.c 在 app/src/main/cpp/ 下
+# ——写 `feng_jni.c` 会报 "Cannot find source file"（实测）。
 add_library(feng SHARED
-    feng_jni.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/main/cpp/feng_jni.c
     ${FENG_HOT}
     ${FENG_COLD})
 

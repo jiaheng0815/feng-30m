@@ -19,6 +19,15 @@ param(
     [string]$SdkDir = "",
     [string]$JdkHome = "",
     [string]$GradleVersion = "8.9",
+    # Gradle 拉依赖用的 HTTP 代理，例如 http://127.0.0.1:7897。
+    # 留空则自动读系统代理（HKCU\...\Internet Settings）。
+    [string]$Proxy = "",
+    # Maven 镜像（可留空）。用 Gradle init script 注入，不改动项目的 build 文件，
+    # 所以对网络正常的用户零影响。国内网络下 repo.maven.apache.org 常被代理分流到
+    # 直连导致 TLS 握手中断（实测：PowerShell 走代理 200，JVM 走同一代理却
+    # "Remote host terminated the handshake"），此时传阿里云即可：
+    #   -MavenMirror https://maven.aliyun.com/repository/public
+    [string]$MavenMirror = "",
     [switch]$Debug,
     [switch]$SkipModel
 )
@@ -31,6 +40,28 @@ $AndroidDir = Join-Path $PhoneDir "android"
 function Info($m) { Write-Host "  $m" }
 function Step($m) { Write-Host "== $m" -ForegroundColor Cyan }
 function Die($m)  { Write-Host "错误：$m" -ForegroundColor Red; exit 1 }
+
+# Gradle 是 JVM，**不读 Windows 系统代理**——脚本自己用 Invoke-WebRequest 下载都正常，
+# 但 gradle 拉依赖时会直接断网（实测报 `java.net.SocketException: 连接尝试失败`，
+# 卡在 "Still waiting for package manifests to be fetched remotely"）。
+# 所以要把代理显式转成 JVM 的 -Dhttp(s).proxyHost/Port。
+function Resolve-GradleProxy {
+    if ($Proxy) { return $Proxy }
+    $k = Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" `
+         -ErrorAction SilentlyContinue
+    if ($k -and $k.ProxyEnable -eq 1 -and $k.ProxyServer) {
+        $s = [string]$k.ProxyServer
+        if ($s -notmatch '://') { $s = "http://$s" }
+        return $s
+    }
+    return ""
+}
+function Get-ProxyArgs([string]$p) {
+    if (-not $p) { return @() }
+    try { $u = [Uri]$p } catch { Info "代理格式无法解析，忽略：$p"; return @() }
+    return @("-Dhttp.proxyHost=$($u.Host)", "-Dhttp.proxyPort=$($u.Port)",
+             "-Dhttps.proxyHost=$($u.Host)", "-Dhttps.proxyPort=$($u.Port)")
+}
 
 # ---------- 读 local_paths.json（可选，不入库） ----------
 $LocalJson = @{}
@@ -191,10 +222,40 @@ Info "Gradle = $gradleBat"
 
 # ---------- 5) 构建 ----------
 $task = if ($Debug) { "assembleDebug" } else { "assembleRelease" }
+$proxyResolved = Resolve-GradleProxy
+$proxyArgs = Get-ProxyArgs $proxyResolved
+if ($proxyResolved) { Info "Gradle 走代理 $proxyResolved" }
+else { Info "Gradle 直连（没用代理；如果拉依赖超时，用 -Proxy http://host:port 指定）" }
 Step "gradle $task"
+# 镜像通过 init script 注入（放在临时目录，不入库）：把镜像仓库**登记在项目仓库之前**，
+# 于是依赖优先从镜像取；镜像里没有的仍会回落到 build.gradle.kts 里原本的 google()/mavenCentral()。
+$initArgs = @()
+if ($MavenMirror) {
+    # 用 Groovy init script（不是 .kts）：这里要动态改仓库顺序，Groovy 更好写也更宽容。
+    # 两点必须做对，否则会撞 Gradle 的配置校验：
+    #  1) settings.gradle.kts 用了 FAIL_ON_PROJECT_REPOS —— 只能往 **settings 层**的
+    #     pluginManagement / dependencyResolutionManagement 加仓库，不能走 allprojects；
+    #  2) 要把镜像**插到最前**（先 clear 再放回原有仓库），否则仍会先撞坏掉的源。
+    $initFile = Join-Path $env:TEMP "feng_maven_mirror.init.gradle"
+    @"
+// 由 phone/tools/build_apk.ps1 -MavenMirror 生成（临时文件，不入库）
+settingsEvaluated { settings ->
+    def mirror = '$MavenMirror'
+    [settings.pluginManagement.repositories,
+     settings.dependencyResolutionManagement.repositories].each { handler ->
+        def keep = new ArrayList(handler)
+        handler.clear()
+        handler.maven { url mirror }
+        handler.addAll(keep)
+    }
+}
+"@ | Set-Content -Path $initFile -Encoding UTF8
+    $initArgs = @("--init-script", $initFile)
+    Info "Maven 镜像 $MavenMirror（init script: $initFile）"
+}
 Push-Location $AndroidDir
 try {
-    & $gradleBat --no-daemon "-Dorg.gradle.java.home=$jdk" $task
+    & $gradleBat --no-daemon "-Dorg.gradle.java.home=$jdk" @proxyArgs @initArgs $task
     if ($LASTEXITCODE -ne 0) { Die "gradle $task 失败（看上面输出的第一条错误）" }
 } finally { Pop-Location }
 
