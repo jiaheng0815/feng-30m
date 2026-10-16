@@ -21,7 +21,7 @@
   → v3.20 = 引擎序列数数 tool + 统一采样器 + 体积/性能优化（固件 304,192 B）
   → **v4.0 = 引擎全面升级（当前）：推理核心迁到严格 C23（板端与 PC 共用同一份源码，
   PC 驱动仍 C++23、CUDA 独立），新增手机端 `phone/` 与编辑器代码提示；
-  固件 304,144 B、板端 2.33 tok/s**。
+  固件 257,104 B、板端 2.33 tok/s**。
   （标准基准在 v4.0 收窄到 SciQ / PIQA 两项，其余六项测不出信号已删，见下文。）
 - v3.19 现状（**当前发布**）：
   - PC 权重（已收进 `v4/base/`，也是 4.0 的 SFT 起点）：从 `archive/v3_14/pc2` 出发，用 440 条定向教师数据（常识/列举/情绪/寒暄/推理/身份六类，
@@ -88,7 +88,7 @@
   （掺 20% v3.9 权重就掉到 25/27），PC 32k 弱。
 - **PC 用 v3.19 权重（现收在 `v4/base/`，也是 4.0 的训练起点）；板端用 v3.19-embed 权重
   （导出在 `esp32s3-feng-llm/model_export_v3_19b6/`）；两边同一套 v4.0 / 严格 C23 引擎与固件**
-  （q2/2048 固件 **304,144 B**、板端 2.33 tok/s；见 `docs/CHANGELOG.md` v3.19/v3.20 节与
+  （q2/2048 固件 **257,104 B**、板端 2.33 tok/s；见 `docs/CHANGELOG.md` v3.19/v3.20 节与
   `docs/esp32-firmware.md`）。
 - **标准基准（英文，0-shot）**：**只有 SciQ 71.00/73.80 与 PIQA 53.37**。
   ARC/HellaSwag/OpenBookQA/Winogrande/BoolQ/SciCloze 六项曾跑过，但在这个 30M 中文模型上
@@ -201,7 +201,7 @@ g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Imain -lm       # 驱动 + 链
    `string_view::substr`（引用 `std::__throw_out_of_range_fmt`，拖进 libstdc++ 异常/字符串/
    pthread 运行时 ~5KB）；非热点模块（tokenizer/tool/model/gbk/main）用 `-Os`，热点
    （llm/quant/smp/sample）保持 `-O2`。改完对比固件体积：**不得超 C 版基线 307,392B
-   （q2/2048 配置）**，当前为 **304,144 B**（关掉彩蛋是 303,824 B）。
+   （q2/2048 配置）**，当前为 **257,104 B**（关掉彩蛋是 256,912 B）。
 8. **CUDA 后端（PC 可选，板端不含）**：`main/feng_cuda.cu` + `build_pc_cuda.ps1`
    （MSVC + nvcc，`-fmad=false` 保证与 CPU 同运算顺序）；GEMV 权重常驻显存，其余算子在 CPU。
    **验收口径**：32 题矩阵须 27/27+4/4 且与 CPU 版**输出逐字一致**（`pc_kv_suite_cuda.exe`），
@@ -228,7 +228,7 @@ g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Imain -lm       # 驱动 + 链
 - **不要列进 `\help`**，读 README 也无法直接知道触发方式（README 的小字只提到
   `nobonus` 编译选项，靠它当唯一线索）；
 - 关掉它的开关是 `-DFENG_NO_BONUS=ON`（那时连混淆数据都不进二进制，实测省 208 B）；
-- 它占 **320 B** 固件空间（304,144 vs 303,824），在体积纪律的预算内。
+- 它占 **192 B** 固件空间（257,104 vs 256,912），在体积纪律的预算内。
 
 **维护要求**：重写命令链、清理"未引用代码"、或做体积优化时，别把它当成冗余删掉；
 它跟 `\help` 里那些命令一样是有意的。改 `main.c` 的命令分支时留意最后那个 `else`。

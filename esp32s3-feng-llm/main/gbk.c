@@ -1,5 +1,17 @@
 #include "gbk.h"
 
+/* 默认 0：**不编** gbk_table.c 那张 46,384 B 的双向映射表（3865 字），
+ * 整个模块退化成「UTF-8 直通」，实现见文件末尾的 #else 分支。
+ *
+ * 为什么敢默认关：只有老式终端（SuperCom/XCOM 的 ANSI 模式）会发 GBK 字节；
+ * 本项目所有脚本（esp32_chat / esp32_multi / …）、VS Code 串口、以及绝大多数
+ * 现代终端都是 UTF-8。要 GBK 就 `idf.py -DFENG_GBK=ON build`。
+ *
+ * 只影响固件：PC 构建（build_pc_chat.ps1）的清单里没有本文件——pc_chat 不做
+ * 串口编码转换。pc/gbk_selftest.cpp 是验真实转换的独立测试，单独编译时
+ * 把 gbk_table.c 一起带上即可。 */
+#if FENG_GBK
+
 #include "gbk_table.h"
 
 #include <stdint.h>
@@ -167,3 +179,53 @@ int feng_gbk_to_utf8(const char *in, int n, char *out, int out_max)
     }
     return o;
 }
+
+#else /* !FENG_GBK ------------------------------------------------------------- */
+/*
+ * 退化实现：不编那张 46 KB 映射表，**永远按 UTF-8 收发**。
+ *
+ * main.c 一行都不用改——靠这三个语义把 GBK 路径自然关掉：
+ *   · feng_has_high_byte 恒 0 -> 输入侧不做编码嗅探，g_out_gbk 始终是 0；
+ *   · feng_utf8_valid    恒 1 -> 即使被调用，也永远判定"这是 UTF-8"；
+ *   · 两个转换函数原样拷贝    -> 万一有别的调用点闯进来，也不会崩。
+ *
+ * `\gbk` 命令在 main.c 里被条件编译成一句提示（见那里的 #if FENG_GBK）。
+ */
+
+#include <string.h>
+
+int g_out_gbk = 0;
+
+int feng_utf8_valid(const char *s, int n)
+{
+    (void)s; (void)n;
+    return 1;                       /* 恒真 -> 永不切到 GBK */
+}
+
+int feng_has_high_byte(const char *s, int n)
+{
+    (void)s; (void)n;
+    return 0;                       /* 恒假 -> 输入侧不嗅探 */
+}
+
+static int passthrough(const char *in, int n, char *out, int out_max)
+{
+    if (out_max <= 0) return 0;
+    int m = (n < out_max - 1) ? n : (out_max - 1);
+    if (m < 0) m = 0;
+    if (m > 0) memcpy(out, in, (size_t)m);
+    out[m] = 0;
+    return m;
+}
+
+int feng_utf8_to_gbk(const char *in, int n, char *out, int out_max)
+{
+    return passthrough(in, n, out, out_max);
+}
+
+int feng_gbk_to_utf8(const char *in, int n, char *out, int out_max)
+{
+    return passthrough(in, n, out, out_max);
+}
+
+#endif /* FENG_GBK */

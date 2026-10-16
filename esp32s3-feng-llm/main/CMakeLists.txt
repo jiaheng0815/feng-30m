@@ -1,12 +1,48 @@
-idf_component_register(
-    SRCS "main.c" "feng_model.c" "feng_llm.c" "feng_quant.c" "feng_smp.c"
-         "feng_tokenizer.c"
-         "feng_sample.c"
-         "feng_calc.c" "feng_tools.c" "feng_memory.c" "gbk.c" "gbk_table.c"
-         "feng_gemv_bench.c" "feng_bonus.c"
-         "feng_pie_bench.S" "feng_pie_gemv.S"
-    INCLUDE_DIRS "."
+# ---- 源文件清单 --------------------------------------------------------------
+# 默认构建只编「99.9% 场景要用」的模块；排障与实验性的做成开关，默认不进固件。
+#
+# 体积账（实测，q2/2048 发布配置）：
+#   gbk_table.c        46,384 B  ← 3865 字的双向映射表，老式终端才用得到
+#   feng_gemv_bench.c   4,994 B  ← 周期级剖析
+#   feng_pie_*.S          155 B  ← PIE 实验（已结案：1.05×）
+#
+# 注意 feng_gemv_bench.c 之前是**无条件编译**的（只有 ESP_PLATFORM 的 include 保护），
+# 所以那 4,994 B 一直在固件里，即使 FENG_BENCH_GEMV 默认关。现在按开关进出 SRCS。
+set(FENG_SRCS
+    "main.c" "feng_model.c" "feng_llm.c" "feng_quant.c" "feng_smp.c"
+    "feng_tokenizer.c" "feng_sample.c"
+    "feng_calc.c" "feng_tools.c" "feng_memory.c"
+    "gbk.c"            # 退化实现只有几十字节；46 KB 的映射表见 FENG_GBK
+    "feng_bonus.c"     # 彩蛋（关掉用 -DFENG_NO_BONUS=ON）
 )
+
+# 串口 GBK 转码。只有老式终端（SuperCom/XCOM 的 ANSI 模式）会发 GBK 字节；
+# 本项目所有脚本、VS Code 串口、以及绝大多数现代终端都是 UTF-8。
+# 关掉后固件按 UTF-8 直通收发，`\gbk` 会提示未编译。
+#
+# 只影响固件：PC 构建（build_pc_chat.ps1）的清单里没有 gbk.c——pc_chat 不做
+# 串口编码转换；pc/gbk_selftest.cpp 是验真实转换的独立测试，单独编。
+option(FENG_GBK "串口 GBK 转码（老式终端；+46 KB 映射表）" OFF)
+if(FENG_GBK)
+    list(APPEND FENG_SRCS "gbk_table.c")
+endif()
+
+# 周期级剖析：把 7.52 周期/权重的 GEMV 停顿归因到 LUT / 激活 / flash / FPU。
+# 排障才用，平时白占 5 KB。
+option(FENG_BENCH_GEMV "cycle-level Q4 GEMV inner-loop profiling on boot" OFF)
+if(FENG_BENCH_GEMV)
+    list(APPEND FENG_SRCS "feng_gemv_bench.c")
+endif()
+
+# PIE（128 位 SIMD）实验。已实测结案（正确的整块内核只做到 1.05×，
+# 缘由见 docs/CHANGELOG.md v3.16-embed 附录），代码留着复现，默认不编。
+option(FENG_BENCH_PIE "benchmark raw PIE (128-bit SIMD) throughput on boot" OFF)
+option(FENG_GEMV_PIE "PIE (128-bit SIMD) Q4 GEMV kernel" OFF)
+if(FENG_BENCH_PIE OR FENG_GEMV_PIE)
+    list(APPEND FENG_SRCS "feng_pie_bench.S" "feng_pie_gemv.S")
+endif()
+
+idf_component_register(SRCS ${FENG_SRCS} INCLUDE_DIRS ".")
 
 # 全组件严格 C23（v4.0 起，嵌入式侧从 C++23 迁到 C23）。
 # C_EXTENSIONS OFF = -std=c23 而不是 -std=gnu23，与 PC 侧口径一致。
@@ -49,12 +85,6 @@ option(FENG_NO_BONUS "关闭固件里的那个小彩蛋" OFF)
 if(FENG_NO_BONUS)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_NO_BONUS=1)
 endif()
-# 测试用：-DFENG_BENCH_GEMV=1 开机跑 Q4 GEMV 的**周期级**剖析
-# （6 个变体把 7.52 周期/权重的停顿归因到 LUT / 激活 / flash 流式读 / FPU，见 feng_gemv_bench.c）
-option(FENG_BENCH_GEMV "cycle-level Q4 GEMV inner-loop profiling on boot" OFF)
-if(FENG_BENCH_GEMV)
-    target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_BENCH_GEMV=1)
-endif()
 # 测试用：-DFENG_BENCH_CTX=1 在开机时测 256/1024/2048 上下文的单次 forward 耗时
 option(FENG_BENCH_CTX "benchmark attention at 256/1024/2048 ctx on boot" OFF)
 if(FENG_BENCH_CTX)
@@ -80,16 +110,6 @@ option(FENG_GEMV_MADD "pure madd accumulation chain in Q4 GEMV" OFF)
 if(FENG_GEMV_MADD)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_GEMV_MADD=1)
 endif()
-# 测试用：-DFENG_BENCH_PIE=ON 开机测 PIE 裸吞吐（看整行内核值不值得写）
-option(FENG_BENCH_PIE "benchmark raw PIE (128-bit SIMD) throughput on boot" OFF)
-if(FENG_BENCH_PIE)
-    target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_BENCH_PIE=1)
-endif()
-# 实验：-DFENG_GEMV_PIE=ON 用 PIE 内核做 Q4 GEMV（激活 int8/int16 + LUT 展开 + vmulas.s16）
-option(FENG_GEMV_PIE "PIE (128-bit SIMD) Q4 GEMV kernel" OFF)
-if(FENG_GEMV_PIE)
-    target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_GEMV_PIE=1)
-endif()
 # 测试用：-DFENG_FAST_EXP=ON 用多项式快速 exp 替换 softmax/silu 的 newlib expf
 option(FENG_FAST_EXP "polynomial fast exp in softmax/silu" OFF)
 if(FENG_FAST_EXP)
@@ -104,4 +124,8 @@ if(FENG_USE_Q2_KV)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_KV_Q2=1 FENG_KV_Q2_BLOCK=8)
 else()
     target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_KV_INT8=1)
+endif()
+# FENG_GBK 传给编译单元（gbk.c 靠它选真实实现还是退化实现）
+if(FENG_GBK)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_GBK=1)
 endif()

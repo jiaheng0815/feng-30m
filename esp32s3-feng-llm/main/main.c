@@ -61,6 +61,11 @@ static const char *TAG = "feng";
 #ifndef FENG_BENCH_CTX
 #define FENG_BENCH_CTX 0
 #endif
+/* 串口 GBK 转码：默认不编（省 46 KB 映射表），实现见 gbk.c 的 #if FENG_GBK。
+ * 由 main/CMakeLists.txt 的 FENG_GBK 选项控制（默认 OFF，需要就 -DFENG_GBK=ON）。 */
+#ifndef FENG_GBK
+#define FENG_GBK 0
+#endif
 
 static feng_model_t s_model;
 static feng_tok_t s_tok;
@@ -663,8 +668,12 @@ void app_main(void)
         }
         if (line[0] == '\\') {
             if (strncmp(line, "\\gbk", 4) == 0) {
+#if FENG_GBK
                 g_out_gbk = 1;
                 out_printf("encoding: GBK\n");
+#else
+                out_printf("这个固件没编 GBK 转码，一直是 UTF-8（重编译加 -DFENG_GBK=ON）\n");
+#endif
             } else if (strncmp(line, "\\utf8", 5) == 0) {
                 g_out_gbk = 0;
                 out_printf("encoding: UTF-8\n");
@@ -711,7 +720,7 @@ void app_main(void)
             } else {
                 /* 隐藏命令走这里——**故意不列在 \help 里**。
                  * 唯一的线索是 README 小字提到的 nobonus 编译选项（见 feng_bonus.c）。 */
-                char hidden[20];
+                char hidden[24];   /* 明文 21 字节 + 结尾符（见 feng_bonus.c） */
                 if (feng_bonus_decode(line, hidden, sizeof(hidden))) {
                     out_printf("\n  ~ %s ~\n", hidden);
                     out_printf("  (senren * banka)  想关掉这个彩蛋：-DFENG_NO_BONUS=ON\n\n");

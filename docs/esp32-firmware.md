@@ -5,7 +5,7 @@ tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话*
 
 > **当前固件（2026-10-05）**
 > - 权重：**v3.19-embed**（导出在 `../esp32s3-feng-llm/model_export_v3_19b6/`，Q4 权重 + q2 KV 双 QAT，4 epoch / lr 6e-6）
-> - 引擎：**v4.0 / 严格 C23**（零堆、零全局构造；PC 侧仍 C++23 + CUDA），app 分区 **304,144 B**
+> - 引擎：**v4.0 / 严格 C23**（零堆、零全局构造；PC 侧仍 C++23 + CUDA），app 分区 **257,104 B**
 > - 配置：**q2 block8 KV / 2048 ctx**（`idf.py -DFENG_USE_Q2_KV=ON build`），KV 9.62 MB PSRAM
 > - 实测：矩阵 **27/27 + 4/4**、算术子集 **21/21**、tool **13/13**、记忆 **12/12**、
 >   速度 **2.33 tok/s**（真实 decode 507 ms/token @ ctx 19）
@@ -31,7 +31,7 @@ VDD_SPI 1.8 V（同系列 N16R8V / N32R8V 已 EOL）。
 ┌─ ESP32-S3-WROOM-2-N32R16V（32MB Octal flash + 16MB Octal PSRAM，1.8V） ──────────┐
 │  flash: 0x110000   model.bin      14.93 MB, Q4 block-64, mmap 直读（不占 RAM）   │
 │         0x1000000  tokenizer.bin  413 KB, 启动时读入 PSRAM                       │
-│         0x0010000  app            304,144 B（factory 分区 1 MB，余 71%）         │
+│         0x0010000  app            257,104 B（factory 分区 1 MB，余 71%）         │
 │  PSRAM: KV cache q2/block8 2048 ctx = 9.62 MB + 工作区/分词 ≈ 1.0 MB             │
 │  时钟 : CPU 240MHz ×2   flash OPI-DTR 120MHz   PSRAM OCT 120MHz                  │
 │  串口 : UART0 115200 8N1（`you> ` 提示符，`<< 内容 >>END` 流式回复）             │
@@ -156,7 +156,7 @@ idf.py -DFENG_USE_Q2_KV=ON build     # 发布配置：q2 / 2048 ctx；不带 -D 
 > 全组件 `-std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics`；
 > 非热点模块（tokenizer / tool / model / gbk / main）用 `-Os`，推理热点
 > （`feng_llm` / `feng_quant` / `feng_smp` / `feng_sample`）保持 `-O2`。
-> 当前 app **304,144 B**（关掉彩蛋 303,824 B、v3.20 的 C++23 版 304,192 B、C 版基线 307,392 B）；新增代码后请对比该体积。
+> 当前 app **257,104 B**（关掉彩蛋 256,912 B、v3.20 的 C++23 版 304,192 B、C 版基线 307,392 B）；新增代码后请对比该体积。
 
 ## 5. 烧录（COM20 = CH343；COM19 = 芯片原生 USB-JTAG，两个都能烧）
 
@@ -212,7 +212,7 @@ python scripts\esp32_enc_test.py COM20                       # 双编码自检
 | 量化 | Q4 block-64（4.25 bpw） | `tools/export_model.py`；改 `QK` 需同步改 C++ 侧 `QK` |
 | 内核 | Q4 查表（256 项浮点 LUT）+ 4 累加器 + 双核分半 + IRAM | 见 `feng_quant.c` / `feng_smp.c` |
 | 速度 | **2.33 tok/s** | 真实 decode **507 ms/token**（固件打印的 1070 ms/token 是含 prefill 的总口径）；C23 迁移前后逐毫秒一致 |
-| 体积 | **304,144 B** | 非热点 `-Os` + 热点 `-O2`；C23 核心 + C++23 驱动约定见根 `../AGENTS.md` |
+| 体积 | **257,104 B** | 非热点 `-Os` + 热点 `-O2`；C23 核心 + C++23 驱动约定见根 `../AGENTS.md` |
 
 ## 8. 已验证结果（v3.19-embed + q2/2048，2026-10-05 实机）
 
