@@ -35,6 +35,12 @@ LOCAL_PREFIXES = ("archive/", "v2/", "student/", "v3_", "v3/", "data/", "v4/sft/
                   "v4/qat/", "model_export_",
                   "esp32s3-feng-llm/model_export_", "logs/", "scripts/local_paths.json",
                   "feng_cont/",            # 续训/恢复实验的训练产物目录（本机外置盘）
+                  # 编辑器与代码提示（v4.0）：.vscode/ 是每台机器自己的配置，
+                  # compile_commands.json 是 tools/gen_compile_commands.py 的派生数据
+                  # （从 IDF 构建产物生成），两者都在 .gitignore 里，
+                  # 干净 clone 上必然没有——AGENTS.md 的「编辑器配置」一节会引用它们。
+                  ".vscode/", "compile_commands.json", "build/compile_commands.json",
+                  "esp32s3-feng-llm/build/",
                   # 手机端（phone/）的构建产物：干净 clone 里没有是正常的
                   "phone/cli/build/", "phone/cli/build-baseline/", "phone/cli/build-aarch64/",
                   "phone/cli/build-android/", "phone/cli/build-clang/",
@@ -46,7 +52,18 @@ FILE_RE = re.compile(r"^[\w./\\-]+\.(md|py|c|exe|json|npy|gguf|bin|csv|ps1|txt|s
 
 
 def normalize(cand: str) -> str:
-    return cand.replace("\\", "/").lstrip("./").rstrip("/")
+    """把文档里的路径规整成「相对仓库根」的形式。
+
+    **别用 `lstrip("./")`**：它会把 `.vscode/` 的前导点一起吃掉（变成 "vscode"），
+    于是 LOCAL_PREFIXES 里的 `.vscode/` 就永远匹配不上，干净 clone 上会误报缺失。
+    这里只逐段剥掉 `../` 与 `./`，保留目录名自己的前导点。
+    """
+    c = cand.replace("\\", "/").strip().lstrip("/").rstrip("/")
+    while c.startswith("../"):
+        c = c[3:]
+    while c.startswith("./"):
+        c = c[2:]
+    return c
 
 
 def tracked_files(root: Path) -> set:
