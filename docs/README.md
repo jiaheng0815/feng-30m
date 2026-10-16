@@ -12,6 +12,7 @@
 | **把这个模型跑起来**（PC / 板端 / 烧录） | [`USAGE.md`](USAGE.md) |
 | 数据跑完了，要把 4.0 训出来 | [`v4-pipeline.md`](v4-pipeline.md) |
 | 看版本演进与每次改动的实测数字 | [`CHANGELOG.md`](CHANGELOG.md) |
+| **想知道哪些坑已经踩过、哪些是修不了的** | [`v3x-lesson.md`](v3x-lesson.md) |
 | 三代模型横向对比 | [`COMPARISON.md`](COMPARISON.md) |
 | 交付物清单与验收口径 | [`DELIVERY.md`](DELIVERY.md) |
 | ESP32 固件工程细节 | [`esp32-firmware.md`](esp32-firmware.md) |
@@ -24,6 +25,7 @@
 | [`USAGE.md`](USAGE.md) | 下载 / 推理 / 烧录 / 串口协议，以及本地一键验收 |
 | [`v4-pipeline.md`](v4-pipeline.md) | **4.0 训练链路**：数据合并 → 检索回放 → 全参 SFT → 板端 QAT → 导出 → 四道验收关卡（含每步该出现什么数字、对不上说明什么） |
 | [`CHANGELOG.md`](CHANGELOG.md) | 按时间倒序的完整更新日志（**失败尝试也保留**，供避免重复踩坑） |
+| [`v3x-lesson.md`](v3x-lesson.md) | **v3.x 迭代复盘**：二十余次更新按问题类型归类——症状 / 根因 / 尝试 / 解法 / 教训，附**已证伪、不要再试**的路线清单 |
 | [`COMPARISON.md`](COMPARISON.md) | v1 / v2 / v3 / v4 四代的架构、语料、评测横向对比 |
 | [`DELIVERY.md`](DELIVERY.md) | 交付清单、验收口径、硬件约束与踩过的坑 |
 | [`esp32-firmware.md`](esp32-firmware.md) | 固件工程：硬件要求、引擎结构、编译烧录、串口协议、实测结果 |
