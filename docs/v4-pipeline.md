@@ -9,16 +9,26 @@
 
 ---
 
-## 0. 前置检查
+## 0. 前置检查与显卡交接
 
 ```powershell
-# 生成是否跑完（合格条数应接近提示词池规模）
-(Get-Content data\v4_teacher.jsonl | Measure-Object -Line).Lines
-
-# 教师服务可以停了——训练要独占显卡（AGENTS.md 硬约束）
-taskkill /IM ninfer-serve.exe /F
-nvidia-smi --query-gpu=memory.used --format=csv,noheader    # 应回落到 ~1 GB
+# 一条命令做完：确认数据跑完 → 停生成器与教师服务 → 等显存真的回落 → 放行判定
+pwsh tools\switch_to_train.ps1
 ```
+
+**为什么要用脚本而不是手敲 `taskkill`**：Windows 是 WDDM 显存模型，
+「进程退出」和「显存归还」之间有几秒到几十秒的异步延迟。杀完立刻开训练会撞上
+还没释放的显存——轻则 OOM，重则 PyTorch 自己降配、跑出跟预期不一样的结果。
+脚本会轮询到显存回落为止，**确认干净了才放行**。
+
+两个判据：
+- **数据跑完没**：`journal + rejects` 加起来达到提示词池规模才允许切；没跑完时
+  除非加 `-Force`（提前收工用）否则直接拒绝，不会误杀还在写的任务。
+- **显存回落没**：降到 2500 MiB 以下算干净。注意**不是 0**——Windows 桌面
+  常驻 1~2 GB（dwm / 浏览器 / 微信 / 壁纸引擎都在用 GPU），这是正常的。
+  v4 的 SFT 只要 2~4 GiB（1024 长度 / batch 24×2 / 30M 模型），余量四倍以上。
+
+`-TimeoutSec 180` 可以延长等待；返回非 0 就是"别开训练"，脚本会列出还在占卡的进程。
 
 ---
 
