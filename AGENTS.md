@@ -458,7 +458,9 @@ python scripts\esp32_enc_test.py COM20
 | 现象 | 处置 |
 |---|---|
 | ESP32 推理时 MMU fault / 数据读错 | 检查 `model.bin` 是否越界写进 tokdata；核对 `partitions.csv` 与 PDF 烧录偏移 |
-| 板上回复乱码 | 用 `scripts\esp32_enc_test.py` 验证 GBK/UTF-8 自动跟随；`\gbk` / `\utf8` 可手动锁定 |
+| 板上回复乱码 | 固件默认是 **UTF-8 直通**（GBK 转码默认不编，省 46 KB 映射表）。终端不是 UTF-8 就重编：`idf.py -DFENG_GBK=ON build`，再 `\gbk` 锁定；`scripts\esp32_enc_test.py` 可验两种编码 |
+| `idf.py` 报 `MSys/Mingw is no longer supported` | **别在 Git Bash / MSYS 里跑**，改用 PowerShell |
+| `idf.py` 报 `No module named kconfgen` | 没进 IDF 的 Python 环境（系统 python 抢在前面了）。先跑 `& "$env:IDF_PATH\export.ps1"`，让 python 指向 `$env:IDF_TOOLS_PATH\python_env\...` |
 | 训练 OOM | 降 `--batch` / `--accum`，确认 `chunked_lm_loss` 的 chunk 没被调大，32k 阶段单独跑 |
 | 模型答什么都是身份句 | v1 的老毛病，语料配比失衡；参照 v2 的 Plan A 语料 + 低 LR 补训（1000 步 / lr 1.5e-4） |
 | 长文阶段跑完检索仍全错 | 长文预训练学不会检索，必须补合成检索 SFT（只对答案算 loss），见 `scripts/v3_build_retrieval.py` |
