@@ -32,7 +32,8 @@
 - [`../README.md`](../README.md) —— 仓库首页（GitHub 会渲染它，所以留在根）
 - [`../AGENTS.md`](../AGENTS.md) —— AI 编码代理的工作约定与硬性约束
 
-模型卡跟着模型目录走，不在这里：`archive/v1/*/MODEL_CARD.md`、`v3_19/*/MODEL_CARD.md`。
+模型卡跟着模型目录走，不在这里：当前唯一的模型目录 `v4/base/` 的规格见
+[`../README.md`](../README.md) 的「模型规格」一节；v1/v2/v3 的历史模型卡随目录一并移除。
 
 ## 数字的可追溯性
 

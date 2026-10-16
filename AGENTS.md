@@ -17,15 +17,18 @@
   → v3.12 = PC 算术修复 → v3.13 = 记忆版 → v3.14 = tool 版（算术/时间/随机数交给 C++ 引擎，
   模型不再学算术）→ v3.15-embed（身份漂移修复）→ v3.16-embed（身份串名修复；p4–p7 证明是容量边界）
   → v3.17 = 引擎/固件记忆 tool（可枚举问答确定性回答，权重未变）→ **v3.19 = 定向教师数据修"模板串台"
-  （PC `v3_19/pc4`、板端 `v3_19/board6`；留出 30 题 16/17 → 19/19，当前发布权重）**
-  → **v3.20 = 引擎全面升级（当前）：序列数数 tool + 统一采样器 + 全项目 C++23 迁移
-  （零堆/无异常/RTTI）+ 体积优化（固件 304,192 B，比 C 版小 2.8 KB）+ 标准基准 9 任务（lm-eval）**。
+  （PC `v4/base`、板端导出 `model_export_v3_19b6`；留出 30 题 16/17 → 19/19，当前发布权重）**
+  → v3.20 = 引擎序列数数 tool + 统一采样器 + 体积/性能优化（固件 304,192 B）
+  → **v4.0 = 引擎全面升级（当前）：推理核心迁到严格 C23（板端与 PC 共用同一份源码，
+  PC 驱动仍 C++23、CUDA 独立），新增手机端 `phone/` 与编辑器代码提示；
+  固件 304,144 B、板端 2.33 tok/s**。
+  （标准基准在 v4.0 收窄到 SciQ / PIQA 两项，其余六项测不出信号已删，见下文。）
 - v3.19 现状（**当前发布**）：
-  - PC `v3_19/pc4`：从 `archive/v3_14/pc2` 出发，用 440 条定向教师数据（常识/列举/情绪/寒暄/推理/身份六类，
+  - PC 权重（已收进 `v4/base/`，也是 4.0 的 SFT 起点）：从 `archive/v3_14/pc2` 出发，用 440 条定向教师数据（常识/列举/情绪/寒暄/推理/身份六类，
     `scripts/v3_19_build_target_prompts.py`）+ 多轮/身份回放做**末 2 层 15 epoch** 微调；
     留出 30 题 **19/30**（strict-v4 判定；v3.14 = 16/30）、单类别检索 **110**（v3.14 = 108）、
     多类别 105（-2）、记忆 23/24（-1）、范围/身份/探针保持（`eval/v3_19pc4_*.json`）。
-  - 板端 `v3_19/board6`：在 `archive/v3_16/board_p3` 上做 **Q4+q2 双 QAT（4 epoch / lr 6e-6）**；
+  - 板端 v3.19-embed 权重（导出在 `esp32s3-feng-llm/model_export_v3_19b6/`）：在 `archive/v3_16/board_p3` 上做 **Q4+q2 双 QAT（4 epoch / lr 6e-6）**；
     C++ 引擎矩阵 **27/27+4/4、召回 4/4、算术 21/21、pc_check MATCH**，HF 留出 **19/30**（v3.16 = 17）、
     记忆 24/24；实机 tool 13/13、记忆 12/12、7 轮换名身份 7/7（`logs/pc_kv_suite32_v3_19b6_q2b8.txt`、
     `logs/board_v3_19b6_memory12.txt`、`logs/esp32_multi.txt`）。
@@ -83,9 +86,10 @@
 - v3.11（板端上一版，`archive/v3_11/pol8/`）：q2 矩阵 27/27+4/4、算术子集 21/21、板端 30/30、1.81 tok/s；
   关键技巧是 **Q4 权重/q2 KV 双 QAT**（`v3_7_kv_qat.py --wqat`），量化抗性对权重回插极敏感
   （掺 20% v3.9 权重就掉到 25/27），PC 32k 弱。
-- **PC 用 v3.19（`v3_19/pc4`）；板端用 v3.19-embed 权重（`v3_19/board6`）；两边同一套
-  v4.0 / 严格 C23 引擎与固件**（q2/2048 固件 303,824 B、板端 2.33 tok/s；见 `docs/CHANGELOG.md`
-  v3.19/v3.20 节与 `docs/esp32-firmware.md`）。
+- **PC 用 v3.19 权重（现收在 `v4/base/`，也是 4.0 的训练起点）；板端用 v3.19-embed 权重
+  （导出在 `esp32s3-feng-llm/model_export_v3_19b6/`）；两边同一套 v4.0 / 严格 C23 引擎与固件**
+  （q2/2048 固件 **304,144 B**、板端 2.33 tok/s；见 `docs/CHANGELOG.md` v3.19/v3.20 节与
+  `docs/esp32-firmware.md`）。
 - **标准基准（英文，0-shot）**：**只有 SciQ 71.00/73.80 与 PIQA 53.37**。
   ARC/HellaSwag/OpenBookQA/Winogrande/BoolQ/SciCloze 六项曾跑过，但在这个 30M 中文模型上
   全部贴随机线（BoolQ 37.8% 甚至低于二选一随机，只有 yes/no 偏置），**测不出能力差异**，
@@ -140,6 +144,7 @@
 | `esp32s3-feng-llm/` | ESP32 固件工程 + 可移植 C23 推理引擎（PC 侧 C++23 + CUDA）+ 一致性检查与回归套件；工程说明见 `docs/esp32-firmware.md` |
 | `phone/` | 手机端（Termux CLI + Android APK），复用同一套 C23 引擎；详见 `phone/README.md` |
 | `tools/check_md.py`、`tools/check_docs.py` | 文档自检：前者查围栏/路径/过时表述，后者把**全部 md 的关键数字与实际产物对齐**（参数量、固件体积、各版评测分数、检索 loss） |
+| `tools/gen_compile_commands.py` | 生成仓库根的 `compile_commands.json`（编辑器代码提示数据），见「编辑器配置与代码提示」一节 |
 
 > **历史目录已删除（2026-10-15）**：v1（原 `student/`）、v2、v3.19 与全部 v3 历史版本
 > 目录（原 `archive/`，52 个）从工作区移除，仓库只保留 v4 一条线；训练起点收进 `v4/base/`。
@@ -196,7 +201,7 @@ g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Imain -lm       # 驱动 + 链
    `string_view::substr`（引用 `std::__throw_out_of_range_fmt`，拖进 libstdc++ 异常/字符串/
    pthread 运行时 ~5KB）；非热点模块（tokenizer/tool/model/gbk/main）用 `-Os`，热点
    （llm/quant/smp/sample）保持 `-O2`。改完对比固件体积：**不得超 C 版基线 307,392B
-   （q2/2048 配置）**，当前为 303,824 B。
+   （q2/2048 配置）**，当前为 **304,144 B**（关掉彩蛋是 303,824 B）。
 8. **CUDA 后端（PC 可选，板端不含）**：`main/feng_cuda.cu` + `build_pc_cuda.ps1`
    （MSVC + nvcc，`-fmad=false` 保证与 CPU 同运算顺序）；GEMV 权重常驻显存，其余算子在 CPU。
    **验收口径**：32 题矩阵须 27/27+4/4 且与 CPU 版**输出逐字一致**（`pc_kv_suite_cuda.exe`），
@@ -250,6 +255,37 @@ g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Imain -lm       # 驱动 + 链
 > 回退（MSYS2 没有 `sys/mman.h`），pthread/信号量由 winpthreads 提供。
 > 目的就是让手机端能在开发机上直接编译与验证，不必绕 WSL。
 
+### 编辑器配置（`.vscode/`）与代码提示
+
+`.vscode/` **不入库**（`.gitignore` 已排除）：`settings.json` 里写的是本机绝对路径
+（Python 解释器、交叉编译器的 `--query-driver`），换机器就得改，所以它是每台机器自己的。
+
+代码提示的数据源是**仓库根的 `compile_commands.json`**（同样不入库），由
+`tools/gen_compile_commands.py` 生成，44 条覆盖五组代码：
+
+| 组 | 条数 | 编译参数来源 |
+|---|---|---|
+| 固件 C23 核心（`esp32s3-feng-llm/main/*.c`） | 16 | **直接取自 ESP-IDF 自己的** `build/compile_commands.json`——自带上百条 `-I`、`sdkconfig.h` 与 `-DFENG_KV_Q2` 这类只在构建期存在的宏 |
+| PC 驱动（`pc/*.cpp`） | 15 | 脚本构造：`-std=c++23` + `-Imain` + q2 宏 |
+| 手机引擎（`phone/engine/*.c`） | 11 | 脚本构造：`-std=c23` + engine + MSYS2 的 ucrt64 include（winpthreads 供 pthread） |
+| Android JNI | 1 | 同上；探测到 NDK 时补 `--target=aarch64-linux-android` |
+| CUDA（`feng_cuda.cu`） | 1 | 脚本探测 `CUDA_PATH`，否则取 NVIDIA 固定安装位置里版本号最大的 |
+
+**增删 `.c`/`.cpp` 文件、或改过 `esp32s3-feng-llm/main/CMakeLists.txt` 之后，重跑一次**：
+
+```powershell
+python tools\gen_compile_commands.py          # 加 --check 只报告、不写盘
+```
+
+不重跑的话新文件拿不到编译参数（退化成"只有 `-Imain`"）。固件那 16 条依赖
+`esp32s3-feng-llm/build/compile_commands.json`——**没跑过 `idf.py build` 就没有它**，
+脚本会明确提示并跳过，其余四组不受影响。
+
+> 引擎两层各有天然的解析边界，所以 x86 主机上也能完整提示：`feng.h` 里的
+> `#include "esp_attr.h"` 在 `#if defined(ESP_PLATFORM)` 内，手机端的
+> `#include <arm_neon.h>` 在 `#if defined(__aarch64__)` 内——预处理阶段就跳过了，
+> 不需要准备 xtensa/arm 的 sysroot。
+
 
 ## 5. 常用命令
 
@@ -257,7 +293,7 @@ g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Imain -lm       # 驱动 + 链
 
 ```powershell
 python tools\check_all.py                                  # 文档 → 构建 → 单测 → 矩阵 → 位精确
-python scripts\bench_standard.py --model v3_19/pc4 --tag v3_19_pc4   # 英文 9 任务（lm-eval）
+python scripts\bench_standard.py --model v4/base --tag v3_19_pc4    # 英文基准（SciQ / PIQA）
 ```
 
 数据与训练（Python 一律用上表的 venv 解释器）：

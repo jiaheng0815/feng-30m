@@ -11,7 +11,7 @@
 | `feng-30m-v3.19-embed-firmware.zip` | 板端一包到底 | 预编译固件 + 模型 + 烧录说明（免装 ESP-IDF） |
 
 仓库本身只放代码与文档；权重、板端模型与蒸馏数据集都在 Release 包里。
-引擎当前版本 **v4.0 / 严格 C23**（PC 侧仍 C++23 + CUDA）：板端固件 **303,824 B**，板端 **2.33 tok/s**。
+引擎当前版本 **v4.0 / 严格 C23**（PC 侧仍 C++23 + CUDA）：板端固件 **304,144 B**，板端 **2.33 tok/s**。
 
 ## 1. 包内结构
 
@@ -42,15 +42,18 @@ feng-30m-v3.19/
 #    想自己导出：用【板端 v3.19-embed 权重包】的 weights/hf（做过 Q4+q2 双 QAT）
 python esp32s3-feng-llm\tools\export_model.py --model <v3.19-embed包>\weights\hf --out model_export
 
-# 2) 编译（Windows 默认 MSVC + C++23，脚本自动加载 vcvars64；产出 13 个 exe）
+# 2) 编译（Windows 默认 MSVC **两趟**：核心 /std:clatest /TC、驱动 /std:c++latest /TP，
+#    脚本自动加载 vcvars64；产出 13 个 exe）
 esp32s3-feng-llm\build_pc_chat.ps1
-# MinGW g++ 备用路径（等价于 .\build_pc_chat.ps1 -MinGW）：
-g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc_chat.exe `
-  esp32s3-feng-llm\pc\pc_chat.cpp esp32s3-feng-llm\main\feng_model.c `
-  esp32s3-feng-llm\main\feng_llm.c esp32s3-feng-llm\main\feng_quant.c `
-  esp32s3-feng-llm\main\feng_smp.c esp32s3-feng-llm\main\feng_tokenizer.c `
-  esp32s3-feng-llm\main\feng_sample.c esp32s3-feng-llm\main\feng_calc.c `
-  esp32s3-feng-llm\main\feng_tools.c esp32s3-feng-llm\main\feng_memory.c -Iesp32s3-feng-llm\main -lm
+
+# MinGW 备用路径（等价于 .\build_pc_chat.ps1 -MinGW）。注意引擎分两层：
+# **核心 .c 要先用 gcc -std=c23 编成 .o**，再交给 g++ 链接 —— 直接把 .c 丢给
+# g++ 会按 C++ 编，C23 的语法与语义都会走样（踩过，见 AGENTS.md）。
+gcc -std=c23 -O2 -c esp32s3-feng-llm\main\feng_model.c -o feng_model.o -Iesp32s3-feng-llm\main
+#   其余 8 个核心 .c 同理：feng_llm / feng_quant / feng_smp / feng_tokenizer /
+#   feng_sample / feng_calc / feng_tools / feng_memory
+g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 `
+  -o pc_chat.exe esp32s3-feng-llm\pc\pc_chat.cpp *.o -Iesp32s3-feng-llm\main -lm
 
 # 3) 聊天（tool 0.5s 秒回，多轮上下文默认开）
 .\pc_chat.exe model_export
@@ -150,8 +153,8 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 |---|---|
 | 32 题矩阵 + 长文召回 | **27/27 + 4/4** |
 | 工具 / 记忆 | **13/13** / **12/12** |
-| 速度 | **2.26 tok/s**（938 ms/token，ctx 19） |
-| 固件体积 | **304,192 B**（C++23 引擎，比 C 版小 2,816 B） |
+| 速度 | **2.33 tok/s**（真实 decode 507 ms/token @ ctx 19） |
+| 固件体积 | **304,144 B**（C23 引擎，比 C 版小 3,248 B） |
 
 ### 分区偏移（与 `esp32s3-feng-llm/partitions.csv` 一致）
 
@@ -268,7 +271,7 @@ v1 语料脚本已随 v1 归档，重建 v2/v3 数据需要 `FENG_DATA_DIR`（�
 | 32 题矩阵 + 长文召回 | **27/27 + 4/4**（`logs/pc_kv_suite32_v3_19b6_q2b8.txt`） |
 | 算术子集（tool） | **21/21**（`logs/pc_arith_suite_v3_19b6_q2b8.txt`） |
 | tool 专项 / 记忆 / 身份序列 | **13/13** / **12/12** / **7/7**（`logs/board_tools_cpp23_q2_final.txt`、`logs/board_memory_cpp23_q2_final12.txt`） |
-| 速度 | **2.26 tok/s**（938 ms/token @ ctx 19） |
+| 速度 | **2.33 tok/s**（真实 decode 507 ms/token @ ctx 19） |
 | 多轮回归（PC 模拟固件） | mt-suite 7/10、mem12 12/12、seq 8/10（与 C 版逐值一致） |
 
 ## 8. 已知限制
@@ -310,8 +313,8 @@ PC 的 HF 权重用在引擎上会 22/27；两个权重不能互换。
 **能上 32k 上下文吗？** 板端不能：2048 ctx 的 q2 KV 已占 9.62 MB PSRAM，
 32k 需要约 150 MB，超出硬件。32k 只在 PC 上可用。
 
-**固件多大？可以塞更多功能吗？** 当前 304,192 B，app 分区 1 MB（还剩 70%）。
-新增非热点模块用 `-Os`、热点保持 `-O2`；引擎约定见 [AGENTS.md](AGENTS.md) 的 C++23 条款。
+**固件多大？可以塞更多功能吗？** 当前 304,144 B，app 分区 1 MB（还剩 70%）。
+新增非热点模块用 `-Os`、热点保持 `-O2`；引擎约定见 [AGENTS.md](../AGENTS.md) 的 C23 条款。
 
 ## 10. 许可证
 

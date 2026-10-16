@@ -4,9 +4,9 @@
 i7-12700KF），评测脚本与协议在各代之间保持一致，便于横向比较。
 
 > **状态（2026-10-05）**：本文件是 **v1/v2/v3 的历史横向对比**。
-> 当前交付为 **PC = v3.19（`v3_19/pc4`）；板端 = v3.19-embed（`v3_19/board6`）；
+> 当前交付为 **PC = v3.19（现收在 `v4/base/`）；板端 = v3.19-embed；
 > 引擎 = v4.0 / 严格 C23**（四个 tool；板端 12 题记忆 12/12、身份永不串名、
-> 固件 303,824 B / 2.33 tok/s）；**GGUF / llama.cpp 自 v3.14 起不再发行**，
+> 固件 304,144 B / 2.33 tok/s）；**GGUF / llama.cpp 自 v3.14 起不再发行**，
 > 下面的 GGUF 体积与 llama-bench 速度是历史记录。最新数字见
 > [`../README.md`](../README.md) 与 [`CHANGELOG.md`](CHANGELOG.md) 的 v3.19 / v3.20 节。
 
@@ -126,7 +126,7 @@ i7-12700KF），评测脚本与协议在各代之间保持一致，便于横向�
 
 产物（历史路径，目录已删）：`archive/v3/retr_sft/ctx32768/final`（v3 链条终点）、`archive/v3/ctx{4096,8192,16384,32768}/final`（各阶段）、
 `archive/v3/gguf/feng-30m-Q4_K_M.gguf`；（历史）v3.6 时期权重在 `archive/v3_6/release/`；
-**当前交付是 PC `v3_19/pc4` + 板端 `v3_19/board6` + v4.0/C23 引擎**。仓库里这些目录只保留配置与训练记录，**权重与 GGUF 从
+**当前交付是 PC v3.19 权重（现收在 `v4/base/`）+ 板端 v3.19-embed + v4.0/C23 引擎**。v1/v2/v3 的历史目录已从仓库移除，**权重与 GGUF 从
 [Releases](https://github.com/jiaheng0815/feng-30m/releases) 下载**。评测记录：`eval/longctx_v2.json`、
 `eval/longctx_v3.json`、`eval/v3_scope.json`、`eval/v3_6_scope.json`。
 

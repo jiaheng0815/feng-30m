@@ -7,8 +7,8 @@
 
 > **当前发布（2026-10-05）**
 >
-> - 权重：PC = **v3.19**（`v3_19/pc4`）｜ 板端 = **v3.19-embed**（`v3_19/board6`，Q4 权重 + q2 KV 双 QAT）
-> - 引擎：**v4.0 / 严格 C23**（嵌入式侧，零堆、零全局构造；PC 侧 C++23 + CUDA）；板端固件 **303,824 B**，比 v3.20 的 C++23 版还小 368 B
+> - 权重：PC = **v3.19**（`v4/base/`，同时是 4.0 的训练起点）｜ 板端 = **v3.19-embed**（Q4 权重 + q2 KV 双 QAT，随 Release 发布）
+> - 引擎：**v4.0 / 严格 C23**（嵌入式侧，零堆、零全局构造；PC 侧 C++23 + CUDA）；板端固件 **304,144 B**，比 v3.20 的 C++23 版还小 48 B
 > - 板端实测：q2/2048 矩阵 **27/27 + 4/4**、工具 **13/13**、记忆 **12/12**、**2.33 tok/s**（真实 decode 507 ms/token）
 > - 身份自述：**「我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI」**
 > - 代码与权重均 **Apache-2.0**；**GGUF 自 v3.14 起不再发行**（llama.cpp 路径没有 tool）
@@ -77,7 +77,7 @@
 |---|---|
 | 32 题矩阵 + 长文召回 | **27/27 + 4/4**（1963 token 输入） |
 | 算术子集 | **21/21**（算式走 tool） |
-| 速度 | **2.26 tok/s**（938 ms/token，ctx 19）/ 973 ms @ ctx 38 / 1291 ms @ ctx 54 |
+| 速度 | **2.33 tok/s**（真实 decode 507 ms/token @ ctx 19） |
 | 内存 | 权重 flash mmap（不占 PSRAM）；KV + 激活 9.62 MB PSRAM；内部 SRAM 仅留内核与工作区 |
 
 ### 引擎（v4.0 / 严格 C23）
@@ -85,7 +85,7 @@
 - **严格 C23 核心**（`-std=c23`，板端与 PC 共用）+ **C++23 驱动**（`pc/*.cpp`）与 **CUDA**（`feng_cuda.cu`，nvcc）；两趟编译（两个 `/std:` 互斥，见 AGENTS.md）
 - **零堆**：8 个核心对象无 `malloc/free/new/delete`、无异常/RTTI 符号；唯一分配是 tokenizer
   **启动期**一次性 PSRAM 加载；全组件 `.init_array` 为空（无全局构造）
-- **体积**：304,192 B，比 C 版（307,392 B）小 2,816 B；非热点模块 `-Os`、推理热点保持 `-O2`
+- **体积**：304,144 B，比 C 版（307,392 B）小 3,248 B；非热点模块 `-Os`、推理热点保持 `-O2`
 - **性能**：板端 ms/token 与 C 版逐项相同；**PC CPU 多线程 654 tok/s**（单线程 157 → 4.2×，
   `build_pc_chat.ps1` 默认 OpenMP，行级并行、输出逐字一致）；CUDA 版生成 322 tok/s；
   C++/Python tool 一致性 **173 条** + 4 套单测全过
@@ -153,28 +153,21 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 
 ## 标准基准（英文，0-shot）
 
-用 EleutherAI lm-evaluation-harness v0.4.13 测 8 个内置任务 + 自定义 SciCloze-900
-（`eval/lm_eval_tasks/scicloze_900.yaml`），模型 v3.19/pc4（fp32，`prefix_token_id=0`——
-自训 tokenizer 没有 bos/eos），共 76,706 个 loglikelihood 请求 / 3 分 29 秒（RTX 5060 Ti）。
-复现：`python scripts/bench_standard.py --model v3_19/pc4 --tag v3_19_pc4`；
+用 EleutherAI lm-evaluation-harness v0.4.13 测 **SciQ** 与 **PIQA** 两项，模型 v3.19/pc4
+（fp32，`prefix_token_id=0`——自训 tokenizer 没有 bos/eos）。
+复现：`python scripts/bench_standard.py --model v4/base --tag v3_19_pc4`；
 结果 `eval/lm_eval_feng_v3_19_pc4.json`。
 
 | 基准 | 指标 | 结果 |
 |---|---|---|
-| SciCloze-900 | Accuracy | **25.56%** ±1.45 |
 | SciQ | Accuracy / Normalized | **71.00%** ±1.44 / **73.80%** ±1.39 |
 | PIQA | Normalized Accuracy | **53.37%** ±1.16 |
-| ARC-Easy | Normalized Accuracy | **26.60%** ±0.91 |
-| ARC-Challenge | Normalized Accuracy | **21.93%** ±1.21 |
-| HellaSwag | Normalized Accuracy | **28.99%** ±0.45 |
-| Winogrande | Accuracy | **49.33%** ±1.41 |
-| OpenBookQA | Accuracy / Normalized | **14.00%** ±1.55 / **24.00%** ±1.91 |
-| BoolQ | Accuracy | **37.83%** ±0.85 |
 
-> 这些是**英文**基准，而 feng-30m 是中文教师蒸馏的 30M 模型：除 SciQ（明显高于 4 选 1
-> 随机线）和 PIQA（略高于 2 选 1 随机线）外，其余任务基本贴近随机水平（ARC / HellaSwag /
-> OpenBookQA / SciCloze ≈ 25%，Winogrande ≈ 50%，BoolQ 37.8% 低于随机线，yes/no 偏置）。
-> 这是能力边界的如实呈现，不构成对中文对话能力的评价。
+> 这是**英文**基准，而 feng-30m 是中文教师蒸馏的 30M 模型：SciQ 明显高于 4 选 1 随机线，
+> PIQA 略高于 2 选 1 随机线。**其余六项已从套件移除**——ARC / HellaSwag / OpenBookQA /
+> Winogrande / BoolQ / SciCloze 在这个规模上全部贴随机线（BoolQ 37.8% 甚至低于二选一随机，
+> 只有 yes/no 偏置），测不出能力差异，堆上去只会盖住真实水平。原始结果仍留档在
+> `eval/lm_eval_feng_v3_19_pc4.json`。
 
 ## 下载
 
@@ -221,18 +214,21 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 python tools\check_all.py
 ```
 
-CI（GitHub Actions，每次 push/PR）跑 9 步，全部在**干净 clone** 上执行——不依赖本机权重/日志：
+CI（GitHub Actions，每次 push/PR）在**干净 clone** 上跑完整链路——不依赖本机权重/日志：
 
-1. Python 语法检查（全部脚本）
-2. C++23 单测四套：算式 41 / 时间随机数 53 / 记忆 69 / 采样器 4
-3. C++/Python 算式+序列一致性 29 条（`tools/check_tool_parity.py`）
-4. C++/Python 记忆 tool 一致性 36 回合（`tools/check_mem_parity.py`）
-5. C++/Python 随机数一致性 56 组（`tools/check_rand_parity.py`）
-6. C++/Python 时间 tool 一致性 52 条（`tools/check_time_parity.py`）
-7. C++23 全引擎编译（g++ `-std=c++23`、pc_chat / pc_kv_suite / pc_mt_suite / pc_check + 9 个核心源）
-8. 文档自检（`tools/check_md.py` + `tools/check_docs.py`，本机产物路径允许缺并计数）
+1. 装 GCC 14（ubuntu-latest 默认的 gcc 13 只认 `-std=c2x`，**不认 `-std=c23`**，得显式装）
+2. Python 语法检查（全部脚本）
+3. 编译 C23 核心（9 个目标文件，`gcc-14 -std=c23`）
+4. 单测四套：算式 41 / 时间随机数 53 / 记忆 69 / 采样器 4
+5. C/Python 算式+序列一致性 29 条（`tools/check_tool_parity.py`）
+6. C/Python 记忆 tool 一致性 36 回合（`tools/check_mem_parity.py`）
+7. C/Python 随机数一致性 56 组（`tools/check_rand_parity.py`）
+8. C/Python 时间 tool 一致性 52 条（`tools/check_time_parity.py`）
+9. PC 引擎编译（C23 核心 `.o` + C++23 驱动：pc_chat / pc_kv_suite / pc_mt_suite / pc_check）
+10. 手机端引擎交叉编译（`phone/cli/build.sh`，复用同一批 C23 核心）
+11. 文档自检（`tools/check_md.py` + `tools/check_docs.py`，本机产物路径允许缺并计数）
 
-> 四套 C++/Python 交叉验证合计 **173 条**逐条对比；文档引用的权重/日志/编译产物只在本机存在时
+> 四套 C/Python 交叉验证合计 **173 条**逐条对比；文档引用的权重/日志/编译产物只在本机存在时
 > 会被归为 `local-only` 跳过，仓库跟踪文件缺失仍会报错。
 
 ## 训练怎么做的
@@ -253,7 +249,8 @@ CI（GitHub Actions，每次 push/PR）跑 9 步，全部在**干净 clone** 上
 | v3.12~v3.13 算术/记忆 | 算术走末层微调；合成 5,600 条记忆对话（PC 末层 / 板端双 QAT） | 约 24M tokens | `scripts/v3_11_build_repair.py --pc-fix`、`scripts/v3_13_build_memory.py` |
 | v3.14 tool 版 | 算术/时间/随机数做成引擎 tool；训练数据过滤纯算式样本；GGUF 发行取消 | 约 14M tokens（无算术混训） | `scripts/v3_14_build_noarith_mix.py`、`esp32s3-feng-llm/main/feng_calc.c` |
 | v3.15~v3.19 打磨 | 身份上下文锚点 → 板端串名修复实验（未采用路线已记录）→ 引擎记忆 tool → 440 条定向数据末 2 层 15ep | 约 12M tokens | `scripts/v3_15_build_identity_ctx.py`、`scripts/v3_19_build_mix.py` |
-| v3.20 引擎 | 序列数数 tool + 统一采样器；**全项目迁移 C++23**（零堆/无异常/RTTI）并做体积/性能优化 | tool 为 C++ 零堆实现，不占权重 | `esp32s3-feng-llm/main/`、`docs/CHANGELOG.md` v3.20 节 |
+| v3.20 引擎 | 序列数数 tool + 统一采样器；全项目迁移 C++23（零堆/无异常/RTTI）并做体积/性能优化 | tool 为 C++ 零堆实现，不占权重 | `esp32s3-feng-llm/main/`、`docs/CHANGELOG.md` v3.20 节 |
+| **v4.0 引擎** | 引擎核心**迁到严格 C23**（板端 + PC 共用，PC 驱动仍 C++23、CUDA 后端独立）；加手机端与编辑器代码提示 | 同上，数值路径逐字节未变 | `esp32s3-feng-llm/main/`、`phone/`、`docs/esp32-firmware.md` |
 
 完整超参、每阶段 loss/耗时/显存见 [`docs/CHANGELOG.md`](CHANGELOG.md) 与
 [`docs/DELIVERY.md`](DELIVERY.md)。
@@ -261,16 +258,23 @@ CI（GitHub Actions，每次 push/PR）跑 9 步，全部在**干净 clone** 上
 ## 仓库结构
 
 ```
-scripts/            数据构建 / 训练 / 评测 / 导出脚本（路径解析见 scripts/paths.py）
-esp32s3-feng-llm/   ESP32 固件 + 可移植 C++23 推理引擎 + PC 端一致性检查
-v3_19/              当前发布权重（PC pc4 / 板端 board6）
-archive/            v3 历史版本目录（v3.1→v3.18 共 57 个，2026-10 从根目录归档）
-archive/v1/ v2/ archive/v3/   三代模型的训练记录（v1 / v2 / v3 世代；summary.json / config.json 等）
-eval/               评测结果 JSON（范围、针检索、记忆、标准基准）
-logs/               构建 / 训练 / 烧录 / 板上测试日志（board_baseline_lut.txt 是板上精度基线）
-tools/check_md.py   文档自检（代码围栏、路径、过时数字）
-tools/check_docs.py 文档事实校验（模型规格 / 评测数字与实际产物对齐）
+README.md              仓库首页（本文件）
+AGENTS.md              给 AI 编码代理的工作指南：工作约定、硬约束、命令速查
+docs/                  全部说明文档（索引见 docs/README.md）
+v4/base/               当前权重，也是 4.0 的训练起点（HF 格式，自带 tokenizer）
+scripts/               数据构建 / 训练 / 评测 / 导出脚本（路径解析见 scripts/paths.py）
+esp32s3-feng-llm/      ESP32 固件 + 可移植 C23 推理引擎 + PC 端一致性检查与回归套件
+phone/                 手机端（Termux CLI + Android APK），复用同一套 C23 引擎
+data/                  提示词池 / 教师蒸馏数据 / 公开语料（不入库）
+eval/                  评测结果 JSON（范围、针检索、记忆、留出、标准基准）
+logs/                  构建 / 训练 / 烧录 / 板上测试日志（board_baseline_lut.txt 是板上精度基线）
+tools/check_md.py      文档自检（代码围栏、路径、过时数字）
+tools/check_docs.py    文档事实校验（模型规格 / 评测数字与实际产物对齐）
+tools/check_all.py     一键验收：文档 → 构建 → 单测 → 32 题矩阵 → 位精确
 ```
+
+仓库只保留 v4 一条线：v1 / v2 / v3 的历史版本目录已于 2026-10 移除，
+需要旧版权重时从对应的 Release 取。
 
 ## 配置
 
@@ -305,6 +309,30 @@ tools/check_docs.py 文档事实校验（模型规格 / 评测数字与实际产
 - 量化抗性对权重回插极敏感：掺 20% 旧权重就掉点（CHANGELOG v3.10）；改板端行为要走
   "补数据 + 权重/KV 双 QAT"链路，不要手动 soup。
 - ESP32 固件的模型分区偏移必须与 `esp32s3-feng-llm/partitions.csv` 一致。
+
+## 致谢
+
+**教师模型** —— **bonsai2-27b**。v2 起的所有对话数据都由它蒸馏而来
+（v1 用的是 Qwen3.5-0.8B 微调版），本地经 `ninfer-serve` 承载。
+
+**学生架构** —— **Qwen3**。11 层 / hidden 448 / 7 头 MHA、RoPE、RMSNorm、
+tied embedding 这套结构参考了 Qwen3 系列的设计。
+
+**公开语料** —— 4.0 的提示词池取自 **ShareGPT 中文**、**Evol-Instruct 中文**、
+**Alpaca GPT-4 中文**、**Databricks Dolly-15k**、**UltraChat-200k** 五份公开数据集。
+只取其中的**问题**，答案一律由教师重新生成，并与留出题逐字去污染。
+
+**工具链**
+
+| 项目 | 用在哪 |
+|---|---|
+| [ESP-IDF](https://github.com/espressif/esp-idf) | ESP32-S3 固件（v5.5.5，xtensa gcc 14.2） |
+| [PyTorch](https://pytorch.org/) | 训练与量化感知训练 |
+| [HuggingFace transformers](https://github.com/huggingface/transformers) | 权重格式与分词器 |
+| [EleutherAI lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness) | 标准基准（SciQ / PIQA） |
+| [llama.cpp](https://github.com/ggml-org/llama.cpp) | 早期版本的 GGUF 导出与量化（v3.14 起不再发行） |
+
+感谢以上项目与数据集的作者把工作开源出来。
 
 ## 许可证
 

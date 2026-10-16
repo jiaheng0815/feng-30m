@@ -27,12 +27,24 @@ esp32s3-feng-llm/build/
 esp32s3-feng-llm/model_export_*/
 __pycache__/
 *.pyc
+
+# ---- 编辑器本地配置与代码提示数据（v4.0 起）----
+# .vscode/ 是**每台机器自己的**：settings.json 里写了本机绝对路径
+# （Python 解释器、交叉编译器的 --query-driver），换机器就得改，所以不入库。
 .vscode/
+# clangd / C/C++ 扩展的逐文件解析数据，由 tools/gen_compile_commands.py 从
+# ESP-IDF 的构建产物 + 四组手工条目合并生成（0.2 MB）。它随时能重建，
+# 且用户之间的构建路径不同，不入库。
+compile_commands.json
 
 # ---- 日志里的大文件 ----
 logs/teacher_server.log
 # 批量评测的临时输出（正式结果在 eval/）
 logs/longctx32_*.json
+# 教师服务（ninfer）的 stderr 原始输出：跟着生成一直涨（v4.0 那次从 1 MB 涨到 16 MB），
+# 内容基本是每请求几行的 INFO，没有留存价值。入库的是脚本整理的 .txt 与汇总 .log，
+# 这一类只留本地。（历史上已入库的几个小 err.log 是调参记录，保持原样。）
+logs/*.err.log
 
 # ---- 机器本地路径配置（每台机器不同，不入库）----
 scripts/local_paths.json
