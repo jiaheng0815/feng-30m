@@ -312,8 +312,9 @@ tools/check_all.py     一键验收：文档 → 构建 → 单测 → 32 题矩
 
 ## 致谢
 
-**教师模型** —— **bonsai2-27b**。v2 起的所有对话数据都由它蒸馏而来
-（v1 用的是 Qwen3.5-0.8B 微调版），本地经 `ninfer-serve` 承载。
+**教师模型** —— **[UkisAI](https://github.com/CraneBW/ninfer-ternary-bonsai-ada) 团队的
+Swift Bonsai 2（27B）**。v2 起的所有对话数据都由它蒸馏而来（v1 用的是 Qwen3.5-0.8B 微调版），
+经同项目的 **NInfer** 推理引擎（`.ninfer` 权重格式）在本地承载。
 
 **学生架构** —— **Qwen3**。11 层 / hidden 448 / 7 头 MHA、RoPE、RMSNorm、
 tied embedding 这套结构参考了 Qwen3 系列的设计。
@@ -330,7 +331,6 @@ tied embedding 这套结构参考了 Qwen3 系列的设计。
 | [PyTorch](https://pytorch.org/) | 训练与量化感知训练 |
 | [HuggingFace transformers](https://github.com/huggingface/transformers) | 权重格式与分词器 |
 | [EleutherAI lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness) | 标准基准（SciQ / PIQA） |
-| [llama.cpp](https://github.com/ggml-org/llama.cpp) | 早期版本的 GGUF 导出与量化（v3.14 起不再发行） |
 
 感谢以上项目与数据集的作者把工作开源出来。
 
