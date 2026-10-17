@@ -50,6 +50,17 @@ Q_TPL = [
     "上文的取件码是什么？请只回答数字。",
     "上文的会议室预订号是什么？请只回答数字。",
 ]
+# 诱饵：正文里**有**这些信息，但被问的那一类才是目标。
+# 与 scripts/eval_longctx_many.py 的 OTHER_FACTS 保持一致——**正负样本都要撒**。
+# 2026-10-17 实测：之前负样本是"纯填充文本、一条事实都没有"，跟评估端
+# "撒 1~3 条诱饵、只缺目标那类"完全不是同一个任务，训了也学不会，拒答只有 4/64。
+DECOYS = [
+    "（登记：快递柜取件码 {c}。）",
+    "（备注：会议室预订号 {c}。）",
+    "（记录：快递单号 {c}。）",
+    "（登记信息：设备序列号 {c}。）",
+]
+REFUSAL = "文中没有提到。"      # 必须包含 eval 的 REFUSAL_HINTS 之一
 
 
 def main():
@@ -59,7 +70,7 @@ def main():
     # 「文中没有该信息」的负样本比例。**绝不能是 0**：2026-10-17 实测，纯正样本训完
     # 之后模型变成"永远硬抽"，留出题里"文中没有"的拒答从 v3.19 的 61/64 塌到 0/64。
     # 越长越容易编，所以按长度递增（v3.1 的 `--negative-fracs` 也是这个思路）。
-    ap.add_argument("--negative-fracs", default="0.10,0.15,0.20,0.30",
+    ap.add_argument("--negative-fracs", default="0.20,0.25,0.30,0.40",
                     help="按长度分别指定负样本比例（逗号分隔，对应 SPECS 顺序）")
     ap.add_argument("--negative-frac", type=float, default=0.15,
                     help="--negative-fracs 未给时的统一比例")
@@ -79,31 +90,39 @@ def main():
         filler_pool = [enc(s) for s in FILLER]
         n_neg = 0
         for i in range(n):
-            # 负样本：**不埋事实**，正确答案是"文中没有提到。"
             is_neg = rng.random() < neg_frac
             if is_neg:
-                fact = []
-                ans_text = "文中没有提到。"
                 n_neg += 1
+            # 事实类型与问法**必须同一个下标**——以前两句各用一次 rng.choice，
+            # 会出现"埋了仓库编号、却问保险柜密码"的错配对样本。
+            ki = rng.randrange(len(FACT_TPL))
+            code = f"{rng.randint(10000, 99999)}"
+            if is_neg:
+                fact = []                       # 目标那类不埋
+                ans_text = REFUSAL
             else:
-                code = f"{rng.randint(10000, 99999)}"
-                fact = enc(rng.choice(FACT_TPL).format(c=code))
+                fact = enc(FACT_TPL[ki].format(c=code))
                 ans_text = code
-            q = enc("<|im_start|>user\n" + rng.choice(Q_TPL) +
+            # 诱饵 1~3 条，**正负样本都撒**，与评估端同分布
+            decoys = [enc(f.format(c=f"{rng.randint(10000, 99999)}"))
+                      for f in rng.sample(DECOYS, rng.randint(1, 3))]
+            q = enc("<|im_start|>user\n" + Q_TPL[ki] +
                     "<|im_end|>\n<|im_start|>assistant\n")
             a = enc(ans_text + "<|im_end|>")
-            body_len = L - len(q) - len(a) - len(fact)
+            body_len = L - len(q) - len(a) - len(fact) - sum(len(d) for d in decoys)
             if body_len < 64:
                 raise SystemExit(f"sequence too short for L={L}")
             body = []
             while len(body) < body_len:
                 body.extend(filler_pool[rng.randrange(len(filler_pool))])
             body = body[:body_len]
-            if is_neg:
-                row = body + q + a
-            else:
-                pos = rng.randrange(int(0.1 * body_len), int(0.9 * body_len))
-                row = body[:pos] + fact + body[pos:] + q + a
+            for d in decoys:                    # 诱饵随机撒在正文里
+                p = rng.randrange(len(body))
+                body[p:p] = d
+            if not is_neg:                       # 目标事实埋在 10%~90% 深度
+                pos = rng.randrange(int(0.1 * len(body)), int(0.9 * len(body)))
+                body[pos:pos] = fact
+            row = body + q + a
             row = row[:L]
             if len(row) < L:
                 row = row + [0] * (L - len(row))
