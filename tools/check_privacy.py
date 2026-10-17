@@ -38,6 +38,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # 这些目录是「别人的文字」，不扫：公开语料里人名多如牛毛
 SKIP_DIRS = ("data/", "node_modules/", "build/", ".git/", "esp32s3-feng-llm/build/")
+# 本脚本自己的说明文字里有示例人名（「作者：张三」），扫自己只会报假阳性
+SKIP_FILES = {"tools/check_privacy.py"}
 # 二进制/大文件不扫
 SKIP_EXT = {".safetensors", ".pt", ".pth", ".gguf", ".bin", ".npy", ".npz",
             ".o", ".obj", ".exe", ".dll", ".lib", ".pyc", ".so", ".a"}
@@ -69,6 +71,8 @@ def tracked_files() -> list[Path]:
     for n in names:
         n = n.replace("\\", "/")
         if any(n.startswith(d) or f"/{d}" in f"/{n}" for d in SKIP_DIRS):
+            continue
+        if n in SKIP_FILES:
             continue
         if Path(n).suffix.lower() in SKIP_EXT:
             continue
