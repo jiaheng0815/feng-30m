@@ -1,0 +1,6 @@
+[22:53:35] 样本：QAT 数据 5085 + 多轮/身份 80 = 5165 条
+[22:53:37] 可用样本 5165，平均长度 95
+Loading weights:   0%|          | 0/123 [00:00<?, ?it/s]Loading weights: 100%|██████████| 123/123 [00:00<00:00, 1936.58it/s]
+[22:53:37] KV-QAT hooks installed: K (post-RoPE) + V (v_proj out), q2 block8 STE
+[22:53:37] W-QAT：78 个权重矩阵 + embedding 按 Q4 block64（fp16 scale）STE 前向
+[22:53:44] step 25/430 loss 4.3511 lr 9.99e-07 gnorm 4.00 0.1min
