@@ -212,6 +212,16 @@ FENG_HOT static void gemv_range_cpu(const void *tensor, uint32_t dtype, const fl
         }
         return;
     }
+#if FENG_FP16_WEIGHTS
+    /* 未知 dtype：加载期（feng_model_init）已经拦掉了，这里只是防御。
+     * **不要**像以前那样默认按 Q4 解——那会把 fp16 矩阵当 4-bit 打包读，不报错、
+     * 结果全错。宁可输出全零（明显是坏的），也不要静默算出一个像样的错答案。
+     * 板端 FENG_FP16_WEIGHTS=0 时这段不参与编译，代码与改造前逐 token 相同。 */
+    if (dtype != FENG_DT_Q4) {
+        for (int o = r0; o < r1; o++) y[o] = 0.0f;
+        return;
+    }
+#endif
     const int n_blocks = n_in / QK;
     const size_t row_bytes = (size_t)n_blocks * (2 + 32);
     q4_lut_init();

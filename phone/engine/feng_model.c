@@ -59,6 +59,9 @@ static const char *const kLayerTensorNames[11] = {
     m->hdr.rms_eps = fv[0];
     m->hdr.rope_theta = fv[1];
     if (m->hdr.magic != (uint32_t)FENG_MAGIC) return -2;
+#if FENG_FP16_WEIGHTS
+    if (m->hdr.version != 1u) return -11;
+#endif
     if (m->hdr.n_layers > FENG_MAX_LAYERS) return -3;
     if (m->hdr.n_tensors > FENG_MAX_TENSORS) return -8;
     if (size < K_HEADER_BYTES + (size_t)m->hdr.n_tensors * K_DIRENT_BYTES) return -4;
@@ -72,6 +75,10 @@ static const char *const kLayerTensorNames[11] = {
         memcpy(d->shape, e + 36, 16);
         memcpy(&d->offset, e + 52, 8);
         memcpy(&d->nbytes, e + 60, 8);
+#if FENG_FP16_WEIGHTS
+        if (d->dtype != FENG_DT_FP16 && d->dtype != FENG_DT_Q4) return -9;
+        if (d->dtype == FENG_DT_Q4 && d->shape[1] != 0u && (d->shape[1] % 64u) != 0u) return -10;
+#endif
     }
     m->dir = m->dir_storage;
     m->blob = p;
@@ -86,6 +93,9 @@ static const char *const kLayerTensorNames[11] = {
 
     for (uint32_t l = 0; l < m->hdr.n_layers; l++) {
         const void *slots[11] = {0};
+#if FENG_FP16_WEIGHTS
+        uint32_t dts[11] = {0};
+#endif
         for (int k = 0; k < 11; k++) {
             char buf[64];
             /* 名字已 NUL 结尾，不需要原来的 %.*s + string_view.size() */
@@ -96,6 +106,9 @@ static const char *const kLayerTensorNames[11] = {
                 return -7;
             }
             slots[k] = ptr_of(m, tt);
+#if FENG_FP16_WEIGHTS
+            dts[k] = tt->dtype;
+#endif
         }
         m->layers[l].attn_norm = slots[0];
         m->layers[l].ffn_norm = slots[1];
@@ -108,6 +121,13 @@ static const char *const kLayerTensorNames[11] = {
         m->layers[l].gate = slots[8];
         m->layers[l].up = slots[9];
         m->layers[l].down = slots[10];
+#if FENG_FP16_WEIGHTS
+        if (dts[0] != FENG_DT_FP16 || dts[1] != FENG_DT_FP16 ||
+            dts[6] != FENG_DT_FP16 || dts[7] != FENG_DT_FP16) return -12;
+        if (dts[3] != dts[2] || dts[4] != dts[2] || dts[5] != dts[2] ||
+            dts[8] != dts[2] || dts[9] != dts[2] || dts[10] != dts[2]) return -13;
+        m->layers[l].mat_dtype = dts[2];
+#endif
     }
     return 0;
 }

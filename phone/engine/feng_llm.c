@@ -186,6 +186,9 @@ size_t feng_kv_bytes(const feng_model_t *m, int ctx)
     const size_t data = (size_t)m->hdr.n_layers * ctx * (m->hdr.hidden / 4) * 2;
     const size_t scal = (size_t)m->hdr.n_layers * ctx * (m->hdr.hidden / FENG_KV_Q2_BLOCK) * 2 * 2;
     return data + scal;
+#elif FENG_KV_FP16
+    /* 每值 2 字节，无 scale；*2 是 K/V 两份 */
+    return (size_t)m->hdr.n_layers * ctx * m->hdr.hidden * 2 * sizeof(uint16_t);
 #else
     return (size_t)m->hdr.n_layers * ctx * m->hdr.hidden * 2 * sizeof(float);
 #endif
@@ -198,6 +201,9 @@ size_t feng_kv_scale_slots(const feng_model_t *m, int ctx)
     return (size_t)m->hdr.n_layers * ctx * m->hdr.n_heads;
 #elif FENG_KV_Q2
     return (size_t)m->hdr.n_layers * ctx * (m->hdr.hidden / FENG_KV_Q2_BLOCK);
+#elif FENG_KV_FP16
+    (void)m; (void)ctx;
+    return 0;
 #else
     (void)m; (void)ctx;
     return 0;
@@ -273,7 +279,7 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
     for (int l = 0; l < (int)m->hdr.n_layers; l++) {
         const feng_layer_t *L = &m->layers[l];
         rmsnorm(xn, x, L->attn_norm, h, m->hdr.rms_eps);
-        feng_gemv3(L->wq, L->wk, L->wv, FENG_DT_Q4, xn, q, k, v, h, h, h, h);
+        feng_gemv3(L->wq, L->wk, L->wv, FENG_LAYER_DTYPE(L), xn, q, k, v, h, h, h, h);
 
         /* per-head q/k RMSNorm (Qwen3) */
         {
@@ -358,6 +364,13 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
                     kd[blk * bw + j] = kb; vd[blk * bw + j] = vb;
                 }
             }
+        }
+#elif FENG_KV_FP16
+        uint16_t *kc = (uint16_t *)kv->k_cache + (size_t)l * kv->ctx * h;
+        uint16_t *vc = (uint16_t *)kv->v_cache + (size_t)l * kv->ctx * h;
+        for (int i = 0; i < h; i++) {
+            kc[(size_t)pos * h + i] = feng_f32_to_f16(k[i]);
+            vc[(size_t)pos * h + i] = feng_f32_to_f16(v[i]);
         }
 #else
         float *kc = (float *)kv->k_cache + (size_t)l * kv->ctx * h;
@@ -480,6 +493,19 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
                 g_prof_cycles[0] += (unsigned long long)(pc1 - pc0);
             }
 #endif
+#elif FENG_KV_FP16
+            {
+                const uint16_t *krow = (const uint16_t *)kv->k_cache
+                                     + (size_t)l * kv->ctx * h + (size_t)hh * hd;
+                for (int t = 0; t <= pos; t++) {
+                    const uint16_t *kh = krow + (size_t)t * h;
+                    float s = 0.f;
+                    for (int d = 0; d < hd; d++) s += qh[d] * f16_to_f32_local(kh[d]);
+                    s *= scale;
+                    scores[t] = s;
+                    if (s > maxs) maxs = s;
+                }
+            }
 #else
             for (int t = 0; t <= pos; t++) {
                 const float *kh = kc + (size_t)t * h + hh * hd;
@@ -625,6 +651,18 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
                 g_prof_cycles[2] += (unsigned long long)((unsigned)esp_cpu_get_cycle_count() - pv0);
 #endif
             }
+#elif FENG_KV_FP16
+            {
+                const uint16_t *vrow = (const uint16_t *)kv->v_cache
+                                     + (size_t)l * kv->ctx * h + (size_t)hh * hd;
+                for (int d = 0; d < hd; d++) {
+                    float acc = 0.f;
+                    for (int t = 0; t <= pos; t++) {
+                        acc += scores[t] * f16_to_f32_local(vrow[(size_t)t * h + d]);
+                    }
+                    attn[hh * hd + d] = acc * inv;
+                }
+            }
 #else
             for (int d = 0; d < hd; d++) {
                 float acc = 0.f;
@@ -635,13 +673,13 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
             }
 #endif
         }
-        feng_gemv_par(L->wo, FENG_DT_Q4, attn, proj, h, h);
+        feng_gemv_par(L->wo, FENG_LAYER_DTYPE(L), attn, proj, h, h);
         for (int i = 0; i < h; i++) x[i] += proj[i];
 
         rmsnorm(xn, x, L->ffn_norm, h, m->hdr.rms_eps);
-        feng_gemv3(L->gate, L->up, NULL, FENG_DT_Q4, xn, gate, up, NULL, f, f, 0, h);
+        feng_gemv3(L->gate, L->up, NULL, FENG_LAYER_DTYPE(L), xn, gate, up, NULL, f, f, 0, h);
         silu_mul(ffn, gate, up, f);
-        feng_gemv_par(L->down, FENG_DT_Q4, ffn, proj, h, f);
+        feng_gemv_par(L->down, FENG_LAYER_DTYPE(L), ffn, proj, h, f);
         for (int i = 0; i < h; i++) x[i] += proj[i];
     }
     if (want_logits) {

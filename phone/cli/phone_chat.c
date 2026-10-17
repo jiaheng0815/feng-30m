@@ -33,6 +33,8 @@
 #define KV_MODE "q2"
 #elif FENG_KV_INT8
 #define KV_MODE "int8"
+#elif FENG_KV_FP16
+#define KV_MODE "fp16"
 #else
 #define KV_MODE "fp32"
 #endif

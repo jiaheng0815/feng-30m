@@ -44,8 +44,17 @@ if [ -z "$CC" ]; then
     exit 1
 fi
 
-# KV 配置：与板端发布配置一致（q2 / block8）
-KVFLAGS="-DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8"
+# KV 配置：默认与板端发布配置一致（q2 / block8）。
+#   KV=fp16 ./build.sh    fp16 KV（每值 2 字节、无 scale；2048 上下文 40.4 MB）
+#   KV=fp32 ./build.sh    不量化（80.7 MB @2048，只用于对拍）
+KV="${KV:-q2}"
+case "$KV" in
+    q2)   KVFLAGS="-DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8" ;;
+    fp16) KVFLAGS="-DFENG_KV_FP16=1" ;;
+    int8) KVFLAGS="-DFENG_KV_INT8=1" ;;
+    fp32) KVFLAGS="" ;;
+    *)    echo "未知 KV=$KV（可选 q2 / fp16 / int8 / fp32）" >&2; exit 2 ;;
+esac
 # EXTRA 是给使用者的逃生口，例如把上下文上限抬到 32k：
 #   EXTRA=-DFENG_PHONE_MAX_CTX=32768 ./build.sh
 # 默认值写在 phone/engine/feng_phone.h（4096），那是**编译期常量**，不是硬件限制。

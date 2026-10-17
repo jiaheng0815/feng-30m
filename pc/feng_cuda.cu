@@ -681,12 +681,21 @@ extern "C" int feng_cuda_forward_ready(void)
 
 extern "C" int feng_cuda_forward_supported(const feng_model_t *m, const feng_kv_t *kv)
 {
+#if !FENG_KV_Q2
     (void)m;
     (void)kv;
-#if !FENG_KV_Q2
     return 0;      /* 完整 GPU forward 只实现了 q2 KV 布局 */
 #else
     if (FENG_KV_Q2_BLOCK != 8) return 0;
+    (void)kv;
+#if FENG_FP16_WEIGHTS
+    /* 完整 forward 的权重内核只写了 Q4。fp16 权重退回 CPU 路径——
+     * 单次 GEMV 的 CUDA fp16 内核仍然可用（见 feng_cuda_gemv_range），
+     * 只是不参与这条融合路径。 */
+    for (uint32_t l = 0; l < m->hdr.n_layers; l++) {
+        if (m->layers[l].mat_dtype != FENG_DT_Q4) return 0;
+    }
+#endif
     return 1;
 #endif
 }
@@ -737,9 +746,9 @@ extern "C" float *feng_cuda_forward(feng_model_t *m, feng_kv_t *kv, feng_workspa
             s->x, reinterpret_cast<const unsigned short *>(
                 device_tensor(L->attn_norm, (size_t)h * 2)),
             s->xn, h, eps);
-        fwd_gemv_device(L->wq, tensor_bytes(FENG_DT_Q4, h, h), FENG_DT_Q4, s->xn, s->q, h, h, stream);
-        fwd_gemv_device(L->wk, tensor_bytes(FENG_DT_Q4, h, h), FENG_DT_Q4, s->xn, s->k, h, h, stream);
-        fwd_gemv_device(L->wv, tensor_bytes(FENG_DT_Q4, h, h), FENG_DT_Q4, s->xn, s->v, h, h, stream);
+        fwd_gemv_device(L->wq, tensor_bytes(FENG_LAYER_DTYPE(L), h, h), FENG_LAYER_DTYPE(L), s->xn, s->q, h, h, stream);
+        fwd_gemv_device(L->wk, tensor_bytes(FENG_LAYER_DTYPE(L), h, h), FENG_LAYER_DTYPE(L), s->xn, s->k, h, h, stream);
+        fwd_gemv_device(L->wv, tensor_bytes(FENG_LAYER_DTYPE(L), h, h), FENG_LAYER_DTYPE(L), s->xn, s->v, h, h, stream);
         /* QK-norm + RoPE（每 head 一个 block；q 与 k 各一次） */
         fwd_qk_rope_kernel<<<nh, 64, 0, stream>>>(
             s->q, reinterpret_cast<const unsigned short *>(device_tensor(L->q_norm, (size_t)hd * 2)),
@@ -757,17 +766,17 @@ extern "C" float *feng_cuda_forward(feng_model_t *m, feng_kv_t *kv, feng_workspa
         fwd_softmax_kernel<<<1, 32, 0, stream>>>(s->scores, s->ctx, nh, s->d_params, s->inv);
         fwd_attn_v_kernel<<<(nh * hd + 255) / 256, 256, 0, stream>>>(
             s->scores, s->inv, s->v_cache, s->v_scale, s->attn, l, nh, hd, s->ctx, s->d_params, blk_sz);
-        fwd_gemv_device(L->wo, tensor_bytes(FENG_DT_Q4, h, h), FENG_DT_Q4, s->attn, s->proj, h, h, stream);
+        fwd_gemv_device(L->wo, tensor_bytes(FENG_LAYER_DTYPE(L), h, h), FENG_LAYER_DTYPE(L), s->attn, s->proj, h, h, stream);
         fwd_add_kernel<<<(h + 255) / 256, 256, 0, stream>>>(s->x, s->proj, h);
         /* FFN */
         fwd_rmsnorm_kernel<<<1, 1024, 0, stream>>>(
             s->x, reinterpret_cast<const unsigned short *>(
                 device_tensor(L->ffn_norm, (size_t)h * 2)),
             s->xn, h, eps);
-        fwd_gemv_device(L->gate, tensor_bytes(FENG_DT_Q4, f, h), FENG_DT_Q4, s->xn, s->gate, f, h, stream);
-        fwd_gemv_device(L->up, tensor_bytes(FENG_DT_Q4, f, h), FENG_DT_Q4, s->xn, s->up, f, h, stream);
+        fwd_gemv_device(L->gate, tensor_bytes(FENG_LAYER_DTYPE(L), f, h), FENG_LAYER_DTYPE(L), s->xn, s->gate, f, h, stream);
+        fwd_gemv_device(L->up, tensor_bytes(FENG_LAYER_DTYPE(L), f, h), FENG_LAYER_DTYPE(L), s->xn, s->up, f, h, stream);
         fwd_silu_mul_kernel<<<(f + 255) / 256, 256, 0, stream>>>(s->ffn_buf, s->gate, s->up, f);
-        fwd_gemv_device(L->down, tensor_bytes(FENG_DT_Q4, h, f), FENG_DT_Q4, s->ffn_buf, s->proj, h, f, stream);
+        fwd_gemv_device(L->down, tensor_bytes(FENG_LAYER_DTYPE(L), h, f), FENG_LAYER_DTYPE(L), s->ffn_buf, s->proj, h, f, stream);
         fwd_add_kernel<<<(h + 255) / 256, 256, 0, stream>>>(s->x, s->proj, h);
     }
     /* 输出投影：图内总是执行（GPU 上仅 ~16µs；want_logits=0 只是不回拷） */

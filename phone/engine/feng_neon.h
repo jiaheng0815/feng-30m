@@ -32,6 +32,15 @@ extern "C" {
 /* 本机 CPU 是否支持 ARMv8.2 dotprod（首次调用做一次 getauxval，结果缓存） */
 int feng_neon_sdot_ok(void);
 
+/* 本机 CPU 是否支持 ARMv8.2 FP16 向量运算（HWCAP_ASIMDHP） */
+int feng_neon_fp16_ok(void);
+
+/* fp16 行主序权重的 GEMV，只算输出行 [r0, r1)。
+ * 每 8 个权重：vcvt_f32_f16 拆成两组 float32x4，与 x 对应段做 vfmaq_f32。
+ * **不承诺与标量 fp16 路径逐位一致**：转换是精确的，但累加顺序不同。 */
+void feng_neon_fp16_gemv(const uint16_t *w, const float *x, float *y,
+                         int r0, int r1, int n_in);
+
 /* Q4 block-64 GEMV 的 sdot 内核，只算输出行 [r0, r1)。
  *   base      张量起始（每行 = [nb×fp16 scale(2B)] ++ [nb×32B packed]）
  *   xq/xscale feng_gemv_a8_prepare 量化好的激活（每 64 值一块）

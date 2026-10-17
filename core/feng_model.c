@@ -56,6 +56,11 @@ static const char *const kLayerTensorNames[11] = {
     m->hdr.rms_eps = fv[0];
     m->hdr.rope_theta = fv[1];
     if (m->hdr.magic != (uint32_t)FENG_MAGIC) return -2;
+#if FENG_FP16_WEIGHTS
+    /* 只在声明支持 fp16 权重的构建里校验：板端关掉这个宏时，
+     * 下面的代码一个 token 都不进固件，二进制保持不变。 */
+    if (m->hdr.version != 1u) return -11;
+#endif
     if (m->hdr.n_layers > FENG_MAX_LAYERS) return -3;
     if (m->hdr.n_tensors > FENG_MAX_TENSORS) return -8;
     if (size < K_HEADER_BYTES + (size_t)m->hdr.n_tensors * K_DIRENT_BYTES) return -4;
@@ -69,6 +74,14 @@ static const char *const kLayerTensorNames[11] = {
         memcpy(d->shape, e + 36, 16);
         memcpy(&d->offset, e + 52, 8);
         memcpy(&d->nbytes, e + 60, 8);
+#if FENG_FP16_WEIGHTS
+        /* 只认两种格式。以前这里不校验，未知 dtype 会一路落到 GEMV 的
+         * 「不是 fp16 就按 Q4 解」分支——不报错、logits 全错。 */
+        if (d->dtype != FENG_DT_FP16 && d->dtype != FENG_DT_Q4) return -9;
+        /* Q4 按 64 个权重一块打包，n_in 必须能被 64 整除。导出期已经不允许
+         * Q4 出现坏形状，这里再挡一次，避免文件被改过之后在 GEMV 里静默截断。 */
+        if (d->dtype == FENG_DT_Q4 && d->shape[1] != 0u && (d->shape[1] % 64u) != 0u) return -10;
+#endif
     }
     m->dir = m->dir_storage;
     m->blob = p;
@@ -83,6 +96,9 @@ static const char *const kLayerTensorNames[11] = {
 
     for (uint32_t l = 0; l < m->hdr.n_layers; l++) {
         const void *slots[11] = {0};
+#if FENG_FP16_WEIGHTS
+        uint32_t dts[11] = {0};
+#endif
         for (int k = 0; k < 11; k++) {
             char buf[64];
             /* 名字已 NUL 结尾，不需要原来的 %.*s + string_view.size() */
@@ -93,6 +109,9 @@ static const char *const kLayerTensorNames[11] = {
                 return -7;
             }
             slots[k] = ptr_of(m, tt);
+#if FENG_FP16_WEIGHTS
+            dts[k] = tt->dtype;
+#endif
         }
         m->layers[l].attn_norm = slots[0];
         m->layers[l].ffn_norm = slots[1];
@@ -105,6 +124,15 @@ static const char *const kLayerTensorNames[11] = {
         m->layers[l].gate = slots[8];
         m->layers[l].up = slots[9];
         m->layers[l].down = slots[10];
+#if FENG_FP16_WEIGHTS
+        /* 同层 7 个矩阵必须同格式：wq/wk/wv 与 gate/up 各共用一次合并 GEMV，
+         * 那个 API 只有一个 dtype 参数。norm 必须 fp16（rmsnorm 按 uint16_t* 读）。 */
+        if (dts[0] != FENG_DT_FP16 || dts[1] != FENG_DT_FP16 ||
+            dts[6] != FENG_DT_FP16 || dts[7] != FENG_DT_FP16) return -12;
+        if (dts[3] != dts[2] || dts[4] != dts[2] || dts[5] != dts[2] ||
+            dts[8] != dts[2] || dts[9] != dts[2] || dts[10] != dts[2]) return -13;
+        m->layers[l].mat_dtype = dts[2];
+#endif
     }
     return 0;
 }

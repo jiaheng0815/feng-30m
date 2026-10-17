@@ -1,4 +1,4 @@
-"""检查 phone/engine 这份派生副本与板端 board/main/ 是否已经分叉。
+"""检查 phone/engine 这份派生副本与共享核心 core/ 是否已经分叉。
 
 phone/engine 的每个文件头部都记了来源，原版校验值存在 phone/engine/SOURCE.sha256。
 板端改了引擎之后跑一下这个脚本，它会告诉你：
@@ -105,12 +105,12 @@ def main() -> int:
         ok = False
         print("‼ [已改] 板端改了、手机端没跟（需要人工搬过来）：")
         for n in changed:
-            print(f"    board/main/{n}")
+            print(f"    core/{n}")
         print("    搬法：diff 两边，把改动贴进 phone/engine/ 对应文件，再跑 phone/cli/verify.sh\n")
     if forked_changed:
         print("⚠ [已改·分叉文件] 板端改了这些文件，但手机端**有意**改过它们，不会自动同步：")
         for n in forked_changed:
-            print(f"    board/main/{n}")
+            print(f"    core/{n}")
         print("    照 phone/README.md 的「分叉清单」逐条判断：只搬不属于那四处的改动\n")
     if missing:
         ok = False
@@ -121,7 +121,7 @@ def main() -> int:
     if added:
         print("⚠ [新增] 板端多了这些文件，手机端可能要一起编：")
         for n in added:
-            print(f"    board/main/{n}")
+            print(f"    core/{n}")
         print()
 
     if ok and not forked_changed and not added:

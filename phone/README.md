@@ -69,6 +69,34 @@ REPL 里：`\reset` 清空上下文与记忆、`\mem` 看记忆、`\stats` 看�
 
 ---
 
+## 2.5 fp16 权重与 fp16 KV（可选）
+
+默认是 **Q4 权重 + q2/block8 KV**（与板端一致，352 tok/s，KV 9.62 MB）。
+想换 fp16 精度：
+
+```bash
+# KV：编一份 fp16 KV 的引擎（2048 上下文 38.50 MiB）
+KV=fp16 ./build.sh
+./build/phone_chat --bench 32 ~/.feng
+
+# 权重：用导出器把 HF 权重导成 fp16（56 MB）
+python board/tools/export_model.py --model <HF 权重> --out <目录> --weights-dtype fp16
+./build/phone_chat <fp16 目录>
+```
+
+| 组合 | 32 题 | KV 占用 | 说明 |
+|---|---|---|---|
+| Q4 + q2（默认） | **27/27 + 4/4** | 9.62 MiB | 板端发布配置 |
+| fp16 权重 + q2 | 22/27 + 4/4 | 9.62 MiB | 见下 |
+| Q4 + fp16 KV | 26/27 + 4/4 | 38.50 MiB | 精度参照 |
+
+> **fp16 权重在做过 QAT 的权重上并不会更准**：那批权重是照着 Q4 噪声训出来的，
+> fp16 反而回到它未适配的数值路径（22/27 正好等于"PC fp32 权重直接导出"的历史数字）。
+> fp16 适合**没做过 QAT 的模型**，或用来做精度对拍。
+>
+> NEON fp16 内核（`vcvt_f32_f16` + `vfmaq_f32`）在支持 FP16 的 aarch64 上自动启用，
+> 用 `--neon 0` 可关掉；它与标量路径**不逐位一致**（累加顺序不同）。
+
 ## 3. 性能与内存
 
 ### 3.1 实测数字（都能追到 `logs/`）

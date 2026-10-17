@@ -22,8 +22,12 @@
 
 #if FENG_KV_Q2
 #define KV_MODE "q2"
-#else
+#elif FENG_KV_FP16
+#define KV_MODE "fp16"
+#elif FENG_KV_INT8
 #define KV_MODE "int8"
+#else
+#define KV_MODE "fp32"      /* 以前这里静默报成 int8，fp32 构建会误标 */
 #endif
 
 static void *xmalloc(size_t n)

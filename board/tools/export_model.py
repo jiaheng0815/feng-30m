@@ -43,8 +43,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--quantize-embedding", action="store_true", default=True)
+    # 以前是 store_true + default=True —— 永远关不掉，else 分支是死代码。
+    # 改成 BooleanOptionalAction（--no-quantize-embedding），默认仍是量化，行为不变。
+    ap.add_argument("--quantize-embedding", action=argparse.BooleanOptionalAction, default=True)
     ap.add_argument("--keep", type=int, default=200, help="tensors with fewer params stay fp16")
+    ap.add_argument("--weights-dtype", choices=["q4", "fp16"], default="q4",
+                    help="2D 矩阵权重的存储格式。fp16 只有手机端/PC 端能跑"
+                         "（58.9 MB，板端 16 MB mmap 窗口放不下）")
     args = ap.parse_args()
 
     out = Path(args.out)
@@ -85,7 +90,8 @@ def main():
 
     def maybe(name, t, force_fp16=False):
         n = t.numel()
-        if force_fp16 or n < args.keep or t.dim() < 2 or t.shape[1] % QK != 0:
+        if (force_fp16 or args.weights_dtype == "fp16" or n < args.keep
+                or t.dim() < 2 or t.shape[1] % QK != 0):
             add_fp16(name, t)
         else:
             add_q4(name, t)

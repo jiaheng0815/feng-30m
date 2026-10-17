@@ -205,6 +205,15 @@ FENG_HOT static void gemv_range_cpu(const void *tensor, uint32_t dtype, const fl
 #endif
     const uint8_t *base = (const uint8_t *)tensor;
     if (dtype == FENG_DT_FP16) {
+#if FENG_PHONE_NEON
+        /* aarch64 且有 FP16 向量运算：vcvt_f32_f16 + vfmaq_f32。
+         * 不支持的老核心、或 --neon 0，都自动落到下面的标量循环。
+         * 两条路径**不逐位一致**（累加顺序不同），验收看 argmax 与 32 题判定。 */
+        if (feng_phone_neon_on() && feng_neon_fp16_ok()) {
+            feng_neon_fp16_gemv((const uint16_t *)tensor, x, y, r0, r1, n_in);
+            return;
+        }
+#endif
         const uint16_t *w = (const uint16_t *)tensor;
 #if defined(FENG_USE_OMP)
 #pragma omp parallel for schedule(static) if (r1 - r0 >= 128)
@@ -219,6 +228,13 @@ FENG_HOT static void gemv_range_cpu(const void *tensor, uint32_t dtype, const fl
         }
         return;
     }
+#if FENG_FP16_WEIGHTS
+    /* 未知 dtype 兜底：加载期已拦截，这里只是防止静默按 Q4 解出"看着像样"的错答案 */
+    if (dtype != FENG_DT_Q4) {
+        for (int o = r0; o < r1; o++) y[o] = 0.0f;
+        return;
+    }
+#endif
     const int n_blocks = n_in / QK;
     const size_t row_bytes = (size_t)n_blocks * (2 + 32);
     q4_lut_init();

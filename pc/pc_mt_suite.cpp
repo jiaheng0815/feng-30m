@@ -120,9 +120,13 @@ int main(int argc, char **argv)
     const size_t kv_bytes = feng_kv_bytes(&m, ctx);
     kv.k_cache = xmalloc(kv_bytes / 2 + 64);
     kv.v_cache = xmalloc(kv_bytes / 2 + 64);
+#if FENG_KV_INT8 || FENG_KV_Q2
+    /* 只有量化 KV 才有 scale。fp32/fp16 下 feng_kv_scale_slots 返回 0，
+     * 而 xmalloc(0) 可能拿到 NULL 直接 exit(1)——这里必须按模式分支。 */
     const size_t n_sc = feng_kv_scale_slots(&m, ctx);
     kv.k_scale = (uint16_t *)xmalloc(n_sc * 2);
     kv.v_scale = (uint16_t *)xmalloc(n_sc * 2);
+#endif
 
     feng_workspace_t ws;
     const int h = m.hdr.hidden, ff = m.hdr.ffn, v = m.hdr.vocab;

@@ -72,12 +72,15 @@ try {
         New-Item -ItemType Directory -Force -Path $objQ2, $objFp32, $objI8 | Out-Null
 
         # 核心走 C23：/TC 强制按 C 编译，/std:clatest 打开 C23（[[nodiscard]] 等要它）
-        $cFlags = @("/nologo", "/c", "/O2", "/std:clatest", "/TC", "/utf-8", "/wd4996", "/I..\core")
+        # FENG_FP16_WEIGHTS 必须同时给核心与驱动：它改变 feng_layer_t 的大小，
+        # 两边不一致就是 ABI 错位（结构体越界读写）。
+        $cFlags = @("/nologo", "/c", "/O2", "/std:clatest", "/TC", "/utf-8", "/wd4996",
+                    "/I..\core", "/DFENG_FP16_WEIGHTS=1")
         # 驱动走 C++23：/TP 强制按 C++ 编译；异常/RTTI 对纯 C 核心无意义，
         # 但 PC 驱动自己也遵守"零异常"约定，所以保留关闭开关
         $cxxFlags = @("/nologo", "/c", "/O2", "/std:c++latest", "/TP", "/utf-8",
                       "/EHs-c-", "/GR-", "/D_HAS_EXCEPTIONS=0", "/wd4996", "/I..\core",
-                      "/DFENG_USE_OMP=1", "/openmp")
+                      "/DFENG_USE_OMP=1", "/openmp", "/DFENG_FP16_WEIGHTS=1")
         $kvQ2 = @("/DFENG_KV_Q2=1", "/DFENG_KV_Q2_BLOCK=8")
 
         Write-Host "[1/5] 编译核心（C23）q2 / fp32 / i8 三套 ..." -ForegroundColor Cyan
@@ -136,8 +139,9 @@ try {
         # ---------------- MinGW：gcc -std=c23 核心 + g++ -std=c++23 驱动 ----------------
         $gcc = $env:FENG_GCC; if (-not $gcc) { $gcc = "gcc" }
         $gxx = $env:FENG_GXX; if (-not $gxx) { $gxx = "g++" }
-        $cFlags = @("-std=c23", "-O2", "-I..\core")
+        $cFlags = @("-std=c23", "-O2", "-I..\core", "-DFENG_FP16_WEIGHTS=1")
         $cxxFlags = @("-std=c++23", "-fno-exceptions", "-fno-rtti", "-fno-threadsafe-statics",
+                       "-DFENG_FP16_WEIGHTS=1",
                       "-O2", "-DFENG_USE_OMP=1", "-fopenmp", "-I..\core")
         $objRoot = Join-Path $PSScriptRoot "mingw_obj"
         $objQ2 = Join-Path $objRoot "q2"

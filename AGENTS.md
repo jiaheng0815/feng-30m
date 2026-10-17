@@ -225,6 +225,18 @@ g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Icore -lm       # 驱动 + 链
    `C_STANDARD 23` + `C_EXTENSIONS OFF`，并且**不能**再带
    `-fno-exceptions -fno-rtti -fno-threadsafe-statics`（gcc 对 C 文件报错，且会误命中 `.S`）。
 
+6.5 **fp16 权重 / fp16 KV（手机端与 PC 端专用）**：`FENG_FP16_WEIGHTS` 默认 **0**，
+   板端永远保持 0——关掉时 `feng_layer_t` 的 `mat_dtype` 字段与加载期校验全部不参与编译，
+   预处理输出与改造前**逐字节相同**（改这里之后必须重新验证这一点，见下）。
+   - 权重格式来自模型文件的目录项，前向用 `FENG_LAYER_DTYPE(L)`；**不要再硬编码 `FENG_DT_Q4`**。
+   - `FENG_KV_FP16=1` 是第四种 KV 模式，与 INT8/Q2 用 `#error` 互斥；布局同 fp32 的
+     `[layer][ctx][hidden]`。
+   - 验证板端未受影响：`gcc -E -P -std=c23 -Icore -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 core/feng_llm.c`
+     与 `git show HEAD:core/feng_llm.c` 的预处理结果 `diff` 必须为空。
+   - 手机端 `phone/engine/feng.h` **自己定义 `FENG_FP16_WEIGHTS 1`**；PC 在
+     `build_pc_chat.ps1` 的 `$cFlags`/`$cxxFlags` 里加 `-DFENG_FP16_WEIGHTS=1`
+     （核心与驱动必须一致，否则 `feng_layer_t` 大小不同 → ABI 错位）。
+
 7. **体积纪律（板端实测）**：禁止 `std::sort`（每套比较器实例化一份 introsort，实测 ~2.6KB）、
    `string_view::substr`（引用 `std::__throw_out_of_range_fmt`，拖进 libstdc++ 异常/字符串/
    pthread 运行时 ~5KB）；非热点模块（tokenizer/tool/model/gbk/main）用 `-Os`，热点

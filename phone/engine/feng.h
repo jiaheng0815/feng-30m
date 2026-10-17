@@ -36,6 +36,12 @@ extern "C" {
 #ifndef FENG_KV_Q2
 #define FENG_KV_Q2 0
 #endif
+#ifndef FENG_KV_FP16
+#define FENG_KV_FP16 0
+#endif
+#if (FENG_KV_INT8 + FENG_KV_Q2 + FENG_KV_FP16) > 1
+#error "FENG_KV_INT8 / FENG_KV_Q2 / FENG_KV_FP16 只能选一个"
+#endif
 #ifndef FENG_KV_Q2_BLOCK
 #define FENG_KV_Q2_BLOCK 16      /* 每多少个值共享一个 fp16 scale（须整除 head_dim、是 4 的倍数） */
 #endif
@@ -100,6 +106,17 @@ enum {
 
 typedef enum { FENG_DT_FP16 = 0, FENG_DT_Q4 = 1 } feng_dtype_t;
 
+/* 手机端永远打开：模型文件自己声明每层矩阵格式（fp16 权重）。
+ * 板端保持 core/feng.h 的默认 0，固件二进制不变。 */
+#ifndef FENG_FP16_WEIGHTS
+#define FENG_FP16_WEIGHTS 1
+#endif
+#if FENG_FP16_WEIGHTS
+#define FENG_LAYER_DTYPE(L) ((L)->mat_dtype)
+#else
+#define FENG_LAYER_DTYPE(L) FENG_DT_Q4
+#endif
+
 typedef struct {
     uint32_t magic, version, n_tensors;
     uint32_t n_layers, hidden, n_heads, head_dim, ffn, vocab;
@@ -118,6 +135,9 @@ typedef struct {
     const void *wq, *wk, *wv, *wo;
     const void *q_norm, *k_norm;
     const void *gate, *up, *down;
+#if FENG_FP16_WEIGHTS
+    uint32_t mat_dtype;   /* FENG_DT_FP16 / FENG_DT_Q4，同层 7 个矩阵共用 */
+#endif
 } feng_layer_t;
 
 typedef struct {

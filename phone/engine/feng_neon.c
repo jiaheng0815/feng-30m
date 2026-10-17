@@ -20,6 +20,9 @@
 #ifndef HWCAP_ASIMDDP
 #define HWCAP_ASIMDDP (1UL << 20)
 #endif
+#ifndef HWCAP_ASIMDHP_BIT
+#define HWCAP_ASIMDHP_BIT (1UL << 10)   /* 与 <asm/hwcap.h> 的 HWCAP_ASIMDHP 同值 */
+#endif
 #endif
 
 /* 只给这两个函数打开 dotprod：这样单个二进制既能跑在 A53/A72（回退标量），
@@ -31,6 +34,49 @@
 #else
 #define FENG_DOTPROD_FN
 #endif
+
+/* 同理给 fp16 内核单独开特性：Clang 叫 +fullfp16，GCC 叫 +fp16。
+ * 不给整包加 -march，老核心上其余代码仍按基线指令集编译，不会 SIGILL。 */
+#if defined(__clang__)
+#define FENG_FP16_FN __attribute__((target("+fullfp16")))
+#elif defined(__GNUC__)
+#define FENG_FP16_FN __attribute__((target("+fp16")))
+#else
+#define FENG_FP16_FN
+#endif
+
+int feng_neon_fp16_ok(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+#if defined(__linux__) || defined(__ANDROID__)
+        cached = (getauxval(AT_HWCAP) & HWCAP_ASIMDHP_BIT) ? 1 : 0;
+#else
+        cached = 0;
+#endif
+    }
+    return cached;
+}
+
+FENG_FP16_FN
+void feng_neon_fp16_gemv(const uint16_t *w, const float *x, float *y,
+                         int r0, int r1, int n_in)
+{
+    for (int o = r0; o < r1; o++) {
+        const uint16_t *row = w + (size_t)o * n_in;
+        float32x4_t a0 = vdupq_n_f32(0.f);
+        float32x4_t a1 = vdupq_n_f32(0.f);
+        int i = 0;
+        for (; i + 8 <= n_in; i += 8) {
+            const float16x8_t hw = vreinterpretq_f16_u16(vld1q_u16(row + i));
+            a0 = vfmaq_f32(a0, vcvt_f32_f16(vget_low_f16(hw)),  vld1q_f32(x + i));
+            a1 = vfmaq_f32(a1, vcvt_f32_f16(vget_high_f16(hw)), vld1q_f32(x + i + 4));
+        }
+        float acc = vaddvq_f32(vaddq_f32(a0, a1));
+        for (; i < n_in; i++) acc += feng_f16_to_f32(row[i]) * x[i];
+        y[o] = acc;
+    }
+}
 
 int feng_neon_sdot_ok(void)
 {
@@ -113,6 +159,13 @@ void feng_neon_q4_gemv(const uint8_t *base, const int8_t *xq, const float *xscal
 #else  /* 非 aarch64：空实现，保证链接通过（调用方本来就只在 FENG_PHONE_NEON=1 时用） */
 
 int feng_neon_sdot_ok(void) { return 0; }
+int feng_neon_fp16_ok(void) { return 0; }
+
+void feng_neon_fp16_gemv(const uint16_t *w, const float *x, float *y,
+                         int r0, int r1, int n_in)
+{
+    (void)w; (void)x; (void)y; (void)r0; (void)r1; (void)n_in;
+}
 
 void feng_neon_q4_gemv(const uint8_t *base, const int8_t *xq, const float *xscale,
                        float *y, int r0, int r1, int n_in)

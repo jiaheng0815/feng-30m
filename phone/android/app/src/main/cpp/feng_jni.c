@@ -305,7 +305,12 @@ Java_com_feng_feng30m_FengNative_nativeInit(JNIEnv *env, jclass cls, jstring jmo
     ws->logits = (float *)xmalloc(sizeof(float) * v);
     ws->scratch = (float *)xmalloc(sizeof(float) * (ctx > ff ? ctx : ff));
 
-    if (!s->kv.k_cache || !s->kv.v_cache || !s->kv.k_scale || !s->kv.v_scale ||
+#if FENG_KV_INT8 || FENG_KV_Q2
+    const int scales_ok = (s->kv.k_scale && s->kv.v_scale);
+#else
+    const int scales_ok = 1;      /* fp32/fp16：没有 scale，NULL 是正常的 */
+#endif
+    if (!s->kv.k_cache || !s->kv.v_cache || !scales_ok ||
         !ws->x || !ws->logits || !ws->scratch) {
         LOGE("内存不足"); goto fail;
     }
