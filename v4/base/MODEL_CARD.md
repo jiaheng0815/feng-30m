@@ -32,7 +32,7 @@ microcontroller** — Q4 weights streamed from flash via mmap, q2 KV cache in PS
 [GitHub](https://github.com/jiaheng0815/feng-30m) ·
 [Gitee](https://gitee.com/fengjiaheng123/feng-30m)（国内镜像）
 
-- 权重版本：**v3.19**（PC / 本仓库）｜ **v3.19-embed**（板端，见 [`esp32/`](./esp32)）
+- 权重版本：**v3.19**（PC / 本仓库）｜ **v3.19-embed**（板端，见同仓库的 esp32 子目录）
 - 文档：[使用说明](https://github.com/jiaheng0815/feng-30m/blob/main/docs/USAGE.md) ·
   [版本演进](https://github.com/jiaheng0815/feng-30m/blob/main/docs/CHANGELOG.md) ·
   [固件工程](https://github.com/jiaheng0815/feng-30m/blob/main/docs/esp32-firmware.md)
@@ -158,7 +158,7 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 ## ESP32 部署
 
 板端要的不是这份 fp32 权重，而是 **Q4 + q2 双 QAT** 导出版（直接拿这份导出给引擎会退化：
-同套 32 题矩阵实测 22/27 vs 27/27）。见本仓库 [`esp32/`](./esp32) 目录或
+同套 32 题矩阵实测 22/27 vs 27/27）。见本仓库的 esp32 子目录，或
 [Releases](https://github.com/jiaheng0815/feng-30m/releases)。
 
 ```powershell

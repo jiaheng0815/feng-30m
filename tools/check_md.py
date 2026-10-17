@@ -15,8 +15,11 @@ TICK = chr(96)
 # 模型卡跟着模型目录走（archive/v1/*/MODEL_CARD.md 等）。
 DOCS = [ROOT / "README.md", ROOT / "AGENTS.md", ROOT / "phone" / "README.md"]
 DOCS += sorted((ROOT / "docs").glob("*.md"))
-# v4.0 起历史目录已删；模型卡跟着当前模型目录走
-DOCS += sorted((ROOT / "v4").glob("*/*/MODEL_CARD.md"))
+# v4.0 起历史目录已删；模型卡跟着当前模型目录走。
+# 用 rglob 而不是 `*/*/MODEL_CARD.md`：v4 的模型目录是 `v4/<阶段>/`（两层），
+# 旧 glob 按 archive/v1/<名字>/ 的三层写的，会把 `v4/base/MODEL_CARD.md` 整个漏掉——
+# 2026-10-17 就是这么漏掉的（本地自检过、CI 才炸）。别再改回固定层数。
+DOCS += sorted((ROOT / "v4").rglob("MODEL_CARD.md"))
 
 # strings that must not appear any more (superseded facts)
 STALE = ["0x310000", "0x1A10000", "stage_32k", "29.66", "MQA(1 KV) / head", "3 MB 分区",
