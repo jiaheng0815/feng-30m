@@ -49,6 +49,14 @@ logs/*.err.log
 # ---- 机器本地路径配置（每台机器不同，不入库）----
 scripts/local_paths.json
 
+# ---- 一键发布脚本（**内嵌魔搭令牌，绝不可入库**）----
+# 代码推 GitHub+Gitee、模型传 Hugging Face+ModelScope，一条命令跑完。
+# 之所以整份排除而不是只排除令牌：它同时写死了本机代理端口、发布用的仓库名，
+# 换机器本来就要改；公开仓库里多一份带令牌的文件只会增加误提交的机会。
+# 想开源这个脚本的话：把令牌挪到 scripts/local_paths.json 的 modelscope_token
+# 键（同样 gitignore），脚本会自动优先读它，然后就可以把本行删掉。
+tools/publish_all.py
+
 # ---- coder-auditor 运行时状态（任务文件 / 失败日志 / 验证输出）----
 .Codex/
 
