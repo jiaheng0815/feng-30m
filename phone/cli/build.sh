@@ -46,8 +46,12 @@ fi
 
 # KV 配置：与板端发布配置一致（q2 / block8）
 KVFLAGS="-DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8"
-CFLAGS="-std=c23 -pthread -I$ENG $KVFLAGS -Wall"
-CXXFLAGS="-std=c++23 -pthread -I$ENG $KVFLAGS"
+# EXTRA 是给使用者的逃生口，例如把上下文上限抬到 32k：
+#   EXTRA=-DFENG_PHONE_MAX_CTX=32768 ./build.sh
+# 默认值写在 phone/engine/feng_phone.h（4096），那是**编译期常量**，不是硬件限制。
+EXTRA="${EXTRA:-}"
+CFLAGS="-std=c23 -pthread -I$ENG $KVFLAGS -Wall $EXTRA"
+CXXFLAGS="-std=c++23 -pthread -I$ENG $KVFLAGS $EXTRA"
 
 # 热点：每 token 内层循环所在（与 main/CMakeLists.txt 的分组一致）+ 手机端新增的三个文件
 HOT="feng_llm.c feng_quant.c feng_smp.c feng_sample.c feng_phone.c feng_neon.c"
