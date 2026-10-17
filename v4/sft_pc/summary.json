@@ -1,0 +1,20 @@
+{
+  "init": "v4/base",
+  "data": "data/v4_sft.jsonl",
+  "device": "cuda",
+  "samples": 33787,
+  "val_samples": 689,
+  "steps": 703,
+  "epochs": 1.0,
+  "lr": 2e-05,
+  "batch": 24,
+  "accum": 2,
+  "max_len": 1024,
+  "train_last": 0,
+  "loss_last": 3.9457,
+  "val_loss": 3.9643,
+  "loss_tokens": 3240131,
+  "peak_gib": 12.915,
+  "elapsed_min": 40.51,
+  "final": "v4\\sft_pc\\final"
+}

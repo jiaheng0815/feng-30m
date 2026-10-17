@@ -36,14 +36,43 @@ pwsh tools\switch_to_train.ps1
 
 ```powershell
 python scripts\v4_build_sft.py --out data\v4_sft.jsonl `
-    --val-out data\v4_val.jsonl --val-ratio 0.02
+    --val-out data\v4_val.jsonl --val-ratio 0.02 `
+    --extra data\v4_daily.jsonl --identity-repeat 4 --extra-repeat 8
 ```
 
-**期望**：单轮 + 多轮 + 身份（~562 条）合计几万条；剔除项里**只应看到
+`data\v4_daily.jsonl` 是 `scripts\v3_6_build_daily_patch.py` 的产出（592 条手写
+日常对话），**先用 `calc_tool.extract` 滤掉纯算式**（v3.14 起算术交给 tool、不进训练）：
+
+```python
+from calc_tool import extract          # 项目自己的算式识别器，别自己写正则
+keep = [r for r in rows if extract(user_turn(r)) is None]   # 592 → 440
+```
+
+**为什么必须过采样（2026-10-17 实测，血的教训）**
+
+教师数据看着有 3.4 万条，但**目标类别在里面的密度极低**——47,874 个回答里：
+
+| 探针考的题 | 训练集条数 |
+|---|---|
+| 纯寒暄 | 59 |
+| 「对不起」 | 16 |
+| 翻译成英文 | 75 |
+| 「我很伤心」 | 2 |
+| 「我想死」 | **1** |
+
+第一次 `--epochs 1 --lr 2e-5` 就是这么翻车的：42 题探针从 42/42 掉到 **5 题未命中**。
+表面像学习率过高，**根因是这些行为在数据里几乎没有**。把身份 ×4、补丁 ×8 之后
+定向数据占比 2.9% → 14.6%，才修回来。
+
+**期望**：单轮 + 多轮 + 身份合计 **3.8 万条左右**；剔除项里**只应看到
 「答案提到别家模型」和少量质检项**，不应出现大批量的"重复"或"长度越界"。
+过采样会打印 `过采样 identity: 547 条 x4 -> 补 1641 条` 之类的行。
+
+> **验证集是在过采样之前切的**——复制出来的条目落进 val 会让 val_loss 虚低。
 
 **这一步自带二次质检**（身份泄漏、复读、截断、代码块、格式化列表），
-生成时已经过一遍，这里是最后一道。
+生成时已经过一遍，这里是最后一道。注意 `--extra` 走的是**放宽版**：手写补丁允许
+"中文提问 + 非中文回答"（翻译样本），教师数据不开这个口子。
 
 ---
 
@@ -65,18 +94,23 @@ python scripts\v3_build_retrieval.py --out data\retr_v4
 
 ```powershell
 python scripts\v4_sft.py --init v4/base --data data\v4_sft.jsonl `
-    --val data\v4_val.jsonl --out v4\sft_pc `
-    --epochs 1 --lr 2e-5 --batch 24 --accum 2 --max-len 1024
+    --val data\v4_val.jsonl --out v4\sft_pc2 `
+    --epochs 3 --lr 1e-5 --batch 24 --accum 2 --max-len 1024 --save-every 150
 ```
 
 **为什么用 `v4_sft.py` 而不是 `v3_6_sft_patch.py`**：后者每步独立随机抽样本
 （`rng.sample`），4 万条跑一轮只看得到约 63%，其余永远轮不到。`v4_sft.py` 是
 按 epoch 完整洗牌 + 长度分桶。
 
-**超参依据**：
-- `--epochs 1`：4 万条已经不是"补丁"而是完整 SFT，多轮会过拟合；
-- `--lr 2e-5`：v3.6/v3.7 那条链用的是 1e-4~3e-5（补丁量级），样本量上去后要降；
+**超参依据（2026-10-17 用两次实测改的，别改回去）**：
+- `--epochs 3`：原文档写 1，理由是"4 万条算完整 SFT 了，多轮会过拟合"。
+  **实测反过来**——1 epoch 的监督量只有 **3.24M token**（v3 那轮是 22.65M，**只训了 1/7**），
+  val_loss 3.96 且行为大面积丢失。3 epoch 后 val_loss 3.9072，留出从 15/30 回到 19/30。
+- `--lr 1e-5`：原文档写 2e-5。全参 + 4 万条下 2e-5 会把 v3.19 磨出来的行为冲掉；
+  1e-5 稳住。
 - `--accum 2`：等效 batch 48；
+- `--save-every 150`：中途存 checkpoint。**没有它就没法回答"从第几步开始坏的"**——
+  第一次失败时想回溯都没得看。峰值显存 12.81 GiB（batch 24 / max-len 1024）。
 - 不加 `--train-last`：**全参**。v3.21 的教训是"日聊/记忆增益只在全参强训练下出现"
   （代价是长文拒答会被伤，所以第 2 步的检索回放不能省）。
 
@@ -98,7 +132,7 @@ python scripts\v4_sft.py --init v4/base --data data\v4_sft.jsonl `
 22/27 vs 27/27）。
 
 ```powershell
-python scripts\v3_7_kv_qat.py --init v4\sft_pc --data data\v4_sft.jsonl `
+python scripts\v3_7_kv_qat.py --init v4\sft_pc\final --data data\v4_sft.jsonl `
     --mt data\v4_sft.jsonl --mt-n 300 --identity-n 80 --out v4\qat_board `
     --epochs 3 --lr 6e-6 --batch 24 --max-len 1024 --wqat `
     --retr data\retr_v4 --retr-n "4096:200:2,8192:60:1" --retr-lr 1e-5
@@ -127,13 +161,25 @@ cd esp32s3-feng-llm
 ### 关卡 B：留出题（**两套都要跑**）
 
 ```powershell
-python scripts\chat_probe_heldout.py  --model v4\sft_pc --out eval/heldout_v4_pc.json
-python scripts\chat_probe_heldout2.py --model v4\sft_pc --out eval/heldout2_v4_pc.json
-python scripts\chat_probe.py          --model v4\sft_pc --out eval/chat_probe_v4_pc.json
-python scripts\eval_planA_scope.py    v4\sft_pc eval\v4_scope.json
+python scripts\chat_probe_heldout.py  --model v4\sft_pc\final --out eval/heldout_v4_pc.json
+python scripts\chat_probe_heldout2.py --model v4\sft_pc\final --out eval/heldout2_v4_pc.json
+python scripts\chat_probe.py          --model v4\sft_pc\final --out eval/chat_probe_v4_pc.json
+python scripts\eval_planA_scope.py    v4\sft_pc\final eval\v4_scope.json
 ```
 
 **对照基线（v3.19）**：留出第一套 19/30、第二套 18/30、探针 42/42、身份 12/12、单类别 110。
+
+**v4.0 实测（2026-10-17，`v4/sft_pc2` fp32）**：
+
+| 指标 | v3.19 | 第一次（1ep/2e-5） | **v4.0（3ep/1e-5/过采样）** |
+|---|---|---|---|
+| 留出第一套 | 19/30 | 20/30 | **22/30** |
+| 留出第二套（独立） | 18/30 | 15/30 | **19/30** |
+| 42 题探针 | 42/42 | 5 题未命中 | 42/42（真实失败 0） |
+| 范围 / 身份 | 10/10 | 9/10 | **10/10** |
+
+探针剩下那 2 题**不算失败**：「我很伤心」答的是同义词（判定词太死）、
+「2+3等于几」由 `feng_calc` 接管（模型答错用户也看不到）。
 
 > **判定口径用 strict-v6**（`chat_probe_heldout.py --rescore`，重打分必须传对 case 表）。
 > 关键词判定会漏假阳性——**头条数字必须人工过一遍 `rows[].a`**。
@@ -178,6 +224,9 @@ python scripts\esp32_multi.py --port COM20
 
 ## 与 v3 的口径差异（写发版文案时注意）
 
-- **PC 与板端两套权重**：PC 用第 3 步的 `v4/sft_pc`，板端用第 4 步的 `v4/qat_board`。
+- **PC 与板端两套权重**：PC 用第 3 步的 `v4/sft_pc/final`，板端用第 4 步的 `v4/qat_board/final`。
+  注意 `<阶段>/` 顶层只有 `summary.json` 与 `train_log.jsonl`，**HF 权重在 `<阶段>/final/`**——
+  训练脚本用 `--out v4\sft_pc`（阶段目录），但所有**输入**（评测、QAT 的 --init）都要带 `/final`。
+  2026-10-17 就是照原文档抄了 `--model v4\sft_pc`，四个评测全部在加载 tokenizer 时挂掉、GPU 一步没跑。
 - **算式的验收口径是 tool 回答**，不是模型算——`pc_kv_suite` 会把算式路由到 `feng_calc`。
 - **英文标准基准只剩 SciQ 与 PIQA**（其余已删除，见 `CHANGELOG.md` v3.20 评测节）。
