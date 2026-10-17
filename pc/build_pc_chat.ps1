@@ -189,10 +189,12 @@ try {
     }
 
     Write-Host "跑一下 tool 单测：" -ForegroundColor Cyan
-    & pc\pc_calc_test.exe | Select-Object -Last 1
-    & pc\pc_tools_test.exe | Select-Object -Last 1
-    & pc\pc_mem_test.exe | Select-Object -Last 1
-    & pc\pc_sample_test.exe | Select-Object -Last 1
+    # 必须用 $PSScriptRoot：第 25 行已经 Push-Location 到 pc\，
+    # 再写相对路径 `pc\xxx.exe` 会变成 pc\pc\xxx.exe —— PowerShell 解析不成路径，
+    # 转去加载名为 pc 的模块并报 "无法加载模块 'pc'"，构建成功也返回 exit 1。
+    foreach ($t in "pc_calc_test", "pc_tools_test", "pc_mem_test", "pc_sample_test") {
+        & (Join-Path $PSScriptRoot "$t.exe") | Select-Object -Last 1
+    }
 } finally {
     Pop-Location
 }

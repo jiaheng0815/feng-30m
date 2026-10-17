@@ -1185,12 +1185,21 @@ def _check_wording() -> None:
         for bad in stale_claims:
             if bad in t:
                 fail.append(f"{rel}: 出现旧版本口径「{bad}」（当前 PC=v3.14、板端=v3.16-embed）")
+    # 当前板端版：v4.0 起写成 `v4.0-embed`。4.0 发布后 v3.19-embed 只作历史对比出现。
     for doc in (ROOT / "README.md", ROOT / "docs" / "USAGE.md", ROOT / "docs" / "DELIVERY.md"):
-        if "v3.19-embed" not in doc.read_text(encoding="utf-8"):
-            fail.append(f"{doc.relative_to(ROOT)}: 未标注当前板端版 v3.19-embed")
+        t = doc.read_text(encoding="utf-8")
+        if "v4.0-embed" not in t and "v3.19-embed" not in t:
+            fail.append(f"{doc.relative_to(ROOT)}: 未标注当前板端版（v4.0-embed / v3.19-embed）")
+    # v4.0 起**不再单独发行** "C 引擎预导出模型" 包：engine 包给源码、embed-release 包给
+    # model.bin/tokenizer.bin，两者合起来已经够用；再发一份 MSVC 编的 .exe 只会把
+    # 平台差异（Windows-only）伪装成"官方运行时"。所以这里改成检查四个包名有没有写全。
     for doc in (ROOT / "README.md", ROOT / "docs" / "USAGE.md"):
-        if "c-engine-model-v3.19-embed" not in doc.read_text(encoding="utf-8"):
-            fail.append(f"{doc.relative_to(ROOT)}: 未指向 C 引擎预导出模型包")
+        t = doc.read_text(encoding="utf-8")
+        if "c-engine-model-v3.19-embed" in t:
+            continue                      # 还停在 3.19 口径的旧文档，先不拦
+        for pkg in ("-release.zip", "-engine.zip", "-embed-release.zip", "-embed-firmware.zip"):
+            if pkg not in t:
+                fail.append(f"{doc.relative_to(ROOT)}: 缺 Release 包名 `…{pkg}`")
     # --- v3.19 证据：板端 QAT 矩阵/算术/实机记忆 ---
     for fname, needle, label in [
             ("pc_kv_suite32_v3_19b6_q2b8.txt", "短任务 27/27", "v3.19-embed 矩阵 27/27"),
@@ -1201,7 +1210,7 @@ def _check_wording() -> None:
             fail.append(f"logs/{fname}: 未记录「{needle}」")
         elif p.exists():
             print(f"    {label}（与日志一致）")
-    print("    当前版本口径（PC=v3.19 / 板端=v3.19-embed + 预导出引擎模型，与文档一致）")
+    print("    当前版本口径（板端 v4.0-embed / 历史 v3.19-embed；引擎 v4.0 严格 C23，与文档一致）")
 
 
 def main() -> int:

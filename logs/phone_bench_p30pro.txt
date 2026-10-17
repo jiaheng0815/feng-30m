@@ -1,0 +1,73 @@
+# feng-30m 手机引擎基准 —— 华为 P30 Pro 真机（Kirin 980 / VOG-AL10 / 8 核）
+# 环境：Termux，clang 编译 phone/cli/build/phone_chat
+# 权重：v3.19-embed（Q4 权重 + q2 block8 KV），ctx 2048，KV 9.62 MB
+# 采集：2026-10-17，adb 以 run-as com.termux 身份执行（不是手工粘贴，可复现）
+#
+# bench 用的固定提示是「你好，请用一句话介绍一下你自己。」，模型 16 个 token
+# 就出 <|im_end|> 停了 —— 所以 `--bench 150` 实际也只生成 16 个。
+# decode 速率只统计这 16 个 token，样本短、单次波动可达 ±15%，所以下面每档跑 3 次。
+
+## 线程数扫描（NEON 开）
+
+| threads | r1 | r2 | r3 | 中位数 |
+|---|---|---|---|---|
+| 1 | 387.17 | 327.08 | 400.23 | **387.2** |
+| 2 | 344.84 | 354.34 | 356.27 | **354.3** |
+| 4 | 352.34 | 372.79 | 344.46 | **352.3** |
+| 6 | 295.95 | 351.88 | 363.55 | **351.9** |
+| 8 | 354.81 | 357.02 | 355.40 | **355.4** |
+
+**线程数几乎不影响速度**（1 线程 387 ≈ 8 线程 355）。说明瓶颈不在多核并行：
+要么是内存带宽（每 token 要把 14.93 MB 的 Q4 权重过一遍，即使全在 RAM 里，
+Kirin 980 的带宽也吃满了），要么是 16 token 太短、线程池启停开销盖住了收益。
+**默认 `min(4, 核数)` 是合理的，没有调大的必要。**
+
+## NEON 对照
+
+| threads | NEON 开 | NEON 关 | 倍数 |
+|---|---|---|---|
+| 1 | 387.2 | 176.4 | **2.20×** |
+| 2 | 354.3 | 159.3 | 2.22× |
+| 4 | 352.3 | 168.7 | 2.09× |
+| 8 | 355.4 | 162.3 | 2.19× |
+
+**NEON（`vdotq_s32`）稳定 2.1~2.2 倍**，默认开启是对的。关掉只在排查数值问题时用。
+
+## 原始输出
+
+### NEON 开
+neon1 t=1 r1  prefill 47.7 ms ｜ decode 41.3 ms -> 387.17 tok/s
+neon1 t=1 r2  prefill 43.5 ms ｜ decode 48.9 ms -> 327.08 tok/s
+neon1 t=1 r3  prefill 33.3 ms ｜ decode 40.0 ms -> 400.23 tok/s
+neon1 t=2 r1  prefill 44.9 ms ｜ decode 46.4 ms -> 344.84 tok/s
+neon1 t=2 r2  prefill 39.1 ms ｜ decode 45.2 ms -> 354.34 tok/s
+neon1 t=2 r3  prefill 39.1 ms ｜ decode 44.9 ms -> 356.27 tok/s
+neon1 t=4 r1  prefill 40.5 ms ｜ decode 45.4 ms -> 352.34 tok/s
+neon1 t=4 r2  prefill 36.5 ms ｜ decode 42.9 ms -> 372.79 tok/s
+neon1 t=4 r3  prefill 40.3 ms ｜ decode 46.5 ms -> 344.46 tok/s
+neon1 t=6 r1  prefill 129.3 ms ｜ decode 54.1 ms -> 295.95 tok/s
+neon1 t=6 r2  prefill 48.2 ms ｜ decode 45.5 ms -> 351.88 tok/s
+neon1 t=6 r3  prefill 38.8 ms ｜ decode 44.0 ms -> 363.55 tok/s
+neon1 t=8 r1  prefill 39.7 ms ｜ decode 45.1 ms -> 354.81 tok/s
+neon1 t=8 r2  prefill 40.9 ms ｜ decode 44.8 ms -> 357.02 tok/s
+neon1 t=8 r3  prefill 45.5 ms ｜ decode 45.0 ms -> 355.40 tok/s
+
+### NEON 关
+neon0 t=1 r1  prefill 83.0 ms ｜ decode 111.5 ms -> 179.40 tok/s
+neon0 t=1 r2  prefill 84.5 ms ｜ decode 114.1 ms -> 175.23 tok/s
+neon0 t=1 r3  prefill 81.0 ms ｜ decode 113.4 ms -> 176.42 tok/s
+neon0 t=2 r1  prefill 86.4 ms ｜ decode 103.2 ms -> 193.77 tok/s
+neon0 t=2 r2  prefill 92.9 ms ｜ decode 132.6 ms -> 150.78 tok/s
+neon0 t=2 r3  prefill 92.1 ms ｜ decode 125.5 ms -> 159.30 tok/s
+neon0 t=4 r1  prefill 92.0 ms ｜ decode 119.2 ms -> 167.73 tok/s
+neon0 t=4 r2  prefill 90.9 ms ｜ decode 121.4 ms -> 164.70 tok/s
+neon0 t=4 r3  prefill 81.3 ms ｜ decode 115.2 ms -> 173.60 tok/s
+neon0 t=8 r1  prefill 89.3 ms ｜ decode 123.3 ms -> 162.26 tok/s
+neon0 t=8 r2  prefill 88.2 ms ｜ decode 148.3 ms -> 134.82 tok/s
+neon0 t=8 r3  prefill 87.9 ms ｜ decode 114.6 ms -> 174.53 tok/s
+
+## 对照
+
+- `logs/phone_bench_jiaheng.txt` 里的 **500.61 tok/s 不是手机**——那是同一套手机引擎
+  在开发机（20 逻辑核）上跑出来的，文件头已注明。上面这组才是真机数字。
+- 板端 ESP32-S3：2.33 tok/s。手机比它快 **约 150 倍**。

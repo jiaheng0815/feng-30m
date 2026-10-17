@@ -4,31 +4,33 @@
 
 | 包 | 用途 | 内容 |
 |---|---|---|
-| `feng-30m-v3.19-release.zip` | PC（transformers） | HF fp32 权重 + 蒸馏数据集 |
-| `feng-30m-v3.19-embed-release.zip` | 板端权重 | Q4+q2 双 QAT 权重 + 可直接烧录的 `model.bin` / `tokenizer.bin` |
-| `feng-30m-v3.19-engine.zip` | PC 引擎源码 | v3.19 时的 C++23 引擎（自带四个 tool）；v4.0 起核心转严格 C23 |
-| `feng-30m-c-engine-model-v3.19-embed.zip` | 引擎预导出模型 | 免装 torch，直接跑 `pc_chat` |
-| `feng-30m-v3.19-embed-firmware.zip` | 板端一包到底 | 预编译固件 + 模型 + 烧录说明（免装 ESP-IDF） |
+| `feng-30m-v4.0-release.zip` | PC（transformers） | HF fp32 权重 + 蒸馏数据集 |
+| `feng-30m-v4.0-embed-release.zip` | 板端权重 | Q4+q2 双 QAT 权重 + 可直接烧录的 `model.bin` / `tokenizer.bin` |
+| `feng-30m-v4.0-engine.zip` | 引擎源码 | 严格 C23 核心 + C++23 PC 驱动 + 板端（自带四个 tool） |
+| `feng-30m-v4.0-embed-firmware.zip` | 板端一包到底 | 预编译固件 + 模型 + 烧录说明（免装 ESP-IDF） |
 
 仓库本身只放代码与文档；权重、板端模型与蒸馏数据集都在 Release 包里。
 引擎当前版本 **v4.0 / 严格 C23**（PC 侧仍 C++23 + CUDA）：板端固件 **257,104 B**，板端 **2.33 tok/s**。
 
 ## 1. 包内结构
 
-PC 包 `feng-30m-v3.19-release.zip`：
+PC 包 `feng-30m-v4.0-release.zip`：
 
 ```
-feng-30m-v3.19/
+feng-30m-v4.0/
 ├── USAGE.md                  ← 本文件
 ├── LICENSE                   ← Apache-2.0（代码与权重同许可）
 ├── weights/
-│   ├── hf/                   v3.19 完整权重（fp32 safetensors + 分词器 + chat template）
+│   ├── hf/                   v4.0 完整权重（fp32 safetensors + 分词器 + chat template）
 │   └── （v3.14 起不再提供 GGUF：llama.cpp 路径没有 tool，算术/时间会退化成模型硬算）
-└── datasets/                 蒸馏训练数据（教师输出与提示词）
+└── datasets/
+    └── v4_teacher.jsonl      教师蒸馏数据 36,916 条（自制提示词 + 27B 教师输出）
 ```
 
-板端包 `feng-30m-v3.19-embed-release.zip` 的 `weights/esp32/` 即板端模型
+板端包 `feng-30m-v4.0-embed-release.zip` 的 `weights/esp32/` 即板端模型
 （`model.bin` 14.93 MB + `tokenizer.bin` 413 KB + 参考 logits）。
+`feng-30m-v4.0-embed-firmware.zip` 里额外带预编译固件（bootloader / 分区表 / `feng_30m.bin`）
+和 `烧录说明.txt`，装个 esptool 就能烧，不用装 ESP-IDF。
 
 模型规格：Qwen3 结构，11 层 / hidden 448 / 7 头 MHA（7 KV 头）/ head_dim 64 / FFN 896 /
 16k 词表 / tied embedding，**29.43M 参数**；训练上下文 32768（`rope_theta=1e6`）；
@@ -38,9 +40,9 @@ feng-30m-v3.19/
 ## 2. 最快上手：C++ 引擎 `pc_chat`（自带四个 tool）
 
 ```powershell
-# 1) 取模型：直接下载 Release 的 feng-30m-c-engine-model-v3.19-embed.zip
-#    想自己导出：用【板端 v3.19-embed 权重包】的 weights/hf（做过 Q4+q2 双 QAT）
-python board\tools\export_model.py --model <v3.19-embed包>\weights\hf --out model_export
+# 1) 取模型：直接下载 Release 的 feng-30m-v4.0-embed-release.zip，用里面的 weights/esp32
+#    想自己导出：必须用【做过 Q4+q2 双 QAT 的那版权重】，不是 PC 的 fp32 权重
+python board\tools\export_model.py --model <双QAT权重目录> --out model_export
 
 # 2) 编译（Windows 默认 MSVC **两趟**：核心 /std:clatest /TC、驱动 /std:c++latest /TP，
 #    脚本自动加载 vcvars64；产出 13 个 exe）
@@ -49,11 +51,11 @@ pc\build_pc_chat.ps1
 # MinGW 备用路径（等价于 .\build_pc_chat.ps1 -MinGW）。注意引擎分两层：
 # **核心 .c 要先用 gcc -std=c23 编成 .o**，再交给 g++ 链接 —— 直接把 .c 丢给
 # g++ 会按 C++ 编，C23 的语法与语义都会走样（踩过，见 AGENTS.md）。
-gcc -std=c23 -O2 -c core\feng_model.c -o feng_model.o -Iboard\main
+gcc -std=c23 -O2 -c core\feng_model.c -o feng_model.o -Icore
 #   其余 8 个核心 .c 同理：feng_llm / feng_quant / feng_smp / feng_tokenizer /
 #   feng_sample / feng_calc / feng_tools / feng_memory
 g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 `
-  -o pc_chat.exe pc\pc_chat.cpp *.o -Iboard\main -lm
+  -o pc_chat.exe pc\pc_chat.cpp *.o -Icore -lm
 
 # 3) 聊天（tool 0.5s 秒回，多轮上下文默认开）
 .\pc_chat.exe model_export
@@ -250,21 +252,39 @@ v1 语料脚本已随 v1 归档，重建 v2/v3 数据需要 `FENG_DATA_DIR`（�
 
 ## 7. 评测表现
 
-### PC（v3.19，贪心解码；脚本与结果 JSON 都在仓库里）
+### PC（v4.0，贪心解码；脚本与结果 JSON 都在仓库里）
 
-| 项目 | 结果 |
-|---|---|
-| 身份（12 题） | **12/12**（`eval/v3_19pc4_identity.json`） |
-| 日常对话探针（42 题） | **42/42**（`eval/v3_19pc4_probe42.json`） |
-| 范围内 18 题 | **10/10**（`eval/v3_19pc4_scope.json`） |
-| 针检索（每长度 32 题） | **28/30/26/26 = 110/128（单类别）**；**105/128（多类别）**（`eval/longctx32_v3_19pc4.json`） |
-| 「文中没有」拒答 | **61/64（单类别）、62/64（多类别）** |
-| 留出 30 题（开发集） | **19/30**（`eval/v3_19pc4_heldout30.json`） |
-| 独立留出 30 题（未参与调参） | **18/30**（`eval/heldout2_v3_19pc4.json`） |
-| 记忆 24 题 | **23/24**（`eval/v3_19pc4_memory24.json`） |
-| 标准英文基准（0-shot） | SciQ 71.00%/73.80%、PIQA 53.37%（**只留这两项**：ARC/HellaSwag/OpenBookQA/Winogrande/BoolQ/SciCloze 在 30M 中文模型上贴随机线、测不出差异，已从套件删除，见 CHANGELOG v3.20 评测节）（`eval/lm_eval_feng_v3_19_pc4.json`） |
+| 项目 | v3.19 | **v4.0** | 出处 |
+|---|---|---|---|
+| 留出 30 题（开发集） | 19/30 | **22/30** | `eval/h1_patch_name_e5_lr5e-6.json` |
+| 独立留出 30 题（未参与调参） | 18/30 | **22/30** | `eval/h2_patch_name_e5_lr5e-6.json` |
+| 日常对话探针（42 题） | **42/42** | 40/42（见下） | `eval/chat_probe_v4_pn5.json` |
+| 范围内 18 题 | 10/10 | 10/10 | `eval/v4_scope_pn5.json` |
+| 身份（12 题） | 12/12 | 见上（`scope` 同脚本） | — |
+| 针检索（每长度 32 题） | 110/128 | 110/128 | `eval/longctx32_pn5.json` |
+| 　└ 32k 单档 | 26/32 | **28/32** | 同上 |
+| 「文中没有」拒答 | 61/64 | **64/64** | 同上（`neg_hit`/`neg_n`） |
+| 记忆 24 题 | 23/24 | 未重测 | `eval/v3_19pc4_memory24.json` |
+| 标准英文基准（0-shot） | SciQ 71.00/73.80、PIQA 54.52/53.37 | SciQ **70.80/71.20**、PIQA **54.03/54.19**（三项退步，见下） | `eval/lm_eval_v4_pn5_*.json` |
 
-### 板端（v3.19-embed + q2 / 2048）
+> **探针那 2 题**：一条是判分误判（「我很伤心」答的是「我在呢。难过的时候不用自己扛着。」，
+> 判分只找「伤心」）；另一条是**真的算错**——「2+3等于几」答成 6。后者是**故意放弃**的：
+> v3.14 起训练数据不再含纯算式，算术由 `feng_calc` tool 确定性作答，探针脚本不经过 tool
+> 才照得出来。全部 10 个 v4 版本都是这两条。
+>
+> 标准基准**只留 SciQ / PIQA 两项**：ARC / HellaSwag / OpenBookQA / Winogrande / BoolQ /
+> SciCloze 在 30M 中文模型上全部贴随机线、测不出差异，已从套件删除（CHANGELOG v3.20 评测节）。
+>
+> **4.0 最终模型在四项英文分里退了三项**：SciQ acc −0.20、SciQ acc_norm **−2.60**、
+> PIQA acc −0.49，只有 PIQA acc_norm +0.82。检索回放与名字补丁之后掉的——
+> SFT 阶段曾到 72.50 / 72.60 / 54.41 / 54.46。只用中文对话能力换来的：
+> 同期留出两套各 +3 / +4、拒答 +3。
+
+### 板端（**引擎 v4.0 + 权重 v3.19-embed** + q2 / 2048）
+
+> 4.0 的板端双 QAT 试了两版：3 epoch 关卡 A **24/27**、1 epoch **23/27**，都低于
+> v3.19-embed 的 27/27，所以**这一版沿用 v3.19-embed**（引擎仍是 4.0）。
+> 过程见 `docs/CHANGELOG.md` §4f。
 
 | 项目 | 结果 |
 |---|---|

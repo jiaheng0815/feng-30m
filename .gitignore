@@ -32,6 +32,12 @@ v4/patch_name*
 v4/qat_*
 v4/soup*
 
+# ---- Release 打包输出（tools/make_release.py）----
+# 四个 zip 加起来 ~140 MB，其中 PC 包 118 MB —— **主仓库只放代码与文档**，
+# 而且 Gitee 单文件上限 100 MB，推上去会被 pre-receive hook 直接拒。
+# 2026-10-17 就因为漏了这条，`git add -A` 把 dist/ 带进了提交。
+dist/
+
 # ---- 构建与导出目录 ----
 # v4.0 目录重构前的旧路径：源码已迁到 core/ board/ pc/，本机这一坨只剩构建产物
 # （IDF build/ 148 MB + pc/*.obj）。留着兼容还没重建的机器，别让它们进仓库。

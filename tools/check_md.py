@@ -42,6 +42,9 @@ LOCAL_PREFIXES = ("archive/", "v2/", "student/", "v3_", "v3/", "data/", "v4/sft/
                   "v4/sft_smoke/", "v4/sft_pc/", "v4/sft_pc2/", "v4/qat_board/",
                   "v4/retr_sft/", "v4/retr_sft2/",
                   "board/model_export_", "logs/", "scripts/local_paths.json",
+                  # `esp32/` 是**模型平台仓库里的子目录**（HF / 魔搭的 esp32/model.bin），
+                  # 不是本仓库的路径。MODEL_CARD.md 会反复引用它，所以按"允许缺失"处理。
+                  "esp32/",
                   "feng_cont/",            # 续训/恢复实验的训练产物目录（本机外置盘）
                   # 编辑器与代码提示（v4.0）：.vscode/ 是每台机器自己的配置，
                   # compile_commands.json 是 tools/gen_compile_commands.py 的派生数据
