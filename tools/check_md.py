@@ -44,6 +44,9 @@ LOCAL_PREFIXES = ("archive/", "v2/", "student/", "v3_", "v3/", "data/", "v4/sft/
                   # 干净 clone 上必然没有——AGENTS.md 的「编辑器配置」一节会引用它们。
                   ".vscode/", "compile_commands.json", "build/compile_commands.json",
                   "esp32s3-feng-llm/build/",
+                  # 一键发布脚本：**故意 gitignore**（内嵌魔搭令牌），干净 clone 上必然没有。
+                  # AGENTS.md 的目录地图会提到它——不列进来 CI 就会报"引用了不存在的路径"。
+                  "tools/publish_all.py",
                   # 手机端（phone/）的构建产物：干净 clone 里没有是正常的
                   "phone/cli/build/", "phone/cli/build-baseline/", "phone/cli/build-aarch64/",
                   "phone/cli/build-android/", "phone/cli/build-clang/",
