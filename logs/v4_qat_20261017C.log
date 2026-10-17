@@ -1,0 +1,16 @@
+[22:22:34] 样本：QAT 数据 38298 + 多轮/身份 150 = 38448 条
+[22:22:42] 可用样本 38448，平均长度 122
+Loading weights:   0%|          | 0/123 [00:00<?, ?it/s]Loading weights: 100%|██████████| 123/123 [00:00<00:00, 2513.15it/s]
+[22:22:43] KV-QAT hooks installed: K (post-RoPE) + V (v_proj out), q2 block8 STE
+[22:22:43] W-QAT：78 个权重矩阵 + embedding 按 Q4 block64（fp16 scale）STE 前向
+[22:22:49] step 25/4806 loss 4.7565 lr 6.00e-06 gnorm 6.76 0.1min
+[22:22:54] step 50/4806 loss 4.5135 lr 6.00e-06 gnorm 4.06 0.2min
+[22:23:03] step 75/4806 loss 4.5516 lr 6.00e-06 gnorm 3.35 0.3min
+[22:23:09] step 100/4806 loss 4.4599 lr 6.00e-06 gnorm 2.62 0.4min
+[22:23:17] step 125/4806 loss 4.4340 lr 5.99e-06 gnorm 2.91 0.6min
+[22:23:27] step 150/4806 loss 4.1608 lr 5.99e-06 gnorm 2.90 0.7min
+[22:23:33] step 175/4806 loss 4.7084 lr 5.99e-06 gnorm 2.47 0.8min
+[22:23:44] step 200/4806 loss 4.4176 lr 5.98e-06 gnorm 2.24 1.0min
+[22:23:49] step 225/4806 loss 4.3006 lr 5.97e-06 gnorm 2.61 1.1min
+[22:23:56] step 250/4806 loss 4.3304 lr 5.97e-06 gnorm 2.65 1.2min
+[22:24:02] step 275/4806 loss 4.1564 lr 5.96e-06 gnorm 2.66 1.3min

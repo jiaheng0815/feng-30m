@@ -16,6 +16,13 @@ tags:
 
 # feng-30m
 
+> **项目主页 / 源码仓库**
+>
+> - **GitHub**：<https://github.com/jiaheng0815/feng-30m>
+> - **Gitee（国内镜像）**：<https://gitee.com/fengjiaheng123/feng-30m>
+>
+> 全部代码、训练脚本、评测记录与失败尝试都在里面；本页只是模型权重与模型卡。
+
 **29.43M 参数的中文对话模型，完全离线跑在 ESP32-S3（32MB flash / 16MB PSRAM）上。**
 
 An open-source 29.43M-parameter Chinese chat model that runs **fully offline on a
