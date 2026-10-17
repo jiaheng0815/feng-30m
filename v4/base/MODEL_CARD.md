@@ -32,7 +32,7 @@ microcontroller** — Q4 weights streamed from flash via mmap, q2 KV cache in PS
 [GitHub](https://github.com/jiaheng0815/feng-30m) ·
 [Gitee](https://gitee.com/fengjiaheng123/feng-30m)（国内镜像）
 
-- 权重版本：**v3.19**（PC / 本仓库）｜ **v3.19-embed**（板端，见同仓库的 esp32 子目录）
+- 权重版本：**v4.0**（PC，本仓库）｜ 板端 QAT 版本见同仓库的 esp32 子目录
 - 文档：[使用说明](https://github.com/jiaheng0815/feng-30m/blob/main/docs/USAGE.md) ·
   [版本演进](https://github.com/jiaheng0815/feng-30m/blob/main/docs/CHANGELOG.md) ·
   [固件工程](https://github.com/jiaheng0815/feng-30m/blob/main/docs/esp32-firmware.md)
@@ -100,15 +100,19 @@ Q: 掷骰子                A: 掷骰子：4 点。
 
 ## 实测能力
 
-**PC（v3.19，fp32）**
+**PC（v4.0，fp32）—— 与 v3.19 同口径对比**
 
-| 评测 | 结果 |
-|---|---|
-| 日常对话探针 42 题 | **42/42** |
-| 身份 / 范围内 | 12/12 / 10/10 |
-| 针检索（4k/8k/16k/32k，各 32 题） | 单类别 **110/128** |
-| 记忆 24 题 | 23/24 |
-| 留出 30 题（开发集 / 独立集） | 19/30 / **18/30** |
+| 评测 | v3.19 | **v4.0** |
+|---|---|---|
+| 日常对话探针 42 题 | 42/42 | 42/42 |
+| 身份 / 范围内 | 12/12 / 10/10 | 10/10 |
+| 留出 30 题（开发集） | 19/30 | **22/30** |
+| 留出 30 题（**独立集**，未参与调参） | 18/30 | **21/30** |
+| 针检索（4k/8k/16k/32k，各 32 题） | 110/128 | **110/128** |
+| 　└ 32k 单档 | 26/32 | **28/32** |
+| 　└ 「文中没有」正确拒答 | 61/64 | **64/64** |
+| SciQ acc / acc_norm | 71.00 / 73.80 | **72.50** / 72.60 |
+| PIQA acc / acc_norm | 54.52 / 53.37 | 54.41 / **54.46** |
 
 **板端（v3.19-embed，Q4 权重 + q2 KV，2048 上下文，9.62 MB PSRAM）**
 
