@@ -1,4 +1,4 @@
-feng-30m PC chat ｜ model=D:\wt\feng-distill-30m\esp32s3-feng-llm\model_export_v3_15ci4 ｜ KV=q2 ctx=2048 ｜ 算式/时间/随机数走 tool，\reset 清空
+feng-30m PC chat ｜ model=D:\wt\feng-distill-30m\board\model_export_v3_15ci4 ｜ KV=q2 ctx=2048 ｜ 算式/时间/随机数走 tool，\reset 清空
 you> << 你好！有什么我可以帮你的吗？ >>END (ctx 19/2048)
 you> << 有只猫掉进了纸箱，它想了半天，说：这箱子挺舒服。 >>END (ctx 54/2048)
 you> << 可以读读《小王子》，故事简单又耐人寻味。 >>END (ctx 83/2048)

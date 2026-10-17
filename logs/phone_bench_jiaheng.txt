@@ -1,5 +1,5 @@
 # feng-30m 手机引擎基准 — 2026-10-15 20:16:22
-# 主机 jiaheng ｜ 20 逻辑核 ｜ 模型 /mnt/e/feng-30m/esp32s3-feng-llm/model_export_v3_19b6
+# 主机 jiaheng ｜ 20 逻辑核 ｜ 模型 /mnt/e/feng-30m/board/model_export_v3_19b6
 # ctx 2048 ｜ q2/block8 ｜ 每档生成 32 token（含 8 token 热身）
 # 注意：这是手机引擎在**本机**的数字，不是手机的。真机数字请在 Termux 里跑同样的命令。
 --- threads=1 ---

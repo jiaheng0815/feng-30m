@@ -21,6 +21,17 @@ v2/data/
 # 它属于模型产物、不入库；训练脚本用 AutoTokenizer.from_pretrained(<模型目录>) 取它。
 tokenizer.json
 
+# ---- v4/ 下的训练产物目录 ----
+# 只保留训练起点 `v4/base/`（它自带 config/tokenizer/模型卡，是 4.0 的 SFT 入口）。
+# 其余 `v4/<阶段>/` 是本机训练输出：权重已被 *.safetensors 挡住，但 config.json /
+# tokenizer_config.json / chat_template.jinja 这几个小文件挡不住，一堆子目录加起来
+# 几十份重复配置——删掉这些规则会让每次训练都往仓库里扔一坨副本。
+v4/sft*
+v4/retr_sft*
+v4/patch_name*
+v4/qat_*
+v4/soup*
+
 # ---- 构建与导出目录 ----
 # v4.0 目录重构前的旧路径：源码已迁到 core/ board/ pc/，本机这一坨只剩构建产物
 # （IDF build/ 148 MB + pc/*.obj）。留着兼容还没重建的机器，别让它们进仓库。

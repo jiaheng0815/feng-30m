@@ -1,5 +1,5 @@
 # feng-30m phone 引擎 PC(x86_64) 基准 — 2026-10-15 20:09
-# CPU: i7-12700KF ｜ 编译器 gcc-14 -O2 ｜ 模型 esp32s3-feng-llm/model_export_v3_19b6 ｜ ctx 2048 ｜ q2/block8
+# CPU: i7-12700KF ｜ 编译器 gcc-14 -O2 ｜ 模型 board/model_export_v3_19b6 ｜ ctx 2048 ｜ q2/block8
 --- threads=1 ---
 bench: n_gen=32（实际生成 20）
 bench: prefill 92.4 ms ｜ decode 129.1 ms -> 154.96 tok/s
