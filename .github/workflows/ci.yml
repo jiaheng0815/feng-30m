@@ -97,3 +97,8 @@ jobs:
         run: |
           python3 tools/check_md.py
           python3 tools/check_docs.py
+
+      # 只跑启发式的第 2 层（署名上下文里像人名的报出来）。
+      # 黑名单硬检查在本机跑——那份名字列表本身是私密的，不能进仓库。
+      - name: 隐私自检（署名里不得出现中文人名）
+        run: python3 tools/check_privacy.py

@@ -36,6 +36,11 @@ RELEASE_PREFIXES = ("weights/", "datasets/", "feng-30m-v3/", "feng-30m-v3.6/")
 # 不去改写它们（改写历史记录比留一个失效路径更糟）。新写的文档请不要再引用这些前缀。
 LOCAL_PREFIXES = ("archive/", "v2/", "student/", "v3_", "v3/", "data/", "v4/sft/",
                   "v4/qat/", "model_export_",
+                  # v4 各训练阶段目录：权重被 gitignore、只有 summary.json/train_log.jsonl
+                  # 入库，干净 clone 上目录本身不存在是正常的。
+                  # ⚠️ 新增阶段目录后记得加进来，否则本地（目录在）过、CI（干净 clone）炸。
+                  "v4/sft_smoke/", "v4/sft_pc/", "v4/sft_pc2/", "v4/qat_board/",
+                  "v4/retr_sft/", "v4/retr_sft2/",
                   "board/model_export_", "logs/", "scripts/local_paths.json",
                   "feng_cont/",            # 续训/恢复实验的训练产物目录（本机外置盘）
                   # 编辑器与代码提示（v4.0）：.vscode/ 是每台机器自己的配置，

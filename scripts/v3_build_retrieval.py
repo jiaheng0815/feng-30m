@@ -56,24 +56,42 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=str(V3 / "data"))
     ap.add_argument("--seed", type=int, default=20261003)
+    # 「文中没有该信息」的负样本比例。**绝不能是 0**：2026-10-17 实测，纯正样本训完
+    # 之后模型变成"永远硬抽"，留出题里"文中没有"的拒答从 v3.19 的 61/64 塌到 0/64。
+    # 越长越容易编，所以按长度递增（v3.1 的 `--negative-fracs` 也是这个思路）。
+    ap.add_argument("--negative-fracs", default="0.10,0.15,0.20,0.30",
+                    help="按长度分别指定负样本比例（逗号分隔，对应 SPECS 顺序）")
+    ap.add_argument("--negative-frac", type=float, default=0.15,
+                    help="--negative-fracs 未给时的统一比例")
     args = ap.parse_args()
     from tokenizers import Tokenizer
     tk = Tokenizer.from_file(str(ROOT / "v4" / "base" / "tokenizer.json"))
     enc = lambda s: tk.encode(s).ids          # noqa: E731
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
+    neg_fracs = [float(x) for x in args.negative_fracs.split(",") if x.strip()]
     meta = []
-    for L, n in SPECS:
+    for li, (L, n) in enumerate(SPECS):
+        neg_frac = neg_fracs[li] if li < len(neg_fracs) else args.negative_frac
         rng = random.Random(args.seed + L)
         ids = np.zeros((n, L), dtype=np.uint16)
         mask = np.zeros((n, L), dtype=np.uint8)
         filler_pool = [enc(s) for s in FILLER]
+        n_neg = 0
         for i in range(n):
-            code = f"{rng.randint(10000, 99999)}"
-            fact = enc(rng.choice(FACT_TPL).format(c=code))
+            # 负样本：**不埋事实**，正确答案是"文中没有提到。"
+            is_neg = rng.random() < neg_frac
+            if is_neg:
+                fact = []
+                ans_text = "文中没有提到。"
+                n_neg += 1
+            else:
+                code = f"{rng.randint(10000, 99999)}"
+                fact = enc(rng.choice(FACT_TPL).format(c=code))
+                ans_text = code
             q = enc("<|im_start|>user\n" + rng.choice(Q_TPL) +
                     "<|im_end|>\n<|im_start|>assistant\n")
-            a = enc(code + "<|im_end|>")
+            a = enc(ans_text + "<|im_end|>")
             body_len = L - len(q) - len(a) - len(fact)
             if body_len < 64:
                 raise SystemExit(f"sequence too short for L={L}")
@@ -81,8 +99,11 @@ def main():
             while len(body) < body_len:
                 body.extend(filler_pool[rng.randrange(len(filler_pool))])
             body = body[:body_len]
-            pos = rng.randrange(int(0.1 * body_len), int(0.9 * body_len))
-            row = body[:pos] + fact + body[pos:] + q + a
+            if is_neg:
+                row = body + q + a
+            else:
+                pos = rng.randrange(int(0.1 * body_len), int(0.9 * body_len))
+                row = body[:pos] + fact + body[pos:] + q + a
             row = row[:L]
             if len(row) < L:
                 row = row + [0] * (L - len(row))
@@ -90,9 +111,9 @@ def main():
             mask[i, -len(a):] = 1
         np.save(out / f"retr{L}_ids.npy", ids)
         np.save(out / f"retr{L}_mask.npy", mask)
-        meta.append({"seq": L, "samples": n, "tokens": int(ids.size)})
+        meta.append({"seq": L, "samples": n, "tokens": int(ids.size), "neg": n_neg})
         print(f"retr{L}: {n} samples x {L} = {ids.size/1e6:.2f}M tokens "
-              f"(answer tokens {int(mask.sum()/1000)}k)")
+              f"(负样本 {n_neg}，{100*n_neg/n:.0f}%；answer tokens {int(mask.sum()/1000)}k)")
     (out / "retrieval_stats.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
     print(f"total {sum(m['tokens'] for m in meta)/1e6:.1f}M tokens")
 
