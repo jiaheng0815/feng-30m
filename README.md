@@ -171,7 +171,20 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 
 ## 下载
 
-权重（fp32 / 板端模型）与蒸馏数据集打包在
+模型权重也可以直接从模型平台拉，**不用解压 Release 包**：
+
+| 平台 | 地址 | 说明 |
+|---|---|---|
+| **Hugging Face** | [`jiaheng0815/feng-30m`](https://huggingface.co/jiaheng0815/feng-30m) | `AutoTokenizer` + `Qwen3ForCausalLM` 直接加载；同仓库的 esp32 子目录含板端 `model.bin` |
+| **ModelScope 魔搭** | [`jiaheng0815/feng-30m`](https://www.modelscope.cn/models/jiaheng0815/feng-30m) | 同上，**国内直连** |
+
+```python
+from transformers import AutoTokenizer, Qwen3ForCausalLM
+tok = AutoTokenizer.from_pretrained("jiaheng0815/feng-30m")
+model = Qwen3ForCausalLM.from_pretrained("jiaheng0815/feng-30m")
+```
+
+权重（fp32 / 板端模型）与蒸馏数据集也打包在
 **[Releases](https://github.com/jiaheng0815/feng-30m/releases)**：
 
 | 附件 | 内容 |
