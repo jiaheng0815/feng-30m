@@ -14,7 +14,7 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from paths import ROOT  # noqa: E402
 
-FILLER = (ROOT / "esp32s3-feng-llm" / "pc" / "prompt_long.txt").read_text(encoding="utf-8")
+FILLER = (ROOT / "pc" / "prompt_long.txt").read_text(encoding="utf-8")
 
 
 def main() -> None:

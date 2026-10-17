@@ -2,7 +2,7 @@
 
 构建 APK 时由 phone/tools/build_apk.ps1 自动从模型导出目录拷进来：
 
-    .\phone\tools\build_apk.ps1                      # 默认用 esp32s3-feng-llm/model_export_v3_19b6
+    .\phone\tools\build_apk.ps1                      # 默认用 board/model_export_v3_19b6
     .\phone\tools\build_apk.ps1 -ModelDir <导出目录>  # 或自己指定
 
 也可以用 Android Studio 构建，但同样要先把两个 .bin 放到这里

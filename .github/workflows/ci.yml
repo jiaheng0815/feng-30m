@@ -25,35 +25,34 @@ jobs:
       - name: Python 语法检查
         run: python3 -m py_compile scripts/*.py tools/*.py
 
-      # v4.0 起引擎分两层，编译也必须分两趟：
-      #   main/*.c   推理核心，严格 C23（板端与 PC 共用）
+      # v4.0 起引擎分两层 + 目录分三家，编译也必须分两趟：
+      #   core/*.c   推理核心，严格 C23（board / pc / phone 编同一份）
       #   pc/*.cpp   PC 侧驱动/套件，C++23
       # g++ 会把 .c 当 C++ 编，反之亦然，所以核心一律用 gcc -std=c23 先编成 .o。
       - name: 编译核心（C23）
-        working-directory: esp32s3-feng-llm
+        working-directory: core
         run: |
           set -euo pipefail
           mkdir -p /tmp/core
           for f in feng_model feng_llm feng_quant feng_smp feng_tokenizer \
                    feng_sample feng_calc feng_tools feng_memory; do
-            gcc-14 -std=c23 -O2 -c main/$f.c -o /tmp/core/$f.o -Imain
+            gcc-14 -std=c23 -O2 -c $f.c -o /tmp/core/$f.o -I.
           done
           echo "C23 核心 9 个目标文件编译通过"
 
       - name: 单测（算式 / 时间随机数 / 记忆 / 采样器）
-        working-directory: esp32s3-feng-llm
         run: |
           set -euo pipefail
           CXXFLAGS="-std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2"
-          g++-14 $CXXFLAGS -o /tmp/pc_calc_test   pc/pc_calc_test.cpp   /tmp/core/feng_calc.o -Imain -lm
-          g++-14 $CXXFLAGS -o /tmp/pc_tools_test  pc/pc_tools_test.cpp  /tmp/core/feng_tools.o -Imain -lm
-          g++-14 $CXXFLAGS -o /tmp/pc_mem_test    pc/pc_mem_test.cpp    /tmp/core/feng_memory.o -Imain -lm
+          g++-14 $CXXFLAGS -o /tmp/pc_calc_test   pc/pc_calc_test.cpp   /tmp/core/feng_calc.o -Icore -lm
+          g++-14 $CXXFLAGS -o /tmp/pc_tools_test  pc/pc_tools_test.cpp  /tmp/core/feng_tools.o -Icore -lm
+          g++-14 $CXXFLAGS -o /tmp/pc_mem_test    pc/pc_mem_test.cpp    /tmp/core/feng_memory.o -Icore -lm
           g++-14 $CXXFLAGS -o /tmp/pc_sample_test pc/pc_sample_test.cpp /tmp/core/feng_sample.o \
-              /tmp/core/feng_quant.o -Imain -lm
-          g++-14 $CXXFLAGS -o /tmp/pc_calc_ask    pc/pc_calc_ask.cpp    /tmp/core/feng_calc.o -Imain -lm
-          g++-14 $CXXFLAGS -o /tmp/pc_mem_ask     pc/pc_mem_ask.cpp     /tmp/core/feng_memory.o -Imain -lm
-          g++-14 $CXXFLAGS -o /tmp/pc_rand_ask    pc/pc_rand_ask.cpp    /tmp/core/feng_tools.o -Imain -lm
-          g++-14 $CXXFLAGS -o /tmp/pc_time_ask    pc/pc_time_ask.cpp    /tmp/core/feng_tools.o -Imain -lm
+              /tmp/core/feng_quant.o -Icore -lm
+          g++-14 $CXXFLAGS -o /tmp/pc_calc_ask    pc/pc_calc_ask.cpp    /tmp/core/feng_calc.o -Icore -lm
+          g++-14 $CXXFLAGS -o /tmp/pc_mem_ask     pc/pc_mem_ask.cpp     /tmp/core/feng_memory.o -Icore -lm
+          g++-14 $CXXFLAGS -o /tmp/pc_rand_ask    pc/pc_rand_ask.cpp    /tmp/core/feng_tools.o -Icore -lm
+          g++-14 $CXXFLAGS -o /tmp/pc_time_ask    pc/pc_time_ask.cpp    /tmp/core/feng_tools.o -Icore -lm
           for t in pc_calc_test pc_tools_test pc_mem_test pc_sample_test; do
             echo "== $t"
             /tmp/$t | tail -n 1
@@ -72,7 +71,6 @@ jobs:
         run: python3 tools/check_time_parity.py --c-bin /tmp/pc_time_ask
 
       - name: 编译 PC 引擎（C23 核心 + C++23 套件 + 一致性检查）
-        working-directory: esp32s3-feng-llm
         run: |
           set -euo pipefail
           CXXFLAGS="-std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2"
@@ -80,10 +78,10 @@ jobs:
           CORE="/tmp/core/feng_model.o /tmp/core/feng_llm.o /tmp/core/feng_quant.o \
                 /tmp/core/feng_smp.o /tmp/core/feng_tokenizer.o /tmp/core/feng_calc.o \
                 /tmp/core/feng_tools.o /tmp/core/feng_memory.o /tmp/core/feng_sample.o"
-          g++-14 $CXXFLAGS $Q2 -o /tmp/pc_chat_q2b8     pc/pc_chat.cpp     $CORE -Imain -lm
-          g++-14 $CXXFLAGS $Q2 -o /tmp/pc_kv_suite_q2b8 pc/pc_kv_suite.cpp $CORE -Imain -lm
-          g++-14 $CXXFLAGS $Q2 -o /tmp/pc_mt_suite      pc/pc_mt_suite.cpp $CORE -Imain -lm
-          g++-14 $CXXFLAGS     -o /tmp/pc_check         pc/pc_check.cpp    $CORE -Imain -lm
+          g++-14 $CXXFLAGS $Q2 -o /tmp/pc_chat_q2b8     pc/pc_chat.cpp     $CORE -Icore -lm
+          g++-14 $CXXFLAGS $Q2 -o /tmp/pc_kv_suite_q2b8 pc/pc_kv_suite.cpp $CORE -Icore -lm
+          g++-14 $CXXFLAGS $Q2 -o /tmp/pc_mt_suite      pc/pc_mt_suite.cpp $CORE -Icore -lm
+          g++-14 $CXXFLAGS     -o /tmp/pc_check         pc/pc_check.cpp    $CORE -Icore -lm
           echo "PC 引擎全部编译通过"
 
       - name: 手机端引擎编译（同一批 C23 核心，aarch64 交叉）

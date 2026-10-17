@@ -40,26 +40,26 @@ feng-30m-v3.19/
 ```powershell
 # 1) 取模型：直接下载 Release 的 feng-30m-c-engine-model-v3.19-embed.zip
 #    想自己导出：用【板端 v3.19-embed 权重包】的 weights/hf（做过 Q4+q2 双 QAT）
-python esp32s3-feng-llm\tools\export_model.py --model <v3.19-embed包>\weights\hf --out model_export
+python board\tools\export_model.py --model <v3.19-embed包>\weights\hf --out model_export
 
 # 2) 编译（Windows 默认 MSVC **两趟**：核心 /std:clatest /TC、驱动 /std:c++latest /TP，
 #    脚本自动加载 vcvars64；产出 13 个 exe）
-esp32s3-feng-llm\build_pc_chat.ps1
+pc\build_pc_chat.ps1
 
 # MinGW 备用路径（等价于 .\build_pc_chat.ps1 -MinGW）。注意引擎分两层：
 # **核心 .c 要先用 gcc -std=c23 编成 .o**，再交给 g++ 链接 —— 直接把 .c 丢给
 # g++ 会按 C++ 编，C23 的语法与语义都会走样（踩过，见 AGENTS.md）。
-gcc -std=c23 -O2 -c esp32s3-feng-llm\main\feng_model.c -o feng_model.o -Iesp32s3-feng-llm\main
+gcc -std=c23 -O2 -c core\feng_model.c -o feng_model.o -Iboard\main
 #   其余 8 个核心 .c 同理：feng_llm / feng_quant / feng_smp / feng_tokenizer /
 #   feng_sample / feng_calc / feng_tools / feng_memory
 g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 `
-  -o pc_chat.exe esp32s3-feng-llm\pc\pc_chat.cpp *.o -Iesp32s3-feng-llm\main -lm
+  -o pc_chat.exe pc\pc_chat.cpp *.o -Iboard\main -lm
 
 # 3) 聊天（tool 0.5s 秒回，多轮上下文默认开）
 .\pc_chat.exe model_export
 ```
 
-更省事：在仓库根跑 `esp32s3-feng-llm\build_pc_chat.ps1`，一次编译全部 PC 运行时与单测。
+更省事：在仓库根跑 `pc\build_pc_chat.ps1`，一次编译全部 PC 运行时与单测。
 验证构建与数字回归：`python tools\check_all.py`（文档自检 → 构建 → 四套单测 →
 32 题矩阵 27/27+4/4 → 算术 21/21 → `pc_check` MATCH）。
 
@@ -86,7 +86,7 @@ tool 覆盖：多位数/小数/括号/中文数字（`五十九加一`）/`乘�
 ### 2.1 可选：CUDA 加速（RTX 显卡）
 
 ```powershell
-cd esp32s3-feng-llm
+cd board
 .\build_pc_cuda.ps1        # 需要 VS Build Tools + CUDA Toolkit；产出 pc\*_cuda.exe
 .\pc\pc_chat_cuda.exe ..\feng-30m-c-engine-model
 .\pc\pc_bench_cuda.exe ..\feng-30m-c-engine-model "你好" 32
@@ -156,7 +156,7 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 | 速度 | **2.33 tok/s**（真实 decode 507 ms/token @ ctx 19） |
 | 固件体积 | **257,104 B**（C23 引擎，比 C 版小 50,288 B） |
 
-### 分区偏移（与 `esp32s3-feng-llm/partitions.csv` 一致）
+### 分区偏移（与 `board/partitions.csv` 一致）
 
 | 内容 | 偏移 |
 |---|---|
@@ -171,7 +171,7 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 
 ```powershell
 # ① 编译固件（ESP-IDF v5.5.5；用预编译包可跳过）
-cd esp32s3-feng-llm
+cd board
 $env:IDF_TOOLS_PATH = "<你的 IDF 工具链路径>"     # 本机路径见 scripts/local_paths.json
 & "<esp-idf 路径>\export.ps1"
 idf.py -DFENG_USE_Q2_KV=ON build                  # 发布配置：q2 / 2048 ctx

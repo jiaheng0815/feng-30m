@@ -22,9 +22,12 @@ v2/data/
 tokenizer.json
 
 # ---- 构建与导出目录 ----
-esp32s3-feng-llm/build/
+# v4.0 目录重构前的旧路径：源码已迁到 core/ board/ pc/，本机这一坨只剩构建产物
+# （IDF build/ 148 MB + pc/*.obj）。留着兼容还没重建的机器，别让它们进仓库。
+esp32s3-feng-llm/
+board/build/
 # 板端模型导出目录（可由 tools/export_model.py 从权重复现，不入库）
-esp32s3-feng-llm/model_export_*/
+board/model_export_*/
 __pycache__/
 *.pyc
 

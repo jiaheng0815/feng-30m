@@ -34,7 +34,7 @@
     `scripts/v3_19_build_target_prompts.py`）+ 多轮/身份回放做**末 2 层 15 epoch** 微调；
     留出 30 题 **19/30**（strict-v4 判定；v3.14 = 16/30）、单类别检索 **110**（v3.14 = 108）、
     多类别 105（-2）、记忆 23/24（-1）、范围/身份/探针保持（`eval/v3_19pc4_*.json`）。
-  - 板端 v3.19-embed 权重（导出在 `esp32s3-feng-llm/model_export_v3_19b6/`）：在 `archive/v3_16/board_p3` 上做 **Q4+q2 双 QAT（4 epoch / lr 6e-6）**；
+  - 板端 v3.19-embed 权重（导出在 `board/model_export_v3_19b6/`）：在 `archive/v3_16/board_p3` 上做 **Q4+q2 双 QAT（4 epoch / lr 6e-6）**；
     C++ 引擎矩阵 **27/27+4/4、召回 4/4、算术 21/21、pc_check MATCH**，HF 留出 **19/30**（v3.16 = 17）、
     记忆 24/24；实机 tool 13/13、记忆 12/12、7 轮换名身份 7/7（`logs/pc_kv_suite32_v3_19b6_q2b8.txt`、
     `logs/board_v3_19b6_memory12.txt`、`logs/esp32_multi.txt`）。
@@ -65,7 +65,7 @@
   继续双 QAT；修掉多轮里「你叫什么名字 → 你叫小模型/小王子」的漂移
   （7 组前缀 6 组完全正确），矩阵 **27/27+4/4**、算术 21/21、记忆 10/12、工具 8/8 全部保持。
 - v3.14（历史 PC 发布）：
-  - **tool**（`main/feng_calc.c`、`main/feng_tools.c`、`main/feng_memory.c`）：算式（多位数/小数/括号）、
+  - **tool**（`core/feng_calc.c`、`core/feng_tools.c`、`core/feng_memory.c`）：算式（多位数/小数/括号）、
     **序列数数**（"把 1 到 5 倒着数一遍"→`5、4、3、2、1。`、"从 3 数到 8"；只在祈使句触发，
     "我从1数到100也数不完"这类陈述仍交给模型）、
     UTC+8 时间（宿主 `\settime` 对时 + esp_timer 走时）、随机数（运行时间×1.54×1000，丢第一个取第二个）；
@@ -93,7 +93,7 @@
   关键技巧是 **Q4 权重/q2 KV 双 QAT**（`v3_7_kv_qat.py --wqat`），量化抗性对权重回插极敏感
   （掺 20% v3.9 权重就掉到 25/27），PC 32k 弱。
 - **PC 用 v3.19 权重（现收在 `v4/base/`，也是 4.0 的训练起点）；板端用 v3.19-embed 权重
-  （导出在 `esp32s3-feng-llm/model_export_v3_19b6/`）；两边同一套 v4.0 / 严格 C23 引擎与固件**
+  （导出在 `board/model_export_v3_19b6/`）；两边同一套 v4.0 / 严格 C23 引擎与固件**
   （q2/2048 固件 **257,104 B**、板端 2.33 tok/s；见 `docs/CHANGELOG.md` v3.19/v3.20 节与
   `docs/esp32-firmware.md`）。
 - **标准基准（英文，0-shot）**：**只有 SciQ 71.00/73.80 与 PIQA 53.37**。
@@ -147,8 +147,10 @@
 | `scripts/` | 全部数据构建 / 训练 / 评测 / 导出脚本（含 `scripts/paths.py` 路径解析、`scripts/bench_standard.py` 基准入口） |
 | `eval/` | 评测结果 JSON（范围 / 针检索 / 记忆 / 留出 / `lm_eval_*.json` 标准基准）；`eval/README.md` 记录命名约定 |
 | `logs/` | 所有构建 / 训练 / 烧录 / 板上测试日志；`board_baseline_lut.txt` 是板上精度基线 |
-| `esp32s3-feng-llm/` | ESP32 固件工程 + 可移植 C23 推理引擎（PC 侧 C++23 + CUDA）+ 一致性检查与回归套件；工程说明见 `docs/esp32-firmware.md` |
-| `phone/` | 手机端（Termux CLI + Android APK），复用同一套 C23 引擎；详见 `phone/README.md` |
+| `core/` | **共享 C23 推理核心**（严格 C23、零堆、零全局构造）：`feng_llm` / `feng_quant` / `feng_model` / `feng_smp` / `feng_sample` / `feng_tokenizer` + 四个 tool（`feng_calc` / `feng_tools` / `feng_memory`）。**board / pc / phone 编的是同一份源码**，改这里三家全变 |
+| `board/` | ESP32-S3 固件工程：`main/`（IDF 组件，放 `main.c`、彩蛋 `feng_bonus`、GBK 表、PIE/bench）、`partitions.csv`、`sdkconfig*`、`flash.ps1`、`tools/export_model.py`、`model_export_v3_19b6/`（当前板端权重）。工程说明见 `docs/esp32-firmware.md` |
+| `pc/` | PC 驱动与验收套件（**C++23**）：`pc_chat` / `pc_kv_suite` / `pc_mt_suite` / `pc_check` / 各 tool 单测，GPU 后端 `feng_cuda.cu`，构建脚本 `build_pc_chat.ps1` / `build_pc_cuda.ps1` |
+| `phone/` | 手机端（Termux CLI + Android APK），`phone/engine/` 是 `core/` 的**派生副本**（带 `SOURCE.sha256` 溯源）；详见 `phone/README.md` |
 | `tools/check_md.py`、`tools/check_docs.py` | 文档自检：前者查围栏/路径/过时表述，后者把**全部 md 的关键数字与实际产物对齐**（参数量、固件体积、各版评测分数、检索 loss） |
 | `tools/gen_compile_commands.py` | 生成仓库根的 `compile_commands.json`（编辑器代码提示数据），见「编辑器配置与代码提示」一节 |
 | `tools/bench_teacher_real.py` | 用**真实提示词**测教师服务吞吐（4 线程 / max_tokens 200，与生产同口径）。`scripts/bench_teacher_conc.py` 用的是 8 条五个字的短问题，测出来是纯 decode 上限（59.3 tok/s），**不能拿来跟生产日志里的 37.8 比** |
@@ -169,13 +171,13 @@
 
 | 层 | 文件 | 语言 | 说明 |
 |---|---|---|---|
-| 推理核心 | `esp32s3-feng-llm/main/*.c` `*.h` | **严格 C23** | 板端与 PC 共用同一份源码 |
+| 推理核心 | `board/main/*.c` `*.h` | **严格 C23** | 板端与 PC 共用同一份源码 |
 | PC 驱动 | `pc/*.cpp` | **C++23** | 套件/单测/基准，可用 `std::chrono`/`std::span` |
-| GPU 后端 | `main/feng_cuda.cu` | **C++**（nvcc 无 C 模式） | 与 C 核心用 `extern "C"` 对接 |
+| GPU 后端 | `pc/feng_cuda.cu` | **C++**（nvcc 无 C 模式） | 与 C 核心用 `extern "C"` 对接 |
 
 ```powershell
-gcc -std=c23 -O2 -c main/feng_llm.c -o feng_llm.o -Imain          # 核心
-g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Imain -lm       # 驱动 + 链接
+gcc -std=c23 -O2 -c core/feng_llm.c -o feng_llm.o -Icore          # 核心
+g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Icore -lm       # 驱动 + 链接
 ```
 
 **为什么必须分开**（实测，别再踩）：MSVC 一条命令里同给 `/std:clatest` 与
@@ -210,7 +212,7 @@ g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Imain -lm       # 驱动 + 链
    pthread 运行时 ~5KB）；非热点模块（tokenizer/tool/model/gbk/main）用 `-Os`，热点
    （llm/quant/smp/sample）保持 `-O2`。改完对比固件体积：**不得超 C 版基线 307,392B
    （q2/2048 配置）**，当前为 **257,104 B**（关掉彩蛋是 256,912 B）。
-8. **CUDA 后端（PC 可选，板端不含）**：`main/feng_cuda.cu` + `build_pc_cuda.ps1`
+8. **CUDA 后端（PC 可选，板端不含）**：`pc/feng_cuda.cu` + `build_pc_cuda.ps1`
    （MSVC + nvcc，`-fmad=false` 保证与 CPU 同运算顺序）；GEMV 权重常驻显存，其余算子在 CPU。
    **验收口径**：32 题矩阵须 27/27+4/4 且与 CPU 版**输出逐字一致**（`pc_kv_suite_cuda.exe`），
    `pc_check_cuda` argmax MATCH；实测 decode 157 → 322 tok/s（2.0×），prefill 变慢
@@ -227,7 +229,7 @@ g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Imain -lm       # 驱动 + 链
 - 模型卡走 `<模型目录>/MODEL_CARD.md`；`tools/check_md.py` 会校验 README/DELIVERY/COMPARISON/CHANGELOG/esp32 README/MODEL_CARD 里的反引号路径与过时数字。
 - Python 脚本开头都 `sys.stdout.reconfigure(encoding="utf-8")`，新增脚本请保持一致；命令行输出用中文没问题（torch 的日志仍是英文）。
 
-### `main/feng_bonus.c` 是**故意藏的**，不要当死代码删掉
+### `board/main/feng_bonus.c` 是**故意藏的**，不要当死代码删掉
 
 固件里有一个作者放进去的小彩蛋（`feng_bonus.c` + `main.c` 命令链末尾那个
 `feng_bonus_decode` 分支）：
@@ -243,7 +245,7 @@ g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Imain -lm       # 驱动 + 链
 
 ### 手机端（`phone/`）的引擎是**派生副本** —— 改板端引擎必须记得同步
 
-`phone/engine/` **不是**从 `esp32s3-feng-llm/main/` 直接引用，而是一份拷贝
+`phone/engine/` **不是**从 `board/main/` 直接引用，而是一份拷贝
 （带 `phone/engine/SOURCE.sha256` 溯源清单记录原版哈希）。10 个共用文件里
 **6 个只差头部注释、4 个有实质改动（合计约 110 行）**：
 
@@ -255,7 +257,7 @@ g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Imain -lm       # 驱动 + 链
 | `feng_llm.c` | `FENG_PHONE_MAX_CTX` 解除板端 4096 上下文上限 |
 
 **改 `main/` 下任何被共用的文件后，必须同步这 10 个副本**，否则两边漂移。
-同步之后用 `phone/cli/build.sh` 验一遍：它复用 `esp32s3-feng-llm/pc/` 的
+同步之后用 `phone/cli/build.sh` 验一遍：它复用 `pc/` 的
 **同一份 32 题矩阵套件源码**（不另写题表），所以在开发机上就能把两边的输出
 **逐字节对比**。当前基线：手机端 32 题 27/27 + 4/4，单线程与多线程输出均与板端一致。
 
@@ -273,20 +275,20 @@ g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Imain -lm       # 驱动 + 链
 
 | 组 | 条数 | 编译参数来源 |
 |---|---|---|
-| 固件 C23 核心（`esp32s3-feng-llm/main/*.c`） | 16 | **直接取自 ESP-IDF 自己的** `build/compile_commands.json`——自带上百条 `-I`、`sdkconfig.h` 与 `-DFENG_KV_Q2` 这类只在构建期存在的宏 |
-| PC 驱动（`pc/*.cpp`） | 15 | 脚本构造：`-std=c++23` + `-Imain` + q2 宏 |
+| 固件 C23 核心（`board/main/*.c`） | 16 | **直接取自 ESP-IDF 自己的** `build/compile_commands.json`——自带上百条 `-I`、`sdkconfig.h` 与 `-DFENG_KV_Q2` 这类只在构建期存在的宏 |
+| PC 驱动（`pc/*.cpp`） | 15 | 脚本构造：`-std=c++23` + `-Icore` + q2 宏 |
 | 手机引擎（`phone/engine/*.c`） | 11 | 脚本构造：`-std=c23` + engine + MSYS2 的 ucrt64 include（winpthreads 供 pthread） |
 | Android JNI | 1 | 同上；探测到 NDK 时补 `--target=aarch64-linux-android` |
 | CUDA（`feng_cuda.cu`） | 1 | 脚本探测 `CUDA_PATH`，否则取 NVIDIA 固定安装位置里版本号最大的 |
 
-**增删 `.c`/`.cpp` 文件、或改过 `esp32s3-feng-llm/main/CMakeLists.txt` 之后，重跑一次**：
+**增删 `.c`/`.cpp` 文件、或改过 `board/main/CMakeLists.txt` 之后，重跑一次**：
 
 ```powershell
 python tools\gen_compile_commands.py          # 加 --check 只报告、不写盘
 ```
 
-不重跑的话新文件拿不到编译参数（退化成"只有 `-Imain`"）。固件那 16 条依赖
-`esp32s3-feng-llm/build/compile_commands.json`——**没跑过 `idf.py build` 就没有它**，
+不重跑的话新文件拿不到编译参数（退化成"只有 `-Icore`"）。固件那 16 条依赖
+`board/build/compile_commands.json`——**没跑过 `idf.py build` 就没有它**，
 脚本会明确提示并跳过，其余四组不受影响。
 
 > 引擎两层各有天然的解析边界，所以 x86 主机上也能完整提示：`feng.h` 里的
@@ -355,10 +357,10 @@ python scripts\v3_7_kv_qat.py --init archive/v3_14\board --data archive/v3_14\bo
   --identity-n 80 --out archive/v3_14\board6 --epochs 2 --lr 4e-6 --batch 24 --max-len 2048 --wqat
 
 # PC 运行时：核心 C23 + 驱动 C++23，两趟编译（务必带 feng_calc + feng_tools + feng_memory + feng_sample）
-gcc -std=c23 -O2 -c ../main/feng_llm.c -o feng_llm.o -I../main    # 每个核心 .c 各来一次
+gcc -std=c23 -O2 -c ../core/feng_llm.c -o feng_llm.o -I../core    # 每个核心 .c 各来一次
 g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 `
-  -o pc_chat_q2b8.exe pc_chat.cpp feng_*.o -I../main -lm
-# 更省事：esp32s3-feng-llm 下跑 build_pc_chat.ps1（MSVC 两趟：核心 /std:clatest /TC、驱动 /std:c++latest /TP；
+  -o pc_chat_q2b8.exe pc_chat.cpp feng_*.o -I../core -lm
+# 更省事：pc/ 下跑 build_pc_chat.ps1（MSVC 两趟：核心 /std:clatest /TC、驱动 /std:c++latest /TP；
 #         -MinGW 备用，走 gcc -std=c23 + g++ -std=c++23）
 ```
 
@@ -373,7 +375,7 @@ python scripts\chat_student.py --model archive/v3_10\qat_pol3 --prompt "你是�
 python scripts\export_student_gguf.py --model archive/v3_10\qat_pol3 --out-dir archive/v3_10\gguf
 ```
 
-ESP32 固件（在 `esp32s3-feng-llm\` 下）：
+ESP32 固件（在 `board\` 下）：
 
 ```powershell
 # 0) 导出板端模型（从 HF 权重生成 model.bin / tokenizer.bin / ref_logits.bin）
@@ -434,14 +436,14 @@ python scripts\esp32_enc_test.py COM20
 3. **显存安全**：lm_head + 交叉熵必须走 `scripts/student_utils.py::chunked_lm_loss`（512 token 分块 + checkpoint），32k 阶段峰值 10.28 GiB，16GB 卡上不要并发跑其他任务。
 4. **注意力后端**：训练用 `torch.nn.attention.sdpa_kernel` 的 EFFICIENT/FLASH 后端；该 torch 构建的 SDPA 不支持 GQA，所以学生用 MHA（7=7），改 GQA 需同步改 C++ 引擎（`feng_llm.c` 里要加 KV 头广播）。
 5. **身份不能掉**：训练语料里身份样本过采样（v1 是 15×），并过滤提及其他 AI 身份（ChatGPT/通义…）的样本；每次出模型都要用 `eval_planA_scope.py` 验证身份题。
-6. **flash 前 16MB 的 mmap 窗口是硬边界**（NOR flash 24 位地址上限，**不是模块容量**——模块是 32MB）：`model.bin`（15,659,904 B = 0xEEF380）必须结束在 0x1000000 之前；现行分区为 `model 0x110000/0xEF0000`、`tokdata 0x1000000/0x80000`（tokdata 用 `esp_partition_read` 读，可放窗口外）。烧录偏移必须与 `esp32s3-feng-llm/partitions.csv` 保持一致：`flash.ps1` 已按此修正为 `model=0x110000` / `tokdata=0x1000000`，改动分区表时要同步改脚本。
+6. **flash 前 16MB 的 mmap 窗口是硬边界**（NOR flash 24 位地址上限，**不是模块容量**——模块是 32MB）：`model.bin`（15,659,904 B = 0xEEF380）必须结束在 0x1000000 之前；现行分区为 `model 0x110000/0xEF0000`、`tokdata 0x1000000/0x80000`（tokdata 用 `esp_partition_read` 读，可放窗口外）。烧录偏移必须与 `board/partitions.csv` 保持一致：`flash.ps1` 已按此修正为 `model=0x110000` / `tokdata=0x1000000`，改动分区表时要同步改脚本。
 7. **板端内存账**：权重只能 flash mmap 流式读，不能预载进 SRAM（每层 Q4 ≈0.95MB，内部 SRAM 只剩 ~271KB）；
    KV 默认 int8（`FENG_KV_INT8=1`，`MAX_CTX=1024`，9.93MB PSRAM），可选 q2 block8
    （`idf.py -DFENG_USE_Q2_KV=ON build`，`MAX_CTX=2048`，9.62MB，v3.19-embed 的 32 题 PC 矩阵 27/27 + 召回 4/4
    + 算术子集 21/21；固件默认多轮上下文、`\reset` 清空，见 `docs/CHANGELOG.md` 的 v3.13 节）；板上 32k 上下文在 KV 内存上不可能，
    长文只能走滑窗/attention sink/线性注意力。
 8. **速度现状**：标量路径已到 S3 单发射天花板（每步 ~4-5 周期；短上下文 2.26 tok/s ≈ 938 ms/token @ ctx 19（q2/2048 发布配置））。默认开启三项小幅数值优化（`FENG_GEMV_MADD` 纯 madd 链、`FENG_FAST_EXP` 快速 exp、`FENG_Q2_VFOLD` V 段折叠）：三者累计 logits 差 **4.8e-6**（Q4 量化误差 2.94）、32 题矩阵输出与优化前**逐字相同**。**长上下文成本仍在注意力本体**（q2/2048 单次 forward **2.22 s** = K 0.84 + softmax 0.05 + V 0.83 + 权重等 0.51，本次会话累计 **-37%**）。q2 注意力另有四处位精确优化（字节 LUT + `[layer][head][t]` 顺序布局 + 内联 fp16→fp32 + 2-token 展开）；prefill 用 `feng_forward_ex(..., want_logits=0)` 跳过中间 token 的 lm head（每个省 ~115 ms，最后一个 token 必须算）。**A8 整数 GEMV 已实测：S3 上比 FPU 慢 36%（`mull` 慢），只在 PC 上快 20%，默认关闭**。改 GEMV/注意力/布局后必须用 PC 32 题矩阵与上一版对比（位精确改动要求**逐字节**，数值改动要求 27/27+4/4 且给出差异量级）。**PIE 路线已实测结案**：裸吞吐 0.63–1.38 周期/MAC 有空间，但 S3 没有字节移位指令、4-bit 权重必须靠 LUT 展开（≥1 次标量 load+store / 权重），正确的整块内核只做到 **1.05×**——不要再写 PIE 内核（`docs/CHANGELOG.md` v3.16-embed 附录）；不要再做没有实测收益的内层微调。
-8.5 **采样器统一**：`main/feng_sample.c` 的 `feng_sample_greedy`（1.15 重复惩罚 + no-repeat 3-gram）是
+8.5 **采样器统一**：`core/feng_sample.c` 的 `feng_sample_greedy`（1.15 重复惩罚 + no-repeat 3-gram）是
    固件 / `pc_chat` / `pc_kv_suite` / `pc_mt_suite` 的唯一采样入口；改采样器后必须重跑 PC 32 题矩阵
    并与上一版输出对比（v3.20 那次为**逐字节 0 差异**），再上板。
 9. **量化格式耦合**：Q4 block-64（4.25 bpw）；改 `QK` 必须同步改 C 侧 `QK`，且 `tools/export_model.py` 会生成 `ref_ids.json` / `ref_logits.bin` 供一致性校验。

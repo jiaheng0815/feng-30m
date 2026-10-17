@@ -36,14 +36,14 @@ RELEASE_PREFIXES = ("weights/", "datasets/", "feng-30m-v3/", "feng-30m-v3.6/")
 # 不去改写它们（改写历史记录比留一个失效路径更糟）。新写的文档请不要再引用这些前缀。
 LOCAL_PREFIXES = ("archive/", "v2/", "student/", "v3_", "v3/", "data/", "v4/sft/",
                   "v4/qat/", "model_export_",
-                  "esp32s3-feng-llm/model_export_", "logs/", "scripts/local_paths.json",
+                  "board/model_export_", "logs/", "scripts/local_paths.json",
                   "feng_cont/",            # 续训/恢复实验的训练产物目录（本机外置盘）
                   # 编辑器与代码提示（v4.0）：.vscode/ 是每台机器自己的配置，
                   # compile_commands.json 是 tools/gen_compile_commands.py 的派生数据
                   # （从 IDF 构建产物生成），两者都在 .gitignore 里，
                   # 干净 clone 上必然没有——AGENTS.md 的「编辑器配置」一节会引用它们。
                   ".vscode/", "compile_commands.json", "build/compile_commands.json",
-                  "esp32s3-feng-llm/build/",
+                  "board/build/",
                   # 一键发布脚本：**故意 gitignore**（内嵌魔搭令牌），干净 clone 上必然没有。
                   # AGENTS.md 的目录地图会提到它——不列进来 CI 就会报"引用了不存在的路径"。
                   "tools/publish_all.py",
@@ -120,7 +120,8 @@ def main():
             if cand.startswith(RELEASE_PREFIXES):
                 continue                      # Release 包内路径，不在仓库里
             cand = cand.rstrip("/")
-            probes = [ROOT / cand, ROOT / "esp32s3-feng-llm" / cand, ROOT.parent / cand,
+            probes = [ROOT / cand, ROOT / "core" / cand, ROOT / "board" / cand,
+                      ROOT / "pc" / cand, ROOT.parent / cand,
                       (d.parent / cand)]          # relative to the doc itself
             if not any(p.exists() for p in probes):
                 if normalize(cand) not in tracked and is_local_artifact(cand):

@@ -9,8 +9,8 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
-MODEL="${1:-$ROOT/esp32s3-feng-llm/model_export_v3_19b6}"
-FILLER="$ROOT/esp32s3-feng-llm/pc/prompt_long.txt"
+MODEL="${1:-$ROOT/board/model_export_v3_19b6}"
+FILLER="$ROOT/pc/prompt_long.txt"
 LOGDIR="$ROOT/logs"
 
 command -v clang >/dev/null 2>&1 || { echo "没有 clang（Ubuntu: apt install clang；Termux: pkg install clang）" >&2; exit 1; }

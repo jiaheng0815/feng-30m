@@ -116,7 +116,7 @@ QAT 没有——后续补上，别在长跑里再踩。
 先前的说法（"每权重 3.8 周期、GEMV 占 92%"）是**外推出来的**，没有分段归因。
 这一轮把时间去向逐条测清楚了，顺带把一条**错误归因**纠正过来。
 
-**方法**：`main/feng_gemv_bench.c`（`-DFENG_BENCH_GEMV=ON`）对同一个真实张量
+**方法**：`board/main/feng_gemv_bench.c`（`-DFENG_BENCH_GEMV=ON`）对同一个真实张量
 （第 0 层 gate，896x448 Q4）跑 9 个变体，每个拿掉/替换一个变量，用
 `esp_cpu_get_cycle_count()` 测周期。全部单核、同输出行区间，可直接相减。
 
@@ -179,8 +179,8 @@ ESP-IDF 对 ESP32-S3 只提供 80/160/240 三档；`rtc_clk_cpu_freq_to_pll_mhz(
 **动机**：板端固件不再背 C++ 运行时的任何可能；PC 侧继续用 C++23 写套件与 CUDA 后端。
 核心（`main/*.c`）一份源码两侧共用，`extern "C"` 对接。
 
-- **分层**：`main/feng_*.c` = 严格 C23（板端 + PC 共用）；`pc/*.cpp` = C++23 驱动；
-  `main/feng_cuda.cu` = nvcc（无 C 模式，永久留 C++，靠 `extern "C"` 与核心对接）。
+- **分层**：`core/feng_*.c` = 严格 C23（板端 + PC 共用）；`pc/*.cpp` = C++23 驱动；
+  `pc/feng_cuda.cu` = nvcc（无 C 模式，永久留 C++，靠 `extern "C"` 与核心对接）。
 - **必须分两趟编译**（实测，别再踩）：MSVC 同给 `/std:clatest` 与 `/std:c++latest`
   报 `error D8016: 选项不兼容`；只给 `/std:clatest` 则 C++ 驱动里 `<span>` 用不了。
   现行做法：核心 `/std:clatest /TC`、驱动 `/std:c++latest /TP`，再分别链接；
@@ -265,7 +265,7 @@ ESP-IDF 对 ESP32-S3 只提供 80/160/240 三档；`rtc_clk_cpu_freq_to_pll_mhz(
 
 ## v3.20（引擎）—— CUDA 加速后端（PC 可选）+ GEMV 合并调用
 
-PC 引擎新增可选 CUDA 后端（`main/feng_cuda.cu` + `build_pc_cuda.ps1`；MSVC cl/link +
+PC 引擎新增可选 CUDA 后端（`pc/feng_cuda.cu` + `build_pc_cuda.ps1`；MSVC cl/link +
 nvcc 13.3、`sm_120`）：
 
 - **范围**：只加速 GEMV（Q4 block64 / fp16）——权重首次使用时整块上传显存并常驻，
@@ -380,7 +380,7 @@ HF 留出分数不受影响——序列 tool 在 HF 推理路径之外，只提�
 
 **同一版还统一了采样口径**：此前板端用 1.15 重复惩罚，而 PC 引擎（`pc_chat`/`pc_kv_suite`）
 是**纯 argmax**——"同一套引擎"名不副实，PC 端更容易复读。现在四个运行时
-（固件 / `pc_chat` / `pc_kv_suite` / `pc_mt_suite`）统一走 `main/feng_sample.cpp`：
+（固件 / `pc_chat` / `pc_kv_suite` / `pc_mt_suite`）统一走 `core/feng_sample.cpp`：
 **1.15 重复惩罚 + 禁止补全已出现过的 3-gram**（`feng_sample_greedy`）。
 
 - 板端实测：`太阳是什么？` 从"太阳系×4 + 行星的行星"缩短到"太阳系×2 + 最亮的太阳"（循环被截断）；
@@ -552,7 +552,7 @@ v3.18 用手写模板答案修，只是把失败换了位置（见下文 v3.18 �
   `tokenizer.bin` + 导出元数据），PC 用户免装 torch 直接跑 `pc_chat`；
 - 预导出包验收（全部有日志）：32 题矩阵 27/27 + 4/4、算术子集 21/21、mem12 12/12、
   `pc_check` argmax MATCH（max|diff|=2.79 为纯 Q4 量化误差）；
-- `.gitignore` 补 `esp32s3-feng-llm/model_export_*/`（导出目录可由脚本复现，不入库）。
+- `.gitignore` 补 `board/model_export_*/`（导出目录可由脚本复现，不入库）。
 
 **同日收尾**：
 
@@ -560,7 +560,7 @@ v3.18 用手写模板答案修，只是把失败换了位置（见下文 v3.18 �
   （旧包的 C 引擎指引是错的），新增 `MANIFEST.sha256`；**权重与数据集未变**——
   `model.safetensors`、`teacher_distill.jsonl` 的 zip 内哈希与本地源逐字节一致。
 - **全量 md 审计**：PC=v3.14 / 板端=v3.16-embed 口径统一（板端记忆 12/12、身份序列 8/8、
-  PC HF 权重导引擎 22/27 的警告）；`esp32s3-feng-llm/README.md` 去掉 v3.6 硬编码导出/烧录路径，
+  PC HF 权重导引擎 22/27 的警告）；`board/README.md` 去掉 v3.6 硬编码导出/烧录路径，
   PIE 路线标注为已实测结案；`tools/check_docs.py` 增加"旧版本口径"回潮护栏
   （README/USAGE/DELIVERY 再出现 `板端用 v3.14-embed`、`--model weights\hf` 等直接判失败）。
 
@@ -575,7 +575,7 @@ v3.16-embed 的残余（p3–p7 五次实验证明是 30M 容量硬边界）都�
 
 ### 做了什么
 
-新增 `main/feng_memory.cpp/.h`（板端/PC/Python 三处同口径）：
+新增 `core/feng_memory.cpp/.h`（板端/PC/Python 三处同口径）：
 
 - **learn**：从用户陈述里抽取事实——`我叫X` / `我的名字是X` / `我是X`（限短名字）、
   `（最喜欢的）颜色是/改成X`、`（最喜欢的）运动是/换成X`、`住在X` / `搬到X`、
@@ -722,7 +722,7 @@ v3.15-embed 修掉了"闲聊几轮后问名字"的漂移，但还剩一类：用
 | PC 多轮回归套件（新增） | 7/10 | **8/10** |
 | PC 12 题连续记忆（新增） | 12/12 | **12/12** |
 
-新增回归工具：`esp32s3-feng-llm/pc/pc_mt_suite.cpp`（多轮套件：固件同款重复惩罚采样 +
+新增回归工具：`pc/pc_mt_suite.cpp`（多轮套件：固件同款重复惩罚采样 +
 10 个定向场景 + 12 题连续记忆），以后改模型先跑它。
 
 **残余**：8 轮序列里「先问'我叫什么名字'→答你叫小明 → 紧接着问'你叫什么名字'」时
@@ -845,7 +845,7 @@ python scripts\v3_15_build_identity_ctx.py --out v3_15\identity_ctx.jsonl
 # 叠加硬锚点（8 项 ×60）；召回 ×8 后
 python scripts\v3_7_kv_qat.py --init v3_14\board6 --data v3_15\identity_ctx4.jsonl `
   --identity-n 80 --out v3_15\board_ctxid4 --epochs 1 --lr 3e-6 --batch 24 --max-len 2048 --wqat
-python esp32s3-feng-llm\tools\export_model.py --model v3_15\board_ctxid4 --out esp32s3-feng-llm\model_export_v3_15ci4
+python board\tools\export_model.py --model v3_15\board_ctxid4 --out board\model_export_v3_15ci4
 python scripts\esp32_multi.py --port COM20 --no-reset --questions "推荐一本好书|你叫什么名字"
 ```
 
@@ -894,7 +894,7 @@ python scripts\esp32_multi.py --port COM20 --no-reset --questions "推荐一本�
 
 ```powershell
 # tool 单测（算式 41 项 + 时间/随机数 53 项；$env:FENG_GXX 指定 g++）
-.\esp32s3-feng-llm\build_pc_chat.ps1
+.\pc\build_pc_chat.ps1
 # 板端专项（自动 NTP 对时；板子没有 RTC/WiFi 协议栈，时间戳由宿主推给固件）
 python scripts\esp32_tool_test.py --port COM20
 ```
@@ -1120,8 +1120,8 @@ python scripts\v3_7_kv_qat.py --init v3_14\board --data v3_14\board_memfix.jsonl
   --identity-n 80 --out v3_14\board6 --epochs 2 --lr 4e-6 --batch 24 --max-len 2048 --wqat
 # 4) PC 运行时（自带 tool；GGUF 已取消）
 gcc -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc_chat_q2b8.exe pc_chat.cpp `
-  ../main/feng_model.cpp ../main/feng_llm.cpp ../main/feng_quant.cpp ../main/feng_smp.cpp `
-  ../main/feng_tokenizer.cpp ../main/feng_calc.cpp ../main/feng_tools.cpp -I../main -lm
+  ../core/feng_model.cpp ../core/feng_llm.cpp ../core/feng_quant.cpp ../core/feng_smp.cpp `
+  ../core/feng_tokenizer.cpp ../core/feng_calc.cpp ../core/feng_tools.cpp -I../core -lm
 python scripts\esp32_multi.py --port COM20 --questions "现在几点？|给我个1到100的随机数|4854+4411"
 ```
 
@@ -1237,7 +1237,7 @@ C 单测 23/23（`pc_calc_test.exe`），Python 同口径（`logs/python_tools_s
 
 ### 做法
 
-1. **固件多轮上下文**（`esp32s3-feng-llm/main/main.cpp`）：
+1. **固件多轮上下文**（`board/main/main.cpp`）：
    - `generate()` 增加 keep 模式：不动 KV，从 `s_kv.len` 位置续写；
    - 每轮结束后把 `<|im_end|>` + 换行补进 KV，下一轮只 prefill 新增的用户片段；
    - 上下文将满时自动开新对话，新增 `\reset` 命令手动清空；
@@ -1435,9 +1435,9 @@ python scripts\v3_7_kv_qat.py --init v3_11\pol4 --data v3_11\repair3.jsonl `
 python scripts\v3_7_kv_qat.py --init v3_11\pol7 --data v3_11\arith_repair.jsonl `
   --identity-n 100 --out v3_11\pol8 --epochs 2 --lr 8e-6 --batch 24 --max-len 1024 --wqat
 # 5) 板端同口径验证（C 引擎 q2 + 算术子集）
-python esp32s3-feng-llm\tools\export_model.py --model v3_11\pol8 --out esp32s3-feng-llm\model_export_v3_11p8
-pc_kv_suite_q2b8.exe ..\esp32s3-feng-llm\model_export_v3_11p8 ..\esp32s3-feng-llm\pc\prompt_long.txt 5200
-$env:FENG_SUITE="arith"; pc_kv_suite_q2b8.exe ..\esp32s3-feng-llm\model_export_v3_11p8 ..\esp32s3-feng-llm\pc\prompt_long.txt 5200
+python board\tools\export_model.py --model v3_11\pol8 --out board\model_export_v3_11p8
+pc_kv_suite_q2b8.exe ..\board\model_export_v3_11p8 ..\pc\prompt_long.txt 5200
+$env:FENG_SUITE="arith"; pc_kv_suite_q2b8.exe ..\board\model_export_v3_11p8 ..\pc\prompt_long.txt 5200
 ```
 
 > 注：`v3_11/` 的数据文件（arith_patch2 / repair / repair3 / arith_repair）与其它训练数据一样
@@ -1527,8 +1527,8 @@ python scripts\soup_models.py --models "v3_10/qat_b,v3_10/qat_c" --weights "0.5,
 python scripts\v3_7_kv_qat.py --init v3_10\qat_soup --data v3_10\chatfix_all.jsonl `
   --identity-n 100 --out v3_10\qat_pol3 --epochs 2 --lr 5e-6 --batch 24 --max-len 1024
 # 4) C 引擎 q2 矩阵 + 板端
-python esp32s3-feng-llm\tools\export_model.py --model v3_10\qat_pol3 --out esp32s3-feng-llm\model_export_v3_10p3
-pc_kv_suite_q2b8.exe ..\esp32s3-feng-llm\model_export_v3_10p3 ..\esp32s3-feng-llm\pc\prompt_long.txt 5200
+python board\tools\export_model.py --model v3_10\qat_pol3 --out board\model_export_v3_10p3
+pc_kv_suite_q2b8.exe ..\board\model_export_v3_10p3 ..\pc\prompt_long.txt 5200
 python scripts\esp32_multi.py --port COM20
 ```
 
@@ -1709,7 +1709,7 @@ python scripts\v3_7_kv_qat.py --init v3_7\soup_a --data v3_7\needle_qat.jsonl `
   --out v3_7\final4 --epochs 8 --lr 2e-5 --max-len 2048 --batch 8
 python scripts\soup_models.py --models "v3_7/final4,v3_7/final5" --weights "0.5,0.5" --out v3_7\soup_d
 # C 引擎 32 题矩阵
-pc_kv_suite_q2b8.exe ..\esp32s3-feng-llm\model_export_v3_7f ..\esp32s3-feng-llm\pc\prompt_long.txt 5200
+pc_kv_suite_q2b8.exe ..\board\model_export_v3_7f ..\pc\prompt_long.txt 5200
 # 固件（q2 2048 ctx）
 idf.py -DFENG_USE_Q2_KV=ON build
 ```
@@ -1779,7 +1779,7 @@ v3.6 的取舍：**用 2~5 题的检索（噪声级）换掉 13 处日常对话�
 
 v3.5 时 Q2 KV 被判"不能用"（对称 2bit、每 16 值一块 scale，长提示直接复读）。这轮把量化方案
 逐一在真模型上试掉（`scripts/kv_quant_experiment.py`、`scripts/kv_quant_suite.py`，GPU 模拟），
-再把胜出方案写进 C 引擎，用 **32 题矩阵**（`esp32s3-feng-llm/pc/pc_kv_suite.cpp`：28 个短任务 +
+再把胜出方案写进 C 引擎，用 **32 题矩阵**（`pc/pc_kv_suite.cpp`：28 个短任务 +
 4 个 1.5k token 长文取件码召回）在同一份 C 代码上按模式编译对比：
 
 | KV 模式 | 短任务 | 长文召回 | KV 内存 @2048 ctx | 备注 |
@@ -2204,15 +2204,15 @@ x-B 在单类别口径与 v3.4 打平（多类别 98 vs 100），说明**多类�
 ## 附：复现命令
 
 > 下面命令里的 `pc_bench_*.exe` 与 `*.gguf` 是作者本机产物，仓库里没有（`*.exe`、`*.gguf` 都被 gitignore）：
-> `.exe` 按 `esp32s3-feng-llm/README.md` 用 gcc 编译，GGUF 用 `scripts/export_student_gguf.py` 导出
+> `.exe` 按 `board/README.md` 用 gcc 编译，GGUF 用 `scripts/export_student_gguf.py` 导出
 > （或直接从 Release 取 v3.6 的 GGUF）。`model_export_*` 目录同理，需先跑 `tools/export_model.py`。
 
 ```powershell
 # PC：同引擎速度（三代 + v3.6，LUT 内核）
-esp32s3-feng-llm\pc\pc_bench_lut.exe ..\model_export_v1             # v1
-esp32s3-feng-llm\pc\pc_bench_lut.exe ..\model_export_planA3b        # v2
-esp32s3-feng-llm\pc\pc_bench_lut.exe ..\model_export_v3             # v3
-esp32s3-feng-llm\pc\pc_bench_lut.exe ..\model_export_v3_6           # v3.6
+pc\pc_bench_lut.exe ..\model_export_v1             # v1
+pc\pc_bench_lut.exe ..\model_export_planA3b        # v2
+pc\pc_bench_lut.exe ..\model_export_v3             # v3
+pc\pc_bench_lut.exe ..\model_export_v3_6           # v3.6
 
 # PC：llama.cpp（Q4_K_M，CPU 8 线程 / GPU 全卸载）
 llama-bench -m student\feng-30m-chat\gguf\feng-30m-Q4_K_M.gguf -p 32 -n 64 -r 3 -t 8 -ngl 0

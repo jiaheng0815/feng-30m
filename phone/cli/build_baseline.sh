@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 用**板端原始引擎**（esp32s3-feng-llm/main/*.c）构建同一份验收套件，作为对照基线。
+# 用**板端原始引擎**（core/*.c）构建同一份验收套件，作为对照基线。
 #
 # 用途：phone/engine 是引擎的派生副本，改了平台层、多线程与 NEON 之后，必须证明
 # 「手机引擎在关闭新特性时，输出与原始引擎逐字节相同」。这个脚本产出对照组，
@@ -10,8 +10,8 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
-BOARD="$ROOT/esp32s3-feng-llm/main"
-PC="$ROOT/esp32s3-feng-llm/pc"
+BOARD="$ROOT/core"
+PC="$ROOT/pc"
 
 # 与 build.sh 同一套编译器探测（-std=c23 需要 gcc 14+ / clang 18+）
 pick_cc() {

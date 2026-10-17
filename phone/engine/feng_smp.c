@@ -1,6 +1,6 @@
 /* 手机端多核 GEMV：把每个 GEMV 的输出行切成若干块，交给常驻 worker 线程池并行算。
  *
- * 派生自 esp32s3-feng-llm/main/feng_smp.c（2026-10-15 拷贝）。板端那份是双核
+ * 派生自 core/feng_smp.c（2026-10-15 拷贝）。板端那份是双核
  * FreeRTOS 版（core0 + core1，信号量握手，最多 2 路）；手机有 4~8 个核，
  * 这里改成基于 feng_phone.c 的通用 pthread 线程池，路数由 FENG_PHONE_THREADS 决定。
  *

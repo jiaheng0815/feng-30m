@@ -155,7 +155,7 @@ A8 带来的数值变化量级：与纯 fp32 路径比 `max|diff| = 1.683`，而
 
 ## 4. 与板端引擎的分叉清单（改引擎前必读）
 
-`phone/engine/` 是 `esp32s3-feng-llm/main/` 的**派生副本**，板端文件一行未改。
+`phone/engine/` 是 `board/main/` 的**派生副本**，板端文件一行未改。
 每个文件头部都标了来源，原版校验值在 `phone/engine/SOURCE.sha256`。
 
 手机端只改了四处，同步板端改动时照这张表处理：
@@ -176,7 +176,7 @@ python phone/tools/check_drift.py        # 哪些文件板端改了、手机端�
 python phone/tools/check_drift.py --write  # 同步完成后重建校验基准
 
 for f in feng_model feng_llm feng_quant feng_tokenizer feng_sample feng_calc feng_tools feng_memory; do
-  diff -u --strip-trailing-cr esp32s3-feng-llm/main/$f.c phone/engine/$f.c | head -40
+  diff -u --strip-trailing-cr board/main/$f.c phone/engine/$f.c | head -40
 done
 ```
 

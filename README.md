@@ -121,7 +121,7 @@ PC 引擎带一个**可选 CUDA 后端**：GEMV（Q4 block64 / fp16）交给 GPU
 其余算子仍在 CPU；板上固件不含此路径。构建需要 VS Build Tools + CUDA Toolkit：
 
 ```powershell
-cd esp32s3-feng-llm
+cd board
 .\build_pc_cuda.ps1                       # MSVC(cl/link) + nvcc，产出 pc\*_cuda.exe
 .\pc\pc_bench_cuda.exe ..\model_export_v3_19b6 "你好" 32
 ```
@@ -130,7 +130,7 @@ cd esp32s3-feng-llm
 prefill 反而变慢（59 → 110 ms / 12 token，每次 GEMV 的 PCIe 往返固定开销），
 适合"长回答生成"为主的场景。32 题矩阵输出与 CPU 版 **逐字一致**，
 `pc_check` argmax MATCH；`FENG_CUDA=0` 可让同一个二进制强制走 CPU 路径做对比
-（`main/feng_cuda.cu`、`build_pc_cuda.ps1`）。
+（`pc/feng_cuda.cu`、`build_pc_cuda.ps1`）。
 
 ### 2) HF 权重 + transformers
 
@@ -153,7 +153,7 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 ### 3) ESP32-S3（WROOM-2-N32R16V）
 
 编译、烧录、串口协议的完整步骤见 [`docs/USAGE.md`](USAGE.md) 与
-[`docs/esp32-firmware.md`](esp32s3-feng-llm/README.md)；免装 IDF 的一包到底固件
+[`docs/esp32-firmware.md`](board/README.md)；免装 IDF 的一包到底固件
 见 Release 的 `feng-30m-v3.19-embed-firmware.zip`。
 
 ## 标准基准（英文，0-shot）
@@ -265,10 +265,10 @@ CI（GitHub Actions，每次 push/PR）在**干净 clone** 上跑完整链路—
 | v3.9 零代价修行为 | 末层微调（最后 2 层 + norm）用 40× 股票拒答数据修范围评测 | ≤1M tokens | `scripts/v3_6_sft_patch.py --train-last 2` |
 | v3.10~v3.11 嵌入式 QAT | q2 KV-QAT → 算术边界补丁 → **Q4 权重/q2 KV 双 QAT** | 约 20M tokens | `scripts/v3_7_kv_qat.py --wqat`、`scripts/v3_11_build_arith_patch.py` |
 | v3.12~v3.13 算术/记忆 | 算术走末层微调；合成 5,600 条记忆对话（PC 末层 / 板端双 QAT） | 约 24M tokens | `scripts/v3_11_build_repair.py --pc-fix`、`scripts/v3_13_build_memory.py` |
-| v3.14 tool 版 | 算术/时间/随机数做成引擎 tool；训练数据过滤纯算式样本；GGUF 发行取消 | 约 14M tokens（无算术混训） | `scripts/v3_14_build_noarith_mix.py`、`esp32s3-feng-llm/main/feng_calc.c` |
+| v3.14 tool 版 | 算术/时间/随机数做成引擎 tool；训练数据过滤纯算式样本；GGUF 发行取消 | 约 14M tokens（无算术混训） | `scripts/v3_14_build_noarith_mix.py`、`core/feng_calc.c` |
 | v3.15~v3.19 打磨 | 身份上下文锚点 → 板端串名修复实验（未采用路线已记录）→ 引擎记忆 tool → 440 条定向数据末 2 层 15ep | 约 12M tokens | `scripts/v3_15_build_identity_ctx.py`、`scripts/v3_19_build_mix.py` |
-| v3.20 引擎 | 序列数数 tool + 统一采样器；全项目迁移 C++23（零堆/无异常/RTTI）并做体积/性能优化 | tool 为 C++ 零堆实现，不占权重 | `esp32s3-feng-llm/main/`、`docs/CHANGELOG.md` v3.20 节 |
-| **v4.0 引擎** | 引擎核心**迁到严格 C23**（板端 + PC 共用，PC 驱动仍 C++23、CUDA 后端独立）；加手机端与编辑器代码提示 | 同上，数值路径逐字节未变 | `esp32s3-feng-llm/main/`、`phone/`、`docs/esp32-firmware.md` |
+| v3.20 引擎 | 序列数数 tool + 统一采样器；全项目迁移 C++23（零堆/无异常/RTTI）并做体积/性能优化 | tool 为 C++ 零堆实现，不占权重 | `board/main/`、`docs/CHANGELOG.md` v3.20 节 |
+| **v4.0 引擎** | 引擎核心**迁到严格 C23**（板端 + PC 共用，PC 驱动仍 C++23、CUDA 后端独立）；加手机端与编辑器代码提示 | 同上，数值路径逐字节未变 | `board/main/`、`phone/`、`docs/esp32-firmware.md` |
 
 完整超参、每阶段 loss/耗时/显存见 [`docs/CHANGELOG.md`](CHANGELOG.md) 与
 [`docs/DELIVERY.md`](DELIVERY.md)。
@@ -281,7 +281,7 @@ AGENTS.md              给 AI 编码代理的工作指南：工作约定、硬�
 docs/                  全部说明文档（索引见 docs/README.md）
 v4/base/               当前权重，也是 4.0 的训练起点（HF 格式，自带 tokenizer）
 scripts/               数据构建 / 训练 / 评测 / 导出脚本（路径解析见 scripts/paths.py）
-esp32s3-feng-llm/      ESP32 固件 + 可移植 C23 推理引擎 + PC 端一致性检查与回归套件
+board/      ESP32 固件 + 可移植 C23 推理引擎 + PC 端一致性检查与回归套件
 phone/                 手机端（Termux CLI + Android APK），复用同一套 C23 引擎
 data/                  提示词池 / 教师蒸馏数据 / 公开语料（不入库）
 eval/                  评测结果 JSON（范围、针检索、记忆、留出、标准基准）
@@ -326,7 +326,7 @@ tools/check_all.py     一键验收：文档 → 构建 → 单测 → 32 题矩
   `docs/CHANGELOG.md` v4.0 板端性能节），再要提升只能换芯片或缩小模型。
 - 量化抗性对权重回插极敏感：掺 20% 旧权重就掉点（CHANGELOG v3.10）；改板端行为要走
   "补数据 + 权重/KV 双 QAT"链路，不要手动 soup。
-- ESP32 固件的模型分区偏移必须与 `esp32s3-feng-llm/partitions.csv` 一致。
+- ESP32 固件的模型分区偏移必须与 `board/partitions.csv` 一致。
 
 ## 致谢
 

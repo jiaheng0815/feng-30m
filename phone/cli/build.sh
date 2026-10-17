@@ -20,7 +20,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 ENG="$HERE/../engine"
-SUITE_DIR="$ROOT/esp32s3-feng-llm/pc"
+SUITE_DIR="$ROOT/pc"
 
 # -std=c23 需要 gcc 14+ / clang 18+。Ubuntu 24.04 的默认 cc 是 gcc-13（只认 -std=c2x），
 # Termux 的 clang 够新。没显式指定 CC 时逐个探测，省得用户踩这个坑。
@@ -78,7 +78,7 @@ echo "   LD phone_chat"
 # 验收套件：直接复用板端 pc/ 那两份套件源码，保证判定口径完全一致（不另写一份题表）。
 # 它们是 C++23 驱动（与板端 PC 侧同一份文件），链上面的 C 目标文件即可。
 if [ -f "$SUITE_DIR/pc_kv_suite.cpp" ] && command -v "$CXX" >/dev/null 2>&1; then
-    echo "   LD pc_kv_suite_phone / pc_mt_suite_phone（复用 esp32s3-feng-llm/pc 的套件源码）"
+    echo "   LD pc_kv_suite_phone / pc_mt_suite_phone（复用 pc 的套件源码）"
     "$CXX" $CXXFLAGS -O2 "$SUITE_DIR/pc_kv_suite.cpp" $OBJS -o "$OUT/pc_kv_suite_phone" -lm
     "$CXX" $CXXFLAGS -O2 "$SUITE_DIR/pc_mt_suite.cpp" $OBJS -o "$OUT/pc_mt_suite_phone" -lm
 else

@@ -90,7 +90,8 @@ def check_structure() -> None:
             cand = cand.rstrip("/")
             if not (s.endswith("/") or FILE_RE.match(cand)):
                 continue
-            probes = [ROOT, ROOT / "esp32s3-feng-llm", ROOT.parent, doc.parent]
+            probes = [ROOT, ROOT / "core", ROOT / "board", ROOT / "pc",
+                      ROOT.parent, doc.parent]
             if "*" in cand or "?" in cand:
                 # 通配写法（如 archive/v3/retr_sft/ctx*/final/）：至少要能匹配到真实路径
                 hit = any(len(list(base.glob(cand))) > 0 for base in probes)

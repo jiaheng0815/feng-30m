@@ -1,11 +1,11 @@
 """一键验收：把 AGENTS.md 第 7 节的检查链跑一遍（文档 → PC 构建 → 单测 → 套件 → 一致性）。
 
 用法：
-    python tools/check_all.py [--model-export esp32s3-feng-llm/model_export_v3_19b6]
+    python tools/check_all.py [--model-export board/model_export_v3_19b6]
 
 检查项：
   1. tools/check_md.py + tools/check_docs.py（文档数字必须对得上产物）
-  2. esp32s3-feng-llm/build_pc_chat.ps1（PC 引擎两趟构建：核心 C23 + 驱动 C++23，四套 tool 单测）
+  2. pc/build_pc_chat.ps1（PC 引擎两趟构建：核心 C23 + 驱动 C++23，四套 tool 单测）
   3. 套件（需要 model_export 目录，缺省自动跳过）：
      pc_mt_suite（报名字→身份/名字、12 题连续记忆）
      pc_kv_suite 32 题矩阵 + FENG_SUITE=arith 算术子集
@@ -21,7 +21,7 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 ROOT = Path(__file__).resolve().parents[1]
-PC = ROOT / "esp32s3-feng-llm" / "pc"
+PC = ROOT / "pc"
 
 
 def run(name, cmd, env=None):
@@ -56,7 +56,7 @@ def run_expect(name, cmd, needles, env=None):
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--model-export",
-        default=str(ROOT / "esp32s3-feng-llm" / "model_export_v3_19b6"))
+        default=str(ROOT / "board" / "model_export_v3_19b6"))
     ap.add_argument("--skip-docs", action="store_true")
     ap.add_argument("--skip-build", action="store_true")
     args = ap.parse_args()
@@ -72,7 +72,7 @@ def main() -> int:
         results.append(("build_pc", run(
             "PC 引擎两趟构建（核心 C23 + 驱动 C++23） + tool 单测",
             [ps, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
-             str(ROOT / "esp32s3-feng-llm" / "build_pc_chat.ps1")])))
+             str(ROOT / "pc" / "build_pc_chat.ps1")])))
 
     exp = Path(args.model_export)
     if not (exp / "model.bin").exists():
@@ -84,7 +84,7 @@ def main() -> int:
                 "多轮回归套件", [str(mt), str(exp)],
                 ["SUMMARY mt-suite", "SUMMARY mem12 12/12"])))
         suite = PC / "pc_kv_suite_q2b8.exe"
-        prompt = ROOT / "esp32s3-feng-llm" / "pc" / "prompt_long.txt"
+        prompt = ROOT / "pc" / "prompt_long.txt"
         if suite.exists() and prompt.exists():
             results.append(("kv_suite32", run_expect(
                 "32 题矩阵（q2 block8）", [str(suite), str(exp), str(prompt), "5200"],

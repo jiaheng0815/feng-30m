@@ -146,13 +146,13 @@ python scripts\v3_7_kv_qat.py --init v4\sft_pc\final --data data\v4_sft.jsonl `
 
 ```powershell
 # 导出板端模型
-python esp32s3-feng-llm\tools\export_model.py --model v4\qat_board --out esp32s3-feng-llm\model_export_v4
+python board\tools\export_model.py --model v4\qat_board --out board\model_export_v4
 ```
 
 ### 关卡 A：PC 一致性（先过这个再上板）
 
 ```powershell
-cd esp32s3-feng-llm
+cd board
 .\pc\pc_kv_suite_q2b8.exe model_export_v4 ..\pc\prompt_long.txt 5200
 ```
 
@@ -188,7 +188,7 @@ python scripts\eval_planA_scope.py    v4\sft_pc\final eval\v4_scope.json
 ### 关卡 C：多轮
 
 ```powershell
-cd esp32s3-feng-llm
+cd board
 .\pc\pc_mt_suite.exe model_export_v4
 ```
 
@@ -199,7 +199,7 @@ cd esp32s3-feng-llm
 ### 关卡 D：板端实机
 
 ```powershell
-python esp32s3-feng-llm\flash.ps1 -Port COM20 -EspIdfPath <esp-idf> -ModelDir esp32s3-feng-llm\model_export_v4
+python board\flash.ps1 -Port COM20 -EspIdfPath <esp-idf> -ModelDir board\model_export_v4
 python scripts\esp32_tool_test.py --port COM20      # 期望 13/13
 python scripts\esp32_memory.py --port COM20 --n 12  # 期望 12/12
 python scripts\esp32_multi.py --port COM20

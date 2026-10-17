@@ -4,7 +4,7 @@
 tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话**。
 
 > **当前固件（2026-10-05）**
-> - 权重：**v3.19-embed**（导出在 `../esp32s3-feng-llm/model_export_v3_19b6/`，Q4 权重 + q2 KV 双 QAT，4 epoch / lr 6e-6）
+> - 权重：**v3.19-embed**（导出在 `../board/model_export_v3_19b6/`，Q4 权重 + q2 KV 双 QAT，4 epoch / lr 6e-6）
 > - 引擎：**v4.0 / 严格 C23**（零堆、零全局构造；PC 侧仍 C++23 + CUDA），app 分区 **257,104 B**
 > - 配置：**q2 block8 KV / 2048 ctx**（`idf.py -DFENG_USE_Q2_KV=ON build`），KV 9.62 MB PSRAM
 > - 实测：矩阵 **27/27 + 4/4**、算术子集 **21/21**、tool **13/13**、记忆 **12/12**、
@@ -49,7 +49,7 @@ VDD_SPI 1.8 V（同系列 N16R8V / N32R8V 已 EOL）。
 
 ### 1.1 四个 tool（模型不再学算术）
 
-实现见 `main/feng_calc.c`、`main/feng_tools.c`、`main/feng_memory.c`；
+实现见 `core/feng_calc.c`、`core/feng_tools.c`、`core/feng_memory.c`；
 三处（固件 / PC 引擎 / Python）同口径，另有 173 条交叉验证进 CI。
 
 - **算式**：`4854+4411`、`5.3+4.1`、`(3+4)*2` → 0.5 s 秒回，SoC 运算器直接算；
@@ -107,7 +107,7 @@ $py = "python"                    # 换成装了 torch + transformers 的解释�
 同一套 C23 核心在 PC 上编译运行（驱动仍是 C++23），与 PyTorch 参考逐值比对：
 
 ```powershell
-cd esp32s3-feng-llm
+cd board
 $src = @('pc_check.cpp','..\main\feng_model.c','..\main\feng_llm.c','..\main\feng_quant.c',
          '..\main\feng_smp.c','..\main\feng_tokenizer.c','-I..\main','-lm')
 & "<MSYS2>\ucrt64\bin\g++.exe" -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 `
@@ -147,7 +147,7 @@ $env:CUDA_VISIBLE_DEVICES=''
 ```powershell
 $env:IDF_TOOLS_PATH = "<IDF 工具链目录>"
 & "<esp-idf 目录>\export.ps1"
-cd <仓库>\esp32s3-feng-llm
+cd <仓库>\board
 idf.py -DFENG_USE_Q2_KV=ON build     # 发布配置：q2 / 2048 ctx；不带 -D 则 int8 / 1024
 ```
 
@@ -208,7 +208,7 @@ python scripts\esp32_enc_test.py COM20                       # 双编码自检
 | 上下文 | **2048 token（发布配置）** | q2 block8 KV = 9.62 MB PSRAM；不带 `-DFENG_USE_Q2_KV=ON` 时是 int8 / 1024 ctx（9.93 MB） |
 | KV 量化 | q2 block8（2 bit + 每块 fp16 scale）或 int8 + 每 (层,位置,头) fp16 scale | 开关在 `main/CMakeLists.txt` |
 | 生成长度 | 96 token | `MAX_NEW` |
-| 采样 | 贪心 + 重复惩罚 1.15 + no-repeat 3-gram | `main/feng_sample.c`，与 PC 引擎/套件同口径 |
+| 采样 | 贪心 + 重复惩罚 1.15 + no-repeat 3-gram | `core/feng_sample.c`，与 PC 引擎/套件同口径 |
 | 量化 | Q4 block-64（4.25 bpw） | `tools/export_model.py`；改 `QK` 需同步改 C++ 侧 `QK` |
 | 内核 | Q4 查表（256 项浮点 LUT）+ 4 累加器 + 双核分半 + IRAM | 见 `feng_quant.c` / `feng_smp.c` |
 | 速度 | **2.33 tok/s** | 真实 decode **507 ms/token**（固件打印的 1070 ms/token 是含 prefill 的总口径）；C23 迁移前后逐毫秒一致 |
@@ -252,7 +252,7 @@ v3.4 10/10、v3 5 轮 5/5、v2 固件 10/10（各日志见 `../logs/`）。
 ## 9. 目录与内核结构
 
 ```
-esp32s3-feng-llm/
+board/
 ├── main/            推理核心（严格 C23）+ ESP-IDF 应用
 │   ├── feng.h            模型容器 / 推理 API / KV 模式开关（C23，带 extern "C" 守卫）
 │   ├── feng_model.c      model.bin 解析、张量定位

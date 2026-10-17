@@ -16,8 +16,8 @@ set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 ENG="$HERE/../engine"
-PC="$ROOT/esp32s3-feng-llm/pc"
-MODEL="${MODEL:-$ROOT/esp32s3-feng-llm/model_export_v3_19b6}"
+PC="$ROOT/pc"
+MODEL="${MODEL:-$ROOT/board/model_export_v3_19b6}"
 LOGDIR="$ROOT/logs"
 FULL=0
 [ "${1:-}" = "--full" ] && FULL=1

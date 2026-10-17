@@ -8,10 +8,21 @@
 #
 # 注意 feng_gemv_bench.c 之前是**无条件编译**的（只有 ESP_PLATFORM 的 include 保护），
 # 所以那 4,994 B 一直在固件里，即使 FENG_BENCH_GEMV 默认关。现在按开关进出 SRCS。
+# v4.0 目录结构：推理核心在仓库根的 `core/`，board / pc / phone **编同一份源码**。
+# IDF 的组件目录必须叫 `main/`，所以板端专有文件留在这里，核心用绝对路径引进来。
+set(FENG_CORE_DIR "${CMAKE_CURRENT_LIST_DIR}/../../core")
+
+set(FENG_CORE_SRCS
+    "${FENG_CORE_DIR}/feng_model.c" "${FENG_CORE_DIR}/feng_llm.c"
+    "${FENG_CORE_DIR}/feng_quant.c" "${FENG_CORE_DIR}/feng_smp.c"
+    "${FENG_CORE_DIR}/feng_tokenizer.c" "${FENG_CORE_DIR}/feng_sample.c"
+    "${FENG_CORE_DIR}/feng_calc.c" "${FENG_CORE_DIR}/feng_tools.c"
+    "${FENG_CORE_DIR}/feng_memory.c"
+)
+
 set(FENG_SRCS
-    "main.c" "feng_model.c" "feng_llm.c" "feng_quant.c" "feng_smp.c"
-    "feng_tokenizer.c" "feng_sample.c"
-    "feng_calc.c" "feng_tools.c" "feng_memory.c"
+    ${FENG_CORE_SRCS}
+    "main.c"
     "gbk.c"            # 退化实现只有几十字节；46 KB 的映射表见 FENG_GBK
     "feng_bonus.c"     # 彩蛋（关掉用 -DFENG_NO_BONUS=ON）
 )
@@ -42,7 +53,7 @@ if(FENG_BENCH_PIE OR FENG_GEMV_PIE)
     list(APPEND FENG_SRCS "feng_pie_bench.S" "feng_pie_gemv.S")
 endif()
 
-idf_component_register(SRCS ${FENG_SRCS} INCLUDE_DIRS ".")
+idf_component_register(SRCS ${FENG_SRCS} INCLUDE_DIRS "." "${FENG_CORE_DIR}")
 
 # 全组件严格 C23（v4.0 起，嵌入式侧从 C++23 迁到 C23）。
 # C_EXTENSIONS OFF = -std=c23 而不是 -std=gnu23，与 PC 侧口径一致。
@@ -57,17 +68,22 @@ target_compile_options(${COMPONENT_LIB} PRIVATE -O2)
 # 非热点模块用 -Os 压体积：它们不在每 token 的内层循环里（tool 秒回、
 # tokenizer 只在加载/解码时用），对推理 tok/s 无可测影响；
 # 推理热点 feng_llm/feng_quant/feng_smp/feng_sample 保持上面的 -O2。
-set(FENG_OS_SOURCES
-    "main.c" "feng_model.c" "feng_tokenizer.c"
-    "feng_tools.c" "feng_memory.c" "gbk.c" "gbk_table.c")
-set_source_files_properties(${FENG_OS_SOURCES} PROPERTIES COMPILE_OPTIONS "-Os")
+# ⚠️ 核心文件必须写**绝对路径**：`set_source_files_properties` 按名字/相对路径匹配，
+# 写成 "feng_model.c" 对 ${FENG_CORE_DIR}/feng_model.c 是不生效的——而且不报错，
+# 只是静默退回 -O2（固件白胖几 KB）。
+set_source_files_properties(
+    "main.c" "gbk.c" "gbk_table.c"
+    "${FENG_CORE_DIR}/feng_model.c" "${FENG_CORE_DIR}/feng_tokenizer.c"
+    "${FENG_CORE_DIR}/feng_tools.c" "${FENG_CORE_DIR}/feng_memory.c"
+    PROPERTIES COMPILE_OPTIONS "-Os")
 # feng_calc 里既有的 snprintf 拼接在 -Os 的值域分析下会报保守的 format-truncation
 # （snprintf 本身有界，行为不变），只关掉这一条 -Werror。
 # 迁到 C23 后 gcc 的值域分析会变，feng_memory / feng_tools / main 里串联的
 # snprintf 也可能触发同类误报，一并抑制（snprintf 都带长度上限，行为不变）。
-set_source_files_properties("feng_calc.c" PROPERTIES
+set_source_files_properties("${FENG_CORE_DIR}/feng_calc.c" PROPERTIES
     COMPILE_OPTIONS "-Os;-Wno-error=format-truncation")
-set_source_files_properties("feng_memory.c" "feng_tools.c" "main.c" PROPERTIES
+set_source_files_properties("${FENG_CORE_DIR}/feng_memory.c"
+    "${FENG_CORE_DIR}/feng_tools.c" "main.c" PROPERTIES
     COMPILE_OPTIONS "-Os;-Wno-error=format-truncation")
 # KV cache mode: default int8 (1024 ctx). -DFENG_USE_Q2_KV=ON switches to the
 # 2-bit block-8 cache (2048 ctx in the same PSRAM budget; quality study in

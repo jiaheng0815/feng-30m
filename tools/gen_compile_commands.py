@@ -3,11 +3,11 @@
 
 为什么要有这个脚本
 ------------------
-C23 核心（`esp32s3-feng-llm/main/*.c`）要看见几十条 ESP-IDF 的 include 路径
+C23 核心（`board/main/*.c`）要看见几十条 ESP-IDF 的 include 路径
 （freertos / driver / esp_system / newlib…）才能正确解析，还要拿到
 `build/config/sdkconfig.h` 和 `-DFENG_KV_Q2` 这类只在构建期存在的宏。
 手写进 `c_cpp_properties.json` 一定会随 IDF 升级而失效；而 ESP-IDF 自己生成的
-`esp32s3-feng-llm/build/compile_commands.json` 里已经有**逐文件精确**的命令。
+`board/build/compile_commands.json` 里已经有**逐文件精确**的命令。
 
 本脚本把它的 `main/` 条目抽出来，补上 PC 驱动 / 手机引擎 / CUDA / Android JNI
 四组手工条目，合并成**一份**放仓库根：clangd 从被打开的文件逐级向上找
@@ -22,7 +22,7 @@ C23 核心（`esp32s3-feng-llm/main/*.c`）要看见几十条 ESP-IDF 的 includ
 
 前提
 ----
-固件侧需要先在 `esp32s3-feng-llm/` 下跑过一次 `idf.py build`；没有那次构建，
+固件侧需要先在 `board/` 下跑过一次 `idf.py build`；没有那次构建，
 固件条目会退化成"只有 -Imain"，其余四组不受影响。
 """
 from __future__ import annotations
@@ -40,11 +40,14 @@ ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 import paths  # noqa: E402  （和全项目一致：路径解析只走 scripts/paths.py）
 
-CORE = ROOT / "esp32s3-feng-llm" / "main"
-PC = ROOT / "esp32s3-feng-llm" / "pc"
+# v4.0 目录结构：core/ 是三家共用的 C23 核心，board/ 才是 ESP32 工程。
+# IDF 的组件目录必须叫 `main/`，所以固件专有文件在 board/main/，核心在 core/。
+CORE = ROOT / "core"
+BOARD = ROOT / "board" / "main"
+PC = ROOT / "pc"
 ENGINE = ROOT / "phone" / "engine"
 JNI = ROOT / "phone" / "android" / "app" / "src" / "main" / "cpp"
-IDF_CC = ROOT / "esp32s3-feng-llm" / "build" / "compile_commands.json"
+IDF_CC = ROOT / "board" / "build" / "compile_commands.json"
 OUT = ROOT / "compile_commands.json"
 
 # 与 build_pc_chat.ps1 / pc_kv_suite 的验收口径一致（发布配置是 q2 / block8）
@@ -115,7 +118,8 @@ def idf_entries() -> tuple[list[dict], int]:
         print(f"  ! 读不了 {IDF_CC}: {exc}")
         return [], 0
 
-    core = CORE.resolve()
+    # v4.0 起固件源码分两处：board/main/（固件专有）+ core/（三家共用）
+    dirs = {BOARD.resolve(), CORE.resolve()}
     out, skipped = [], 0
     for e in data:
         f = Path(e["file"])
@@ -125,8 +129,8 @@ def idf_entries() -> tuple[list[dict], int]:
             f = f.resolve()
         except OSError:
             continue
-        # 只留 main/ 下的——另外 900 多条是 IDF 组件自己的源码，与本仓库无关
-        if f.parent != core:
+        # 只留本仓库的源码——另外 900 多条是 IDF 组件自己的源码，与本仓库无关
+        if f.parent not in dirs:
             continue
         if not f.exists():
             # 构建后删过文件（比如换了 SRCS），跳过而不是留一条指向空路径的坏条目
@@ -190,7 +194,7 @@ def manual_entries() -> list[dict]:
 
     # --- CUDA 后端（nvcc 侧是 C++）-----------------------------------------
     cuda_inc = find_cuda_include()
-    cu = CORE / "feng_cuda.cu"
+    cu = PC / "feng_cuda.cu"        # v4.0 起 GPU 后端跟 PC 驱动一起住在 pc/
     if cu.exists() and cuda_inc:
         add([cu],
             ["clang++", "-x", "cuda", "-std=c++20", "--cuda-path=" + _p(cuda_inc.parent),

@@ -1,4 +1,4 @@
-/* phone/engine 派生副本：自 esp32s3-feng-llm/main/feng_calc.c 拷贝（2026-10-15，v4.0 C23 迁移后）。
+/* phone/engine 派生副本：自 core/feng_calc.c 拷贝（2026-10-15，v4.0 C23 迁移后）。
  * 手机端改动见 phone/README.md；板端原始文件未被修改，两边需手动同步。
  * 原版校验值见 phone/engine/SOURCE.sha256。 */
 /* 计算 tool 实现：纯 C、无动态内存，ESP32-S3 的 FPU 直接算。 */

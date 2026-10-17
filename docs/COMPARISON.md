@@ -80,7 +80,7 @@ i7-12700KF），评测脚本与协议在各代之间保持一致，便于横向�
 - **身份/范围内**：`scripts/eval_planA_scope.py`，18 条题、贪心 + 重复惩罚 1.25。
 - **长文检索**：`scripts/eval_longctx.py`，与 v1 的 `needle_test` 同 filler/同"保险柜密码"
   格式，4k/8k/16k/32k 各 3 题，答出 5 位数字算命中。
-- **速度**：`esp32s3-feng-llm/pc/pc_bench.exe`（同 C 引擎单线程）与
+- **速度**：`pc/pc_bench.exe`（同 C 引擎单线程）与
   `llama-bench`（Q4_K_M，CPU 8 线程 / CUDA 全卸载）。
 
 ## 4. v3 结果

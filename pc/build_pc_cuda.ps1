@@ -49,7 +49,7 @@ foreach ($tool in @("cl", "link")) {
 
 Push-Location $PSScriptRoot
 try {
-    $objRoot = Join-Path $PSScriptRoot "pc\cuda_obj"
+    $objRoot = Join-Path $PSScriptRoot "cuda_obj"
     $objQ2 = Join-Path $objRoot "q2"
     $objFp32 = Join-Path $objRoot "fp32"
     New-Item -ItemType Directory -Force -Path $objQ2, $objFp32 | Out-Null
@@ -58,21 +58,21 @@ try {
     # error D8016），所以核心与驱动分开编译；nvcc 没有 C 模式，feng_cuda.cu 永久留 C++。
     $cFlags = @(
         "/nologo", "/c", "/O2", "/std:clatest", "/TC", "/utf-8", "/wd4996",
-        "/DFENG_USE_CUDA=1", "/Imain"
+        "/DFENG_USE_CUDA=1", "/I..\core"
     )
     $cxxFlags = @(
         "/nologo", "/c", "/O2", "/std:c++latest", "/TP", "/utf-8",
         "/EHs-c-", "/GR-", "/D_HAS_EXCEPTIONS=0", "/wd4996",
-        "/DFENG_USE_CUDA=1", "/Imain"
+        "/DFENG_USE_CUDA=1", "/I..\core"
     )
     $kvQ2 = @("/DFENG_KV_Q2=1", "/DFENG_KV_Q2_BLOCK=8")
     $core = @(
-        "main\feng_model.c", "main\feng_llm.c", "main\feng_quant.c",
-        "main\feng_smp.c", "main\feng_tokenizer.c", "main\feng_sample.c",
-        "main\feng_calc.c", "main\feng_tools.c", "main\feng_memory.c"
+        "..\core\feng_model.c", "..\core\feng_llm.c", "..\core\feng_quant.c",
+        "..\core\feng_smp.c", "..\core\feng_tokenizer.c", "..\core\feng_sample.c",
+        "..\core\feng_calc.c", "..\core\feng_tools.c", "..\core\feng_memory.c"
     )
     $driversQ2 = @(
-        "pc\pc_chat.cpp", "pc\pc_bench.cpp", "pc\pc_kv_suite.cpp", "pc\pc_mt_suite.cpp"
+        "pc_chat.cpp", "pc_bench.cpp", "pc_kv_suite.cpp", "pc_mt_suite.cpp"
     )
     $continue = $ErrorActionPreference
     $ErrorActionPreference = "Continue"     # 原生命令的 stderr 不能中断脚本
@@ -86,15 +86,15 @@ try {
     Write-Host "[2/4] cl 编译驱动（C++23）..." -ForegroundColor Cyan
     & cl @cxxFlags @kvQ2 @driversQ2 "/Fo$objQ2\"
     if ($LASTEXITCODE -ne 0) { throw "cl 编译失败（驱动 q2）" }
-    & cl @cxxFlags "pc\pc_check.cpp" "/Fo$objFp32\"
+    & cl @cxxFlags "pc_check.cpp" "/Fo$objFp32\"
     if ($LASTEXITCODE -ne 0) { throw "cl 编译失败（pc_check）" }
 
     Write-Host "[3/4] nvcc 编译 feng_cuda.cu（-fmad=false 保证与 CPU 同序）..." -ForegroundColor Cyan
     $cudaObj = Join-Path $objRoot "feng_cuda.obj"
     & $nvcc "-arch=$Arch" -O3 -std=c++20 -fmad=false `
         -Xcompiler "/utf-8 /O2 /EHs-c-" -DFENG_USE_CUDA=1 `
-        -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -Imain `
-        -c main\feng_cuda.cu -o $cudaObj
+        -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -I..\core `
+        -c feng_cuda.cu -o $cudaObj
     if ($LASTEXITCODE -ne 0) { throw "nvcc 编译失败" }
 
     Write-Host "[4/4] 链接 CUDA 版运行时 ..." -ForegroundColor Cyan
@@ -108,13 +108,13 @@ try {
     }
     foreach ($d in $driversQ2) {
         $name = [IO.Path]::GetFileNameWithoutExtension($d)
-        $out = Join-Path $PSScriptRoot ("pc\{0}_cuda.exe" -f $name)
+        $out = Join-Path $PSScriptRoot ("{0}_cuda.exe" -f $name)
         & link @linkCommon ("/OUT:" + $out) (Join-Path $objQ2 ("{0}.obj" -f $name)) `
             @(Get-Objs $objQ2 $core) $cudaObj
         if ($LASTEXITCODE -ne 0) { throw "链接失败：$name" }
         Write-Host ("  已生成 " + (Split-Path $out -Leaf)) -ForegroundColor Green
     }
-    $out = Join-Path $PSScriptRoot "pc\pc_check_cuda.exe"
+    $out = Join-Path $PSScriptRoot "pc_check_cuda.exe"
     & link @linkCommon ("/OUT:" + $out) (Join-Path $objFp32 "pc_check.obj") `
         @(Get-Objs $objFp32 $core) $cudaObj
     if ($LASTEXITCODE -ne 0) { throw "链接失败：pc_check" }

@@ -26,17 +26,17 @@ Push-Location $PSScriptRoot
 try {
     # 共用推理核心（C23）
     $core = @(
-        "main\feng_model.c", "main\feng_llm.c", "main\feng_quant.c",
-        "main\feng_smp.c", "main\feng_tokenizer.c", "main\feng_sample.c",
-        "main\feng_calc.c", "main\feng_tools.c", "main\feng_memory.c"
+        "..\core\feng_model.c", "..\core\feng_llm.c", "..\core\feng_quant.c",
+        "..\core\feng_smp.c", "..\core\feng_tokenizer.c", "..\core\feng_sample.c",
+        "..\core\feng_calc.c", "..\core\feng_tools.c", "..\core\feng_memory.c"
     )
     # PC 侧驱动（C++23）
     $q2Drivers = @(
-        "pc\pc_chat.cpp", "pc\pc_kv_suite.cpp", "pc\pc_mt_suite.cpp",
-        "pc\pc_bench.cpp",
-        "pc\pc_calc_test.cpp", "pc\pc_tools_test.cpp", "pc\pc_mem_test.cpp",
-        "pc\pc_sample_test.cpp", "pc\pc_calc_ask.cpp", "pc\pc_mem_ask.cpp",
-        "pc\pc_rand_ask.cpp", "pc\pc_time_ask.cpp"
+        "pc_chat.cpp", "pc_kv_suite.cpp", "pc_mt_suite.cpp",
+        "pc_bench.cpp",
+        "pc_calc_test.cpp", "pc_tools_test.cpp", "pc_mem_test.cpp",
+        "pc_sample_test.cpp", "pc_calc_ask.cpp", "pc_mem_ask.cpp",
+        "pc_rand_ask.cpp", "pc_time_ask.cpp"
     )
 
     function Invoke-Native([string]$exe, [string[]]$argv) {
@@ -65,18 +65,18 @@ try {
             }
             Write-Host "MSVC 环境：$vsPath" -ForegroundColor DarkGray
         }
-        $objRoot = Join-Path $PSScriptRoot "pc\msvc_obj"
+        $objRoot = Join-Path $PSScriptRoot "msvc_obj"
         $objQ2 = Join-Path $objRoot "q2"
         $objFp32 = Join-Path $objRoot "fp32"
         $objI8 = Join-Path $objRoot "i8"
         New-Item -ItemType Directory -Force -Path $objQ2, $objFp32, $objI8 | Out-Null
 
         # 核心走 C23：/TC 强制按 C 编译，/std:clatest 打开 C23（[[nodiscard]] 等要它）
-        $cFlags = @("/nologo", "/c", "/O2", "/std:clatest", "/TC", "/utf-8", "/wd4996", "/Imain")
+        $cFlags = @("/nologo", "/c", "/O2", "/std:clatest", "/TC", "/utf-8", "/wd4996", "/I..\core")
         # 驱动走 C++23：/TP 强制按 C++ 编译；异常/RTTI 对纯 C 核心无意义，
         # 但 PC 驱动自己也遵守"零异常"约定，所以保留关闭开关
         $cxxFlags = @("/nologo", "/c", "/O2", "/std:c++latest", "/TP", "/utf-8",
-                      "/EHs-c-", "/GR-", "/D_HAS_EXCEPTIONS=0", "/wd4996", "/Imain",
+                      "/EHs-c-", "/GR-", "/D_HAS_EXCEPTIONS=0", "/wd4996", "/I..\core",
                       "/DFENG_USE_OMP=1", "/openmp")
         $kvQ2 = @("/DFENG_KV_Q2=1", "/DFENG_KV_Q2_BLOCK=8")
 
@@ -95,10 +95,10 @@ try {
             throw "cl 编译失败（驱动 q2）"
         }
         Write-Host "[3/5] 编译 pc_check / pc_kv_suite_i8 驱动 ..." -ForegroundColor Cyan
-        if ((Invoke-Native "cl" ($cxxFlags + @("pc\pc_check.cpp") + "/Fo$objFp32\")) -ne 0) {
+        if ((Invoke-Native "cl" ($cxxFlags + @("pc_check.cpp") + "/Fo$objFp32\")) -ne 0) {
             throw "cl 编译失败（pc_check）"
         }
-        if ((Invoke-Native "cl" ($cxxFlags + @("/DFENG_KV_INT8=1") + @("pc\pc_kv_suite.cpp") +
+        if ((Invoke-Native "cl" ($cxxFlags + @("/DFENG_KV_INT8=1") + @("pc_kv_suite.cpp") +
                 "/Fo$objI8\")) -ne 0) {
             throw "cl 编译失败（pc_kv_suite i8）"
         }
@@ -111,10 +111,10 @@ try {
         foreach ($d in $q2Drivers) {
             $name = [IO.Path]::GetFileNameWithoutExtension($d)
             $out = switch ($name) {
-                "pc_chat"    { "pc\pc_chat_q2b8.exe" }
-                "pc_kv_suite" { "pc\pc_kv_suite_q2b8.exe" }
-                "pc_mt_suite" { "pc\pc_mt_suite.exe" }
-                default      { "pc\$name.exe" }
+                "pc_chat"    { "pc_chat_q2b8.exe" }
+                "pc_kv_suite" { "pc_kv_suite_q2b8.exe" }
+                "pc_mt_suite" { "pc_mt_suite.exe" }
+                default      { "$name.exe" }
             }
             if ((Invoke-Native "link" (@("/nologo", ("/OUT:" + (Join-Path $PSScriptRoot $out)),
                     (Join-Path $objQ2 ("{0}.obj" -f $name)) ) + $q2Core)) -ne 0) {
@@ -122,12 +122,12 @@ try {
             }
         }
         if ((Invoke-Native "link" (@("/nologo",
-                ("/OUT:" + (Join-Path $PSScriptRoot "pc\pc_check.exe")),
+                ("/OUT:" + (Join-Path $PSScriptRoot "pc_check.exe")),
                 (Join-Path $objFp32 "pc_check.obj")) + (Get-Objs $objFp32 $core))) -ne 0) {
             throw "链接失败：pc_check"
         }
         if ((Invoke-Native "link" (@("/nologo",
-                ("/OUT:" + (Join-Path $PSScriptRoot "pc\pc_kv_suite_i8.exe")),
+                ("/OUT:" + (Join-Path $PSScriptRoot "pc_kv_suite_i8.exe")),
                 (Join-Path $objI8 "pc_kv_suite.obj")) + (Get-Objs $objI8 $core))) -ne 0) {
             throw "链接失败：pc_kv_suite_i8"
         }
@@ -136,10 +136,10 @@ try {
         # ---------------- MinGW：gcc -std=c23 核心 + g++ -std=c++23 驱动 ----------------
         $gcc = $env:FENG_GCC; if (-not $gcc) { $gcc = "gcc" }
         $gxx = $env:FENG_GXX; if (-not $gxx) { $gxx = "g++" }
-        $cFlags = @("-std=c23", "-O2", "-Imain")
+        $cFlags = @("-std=c23", "-O2", "-I..\core")
         $cxxFlags = @("-std=c++23", "-fno-exceptions", "-fno-rtti", "-fno-threadsafe-statics",
-                      "-O2", "-DFENG_USE_OMP=1", "-fopenmp", "-Imain")
-        $objRoot = Join-Path $PSScriptRoot "pc\mingw_obj"
+                      "-O2", "-DFENG_USE_OMP=1", "-fopenmp", "-I..\core")
+        $objRoot = Join-Path $PSScriptRoot "mingw_obj"
         $objQ2 = Join-Path $objRoot "q2"
         $objFp32 = Join-Path $objRoot "fp32"
         $objI8 = Join-Path $objRoot "i8"
@@ -167,21 +167,21 @@ try {
         foreach ($d in $q2Drivers) {
             $name = [IO.Path]::GetFileNameWithoutExtension($d)
             $out = switch ($name) {
-                "pc_chat"    { "pc\pc_chat_q2b8.exe" }
-                "pc_kv_suite" { "pc\pc_kv_suite_q2b8.exe" }
-                "pc_mt_suite" { "pc\pc_mt_suite.exe" }
-                default      { "pc\$name.exe" }
+                "pc_chat"    { "pc_chat_q2b8.exe" }
+                "pc_kv_suite" { "pc_kv_suite_q2b8.exe" }
+                "pc_mt_suite" { "pc_mt_suite.exe" }
+                default      { "$name.exe" }
             }
             if ((Invoke-Native $gxx ($cxxFlags + @("-DFENG_KV_Q2=1", "-DFENG_KV_Q2_BLOCK=8") +
                     @($d, "-o", $out) + $q2Core + @("-lm"))) -ne 0) {
                 throw "g++ 链接失败：$name"
             }
         }
-        if ((Invoke-Native $gxx ($cxxFlags + @("pc\pc_kv_suite.cpp", "-DFENG_KV_INT8=1",
-                "-o", "pc\pc_kv_suite_i8.exe") + $i8Core + @("-lm"))) -ne 0) {
+        if ((Invoke-Native $gxx ($cxxFlags + @("pc_kv_suite.cpp", "-DFENG_KV_INT8=1",
+                "-o", "pc_kv_suite_i8.exe") + $i8Core + @("-lm"))) -ne 0) {
             throw "g++ 链接失败：pc_kv_suite_i8"
         }
-        if ((Invoke-Native $gxx ($cxxFlags + @("pc\pc_check.cpp", "-o", "pc\pc_check.exe") +
+        if ((Invoke-Native $gxx ($cxxFlags + @("pc_check.cpp", "-o", "pc_check.exe") +
                 $fp32Core + @("-lm"))) -ne 0) {
             throw "g++ 链接失败：pc_check"
         }
