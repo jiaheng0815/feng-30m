@@ -56,7 +56,9 @@ def run_expect(name, cmd, needles, env=None):
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--model-export",
-        default=str(ROOT / "board" / "model_export_v3_19b6"))
+        default=str(next((d for d in [ROOT / "board" / "model_export_v4",
+                                        ROOT / "board" / "model_export_v3_19b6"] if d.exists()),
+                          ROOT / "board" / "model_export_v3_19b6")))
     ap.add_argument("--skip-docs", action="store_true")
     ap.add_argument("--skip-build", action="store_true")
     args = ap.parse_args()
