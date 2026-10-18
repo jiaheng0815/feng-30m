@@ -1,0 +1,11 @@
+{
+ "model": "v4/qat_20261018E",
+ "data": "E:\\feng-30m\\data\\v4_val.jsonl",
+ "samples": 689,
+ "assistant_tokens": 62366,
+ "all_tokens": 86101,
+ "nll_assistant": 312511.94096168876,
+ "nll_all": 449684.6893463135,
+ "ppl_assistant": 150.04488744341353,
+ "ppl_all": 185.44494255975846
+}

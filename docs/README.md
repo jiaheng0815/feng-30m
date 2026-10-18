@@ -29,6 +29,7 @@
 | [`COMPARISON.md`](COMPARISON.md) | v1 / v2 / v3 / v4 四代的架构、语料、评测横向对比 |
 | [`DELIVERY.md`](DELIVERY.md) | 交付清单、验收口径、硬件约束与踩过的坑 |
 | [`esp32-firmware.md`](esp32-firmware.md) | 固件工程：硬件要求、引擎结构、编译烧录、串口协议、实测结果 |
+| [`board-qat.md`](board-qat.md) | **实验分支 `board-qat`**：同尺寸把板端权重从 v3.19 升到 4.0B 的 QAT 配方（候选，未发布） |
 
 根目录另外两个：
 - [`../README.md`](../README.md) —— 仓库首页（GitHub 会渲染它，所以留在根）

@@ -67,6 +67,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=str(V3 / "data"))
     ap.add_argument("--seed", type=int, default=20261003)
+    ap.add_argument("--specs", default="4096:800,8192:400,16384:200,32768:80",
+                    help="长度:样本数，逗号分隔；板端 2048 可用 --specs 2048:800")
+    ap.add_argument("--depth", type=float, default=0.0,
+                    help="事实固定埋藏深度（0=随机 10%~90%%；0.25=固定 25%%）")
     # 「文中没有该信息」的负样本比例。**绝不能是 0**：2026-10-17 实测，纯正样本训完
     # 之后模型变成"永远硬抽"，留出题里"文中没有"的拒答从 v3.19 的 61/64 塌到 0/64。
     # 越长越容易编，所以按长度递增（v3.1 的 `--negative-fracs` 也是这个思路）。
@@ -81,8 +85,9 @@ def main():
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     neg_fracs = [float(x) for x in args.negative_fracs.split(",") if x.strip()]
+    specs = [tuple(int(x) for x in item.split(":")) for item in args.specs.split(",") if item.strip()]
     meta = []
-    for li, (L, n) in enumerate(SPECS):
+    for li, (L, n) in enumerate(specs):
         neg_frac = neg_fracs[li] if li < len(neg_fracs) else args.negative_frac
         rng = random.Random(args.seed + L)
         ids = np.zeros((n, L), dtype=np.uint16)
@@ -120,7 +125,8 @@ def main():
                 p = rng.randrange(len(body))
                 body[p:p] = d
             if not is_neg:                       # 目标事实埋在 10%~90% 深度
-                pos = rng.randrange(int(0.1 * len(body)), int(0.9 * len(body)))
+                frac = args.depth if args.depth > 0 else rng.uniform(0.1, 0.9)
+                pos = int(frac * len(body))
                 body[pos:pos] = fact
             row = body + q + a
             row = row[:L]

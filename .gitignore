@@ -101,6 +101,10 @@ v4/4.0-20261018A/
 v4/4.0-20261018B/
 v4/4.0-20261018C/
 v4/4.0-20261018D/
+# 三值实验（ternary 分支）的本机产物
+v4/ternary_*/
+# 板端 hybrid 候选（B + v3.19 embedding）
+v4/hybrid_*/
 # 已删除的 moe 实验分支留下的本机产物
 v4/moe_*/
 phone/android/app/build/

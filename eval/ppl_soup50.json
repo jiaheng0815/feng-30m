@@ -1,0 +1,11 @@
+{
+ "model": "v4/soup_B319_a50",
+ "data": "E:\\feng-30m\\data\\v4_val.jsonl",
+ "samples": 689,
+ "assistant_tokens": 62366,
+ "all_tokens": 86101,
+ "nll_assistant": 305130.6685091257,
+ "nll_all": 434742.6486129761,
+ "ppl_assistant": 133.29708893498184,
+ "ppl_all": 155.9003751322579
+}
