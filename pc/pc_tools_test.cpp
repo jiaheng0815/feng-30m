@@ -102,6 +102,13 @@ int main(void)
     check_true("昨天是几号", feng_time_answer("昨天是几号", buf, sizeof(buf)) == 1 &&
                strcmp(buf, "1 天前是 2026年10月03日（周六）。") == 0, buf);
     check_true("非时间问句不拦", feng_time_answer("讲个笑话", buf, sizeof(buf)) == 0, "");
+    /* tool 误触发回归：普通句子/个人事实不能被时间 tool 截走 */
+    check_true("明天会下雨不拦", feng_time_answer("明天会下雨吗", buf, sizeof(buf)) == 0, "");
+    check_true("生日不误答", feng_time_answer("我的生日是几号", buf, sizeof(buf)) == 0, "");
+    check_true("去年今天不硬答", feng_time_answer("去年今天是星期几", buf, sizeof(buf)) == 0, "");
+    check_true("超大小时不挂",
+               feng_time_answer("现在7点，再过2000000000小时是几点", buf, sizeof(buf)) == 1 &&
+               strstr(buf, "点") != NULL, buf);
 
     /* --- 随机数：确定性 + 范围 + 第 2 个抽取 --- */
     {
@@ -159,6 +166,10 @@ int main(void)
              1 + (long long)(ref_second(3850ULL) % 100ULL));
     check_str("随机数@2.5s(seed 变)", buf, want);
     check_true("非随机问句不拦", feng_random_answer("讲个笑话", buf, sizeof(buf)) == 0, "");
+    check_true("硬币材质不误触发", feng_random_answer("硬币是什么材质", buf, sizeof(buf)) == 0, "");
+    check_true("超大范围不溢出",
+               feng_random_answer("随机数 1 到 999999999999999999999", buf, sizeof(buf)) == 1 &&
+               strstr(buf, "随机数") != NULL, buf);
 
     printf("\n%s（%d 个失败）\n", fails ? "有失败" : "全部通过", fails);
     return fails ? 1 : 0;

@@ -1,6 +1,3 @@
-/* phone/engine 派生副本：自 core/feng_sample.c 拷贝（2026-10-15，v4.0 C23 迁移后）。
- * 手机端改动见 phone/README.md；板端原始文件未被修改，两边需手动同步。
- * 原版校验值见 phone/engine/SOURCE.sha256。 */
 /* 共享贪心采样器：重复惩罚 + no-repeat n-gram。
  * 板端固件与 PC 引擎（pc_chat/pc_kv_suite/pc_mt_suite）统一走这里，
  * 避免"PC 端纯 argmax、板端有惩罚"的口径不一致，并用 n-gram 约束压住复读循环。
@@ -9,14 +6,17 @@
  * 纯栈上计算、零分配。 */
 #include "feng.h"
 
+#include <math.h>
 #include <string.h>
 
 [[nodiscard]] int feng_sample_greedy(float *logits, int n_logits,
                                      const int *hist, int n_hist,
                                      float penalty, int no_repeat_n)
 {
+    if (logits == NULL || n_logits <= 0) return -1;
     const int vocab = n_logits;
-    const int nhist = n_hist;
+    const int nhist = (hist == NULL || n_hist < 0) ? 0 : n_hist;
+    if (!isfinite(penalty) || penalty <= 0.0f) penalty = 1.0f;
     if (penalty > 0.0f && penalty != 1.0f) {
         for (int i = 0; i < nhist; i++) {
             const int t = hist[i];

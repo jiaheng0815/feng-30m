@@ -56,6 +56,7 @@ static void smp_worker(void *arg)
 void feng_smp_init(void)
 {
     if (s_smp_ok) return;
+    feng_quant_init();          /* LUT 必须在 worker 启动前建好，避免并发首次初始化 */
     for (int i = 0; i < SMP_NPARTS; i++) {
         s_parts[i].start = xSemaphoreCreateBinaryStatic(&s_start_buf[i]);
         s_parts[i].done = xSemaphoreCreateBinaryStatic(&s_done_buf[i]);
@@ -131,6 +132,7 @@ void feng_gemv_par(const void *tensor, uint32_t dtype, const float *x, float *y,
 
 void feng_smp_init(void)
 {
+    feng_quant_init();
 }
 
 void feng_gemv_par(const void *tensor, uint32_t dtype, const float *x, float *y,

@@ -1,6 +1,3 @@
-/* phone/engine 派生副本：自 core/feng_tokenizer.c 拷贝（2026-10-15，v4.0 C23 迁移后）。
- * 手机端改动见 phone/README.md；板端原始文件未被修改，两边需手动同步。
- * 原版校验值见 phone/engine/SOURCE.sha256。 */
 /* Byte-level BPE tokenizer for feng-30m (binary-search merge table, rank-ordered).
  *
  * tokenizer.bin layout:
@@ -49,18 +46,23 @@ static inline int imin(int a, int b) { return a < b ? a : b; }
 
 /* ---------------- GPT-2 byte <-> unicode ---------------- */
 
-static int utf8_decode(const char *s, uint32_t *cp)
+static int utf8_decode(const char *s, size_t rem, uint32_t *cp)
 {
     const unsigned char *p = (const unsigned char *)s;
+    if (rem == 0) { *cp = 0xFFFD; return 1; }
     if (p[0] < 0x80) { *cp = p[0]; return 1; }
-    if ((p[0] & 0xE0) == 0xC0) { *cp = ((p[0] & 0x1Fu) << 6) | (p[1] & 0x3Fu); return 2; }
-    if ((p[0] & 0xF0) == 0xE0) {
-        *cp = ((p[0] & 0x0Fu) << 12) | ((p[1] & 0x3Fu) << 6) | (p[2] & 0x3Fu);
+    if ((p[0] & 0xE0) == 0xC0 && rem >= 2) {
+        *cp = ((uint32_t)(p[0] & 0x1Fu) << 6) | (uint32_t)(p[1] & 0x3Fu);
+        return 2;
+    }
+    if ((p[0] & 0xF0) == 0xE0 && rem >= 3) {
+        *cp = ((uint32_t)(p[0] & 0x0Fu) << 12) | ((uint32_t)(p[1] & 0x3Fu) << 6) |
+              (uint32_t)(p[2] & 0x3Fu);
         return 3;
     }
-    if ((p[0] & 0xF8) == 0xF0) {
-        *cp = ((p[0] & 0x07u) << 18) | ((p[1] & 0x3Fu) << 12) | ((p[2] & 0x3Fu) << 6) |
-              (p[3] & 0x3Fu);
+    if ((p[0] & 0xF8) == 0xF0 && rem >= 4) {
+        *cp = ((uint32_t)(p[0] & 0x07u) << 18) | ((uint32_t)(p[1] & 0x3Fu) << 12) |
+              ((uint32_t)(p[2] & 0x3Fu) << 6) | (uint32_t)(p[3] & 0x3Fu);
         return 4;
     }
     *cp = 0xFFFD;
@@ -264,6 +266,10 @@ int feng_tok_load(feng_tok_t *t, const void *data, size_t size)
     if (size < 8) return -1;
     memcpy(&vocab, p, 4);
     memcpy(&n_merges, p + 4, 4);
+    /* 上限校验：vocab 要放进 int16 的 byte_to_token；n_merges 决定分配大小。
+     * 旧实现对任意 u32 直接 calloc，32 位平台上乘 sizeof 还会回绕。 */
+    if (vocab < 256u || vocab > 65535u) return -1;
+    if (n_merges == 0u || n_merges > 4000000u) return -1;
     p += 8; off = 8;
     t->vocab_size = (int)vocab;
     t->tokens = (char **)tok_calloc((size_t)vocab * sizeof(char *));
@@ -311,21 +317,21 @@ int feng_tok_load(feng_tok_t *t, const void *data, size_t size)
     uint32_t n_ok = 0;
     for (uint32_t m = 0; m < n_merges; m++) {
         uint16_t la, lb;
-        if (off + 4 > size) break;
+        if (off + 4 > size) return -3;           /* 截断的 merge 表：拒绝，而不是静默少一半 */
         memcpy(&la, p, 2); memcpy(&lb, p + 2, 2);
         p += 4; off += 4;
-        if (off + la + lb > size) break;
+        if (off + la + lb > size) return -3;
         const char *ls = (const char *)p; p += la;
         const char *rs = (const char *)p; p += lb; off += la + lb;
         const int li = find_token(t, ls, la);
         const int ri = find_token(t, rs, lb);
-        if (li < 0 || ri < 0) continue;
+        if (li < 0 || ri < 0) return -5;          /* merge 引用了词表里不存在的 token */
         char cat[640];
-        if ((size_t)(la + lb) >= sizeof(cat)) continue;
+        if ((size_t)(la + lb) >= sizeof(cat)) return -5;
         memcpy(cat, ls, la);
         memcpy(cat + la, rs, lb);
         const int mi = find_token(t, cat, (size_t)(la + lb));
-        if (mi < 0) continue;
+        if (mi < 0) return -5;
         t->pair_key[n_ok] = ((uint32_t)li << 16) | (uint32_t)ri;
         t->pair_result[n_ok] = (uint16_t)mi;
         n_ok++;
@@ -353,10 +359,12 @@ int feng_tok_load(feng_tok_t *t, const void *data, size_t size)
         char tmp[8];
         const int n = utf8_encode((uint32_t)bytes_to_uni(b), tmp);
         t->byte_to_token[b] = (int16_t)find_token(t, tmp, (size_t)n);
+        if (t->byte_to_token[b] < 0) return -6;      /* 词表必须覆盖全部 256 个字节 */
     }
     t->id_im_start = find_token(t, "<|im_start|>", 12);
     t->id_im_end = find_token(t, "<|im_end|>", 10);
     t->id_eot = find_token(t, "<|endoftext|>", 13);
+    if (t->id_im_start < 0 || t->id_im_end < 0 || t->id_eot < 0) return -7;
     return 0;
 }
 
@@ -389,18 +397,28 @@ static int encode_segment(const feng_tok_t *t, const unsigned char *bytes, int n
         if (sym[i] < 0) sym[i] = 0;
     }
     for (;;) {
-        int best_rank = -1, best_pos = -1;
+        int best_rank = -1;
         for (int i = 0; i + 1 < nb; i++) {
             const int r = pair_rank(t, sym[i], sym[i + 1]);
             if (r >= 0 && (best_rank < 0 || r < best_rank)) {
                 best_rank = r;
-                best_pos = i;
             }
         }
         if (best_rank < 0) break;
-        sym[best_pos] = t->pair_result[best_rank];
-        for (int i = best_pos + 1; i + 1 < nb; i++) sym[i] = sym[i + 1];
-        nb--;
+        /* GPT-2/HF 的 BPE 是“一次把当前序列里所有同名最佳 pair 合并掉”，
+         * 不是只合并最左边那一个。单次合并版在长重复文本上会与 HF 分叉
+         * （实测 100 遍“这是一段很长的中文文本”：HF 600、旧实现 602）。 */
+        const int merged = t->pair_result[best_rank];
+        int out_i = 0;
+        for (int i = 0; i < nb; i++) {
+            if (i + 1 < nb && pair_rank(t, sym[i], sym[i + 1]) == best_rank) {
+                sym[out_i++] = merged;
+                i++;
+            } else {
+                sym[out_i++] = sym[i];
+            }
+        }
+        nb = out_i;
     }
     int n = 0;
     for (int i = 0; i < nb && n < out_cap; i++) out[n++] = sym[i];
@@ -424,7 +442,9 @@ int feng_tok_encode(const feng_tok_t *t, const char *text, int *out, int max_out
     const int N = (int)strlen(text);
     int n = 0;
     int i = 0;
-    static unsigned char buf[2048];   /* 单线程固定工作区 */
+    static unsigned char buf[4096];   /* 单线程固定工作区；与板端输入上限 4095 字节对齐，
+                                       * 避免长 CJK run 在 2048 字节处被硬切（会把一个
+                                       * UTF-8 字符劈开，且与 HF 分词不一致）。 */
     const int bufcap = (int)sizeof(buf);
     while (i < N && n < max_out) {
         /* special tokens are matched literally first */
@@ -452,23 +472,42 @@ int feng_tok_encode(const feng_tok_t *t, const char *text, int *out, int max_out
         if (cat_of(s[i]) == 3) {
             int k = 0;
             while (i + k < N && cat_of(s[i + k]) == 3) k++;
+            /* 空白后面紧跟特殊 token 时，空白必须单独成段：
+             * 旧实现会把 "\n<|im_start|>" 当成一个普通 run，导致第二个
+             * <|im_start|> 不再被识别为特殊 token，模型会继续输出 "assistant"。
+             * 实测完整模板从 HF 的 11 个 token 变成 C 的 15 个，32 题矩阵掉到 18/27。 */
+            {
+                const char *after = text + i + k;
+                const size_t arem = (size_t)(N - (i + k));
+                if (arem > 0 &&
+                    (sv_starts_with(after, arem, "<|im_start|>") ||
+                     sv_starts_with(after, arem, "<|im_end|>") ||
+                     sv_starts_with(after, arem, "<|endoftext|>"))) {
+                    k = imin(k, bufcap);
+                    memcpy(buf, s + i, (size_t)k);
+                    n += encode_segment(t, buf, k, out + n, max_out - n);
+                    i += k;
+                    continue;
+                }
+            }
             if (i + k >= N) {                       /* trailing whitespace: whole run */
                 k = imin(k, bufcap);
                 memcpy(buf, s + i, (size_t)k);
                 n += encode_segment(t, buf, k, out + n, max_out - n);
                 break;
             }
-            if (k == 1) {                           /* single whitespace char is its own pre-token */
-                buf[0] = s[i];
-                n += encode_segment(t, buf, 1, out + n, max_out - n);
-                i += 1;
-                continue;
+            if (k == 1) {
+                /* GPT-2 的预分词会把单个空格附着到后面的 word/number/punct run
+                 * （"world" 在 HF 里是 "Ġworld" 一个 token）。这里不能单独编码空格，
+                 * 否则 "Hello world" 会从 2 个 token 变成 4 个。
+                 * 直接落下去走下面的 run 分支；k==1 时 emit=0，i 不前进。 */
+            } else {
+                int emit = k - 1;                   /* all but the last; last attaches to next group */
+                emit = imin(emit, bufcap);
+                memcpy(buf, s + i, (size_t)emit);
+                n += encode_segment(t, buf, emit, out + n, max_out - n);
+                i += emit;
             }
-            int emit = k - 1;                       /* all but the last; last attaches to next group */
-            emit = imin(emit, bufcap);
-            memcpy(buf, s + i, (size_t)emit);
-            n += encode_segment(t, buf, emit, out + n, max_out - n);
-            i += emit;
         }
         /* letter / number / other run, with one optional leading whitespace char */
         {
@@ -493,6 +532,14 @@ int feng_tok_encode(const feng_tok_t *t, const char *text, int *out, int max_out
     return n;
 }
 
+int feng_tok_has_special(const char *text)
+{
+    if (text == NULL) return 0;
+    return strstr(text, "<|im_start|>") != NULL ||
+           strstr(text, "<|im_end|>") != NULL ||
+           strstr(text, "<|endoftext|>") != NULL;
+}
+
 int feng_tok_decode_token(const feng_tok_t *t, int id, char *out, int max_out)
 {
     if (out == NULL || max_out <= 0) return 0;
@@ -504,7 +551,7 @@ int feng_tok_decode_token(const feng_tok_t *t, int id, char *out, int max_out)
     size_t i = 0;
     while (i < toklen && n < max_out) {
         uint32_t cp = 0;
-        const int adv = utf8_decode(tok + i, &cp);
+        const int adv = utf8_decode(tok + i, toklen - i, &cp);
         const int b = uni_to_byte(cp);
         if (b >= 0) out[n++] = (char)b;
         i += (size_t)adv;

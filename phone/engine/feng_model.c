@@ -1,6 +1,3 @@
-/* phone/engine 派生副本：自 core/feng_model.c 拷贝（2026-10-15，v4.0 C23 迁移后）。
- * 手机端改动见 phone/README.md；板端原始文件未被修改，两边需手动同步。
- * 原版校验值见 phone/engine/SOURCE.sha256。 */
 /* Parse the model.bin image and resolve tensor pointers.
  *
  * 解析保持逐字段 memcpy（对齐安全，与导出端字节精确一致）。
@@ -59,11 +56,18 @@ static const char *const kLayerTensorNames[11] = {
     m->hdr.rms_eps = fv[0];
     m->hdr.rope_theta = fv[1];
     if (m->hdr.magic != (uint32_t)FENG_MAGIC) return -2;
-#if FENG_FP16_WEIGHTS
+    /* v4.0 的文件格式只有 version 1；板端旧代码把这行放在 FENG_FP16_WEIGHTS 里，
+     * 导致 FP16_WEIGHTS=0 时任意版本都放行。 */
     if (m->hdr.version != 1u) return -11;
-#endif
-    if (m->hdr.n_layers > FENG_MAX_LAYERS) return -3;
+    if (m->hdr.n_layers == 0 || m->hdr.n_layers > FENG_MAX_LAYERS) return -3;
     if (m->hdr.n_tensors > FENG_MAX_TENSORS) return -8;
+    /* 结构上限：这些数字不是“随便写死”的，它们对应 feng_llm.c 的固定工作区。
+     * 旧实现只在 FENG_FP16_WEIGHTS=1 时校验 dtype/shape，板端等于没有校验。 */
+    if (m->hdr.hidden == 0 || m->hdr.hidden > FENG_MAX_HIDDEN) return -14;
+    if (m->hdr.n_heads == 0 || m->hdr.head_dim == 0 ||
+        m->hdr.head_dim > FENG_MAX_HEAD_DIM) return -14;
+    if ((uint64_t)m->hdr.n_heads * (uint64_t)m->hdr.head_dim != m->hdr.hidden) return -14;
+    if (m->hdr.ffn == 0 || m->hdr.vocab == 0 || m->hdr.vocab > 65535u) return -14;
     if (size < K_HEADER_BYTES + (size_t)m->hdr.n_tensors * K_DIRENT_BYTES) return -4;
     /* directory entries are packed at 68 bytes each: name[32], dtype, shape[4], offset, nbytes */
     for (uint32_t i = 0; i < m->hdr.n_tensors; i++) {
@@ -75,27 +79,46 @@ static const char *const kLayerTensorNames[11] = {
         memcpy(d->shape, e + 36, 16);
         memcpy(&d->offset, e + 52, 8);
         memcpy(&d->nbytes, e + 60, 8);
-#if FENG_FP16_WEIGHTS
-        if (d->dtype != FENG_DT_FP16 && d->dtype != FENG_DT_Q4) return -9;
-        if (d->dtype == FENG_DT_Q4 && d->shape[1] != 0u && (d->shape[1] % 64u) != 0u) return -10;
-#endif
+        /* 每个 tensor 必须完全落在文件镜像内；否则 ptr_of() 会指向 mmap
+         * 窗口外，板端表现为 MMU fault，PC 端表现为越界读。 */
+        if (d->offset > (uint64_t)size || d->nbytes > (uint64_t)size - d->offset) return -15;
+        /* 已知 dtype 的 nbytes 与 shape 必须自洽。 */
+        uint64_t elems = 0;
+        if (d->shape[0] && d->shape[1]) {
+            elems = (uint64_t)d->shape[0] * (uint64_t)d->shape[1];
+            if (d->dtype == FENG_DT_FP16) {
+                if (elems > UINT64_MAX / 2u || d->nbytes != elems * 2u) return -15;
+            } else if (d->dtype == FENG_DT_Q4) {
+                if ((d->shape[1] % 64u) != 0u) return -10;
+                const uint64_t row = (uint64_t)(d->shape[1] / 64u) * 34u;
+                if ((uint64_t)d->shape[0] > UINT64_MAX / row ||
+                    d->nbytes != (uint64_t)d->shape[0] * row) return -15;
+            } else {
+                return -9;
+            }
+        } else if (d->shape[0] && d->dtype == FENG_DT_FP16) {
+            if ((uint64_t)d->shape[0] > UINT64_MAX / 2u ||
+                d->nbytes != (uint64_t)d->shape[0] * 2u) return -15;
+        } else if (d->dtype != FENG_DT_FP16 && d->dtype != FENG_DT_Q4) {
+            return -9;
+        }
     }
     m->dir = m->dir_storage;
     m->blob = p;
 
     const feng_tensor_t *t = find_tensor(m, "tok_embd.weight");
     if (t == NULL) return -5;
+    if (t->shape[0] != m->hdr.vocab || t->shape[1] != m->hdr.hidden) return -16;
     m->tok_embd = ptr_of(m, t);
     m->tok_embd_dtype = t->dtype;
     t = find_tensor(m, "output_norm.weight");
     if (t == NULL) return -6;
+    if (t->shape[0] != m->hdr.hidden || t->dtype != FENG_DT_FP16) return -16;
     m->out_norm = ptr_of(m, t);
 
     for (uint32_t l = 0; l < m->hdr.n_layers; l++) {
         const void *slots[11] = {0};
-#if FENG_FP16_WEIGHTS
         uint32_t dts[11] = {0};
-#endif
         for (int k = 0; k < 11; k++) {
             char buf[64];
             /* 名字已 NUL 结尾，不需要原来的 %.*s + string_view.size() */
@@ -106,9 +129,7 @@ static const char *const kLayerTensorNames[11] = {
                 return -7;
             }
             slots[k] = ptr_of(m, tt);
-#if FENG_FP16_WEIGHTS
             dts[k] = tt->dtype;
-#endif
         }
         m->layers[l].attn_norm = slots[0];
         m->layers[l].ffn_norm = slots[1];
@@ -121,12 +142,22 @@ static const char *const kLayerTensorNames[11] = {
         m->layers[l].gate = slots[8];
         m->layers[l].up = slots[9];
         m->layers[l].down = slots[10];
-#if FENG_FP16_WEIGHTS
+        /* norm 必须 fp16（rmsnorm 按 uint16_t* 读）。 */
         if (dts[0] != FENG_DT_FP16 || dts[1] != FENG_DT_FP16 ||
             dts[6] != FENG_DT_FP16 || dts[7] != FENG_DT_FP16) return -12;
+#if FENG_FP16_WEIGHTS
+        /* 同层 7 个矩阵必须同格式：wq/wk/wv 与 gate/up 各共用一次合并 GEMV，
+         * 那个 API 只有一个 dtype 参数。 */
         if (dts[3] != dts[2] || dts[4] != dts[2] || dts[5] != dts[2] ||
             dts[8] != dts[2] || dts[9] != dts[2] || dts[10] != dts[2]) return -13;
         m->layers[l].mat_dtype = dts[2];
+#else
+        /* 板端 FENG_FP16_WEIGHTS=0：FENG_LAYER_DTYPE 固定按 Q4 解包，
+         * 所以 7 个矩阵必须真的是 Q4。以前这里不检查，fp16 导出的模型
+         * 会被静默按 Q4 读，logits 全错。 */
+        static const int mats[7] = {2, 3, 4, 5, 8, 9, 10};
+        for (int k = 0; k < 7; k++)
+            if (dts[mats[k]] != FENG_DT_Q4) return -13;
 #endif
     }
     return 0;

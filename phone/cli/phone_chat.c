@@ -138,12 +138,12 @@ static int session_generate(session_t *s, const char *user, int max_new,
     int *ids = (int *)xmalloc(sizeof(int) * (size_t)cap);
     const int n = feng_tok_encode(&s->tok, prompt, ids, cap);
     if (olen) *olen = 0;
-    if (n <= 0 || n >= ctx - max_new) {
+    if (n <= 0 || n + max_new + 2 > ctx) {
         fprintf(stderr, "[输入太长或编码为空：%d tokens / ctx %d]\n", n, ctx);
         free(ids);
         return 0;
     }
-    if (s->kv.len > 0 && s->kv.len + n + max_new + 4 > ctx) {
+    if (s->kv.len > 0 && s->kv.len + n + max_new + 2 > ctx) {
         printf("[上下文已满 %d/%d，自动开始新对话]\n", s->kv.len, ctx);
         s->kv.len = 0;
         feng_mem_clear();
@@ -154,16 +154,19 @@ static int session_generate(session_t *s, const char *user, int max_new,
     const double p0 = now_ms();
     for (int i = 0; i < n; i++) {          /* prefill：中间 token 跳过 lm head */
         logits = feng_forward_ex(&s->m, &s->kv, &s->ws, ids[i], pos++, i + 1 == n);
+        if (!logits) break;
     }
     const double p1 = now_ms();
     free(ids);
 
     int hist[64];
     int nhist = 0, gen = 0;
-    for (int step = 0; step < max_new; step++) {
+    int gen_cap = max_new;
+    if (gen_cap > ctx - pos - 2) gen_cap = ctx - pos - 2;
+    for (int step = 0; step < gen_cap && logits; step++) {
         const int tk = feng_sample_greedy(logits, v, hist, nhist, 1.15f, 3);
-        if (tk == s->tok.id_im_end || tk == s->tok.id_eot) break;
-        char b[16];
+        if (tk < 0 || tk == s->tok.id_im_end || tk == s->tok.id_eot) break;
+        char b[128];
         const int nb = feng_tok_decode_token(&s->tok, tk, b, sizeof(b));
         if (out && olen && *olen + nb < out_sz - 1) {
             memcpy(out + *olen, b, (size_t)nb);
@@ -175,10 +178,9 @@ static int session_generate(session_t *s, const char *user, int max_new,
         gen++;
     }
     const double p2 = now_ms();
-    /* 补进 KV 的 im_end / 换行不需要 logits，跳过 lm head */
-    logits = feng_forward_ex(&s->m, &s->kv, &s->ws, s->tok.id_im_end, pos++, 0);
-    if (s->nl_id > 0) logits = feng_forward_ex(&s->m, &s->kv, &s->ws, s->nl_id, pos++, 0);
-    (void)logits;
+    /* 补进 KV 的 im_end / 换行不需要 logits，跳过 lm head；只有还有空间才写。 */
+    if (pos < ctx) (void)feng_forward_ex(&s->m, &s->kv, &s->ws, s->tok.id_im_end, pos++, 0);
+    if (s->nl_id > 0 && pos < ctx) (void)feng_forward_ex(&s->m, &s->kv, &s->ws, s->nl_id, pos++, 0);
     s->kv.len = pos;
 
     if (t_pre_ms) *t_pre_ms = p1 - p0;
@@ -337,6 +339,22 @@ int main(int argc, char **argv)
     if (bench >= 0) { print_banner(&s, feng_phone_threads()); return run_bench(&s, bench); }
 
     if (one_shot) {
+        if (feng_tok_has_special(one_shot)) {
+            fprintf(stderr, "[输入包含保留的对话模板标记，已拒绝]\n");
+            return 2;
+        }
+        /* 与 REPL / APK 同一条 tool 链：--prompt 是脚本化入口，不能绕过
+         * 算式/记忆/时间/随机数，否则测出来的行为与产品路径不一致。 */
+        char tool_reply[256];
+        (void)feng_mem_learn(one_shot);
+        if (feng_calc_answer(one_shot, tool_reply, sizeof(tool_reply)) ||
+            feng_mem_answer(one_shot, tool_reply, sizeof(tool_reply)) ||
+            feng_time_answer(one_shot, tool_reply, sizeof(tool_reply)) ||
+            feng_random_answer(one_shot, tool_reply, sizeof(tool_reply))) {
+            printf("[tool] %s\n", tool_reply);
+            return 0;
+        }
+
         char out[4096];
         int olen = 0;
         double t_pre = 0, t_dec = 0;
@@ -358,6 +376,10 @@ int main(int argc, char **argv)
         int n = (int)strlen(line);
         while (n > 0 && (line[n - 1] == '\n' || line[n - 1] == '\r')) line[--n] = 0;
         if (n == 0) continue;
+        if (feng_tok_has_special(line)) {
+            printf("[输入包含保留的对话模板标记，已拒绝]\n");
+            continue;
+        }
         if (strcmp(line, "\\exit") == 0 || strcmp(line, "\\quit") == 0) break;
         if (strcmp(line, "\\reset") == 0) {
             s.kv.len = 0;

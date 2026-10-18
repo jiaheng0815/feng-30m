@@ -24,6 +24,20 @@ static void *xmalloc(size_t n)
     return p;
 }
 
+/* 把字节位置向下取到 UTF-8 字符起始处：长文 filler/needle 插入点不能劈开汉字。 */
+static int utf8_floor(const unsigned char *s, int n)
+{
+    while (n > 0 && (s[n - 1] & 0xC0) == 0x80) n--;
+    return n;
+}
+
+/* 把任意字节位置取到它所在 UTF-8 字符的起始处（用于 needle 插入点）。 */
+static int utf8_start(const unsigned char *s, int at)
+{
+    while (at > 0 && (s[at] & 0xC0) == 0x80) at--;
+    return at;
+}
+
 static unsigned char *read_file(const char *path, size_t *len)
 {
     FILE *f = fopen(path, "rb");
@@ -158,6 +172,10 @@ int main(int argc, char **argv)
     const char *dir = argc > 1 ? argv[1] : ".";
     const char *filler_file = argc > 2 ? argv[2] : "pc/prompt_long.txt";
     const int needle_chars = argc > 3 ? atoi(argv[3]) : 5200;
+    if (needle_chars < 100) {
+        fprintf(stderr, "needle_chars 必须 >= 100（当前 %d）\n", needle_chars);
+        return 2;
+    }
     const char *suite = getenv("FENG_SUITE");
     const int use_arith = suite && strcmp(suite, "arith") == 0;
     const task_t *tasks = use_arith ? ARITH_TASKS : TASKS;
@@ -173,7 +191,9 @@ int main(int argc, char **argv)
     snprintf(path, sizeof(path), "%s/tokenizer.bin", dir);
     unsigned char *tblob = read_file(path, &tlen);
     unsigned char *filler = read_file(filler_file, &flen);
-    while (flen > 0 && (filler[flen] & 0xC0) == 0x80) flen--;   /* 循环周期落在字符边界上 */
+    if (flen == 0) { fprintf(stderr, "filler 文件为空：%s\n", filler_file); return 2; }
+    while (flen > 0 && (filler[flen - 1] & 0xC0) == 0x80) flen--;   /* 循环周期落在字符边界上 */
+    if (flen == 0) { fprintf(stderr, "filler 文件没有完整 UTF-8 字符\n"); return 2; }
 
     feng_model_t m;
     if (feng_model_init(&m, mblob, mlen) != 0) {
@@ -228,10 +248,12 @@ int main(int argc, char **argv)
             static char names[N_NEEDLE][16];
             snprintf(names[k], sizeof(names[k]), "召回%d%%", pos_permille / 10);
             name = names[k];
-            const int body_n = needle_chars - 60;
+            int body_n = needle_chars - 60;
             user = (char *)xmalloc((size_t)body_n + 256);
-            const int at = body_n * pos_permille / 1000;
             for (int i = 0; i < body_n; i++) user[i] = (char)filler[i % (int)flen];
+            body_n = utf8_floor((const unsigned char *)user, body_n);
+            user[body_n] = 0;
+            int at = utf8_start((const unsigned char *)user, body_n * pos_permille / 1000);
             char fact[80];
             const int fl = snprintf(fact, sizeof(fact), "（重要信息：快递柜取件码是 %s。）", expect);
             memmove(user + at + fl, user + at, (size_t)(body_n - at));
@@ -253,7 +275,7 @@ int main(int argc, char **argv)
                  "<|im_start|>user\n%s<|im_end|>\n<|im_start|>assistant\n", user);
         int *ids = (int *)xmalloc(sizeof(int) * (strlen(user) + 64));
         const int n = feng_tok_encode(&tok, text, ids, (int)(strlen(user) + 64));
-        if (n >= ctx - max_new) {
+        if (n + max_new > ctx) {
             printf("%-10s SKIP (prompt %d tokens)\n", name, n);
             free(ids); free(text); free(user); continue;
         }
@@ -264,11 +286,14 @@ int main(int argc, char **argv)
             float *logits = NULL;
             for (int i = 0; i < n; i++) {      /* prefill：中间 token 跳过 lm head */
                 logits = feng_forward_ex(&m, &kv, &ws, ids[i], i, i + 1 == n);
+                if (!logits) break;
             }
-            for (int step = 0; step < max_new; step++) {
+            int gen_cap = max_new;
+            if (gen_cap > ctx - n) gen_cap = ctx - n;
+            for (int step = 0; step < gen_cap && logits; step++) {
                 const int tk = feng_sample_greedy(logits, v, hist, nhist, 1.15f, 3);
-                if (tk == tok.id_im_end || tk == tok.id_eot) break;
-                char b[16];
+                if (tk < 0 || tk == tok.id_im_end || tk == tok.id_eot) break;
+                char b[128];
                 const int nb = feng_tok_decode_token(&tok, tk, b, sizeof(b));
                 if (olen + nb < (int)sizeof(out) - 1) { memcpy(out + olen, b, (size_t)nb); olen += nb; }
                 if (nhist < 64) hist[nhist++] = tk;

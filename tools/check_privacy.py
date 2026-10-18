@@ -60,6 +60,13 @@ NOT_NAME = {
     "上下文里", "上下文", "里不得出", "中的人",
 }
 
+# 常见令牌形态；只报告“像令牌”的命中，不打印具体值。
+SECRET_RE = re.compile(
+    r"(?:hf_[A-Za-z0-9]{20,}|ms-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|"
+    r"AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,})")
+# 本机盘符/用户名；历史 logs/ 是原始构建记录，允许保留（只告警不失败）。
+LOCALPATH_RE = re.compile(r"[A-Za-z]:[\\/](?:Users[\\/][^\\/\s]+|wt[\\/]|esp[\\/])")
+
 
 def tracked_files() -> list[Path]:
     try:
@@ -108,7 +115,7 @@ def main() -> int:
         return 0
 
     files = tracked_files()
-    hard_hits, soft_hits = [], []
+    hard_hits, soft_hits, path_hits, secret_hits = [], [], [], []
 
     for p in files:
         try:
@@ -119,11 +126,15 @@ def main() -> int:
             for nm in names:                      # 第 1 层：硬失败
                 if nm and nm in line:
                     hard_hits.append((p.relative_to(ROOT), i, nm))
+            for m in SECRET_RE.finditer(line):    # 令牌形态：硬失败
+                secret_hits.append((p.relative_to(ROOT), i, m.group(0)[:6] + "…"))
             for m in ATTR.finditer(line):         # 第 2 层：告警
                 cand = m.group(1)
                 if cand in NOT_NAME or cand in names:
                     continue
                 soft_hits.append((p.relative_to(ROOT), i, cand, line.strip()[:80]))
+            if LOCALPATH_RE.search(line):
+                path_hits.append((p.relative_to(ROOT), i, line.strip()[:80]))
 
     print(f"隐私自检：扫描 {len(files)} 个跟踪文件")
     if names:
@@ -140,6 +151,22 @@ def main() -> int:
     else:
         print("  ✓ 黑名单：无命中")
 
+    if secret_hits:
+        print(f"\n✗ 疑似令牌 {len(secret_hits)} 处（不打印值）：")
+        for p, i, hint in secret_hits[:10]:
+            print(f"    {p}:{i}  {hint}")
+    else:
+        print("  ✓ 令牌形态：无命中")
+
+    if path_hits:
+        print(f"\n? 本机路径 {len(path_hits)} 处（日志里的历史记录允许保留，eval/board 里请清理）：")
+        for p, i, ctx in path_hits[:8]:
+            print(f"    {p}:{i}  {ctx}")
+        if len(path_hits) > 8:
+            print(f"    …还有 {len(path_hits) - 8} 处")
+    else:
+        print("  ✓ 本机路径：无命中")
+
     if soft_hits:
         print(f"\n? 疑似人名的署名上下文 {len(soft_hits)} 处（人工确认，不阻塞）：")
         for p, i, cand, ctx in (soft_hits if args.verbose else soft_hits[:8]):
@@ -149,7 +176,7 @@ def main() -> int:
     else:
         print("  ✓ 署名上下文：未发现疑似中文人名")
 
-    return 1 if hard_hits else 0
+    return 1 if (hard_hits or secret_hits) else 0
 
 
 if __name__ == "__main__":

@@ -30,6 +30,9 @@ QUESTION = ("<|im_start|>user\n上文的保险柜密码是什么？请只回答�
             "<|im_start|>assistant\n")
 PAD_ID = 3
 EOS_ID = 0
+# 给生成留位置：输入塞满 ctx 后，generate 的第一个新 token 就落在模型最大位置
+# 之外（RoPE 越界），结果不可比。标称 32k 的测试应是"输入 + 生成 ≤ 32768"。
+GEN_RESERVE = 32
 
 # 三个要对比的模型（与文档里的口径一致）
 MODELS = {
@@ -43,19 +46,27 @@ def log(msg: str) -> None:
     print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
 
 
+def _body_text(tok, target_tokens: int) -> str:
+    """按 **token** 目标造 filler 正文（旧实现把 ctx 当字符数，4k 实际只有约 3k token）。
+
+    多留 256 token 余量，调用方最后 `[-ctx:]` 才能真的落到 ctx。
+    """
+    unit = FILLER * 3
+    ut = max(1, len(tok(unit, add_special_tokens=False)["input_ids"]))
+    reps = max(1, (max(0, target_tokens) + 256 + ut - 1) // ut)
+    return unit * reps
+
+
 def build_sample(tok, ctx: int, seed: int) -> dict:
-    """按旧协议造一题：随机密码 + 随机位置的埋点 + 截断到 ctx。"""
+    """按旧协议造一题：随机密码 + 随机位置的埋点 + 截断到 ctx **tokens**。"""
     rng = random.Random(seed)
     code = f"{rng.randint(10000, 99999)}"
     fact = f"（重要信息：保险柜密码是 {code}。）"
-    body, cur, need = [], 0, max(0, ctx - 400)
-    while cur < need:
-        body.append(FILLER * 3)
-        cur += len(FILLER) * 3
-    text = "".join(body)
-    pos = rng.randrange(int(0.05 * len(text)), int(0.9 * len(text)))
+    keep = max(1, ctx - GEN_RESERVE)
+    text = _body_text(tok, keep)
+    pos = rng.randrange(int(0.1 * len(text)), int(0.9 * len(text)))
     text = text[:pos] + fact + text[pos:]
-    ids = tok(text + QUESTION, add_special_tokens=False)["input_ids"][-ctx:]
+    ids = tok(text + QUESTION, add_special_tokens=False)["input_ids"][-keep:]
     return {"code": code, "ids": ids, "needle_frac": round(pos / len(text), 3)}
 
 
@@ -102,15 +113,12 @@ def build_multi(tok, ctx: int, seed: int, negative: bool) -> dict:
     """多类别版：随机选一类事实（问法也随之变化）；negative=True 时该类事实不存在。"""
     rng = random.Random(seed)
     name, tpl, q_txt, gen = KINDS[rng.randrange(len(KINDS))]
-    body, cur, need = [], 0, max(0, ctx - 400)
-    while cur < need:
-        body.append(FILLER * 3)
-        cur += len(FILLER) * 3
-    text = "".join(body)
+    keep = max(1, ctx - GEN_RESERVE)
+    text = _body_text(tok, keep + 256)
     code = None if negative else _make_value(rng, gen)
     if not negative:                     # 正样本：埋目标事实
         fact = tpl.format(c=code)
-        p = rng.randrange(int(0.05 * len(text)), int(0.9 * len(text)))
+        p = rng.randrange(int(0.1 * len(text)), int(0.9 * len(text)))
         text = text[:p] + fact + text[p:]
     for k in KINDS:                      # 正负样本都撒别的类别的事实当诱饵
         if k[0] == name:
@@ -119,7 +127,7 @@ def build_multi(tok, ctx: int, seed: int, negative: bool) -> dict:
         p = rng.randrange(0, max(1, len(text)))
         text = text[:p] + fact + text[p:]
     q = f"<|im_start|>user\n{q_txt}<|im_end|>\n<|im_start|>assistant\n"
-    ids = tok(text + q, add_special_tokens=False)["input_ids"][-ctx:]
+    ids = tok(text + q, add_special_tokens=False)["input_ids"][-keep:]
     return {"code": code, "ids": ids, "needle_frac": -1.0 if negative else 0.5,
             "kind": name}
 
@@ -127,16 +135,13 @@ def build_multi(tok, ctx: int, seed: int, negative: bool) -> dict:
 def build_negative(tok, ctx: int, seed: int) -> dict:
     """负样本：正文里**没有**保险柜密码，正确行为是说明"没有提到"，而不是编一个数字。"""
     rng = random.Random(seed)
-    body, cur, need = [], 0, max(0, ctx - 400)
-    while cur < need:
-        body.append(FILLER * 3)
-        cur += len(FILLER) * 3
-    text = "".join(body)
+    keep = max(1, ctx - GEN_RESERVE)
+    text = _body_text(tok, keep + 256)
     for _ in range(rng.randint(1, 3)):            # 埋一些**别的**信息当诱饵
         fact = rng.choice(OTHER_FACTS).format(c=f"{rng.randint(10000, 99999)}")
         p = rng.randrange(0, max(1, len(text)))
         text = text[:p] + fact + text[p:]
-    ids = tok(text + QUESTION, add_special_tokens=False)["input_ids"][-ctx:]
+    ids = tok(text + QUESTION, add_special_tokens=False)["input_ids"][-keep:]
     return {"code": None, "ids": ids, "needle_frac": -1.0}
 
 

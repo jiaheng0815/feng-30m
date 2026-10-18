@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "esp_chip_info.h"
+#include "esp_cpu.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_partition.h"
@@ -313,6 +314,10 @@ static void setup_model(void)
         ESP_LOGE(TAG, "tokenizer load failed");
         abort();
     }
+    /* feng_tok_load 会把 token 字符串复制到自己的 PSRAM blob；这块 512 KB
+     * 的原始分区缓冲之后不再需要。旧实现一直没释放，等于永久吃掉 0.5 MB PSRAM。 */
+    free(tokbuf);
+    tokbuf = NULL;
     ESP_LOGI(TAG, "tokenizer: vocab %d, merges %d", s_tok.vocab_size, s_tok.n_merges);
     log_mem("tokenizer");
     /* boot self-test: tokenize a short string so tokenizer problems show up immediately */
@@ -411,14 +416,16 @@ static void bench_gemv(void)
     }
     int64_t dt1 = esp_timer_get_time() - t0;
 #if FENG_GEMV_A8 || FENG_GEMV_PIE
-    /* 准备激活 -> 启用 A8/PIE 内核（自检一次：整数点积必须一致） */
+    /* 准备激活 -> 启用 A8/PIE 内核 */
     feng_gemv_a8_prepare(s_ws.xn, h);
+#if FENG_GEMV_PIE
     {
         extern int feng_gemv_pie_selfcheck(const void *tensor, int n_in);
         const int chk = feng_gemv_pie_selfcheck(L->gate, h);
         ESP_LOGI(TAG, "PIE dot self-check: %s",
                  chk == 0 ? "MATCH" : (chk == 1 ? "MISMATCH" : "SKIP(no prepare)"));
     }
+#endif
     t0 = esp_timer_get_time();
     for (long i = 0; i < iters; i++) {
         feng_gemv_range(L->gate, FENG_DT_Q4, s_ws.xn, s_ws.gate, 0, f, h);
@@ -515,18 +522,22 @@ static int generate(const int *prompt, int np, char *out, int out_max, int keep)
     ESP_LOGI(TAG, "prefill %d tokens ...", np);
     for (int i = 0; i < np; i++) {                      /* prefill（中间 token 不算 lm head） */
         logits = feng_forward_ex(&s_model, &s_kv, &s_ws, prompt[i], pos++, i + 1 == np);
+        if (logits == NULL) { out_printf("[上下文或模型状态异常，本轮中止]\n"); return 0; }
     }
     ESP_LOGI(TAG, "prefill done");
     const int64_t t_prefill = esp_timer_get_time();
     int n_gen = 0;
-    static char pend[512];
+    static char pend[1100];     /* 与 reply[1024] 对齐：\stream 0 时整段回复不能丢 */
     int pn = 0;
     out_printf("<< ");
     fflush(stdout);
-    for (int n = 0; n < MAX_NEW && written < out_max - 8; n++) {
+    /* 预留 im_end + 换行两个位置；生成循环本身也不允许写到 ctx 之外。 */
+    const int pos_limit = (MAX_CTX > 2) ? MAX_CTX - 2 : 0;
+    for (int n = 0; n < MAX_NEW && written < out_max - 8 && pos < pos_limit; n++) {
         const int tok = sample_next(logits, vocab);
+        if (tok < 0) break;
         if (tok == s_tok.id_im_end || tok == s_tok.id_eot) break;
-        char tmp[32];
+        char tmp[128];
         const int nb = feng_tok_decode_token(&s_tok, tok, tmp, sizeof(tmp));
         if (nb > 0 && written + nb < out_max) {
             memcpy(out + written, tmp, nb);
@@ -545,17 +556,24 @@ static int generate(const int *prompt, int np, char *out, int out_max, int keep)
         n_gen++;
         logits = feng_forward(&s_model, &s_kv, &s_ws, tok, pos++);
     }
-    if (pn > 0) write_text(pend, pn);
+    if (s_stream_chunk == 0) {
+        /* 整段输出：直接用 reply 缓冲，避免 pend 在长回复时被截断。 */
+        if (written > 0) write_text(out, written);
+    } else if (pn > 0) {
+        write_text(pend, pn);
+    }
     const int64_t dt = esp_timer_get_time() - t0;
     const float tps = (float)(pos) * 1e6f / (float)dt;
     if (keep) {
         /* 把模型自己吐出的 <|im_end|> 与换行补进 KV，下一轮才能无缝续接；
            若本轮是被长度截断的，也补一个 im_end 收尾，语义上等于结束这一轮。
-           这两个 token 的 logits 没人用，跳过 lm head（每个省 ~124 ms） */
-        logits = feng_forward_ex(&s_model, &s_kv, &s_ws, s_tok.id_im_end, pos++, 0);
+           这两个 token 的 logits 没人用，跳过 lm head（每个省 ~124 ms）。
+           只在确实还有空间时写，避免 chat_once 的预算差一两个 token 时越界。 */
+        if (pos < MAX_CTX)
+            (void)feng_forward_ex(&s_model, &s_kv, &s_ws, s_tok.id_im_end, pos++, 0);
         const int nl = newline_token();
-        if (nl > 0) logits = feng_forward_ex(&s_model, &s_kv, &s_ws, nl, pos++, 0);
-        (void)logits;
+        if (nl > 0 && pos < MAX_CTX)
+            (void)feng_forward_ex(&s_model, &s_kv, &s_ws, nl, pos++, 0);
     }
     s_kv.len = pos;
     /* 和 pc_chat 同一口径：尾行给出上下文占用与速度，方便用户/脚本判断 */
@@ -574,7 +592,11 @@ static void chat_once(const char *user)
     static char prompt[4096];
     static int ids[2304];
     static char reply[1024];
-    const int cap = MAX_CTX - MAX_NEW - 8;
+    int cap = MAX_CTX - MAX_NEW - 8;
+    /* 测试用 MAX_CTX_OVERRIDE 可以大于 2304；把 tokenizer 输出上限钉在数组容量内，
+     * 否则 encode 会写穿 ids（`-DFENG_MAX_CTX_OVERRIDE=4096` 时实测可触发）。 */
+    if (cap > (int)(sizeof(ids) / sizeof(ids[0])))
+        cap = (int)(sizeof(ids) / sizeof(ids[0]));
     size_t ulen = strlen(user);
     if (ulen > sizeof(prompt) - 256) ulen = sizeof(prompt) - 256;
     int truncated = (ulen < strlen(user));
@@ -602,11 +624,18 @@ static void chat_once(const char *user)
                    s_kv.len, MAX_CTX);
         s_kv.len = 0;
         s_nhist = 0;
+        feng_mem_clear();           /* 与 generate(keep=0) 的注释保持一致：新对话=记忆一起清 */
     }
     ESP_LOGI(TAG, "in: %s (%d prompt tokens, ctx %d -> %d/%d)", user, n, s_kv.len,
              s_kv.len + n, MAX_CTX);
     reply[0] = 0;
     generate(ids, n, reply, sizeof(reply), 1);
+}
+
+static int cmd_is(const char *line, const char *cmd)
+{
+    const size_t n = strlen(cmd);
+    return strncmp(line, cmd, n) == 0 && (line[n] == 0 || line[n] == ' ');
 }
 
 void app_main(void)
@@ -638,7 +667,11 @@ void app_main(void)
     out_printf("one sentence per line; the reply streams between << and >>END\n");
     out_printf("多轮对话：自动保留上下文（2048 token），满了自动开新对话\n");
     out_printf("工具：算式（59+1）、现在几点、随机数、记忆（我叫X/我最喜欢Y…）都由板内 tool 直接回答\n");
+#if FENG_GBK
     out_printf("commands: \\gbk  \\utf8  \\reset  \\stream N  \\help\n");
+#else
+    out_printf("commands: \\utf8  \\reset  \\stream N  \\help\n");
+#endif
     out_printf("FENG_READY\n");
     fflush(stdout);
     while (1) {
@@ -662,28 +695,34 @@ void app_main(void)
         }
         line[n] = 0;
         if (over) out_printf("[输入超过 %d 字节，多余部分已丢弃]\n", (int)sizeof(line) - 1);
-        /* mirror the terminal's encoding: GBK terminals send GBK bytes */
+        /* mirror the terminal's encoding: GBK terminals send GBK bytes。
+         * 没编 GBK 时必须强制 UTF-8：否则输出路径会把所有文本转码失败后丢弃，
+         * 板子看起来像死了。 */
+#if FENG_GBK
         if (feng_has_high_byte(line, (int)n)) {
             g_out_gbk = !feng_utf8_valid(line, (int)n);
         }
+#else
+        g_out_gbk = 0;
+#endif
         if (line[0] == '\\') {
-            if (strncmp(line, "\\gbk", 4) == 0) {
+            if (cmd_is(line, "\\gbk")) {
 #if FENG_GBK
                 g_out_gbk = 1;
                 out_printf("encoding: GBK\n");
 #else
                 out_printf("这个固件没编 GBK 转码，一直是 UTF-8（重编译加 -DFENG_GBK=ON）\n");
 #endif
-            } else if (strncmp(line, "\\utf8", 5) == 0) {
+            } else if (cmd_is(line, "\\utf8")) {
                 g_out_gbk = 0;
                 out_printf("encoding: UTF-8\n");
-            } else if (strncmp(line, "\\reset", 6) == 0) {
+            } else if (cmd_is(line, "\\reset")) {
                 s_kv.len = 0;
                 s_nhist = 0;
                 feng_mem_clear();
                 out_printf("context cleared（记忆也一起清了，\\mem 可查看）\n");
-            } else if (strncmp(line, "\\mem", 4) == 0) {
-                if (strncmp(line, "\\mem clear", 10) == 0) {
+            } else if (cmd_is(line, "\\mem")) {
+                if (cmd_is(line, "\\mem clear")) {
                     feng_mem_clear();
                     out_printf("memory cleared\n");
                 } else {
@@ -691,7 +730,7 @@ void app_main(void)
                     feng_mem_snapshot(snap, sizeof(snap));
                     out_printf("memory: %s\n", snap);
                 }
-            } else if (strncmp(line, "\\settime", 8) == 0) {
+            } else if (cmd_is(line, "\\settime")) {
                 const long long e = atoll(line + 8);
                 if (e > 1600000000LL) {
                     s_epoch_base = e;
@@ -701,8 +740,10 @@ void app_main(void)
                 } else {
                     out_printf("usage: \\settime <unix_epoch>\n");
                 }
-            } else if (strncmp(line, "\\help", 5) == 0) {
+            } else if (cmd_is(line, "\\help")) {
+#if FENG_GBK
                 out_printf("\\gbk   reply in GBK (for SuperCom/XCOM in ANSI mode)\n");
+#endif
                 out_printf("\\utf8  reply in UTF-8\n");
                 out_printf("\\reset clear the conversation context (multi-turn is on by default)\n");
                 out_printf("\\mem   查看引擎记住的事实（\\mem clear 清空）\n");
@@ -710,7 +751,7 @@ void app_main(void)
                 out_printf("\\stream N  flush every N bytes (0 = whole reply at once, default 30)\n");
                 out_printf("算式 / 现在几点 / 随机数 自动走板内 tool；本命令帮助不经过模型\n");
                 out_printf("\\help  this text\n");
-            } else if (strncmp(line, "\\stream", 7) == 0) {
+            } else if (cmd_is(line, "\\stream")) {
                 int v = atoi(line + 7);
                 if (v < 0) v = 0;
                 if (v > 256) v = 256;
@@ -741,6 +782,10 @@ void app_main(void)
         }
         /* 计算 tool：纯算式直接由 SoC 运算器算，秒回、100% 准确，不占模型/上下文 */
         char calc_reply[256];
+        if (feng_tok_has_special(u8)) {
+            out_printf("[输入包含保留的对话模板标记（<|im_start|> 等），已拒绝]\n");
+            continue;
+        }
         (void)feng_mem_learn(u8);      /* 先记事实（不拦截：模型仍能看到这句，保持自己的多轮能力） */
         if (feng_calc_answer(u8, calc_reply, sizeof(calc_reply)) ||
             feng_mem_answer(u8, calc_reply, sizeof(calc_reply)) ||

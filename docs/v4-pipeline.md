@@ -107,6 +107,7 @@ python scripts\v3_build_retrieval.py --out data\retr_v4
 python scripts\v4_sft.py --init v4/base --data data\v4_sft.jsonl `
     --val data\v4_val.jsonl --out v4\sft_pc2 `
     --epochs 3 --lr 1e-5 --batch 24 --accum 2 --max-len 1024 --save-every 150
+# 实际产物：v4\sft_pc2\final（2,392 步 / 47.5 min / val_loss 3.9072 / 峰值 12.81 GiB）
 ```
 
 **为什么用 `v4_sft.py` 而不是 `v3_6_sft_patch.py`**：后者每步独立随机抽样本
@@ -116,7 +117,8 @@ python scripts\v4_sft.py --init v4/base --data data\v4_sft.jsonl `
 **超参依据（2026-10-17 用两次实测改的，别改回去）**：
 - `--epochs 3`：原文档写 1，理由是"4 万条算完整 SFT 了，多轮会过拟合"。
   **实测反过来**——1 epoch 的监督量只有 **3.24M token**（v3 那轮是 22.65M，**只训了 1/7**），
-  val_loss 3.96 且行为大面积丢失。3 epoch 后 val_loss 3.9072，留出从 15/30 回到 19/30。
+  val_loss 3.96 且行为大面积丢失。3 epoch 后 val_loss 3.9072，留出第二套从 15/30
+  回到 19/30（旧 strict-v6 口径；strict-v7 下是 15→16/30）。
 - `--lr 1e-5`：原文档写 2e-5。全参 + 4 万条下 2e-5 会把 v3.19 磨出来的行为冲掉；
   1e-5 稳住。
 - `--accum 2`：等效 batch 48；
@@ -137,13 +139,52 @@ python scripts\v4_sft.py --init v4/base --data data\v4_sft.jsonl `
 
 ---
 
+## 3b. 检索回放（**不能省**）
+
+纯 SFT 会把 32k 长文打回 **7/32**（`v4/sft_pc2`），必须从 SFT 产物再做一遍检索回放：
+
+```powershell
+python scripts\v3_retrieval_sft.py --init v4\sft_pc2\final --data-root data\retr_v4 `
+    --out v4\retr_sft4 --lr-scale 0.3 --epochs 2
+# 产物：v4\retr_sft4\ctx32768\final（四个窗口档依次续训）
+```
+
+**为什么 `--lr-scale 0.3`**：脚本默认 5e-5，对刚做完全参 SFT 的模型太猛，会把对话行为冲掉。
+**验收（2026-10-18 改为 token 精确口径，预留 32 个生成位）**：v4.0 最终权重
+**103/128**（32k **20/32**）、拒答 **64/64**；v3.19 基线为 106/128（32k 24/32）。
+**检索命中没有超过 v3.19**，换来的只有拒答（62→64/64）——发版时不要写反。
+没到就回去查负样本分布，不要靠加 epoch 硬拉（见 CHANGELOG §4d）。
+
+---
+
+## 3c. 名字补丁（`我叫X，请记住`）
+
+4.8 万轮训练数据里没有「请记住」这个指令句式，原始 4.0 会答非所问。补 160 条定向数据，
+**末 2 层 / 5 epoch / lr 5e-6**：
+
+```powershell
+python scripts\v3_6_sft_patch.py --init v4\retr_sft4\ctx32768\final `
+    --patch data\v4_name_patch.jsonl --out v4\patch_name_e5_lr5e-6 `
+    --epochs 5 --lr 5e-6 --train-last 2
+```
+
+产物 `v4/patch_name_e5_lr5e-6/`（HF 直接放在阶段目录，**没有 `final` 子目录**），
+即 v4.0 的**最终 PC 权重**。补丁强度不能再加：10 epoch / lr 1e-5 会把留出第一套打掉 2 题。
+
+---
+
 ## 4. 板端权重（Q4 + q2 KV 双 QAT）
+
+> ⚠️ **v4.0 的 QAT 没有过关卡 A，板端权重仍用 v3.19-embed。**
+> 这一节保留完整流程供下一次尝试；实际发布**不要**把 `v4/qat_*` 的导出当板端权重。
+> 三版结果：24/27、23/27、`qat_20261017D` 27/27（D 版未做板端 tool/记忆/实机验收）。
+> 详见 `CHANGELOG.md` §4f。
 
 板端必须重新做 QAT——**PC 权重直接导出给引擎会退化**（`AGENTS.md`：同套 32 题矩阵
 22/27 vs 27/27）。
 
 ```powershell
-python scripts\v3_7_kv_qat.py --init v4\sft_pc\final --data data\v4_sft.jsonl `
+python scripts\v3_7_kv_qat.py --init v4\patch_name_e5_lr5e-6 --data data\v4_sft.jsonl `
     --mt data\v4_sft.jsonl --mt-n 300 --identity-n 80 --out v4\qat_board `
     --epochs 3 --lr 6e-6 --batch 24 --max-len 1024 --wqat `
     --retr data\retr_v4 --retr-n "4096:200:2,8192:60:1" --retr-lr 1e-5
@@ -156,18 +197,25 @@ python scripts\v3_7_kv_qat.py --init v4\sft_pc\final --data data\v4_sft.jsonl `
 ## 5. 导出与验证
 
 ```powershell
-# 导出板端模型
-python board\tools\export_model.py --model v4\qat_board --out board\model_export_v4
+# 导出 QAT 权重（v4.0 的几版都只用于验收，**没有发布**）
+python board\tools\export_model.py --model v4\qat_20261017D --out board\model_export_v4_qat_rejected
+# 发布用的板端权重（v3.19-embed）已经在这里，不要覆盖：
+#   board\model_export_v3_19b6\
 ```
+
+> `board/model_export_v4*` 是失败样本，已 gitignore；**不要**把它们打进 Release，
+> 也不要用它们覆盖 `model_export_v3_19b6/`。
 
 ### 关卡 A：PC 一致性（先过这个再上板）
 
 ```powershell
 cd board
-.\pc\pc_kv_suite_q2b8.exe model_export_v4 ..\pc\prompt_long.txt 5200
+.\pc\pc_kv_suite_q2b8.exe model_export_v4_qat_rejected ..\pc\prompt_long.txt 5200
 ```
 
 **验收线（2026-10-17 重定）**：**≥25/27 且长文召回 4/4，且不得出现类别性退化**。
+（这是"能否上板"的线；v4.0 三版分别为 24/27、23/27、27/27，前两版被这道线拦下，
+D 版虽过线但没做关卡 C/D，所以最终仍未替换板端权重。）
 
 > 原文档写的是「必须 27/27」。那 27/27 是 **v3.19 在定向数据上刷出来的**，其中
 > 「推荐-书→小王子」「推荐-电影→千与千寻」本质是背下来的答案。拿它当新模型的硬门槛，
@@ -197,45 +245,51 @@ python scripts\chat_probe.py          --model v4\sft_pc\final --out eval/chat_pr
 python scripts\eval_planA_scope.py    v4\sft_pc\final eval\v4_scope.json
 ```
 
-**对照基线（v3.19）**：留出第一套 19/30、第二套 18/30、探针 42/42、身份 12/12、单类别 110。
+**对照基线（v3.19，strict-v7）**：留出第一套 17/30、第二套 15/30、探针 42/42、
+身份 12/12、单类别 110。
 
-**v4.0 实测（2026-10-17，`v4/sft_pc2` fp32）**：
+**v4.0 实测（2026-10-17，最终权重 `v4/patch_name_e5_lr5e-6`，fp32）**：
 
 | 指标 | v3.19 | 第一次（1ep/2e-5） | **v4.0（3ep/1e-5/过采样）** |
 |---|---|---|---|
-| 留出第一套 | 19/30 | 20/30 | **22/30** |
-| 留出第二套（独立） | 18/30 | 15/30 | **19/30** |
+| 留出第一套（strict-v7） | 17/30 | 20/30（旧口径） | **18/30** |
+| 留出第二套（strict-v7，v4 用于选型） | 15/30 | 15/30（旧口径） | **16/30** |
 | 42 题探针 | 42/42 | 5 题未命中 | 40/42（1 条同义误判 + 1 条 2+3 算成 6，见 CHANGELOG §4c） |
 | 范围 / 身份 | 10/10 | 9/10 | **10/10** |
 
 探针剩下那 2 题**不算失败**：「我很伤心」答的是同义词（判定词太死）、
 「2+3等于几」由 `feng_calc` 接管（模型答错用户也看不到）。
 
-> **判定口径用 strict-v6**（`chat_probe_heldout.py --rescore`，重打分必须传对 case 表）。
-> 关键词判定会漏假阳性——**头条数字必须人工过一遍 `rows[].a`**。
-> 第二套留出题未参与训练/调参，**发版文案以它为准**。
+> **判定口径用 strict-v7**（`chat_probe_heldout.py --rescore`，重打分必须传对 case 表）。
+> 旧表里的 22/30 + 19/30 是 strict-v6 的自动分；改成 strict-v7 后是 18/30 + 16/30，
+> 基线 v3.19 也从 19/30 + 18/30 降到 17/30 + 15/30——**仍然领先基线各 1 题，但优势比旧口径小**。
+> **第二套在 v4 期间被用于选型**，不再是独立测试集；发版文案要写明"两套都只能做版本对比"。
+> 关键词判定仍可能漏假阳性——**头条数字必须人工过一遍 `rows[].a`**。
 
 ### 关卡 C：多轮
 
 ```powershell
 cd board
-.\pc\pc_mt_suite.exe model_export_v4
+.\pc\pc_mt_suite.exe model_export_v4_qat_rejected
 ```
 
-**对照基线**：mt 7/10 + mem12 12/12 + seq 8/10。
+**对照基线（v3.19-embed，套件保留跨轮 nhist 后的新口径）**：mt **8/10** +
+mem12 **12/12** + seq **10/10**（`tools/check_all.py` 的门禁值）。
+v4 的 QAT 候选在旧口径下是 mt 7/10、seq 6/10、mem12 4/12，且 mem12 是**裸模型**——
+产品路径会先过 `feng_memory` tool，不受影响。
 多轮"你我分辨"是**容量硬边界**（`AGENTS.md` 已验证 p3–p7 五个版本都只是重排失败点），
 **不要因为这项没涨就重训**——那是白费。
 
 ### 关卡 D：板端实机
 
 ```powershell
-python board\flash.ps1 -Port COM20 -EspIdfPath <esp-idf> -ModelDir board\model_export_v4
+.\board\flash.ps1 -Port COM20 -EspIdfPath <esp-idf> -ModelDir board\model_export_v4_qat_rejected
 python scripts\esp32_tool_test.py --port COM20      # 期望 13/13
 python scripts\esp32_memory.py --port COM20 --n 12  # 期望 12/12
 python scripts\esp32_multi.py --port COM20
 ```
 
-**速度对照**：v3.19-embed 是 2.33 tok/s（507 ms/token decode）。C23 引擎没动数值路径，
+**速度对照**：v3.19-embed 是 2.33 tok/s（固件统计口径，短回复最佳值）。C23 引擎没动数值路径，
 新权重同架构，**速度应该一样**；掉超过 5% 说明 QAT 把权重分布改坏了。
 
 ---
@@ -254,9 +308,12 @@ python scripts\esp32_multi.py --port COM20
 
 ## 与 v3 的口径差异（写发版文案时注意）
 
-- **PC 与板端两套权重**：PC 用第 3 步的 `v4/sft_pc/final`，板端用第 4 步的 `v4/qat_board`（**QAT 直接存这一层，没有 final/ 子目录**）。
-  注意 `<阶段>/` 顶层只有 `summary.json` 与 `train_log.jsonl`，**HF 权重在 `<阶段>/final/`**——
-  训练脚本用 `--out v4\sft_pc`（阶段目录），但所有**输入**（评测、QAT 的 --init）都要带 `/final`。
-  2026-10-17 就是照原文档抄了 `--model v4\sft_pc`，四个评测全部在加载 tokenizer 时挂掉、GPU 一步没跑。
+- **PC 与板端两套权重**：PC 用 `v4/patch_name_e5_lr5e-6/`（HF 直接放在阶段目录）；
+  板端发布权重仍是 `board/model_export_v3_19b6/`（v3.19-embed），4.0 的 QAT 全部未采用。
+- **`final` 路径规则**：`v4_sft.py` 与 `v3_retrieval_sft.py` 的 HF 权重在 `<阶段>/final` 目录里；
+  `v3_6_sft_patch.py`、`v3_7_kv_qat.py` 的产物直接写在 `--out`（没有 `final` 子目录）。
+  训练脚本的 `--out` 是阶段目录，但所有**输入**（评测、下一阶段的 `--init`）必须指向真正含
+  `model.safetensors` 的那一层。2026-10-17 就是照旧文档抄了 `--model v4\sft_pc`，
+  四个评测全部在加载 tokenizer 时挂掉、GPU 一步没跑。
 - **算式的验收口径是 tool 回答**，不是模型算——`pc_kv_suite` 会把算式路由到 `feng_calc`。
 - **英文标准基准只剩 SciQ 与 PIQA**（其余已删除，见 `CHANGELOG.md` v3.20 评测节）。

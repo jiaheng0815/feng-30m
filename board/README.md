@@ -8,27 +8,34 @@
 ## 这个目录里有什么
 
 ```
-main/          推理核心（严格 C23，板端与 PC 共用）+ ESP-IDF 应用
-  feng.h         模型容器 / 推理 API / KV 模式与优化开关（带 extern "C" 守卫）
-  feng_model.c   model.bin 解析、张量定位
-  feng_llm.c     RMSNorm / QK-norm / RoPE / 注意力 / SwiGLU / tied head / KV
-  feng_quant.c   Q4 查表 GEMV、fp16 路径、A8/PIE 实验分支
-  feng_smp.c     双核 GEMV（PC 上退化为单核直通）
-  feng_sample.c  统一采样器（重复惩罚 1.15 + no-repeat 3-gram）
-  feng_tokenizer.c  设备端 BPE
-  feng_calc.c / feng_tools.c / feng_memory.c   四个 tool
-  feng_gemv_bench.c  GEMV 内层循环的周期级剖析（-DFENG_BENCH_GEMV=ON）
-  feng_cuda.cu   PC 侧 CUDA 后端（nvcc，不进固件）
-pc/            PC 侧 C++23 驱动：一致性检查、32 题矩阵、多轮套件、基准
-tools/         export_model.py（HF → model.bin/tokenizer.bin）、gen_gbk_table.py
+main/           ESP-IDF 应用层（板端专有）
+  main.c         串口 REPL、上下文管理、tool 调度、GBK 切换
+  feng_bonus.c   彩蛋（-DFENG_NO_BONUS=ON 关闭）
+  gbk*.c         GBK↔UTF-8 转换（默认不编译，-DFENG_GBK=ON 开启）
+  CMakeLists.txt IDF 组件定义；核心源码用绝对路径引用仓库根的 core/
+  feng_gemv_bench.c / feng_pie_*.S  可选的周期剖析 / PIE 实验
+tools/           export_model.py（HF → model.bin/tokenizer.bin）、gen_gbk_table.py
+partitions.csv   model 0x110000/0xEF0000、tokdata 0x1000000/0x80000
 ```
 
-## 构建（两趟：核心 C23 + 驱动 C++23）
+推理核心与 PC/手机共用，位于仓库根：
+
+```
+core/           严格 C23（零堆、零全局构造）
+  feng.h / feng_model.c / feng_llm.c / feng_quant.c / feng_smp.c
+  feng_sample.c / feng_tokenizer.c / feng_calc.c / feng_tools.c / feng_memory.c
+pc/             PC 侧 C++23 驱动：pc_chat、32 题矩阵、多轮套件、pc_check、CUDA
+```
+
+## 构建
 
 ```powershell
-.\build_pc_chat.ps1          # MSVC：核心 /std:clatest /TC、驱动 /std:c++latest /TP
-.\build_pc_cuda.ps1          # 同上 + nvcc 编译 feng_cuda.cu
-idf.py -DFENG_USE_Q2_KV=ON build    # 固件（发布配置 q2/2048）
+# PC 引擎（两趟：核心 C23 + 驱动 C++23）
+.\pc\build_pc_chat.ps1
+.\pc\build_pc_cuda.ps1        # 可选 CUDA 后端
+
+# 固件（发布配置 q2/2048）
+idf.py -DFENG_USE_Q2_KV=ON build
 ```
 
 为什么必须分两趟、以及 C23 引擎的全部约定，见根 [`AGENTS.md`](../AGENTS.md)。

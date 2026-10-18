@@ -1,9 +1,7 @@
-/* phone/engine 派生副本：自 core/feng_tools.c 拷贝（2026-10-15，v4.0 C23 迁移后）。
- * 手机端改动见 phone/README.md；板端原始文件未被修改，两边需手动同步。
- * 原版校验值见 phone/engine/SOURCE.sha256。 */
 /* 时间/随机数 tool 实现：不依赖 libc 时区数据库，手算 UTC+8 日历。 */
 #include "feng_tools.h"
 
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -76,8 +74,12 @@ static int days_offset(const char *user, int *days_out)
         const char *p = hit;
         while (p > user && p[-1] >= '0' && p[-1] <= '9') p--;
         if (p == hit) continue;
-        int v = atoi(p);
-        *days_out = (i == 0 || i == 2) ? v : -v;
+        long long v = 0;
+        for (const char *q = p; q < hit; q++) {
+            if (v < 100000) v = v * 10 + (*q - '0');
+            else v = 100000;                       /* 饱和：超出 100k 天没有意义 */
+        }
+        *days_out = (int)((i == 0 || i == 2) ? v : -v);
         return 1;
     }
     return 0;
@@ -97,13 +99,19 @@ static int time_math_answer(const char *user, char *answer, int answer_sz)
     const char *tail = rel + 6;                    /* "小时" 的 UTF-8 长度 */
     if (strncmp(tail, "候", 3) == 0) return 0;     /* "小时候" 不是时钟推算 */
     const int sign = (strncmp(tail, "前", 3) == 0) ? -1 : 1;
-    /* "小时"前面紧邻的数字串（支持"再多3小时"/"3 小时"） */
+    /* "小时"前面紧邻的数字串（支持"再多3小时"/"3 小时"）。手写解析并饱和到
+     * ±1,000,000：atoi 溢出是 UB，超大 delta 还会让下面的逐日循环跑几千万次。 */
     const char *p = rel;
     while (p > user && (p[-1] == ' ' || p[-1] == '\t')) p--;
     const char *num_end = p;
     while (p > user && p[-1] >= '0' && p[-1] <= '9') p--;
     if (p == num_end) return 0;                   /* 没有数字，不当作时钟推算 */
-    const int delta = atoi(p) * sign;
+    long long dv = 0;
+    for (const char *q = p; q < num_end; q++) {
+        if (dv < 1000000) dv = dv * 10 + (*q - '0');
+        else dv = 1000000;
+    }
+    const int delta = (int)(dv * sign);
     /* 起点小时：优先"现在X点"，否则用板端当前时间 */
     int base_hour = -1;
     const char *cur = strstr(user, "现在");
@@ -122,23 +130,32 @@ static int time_math_answer(const char *user, char *answer, int answer_sz)
         base_hour = (int)(((now + 8 * 3600) / 3600) % 24);
     }
     int total = base_hour + delta;
-    int day = 0;
-    while (total < 0) { total += 24; day--; }
-    while (total >= 24) { total -= 24; day++; }
-    if (day == 0) snprintf(answer, answer_sz, "再过 %d 小时是 %d 点。", delta, total);
-    else if (day == 1) snprintf(answer, answer_sz, "再过 %d 小时是明天 %d 点。", delta, total);
-    else if (day == -1) snprintf(answer, answer_sz, "%d 小时前是昨天 %d 点。", -delta, total);
-    else if (day == 2) snprintf(answer, answer_sz, "再过 %d 小时是后天 %d 点。", delta, total);
-    else snprintf(answer, answer_sz, "再过 %d 小时是 %d 天后 %d 点。", delta, day, total);
+    int day = total / 24;
+    int hh2 = total % 24;
+    if (hh2 < 0) { hh2 += 24; day--; }
+    if (day == 0) snprintf(answer, answer_sz, "再过 %d 小时是 %d 点。", delta, hh2);
+    else if (day == 1) snprintf(answer, answer_sz, "再过 %d 小时是明天 %d 点。", delta, hh2);
+    else if (day == -1) snprintf(answer, answer_sz, "%d 小时前是昨天 %d 点。", -delta, hh2);
+    else if (day == 2) snprintf(answer, answer_sz, "再过 %d 小时是后天 %d 点。", delta, hh2);
+    else snprintf(answer, answer_sz, "再过 %d 小时是 %d 天后 %d 点。", delta, day, hh2);
     return 1;
 }
 
 int feng_time_answer(const char *user, char *answer, int answer_sz)
 {
     if (time_math_answer(user, answer, answer_sz)) return 1;
+    /* 相对日期只在明确问日期/星期时触发；"明天会下雨吗"这种普通句子交给模型。
+     * 旧实现只要出现"明天"就直接答日期，属于典型的 tool 误触发。 */
     static const char *kw[] = {"几点", "现在时间", "现在的时间", "当前时间", "时间是多少",
                                "什么时间", "今天几号", "今天几月", "几号", "几月", "日期",
-                               "星期几", "时间戳", "明天", "后天", "昨天", "前天"};
+                               "星期几", "时间戳"};
+    /* 个人事实类追问（生日/电话/号码）优先交给记忆 tool 或模型；
+     * 没记过时答"现在几号"没有意义。 */
+    if ((contains(user, "生日") || contains(user, "电话") || contains(user, "号码")) &&
+        !contains(user, "今天") && !contains(user, "现在")) return 0;
+    /* "去年今天是星期几"不是当前时间查询，当前实现也不会做年份推算。 */
+    if ((contains(user, "去年") || contains(user, "明年")) &&
+        !contains(user, "天后") && !contains(user, "天前")) return 0;
     int hit = 0;
     for (int i = 0; i < (int)(sizeof(kw) / sizeof(kw[0])); i++) {
         if (contains(user, kw[i])) { hit = 1; break; }
@@ -190,15 +207,26 @@ long long feng_rand_range(unsigned long long seed, long long lo, long long hi)
     (void)xs64(&st);                                  /* 第一个随机数：按需求丢弃 */
     const unsigned long long r = xs64(&st);
     if (hi < lo) { const long long t = hi; hi = lo; lo = t; }
-    const unsigned long long span = (unsigned long long)(hi - lo + 1);
+    /* 全值域：直接返回 64 位随机数，避免 hi-lo 的有符号溢出。 */
+    if (lo == LLONG_MIN && hi == LLONG_MAX) return (long long)r;
+    /* hi-lo+1 在极端范围会溢出为 0，r % 0 是 UB。 */
+    const unsigned long long span = (unsigned long long)((hi - lo) + 1);
+    if (span == 0) return (long long)r;
     return lo + (long long)(r % span);
 }
 
 int feng_random_answer(const char *user, char *answer, int answer_sz)
 {
-    const int coin = contains(user, "硬币") || contains(user, "正反面");
-    const int dice = contains(user, "骰子") || contains(user, "色子");
-    if (!coin && !dice && !contains(user, "随机")) return 0;
+    const int random_intent = contains(user, "随机");
+    /* "硬币/骰子"单独出现不算意图（"硬币是什么材质"不应被截走）；
+     * 必须同时有抛/掷/扔/摇/正反/随机这类动作。 */
+    const int coin = (contains(user, "硬币") || contains(user, "正反面")) &&
+                     (random_intent || contains(user, "抛") || contains(user, "掷") ||
+                      contains(user, "扔") || contains(user, "正反"));
+    const int dice = (contains(user, "骰子") || contains(user, "色子")) &&
+                     (random_intent || contains(user, "掷") || contains(user, "扔") ||
+                      contains(user, "摇") || contains(user, "点") || contains(user, "几"));
+    if (!coin && !dice && !random_intent) return 0;
     const long long up_us0 = s_uptime_fn ? s_uptime_fn() : 0;
     const double sec0 = (double)up_us0 / 1e6;
     const unsigned long long seed0 = (unsigned long long)(sec0 * 1.54 * 1000.0);
@@ -215,13 +243,17 @@ int feng_random_answer(const char *user, char *answer, int answer_sz)
     while (*p && nnum < 2) {
         if (*p >= '0' && *p <= '9') {
             long long v = 0;
-            while (*p >= '0' && *p <= '9') { v = v * 10 + (*p - '0'); p++; }
+            while (*p >= '0' && *p <= '9') {
+                if (v < 1000000000LL) v = v * 10 + (*p - '0');
+                else v = 1000000000LL;               /* 饱和，避免 long long 溢出 */
+                p++;
+            }
             nums[nnum++] = v;
         } else {
             p++;                                      /* 逐字节扫 ASCII 数字 */
         }
     }
-    if (nnum == 2 && nums[0] != nums[1]) { lo = nums[0]; hi = nums[1]; }
+    if (nnum == 2) { lo = nums[0]; hi = nums[1]; }
     const long long v = feng_rand_range(seed0, lo, hi);
     if (dice) snprintf(answer, answer_sz, "掷骰子：%lld 点。", v);
     else snprintf(answer, answer_sz, "随机数（%lld~%lld）：%lld。", lo, hi, v);

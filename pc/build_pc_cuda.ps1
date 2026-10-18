@@ -1,4 +1,4 @@
-# 构建 CUDA 版 PC 引擎（MSVC cl/link + nvcc）。只在装好 VS Build Tools 与 CUDA Toolkit
+﻿# 构建 CUDA 版 PC 引擎（MSVC cl/link + nvcc）。只在装好 VS Build Tools 与 CUDA Toolkit
 # 的机器上使用；不带 CUDA 的 MinGW/g++ 构建见 build_pc_chat.ps1。
 #
 # 产出（不覆盖 MinGW 版产物）：

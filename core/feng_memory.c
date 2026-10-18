@@ -7,12 +7,33 @@
  */
 #include "feng_memory.h"
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
 #define VAL_CAP 32
 #define KEY_CAP 24
 #define MAX_SLOTS 8
+
+static int u8len(const char *c);
+static void copy_utf8(char *dst, int cap, const char *src);
+
+/* 有界追加：n 是实际长度，绝不越过 cap-1。 */
+static void mem_append_fmt(char *out, int cap, int *n, const char *fmt, ...)
+{
+    if (out == NULL || n == NULL || cap <= 0) return;
+    if (*n < 0) *n = 0;
+    if (*n >= cap - 1) { out[cap - 1] = 0; return; }
+    va_list ap;
+    va_start(ap, fmt);
+    const int room = cap - 1 - *n;
+    const int w = vsnprintf(out + *n, (size_t)room, fmt, ap);
+    va_end(ap);
+    if (w < 0) { out[*n] = 0; return; }
+    if (w >= room) *n = cap - 1;
+    else *n += w;
+    out[*n] = 0;
+}
 
 typedef struct {
     char key[KEY_CAP];
@@ -71,21 +92,21 @@ static void slot_put(const char *key, const char *val)
     if (!val[0]) return;                               /* 空键 = 无名偏好槽（"我最喜欢X"） */
     for (int i = 0; i < MAX_SLOTS; i++) {              /* 同键覆盖 */
         if (g_slots[i].used && strcmp(g_slots[i].key, key) == 0) {
-            snprintf(g_slots[i].val, VAL_CAP, "%s", val);
+            copy_utf8(g_slots[i].val, VAL_CAP, val);
             return;
         }
     }
     for (int i = 0; i < MAX_SLOTS; i++) {              /* 空位 */
         if (!g_slots[i].used) {
-            snprintf(g_slots[i].key, KEY_CAP, "%s", key);
-            snprintf(g_slots[i].val, VAL_CAP, "%s", val);
+            copy_utf8(g_slots[i].key, KEY_CAP, key);
+            copy_utf8(g_slots[i].val, VAL_CAP, val);
             g_slots[i].used = 1;
             return;
         }
     }
     slot_t *s = &g_slots[g_slot_next++ % MAX_SLOTS];   /* 满了就轮换覆盖最旧的 */
-    snprintf(s->key, KEY_CAP, "%s", key);
-    snprintf(s->val, VAL_CAP, "%s", val);
+    copy_utf8(s->key, KEY_CAP, key);
+    copy_utf8(s->val, VAL_CAP, val);
 }
 
 static const char *slot_get(const char *key)
@@ -146,24 +167,25 @@ static int mem_forget_key(const char *key)
 /* 把已记事实列成一句话；返回 0 = 什么都没记 */
 static int mem_list(char *out, int cap)
 {
+    if (out == NULL || cap <= 1) return 0;
     int n = 0, cnt = 0;
-    n += snprintf(out + n, (size_t)(cap - n), "我记得：");
-    if (g_has_name && n < cap - 24) { n += snprintf(out + n, (size_t)(cap - n), "你叫%s；", g_name); cnt++; }
-    if (g_has_city && n < cap - 24) { n += snprintf(out + n, (size_t)(cap - n), "你住在%s；", g_city); cnt++; }
-    if (g_has_pet && n < cap - 24) { n += snprintf(out + n, (size_t)(cap - n), "你养了%s；", g_pet); cnt++; }
+    out[0] = 0;
+    mem_append_fmt(out, cap, &n, "我记得：");
+    if (g_has_name) { mem_append_fmt(out, cap, &n, "你叫%s；", g_name); cnt++; }
+    if (g_has_city) { mem_append_fmt(out, cap, &n, "你住在%s；", g_city); cnt++; }
+    if (g_has_pet) { mem_append_fmt(out, cap, &n, "你养了%s；", g_pet); cnt++; }
     for (int i = 0; i < MAX_SLOTS && cnt < 6; i++) {
         if (!g_slots[i].used) continue;
-        if (n >= cap - 32) { n += snprintf(out + n, (size_t)(cap - n), "…"); break; }
         if (g_slots[i].key[0])
-            n += snprintf(out + n, (size_t)(cap - n), "你的%s是%s；", g_slots[i].key, g_slots[i].val);
+            mem_append_fmt(out, cap, &n, "你的%s是%s；", g_slots[i].key, g_slots[i].val);
         else
-            n += snprintf(out + n, (size_t)(cap - n), "你最喜欢%s；", g_slots[i].val);
+            mem_append_fmt(out, cap, &n, "你最喜欢%s；", g_slots[i].val);
         cnt++;
     }
     if (cnt == 0) return 0;
     n = (int)strlen(out);
     if (n >= 3 && strcmp(out + n - 3, "；") == 0) { out[n - 3] = 0; n -= 3; }
-    strncat(out + n, "。", (size_t)(cap - n - 1));
+    mem_append_fmt(out, cap, &n, "。");
     return 1;
 }
 
@@ -176,6 +198,20 @@ static int u8len(const char *c)
     if ((b >> 4) == 0xE) return 3;
     if ((b >> 3) == 0x1E) return 4;
     return 1;
+}
+
+/* 按完整 UTF-8 字符截断，避免 snprintf 在字节边界把汉字劈成半个。 */
+static void copy_utf8(char *dst, int cap, const char *src)
+{
+    int n = 0;
+    if (cap <= 0) return;
+    while (src && src[n] && n < cap - 1) {
+        const int l = u8len(src + n);
+        if (n + l > cap - 1) break;
+        memcpy(dst + n, src + n, (size_t)l);
+        n += l;
+    }
+    dst[n] = 0;
 }
 
 static int starts_with(const char *s, const char *pfx)
@@ -289,6 +325,23 @@ static int take_key_range(const char *start, const char *end, char *out, int cap
     return take_key_to(tmp, NULL, out, cap);
 }
 
+/* “我是X”并不总是报名字：老师/程序员/退休/本地人都是身份描述。
+ * 旧实现把它们记成名字，随后“我叫什么名字”会答“你叫老师”。 */
+static int looks_like_role(const char *v)
+{
+    static const char *roles[] = {
+        "老师", "教师", "教授", "学生", "同学", "医生", "护士", "律师", "工程师",
+        "程序员", "设计师", "会计", "司机", "工人", "农民", "记者", "作家", "画家",
+        "歌手", "演员", "老板", "经理", "警察", "军人", "运动员", "退休", "自由职业",
+        "上班族", "妈妈", "爸爸", "儿子", "女儿", "孩子", "大人", "老人", "男人",
+        "女人", "男孩", "女孩", "中国人", "外国人", "本地人", "新手", "小白",
+        "人工智能", "机器人", "模型", "助手", "AI", "ai",
+    };
+    for (unsigned i = 0; i < sizeof(roles) / sizeof(roles[0]); i++)
+        if (strstr(v, roles[i]) != NULL) return 1;
+    return 0;
+}
+
 /* ---- 学习 ---- */
 int feng_mem_learn(const char *user)
 {
@@ -304,7 +357,8 @@ int feng_mem_learn(const char *user)
     if (!g_has_name) {
         const char *p = strstr(user, "我是");
         if (p && take_value(p + strlen("我是"), v, sizeof(v)) &&
-            strlen(v) <= 12 && !strstr(v, "学生") && !strstr(v, "模型") && !strstr(v, "AI")) {
+            strlen(v) <= 12 && !looks_like_role(v) &&
+            !strstr(v, "学生") && !strstr(v, "模型") && !strstr(v, "AI")) {
             snprintf(g_name, VAL_CAP, "%s", v); g_has_name = 1; changed = 1;
             clear_forgot("名字");
         }
@@ -394,9 +448,11 @@ int feng_mem_answer(const char *user, char *answer, int answer_sz)
                                  "你是谁开发的", "谁训练了你"};
     for (unsigned i = 0; i < sizeof(id_q) / sizeof(id_q[0]); i++) {
         if (strstr(user, id_q[i])) {
-            if (strstr(user, "谁训练") || strstr(user, "谁开发"))
-                return answer_fmt(answer, answer_sz, "%s", "个人开发者 jiaheng 训练了我，我叫 feng。", "");
-            return answer_fmt(answer, answer_sz, "%s", "我叫 feng，由个人开发者 jiaheng 开发训练。", "");
+            /* 身份自述必须与项目口径逐字一致（AGENTS.md §1）：
+             * 「我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI」。
+             * 这段由 tool 确定性回答，不经过模型，所以模板本身就是用户看到的口径。 */
+            return answer_fmt(answer, answer_sz, "%s",
+                              "我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。", "");
         }
     }
     /* 遗忘优先于其它追问：忘掉我的生日 / 别记我的名字了 / 把记住的都忘掉 */
@@ -500,13 +556,15 @@ int feng_mem_answer(const char *user, char *answer, int answer_sz)
 
 void feng_mem_snapshot(char *buf, int buf_sz)
 {
+    if (buf == NULL || buf_sz <= 1) return;
     int n = 0;
-    n += snprintf(buf + n, (size_t)(buf_sz - n), "名字=%s", g_has_name ? g_name : "-");
-    n += snprintf(buf + n, (size_t)(buf_sz - n), " 城市=%s", g_has_city ? g_city : "-");
-    n += snprintf(buf + n, (size_t)(buf_sz - n), " 宠物=%s", g_has_pet ? g_pet : "-");
-    for (int i = 0; i < MAX_SLOTS && n < buf_sz - 8; i++) {
+    buf[0] = 0;
+    mem_append_fmt(buf, buf_sz, &n, "名字=%s", g_has_name ? g_name : "-");
+    mem_append_fmt(buf, buf_sz, &n, " 城市=%s", g_has_city ? g_city : "-");
+    mem_append_fmt(buf, buf_sz, &n, " 宠物=%s", g_has_pet ? g_pet : "-");
+    for (int i = 0; i < MAX_SLOTS; i++) {
         if (!g_slots[i].used) continue;
-        n += snprintf(buf + n, (size_t)(buf_sz - n), " %s=%s",
-                      g_slots[i].key[0] ? g_slots[i].key : "(偏好)", g_slots[i].val);
+        mem_append_fmt(buf, buf_sz, &n, " %s=%s",
+                       g_slots[i].key[0] ? g_slots[i].key : "(偏好)", g_slots[i].val);
     }
 }

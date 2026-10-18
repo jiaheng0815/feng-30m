@@ -15,6 +15,11 @@ TICK = chr(96)
 # 模型卡跟着模型目录走（archive/v1/*/MODEL_CARD.md 等）。
 DOCS = [ROOT / "README.md", ROOT / "AGENTS.md", ROOT / "phone" / "README.md"]
 DOCS += sorted((ROOT / "docs").glob("*.md"))
+# 这几个 README 也是对外文档，之前漏检导致 board/README.md 的目录树长期过期。
+for extra in (ROOT / "board" / "README.md", ROOT / "eval" / "README.md",
+              ROOT / "logs" / "README.md"):
+    if extra.exists() and extra not in DOCS:
+        DOCS.append(extra)
 # v4.0 起历史目录已删；模型卡跟着当前模型目录走。
 # 用 rglob 而不是 `*/*/MODEL_CARD.md`：v4 的模型目录是 `v4/<阶段>/`（两层），
 # 旧 glob 按 archive/v1/<名字>/ 的三层写的，会把 `v4/base/MODEL_CARD.md` 整个漏掉——
@@ -62,6 +67,7 @@ LOCAL_PREFIXES = ("archive/", "v2/", "student/", "v3_", "v3/", "data/", "v4/sft/
                   "phone/android/.gradle/", "phone/android/local.properties")
 
 PATH_RE = re.compile(TICK + r"([^" + TICK + r"\n]+)" + TICK)
+LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 FILE_RE = re.compile(r"^[\w./\\-]+\.(md|py|c|exe|json|npy|gguf|bin|csv|ps1|txt|safetensors)$")
 
 
@@ -101,7 +107,7 @@ def is_local_artifact(cand: str) -> bool:
 
 
 def main():
-    bad_paths, bad_fences, stale_hits = [], [], []
+    bad_paths, bad_fences, stale_hits, bad_links = [], [], [], []
     tracked = tracked_files(ROOT)
     skipped = 0
     for d in DOCS:
@@ -113,6 +119,15 @@ def main():
         for s in STALE:
             if s in txt:
                 stale_hits.append((rel, s))
+        # Markdown 链接：以前完全不查，README 里 [docs/USAGE.md](USAGE.md)
+        # 这类 404 链接一直能通过 CI。
+        for m in LINK_RE.finditer(txt):
+            link = m.group(1).strip().split("#", 1)[0]
+            if not link or link.startswith(("http://", "https://", "mailto:", "#")):
+                continue
+            target = (d.parent / link).resolve()
+            if not target.exists():
+                bad_links.append((rel, link))
         for m in PATH_RE.finditer(txt):
             s = m.group(1).strip()
             if s.startswith("$") or " " in s or "<" in s or ">" in s:
@@ -140,13 +155,19 @@ def main():
     print(f"code fences : {'OK' if not bad_fences else bad_fences}")
     print(f"stale facts : {'none' if not stale_hits else stale_hits}")
     print(f"local-only  : {skipped} 条本机产物路径（允许缺）")
+    if bad_links:
+        print("broken markdown links:")
+        for rel, s in bad_links:
+            print(f"   {rel} -> {s}")
+    else:
+        print("markdown links: OK")
     if bad_paths:
         print("missing paths:")
         for rel, s in bad_paths:
             print(f"   {rel} -> {s}")
     else:
         print("referenced paths: all exist")
-    return 1 if (bad_fences or stale_hits or bad_paths) else 0
+    return 1 if (bad_fences or stale_hits or bad_paths or bad_links) else 0
 
 
 if __name__ == "__main__":

@@ -66,9 +66,19 @@ static long long pc_uptime_us(void)
 
 int main(int argc, char **argv)
 {
-    const char *dir = argc > 1 ? argv[1] : ".";
-    const int max_new = argc > 2 ? atoi(argv[2]) : 96;
-    const int ctx = 2048;
+    int argi = 1;
+    int ctx = 2048;
+    if (argi + 1 < argc && strcmp(argv[argi], "--ctx") == 0) {
+        ctx = atoi(argv[argi + 1]);
+        argi += 2;
+    }
+    const char *dir = argi < argc ? argv[argi++] : ".";
+    const int max_new = argi < argc ? atoi(argv[argi]) : 96;
+    if (ctx < 16 || ctx > FENG_MAX_SCORES) {
+        fprintf(stderr, "ctx 必须在 16..%d（当前构建上限；可用 -DFENG_MAX_SCORES=... 重编）\n",
+                FENG_MAX_SCORES);
+        return 1;
+    }
     char path[512];
     size_t mlen = 0, tlen = 0;
 
@@ -132,6 +142,10 @@ int main(int argc, char **argv)
         int n = (int)strlen(line);
         while (n > 0 && (line[n - 1] == '\n' || line[n - 1] == '\r')) line[--n] = 0;
         if (n == 0) continue;
+        if (feng_tok_has_special(line)) {
+            printf("[输入包含保留的对话模板标记，已拒绝]\n");
+            continue;
+        }
         if (strcmp(line, "\\exit") == 0 || strcmp(line, "\\quit") == 0) break;
         if (strcmp(line, "\\reset") == 0) {
             kv.len = 0;
@@ -166,25 +180,28 @@ int main(int argc, char **argv)
                  "<|im_start|>user\n%s<|im_end|>\n<|im_start|>assistant\n", line);
         int ids[1024];
         const int np = feng_tok_encode(&tok, prompt, ids, 1024);
-        if (kv.len + np + max_new + 4 > ctx) {
+        if (kv.len + np + max_new + 2 > ctx) {
             printf("[上下文已满 %d/%d，自动开始新对话]\n", kv.len, ctx);
             kv.len = 0;
             feng_mem_clear();
         }
-        if (np >= ctx - max_new) { printf("[输入太长]\n"); continue; }
+        if (np + max_new + 2 > ctx) { printf("[输入太长]\n"); continue; }
 
         int pos = kv.len;
         float *logits = NULL;
         for (int i = 0; i < np; i++) {         /* prefill：中间 token 跳过 lm head */
             logits = feng_forward_ex(&m, &kv, &ws, ids[i], pos++, i + 1 == np);
+            if (!logits) { printf("[上下文状态异常]\n"); break; }
         }
         printf("<< ");
         fflush(stdout);
         int hist[64], nhist = 0;
-        for (int step = 0; step < max_new; step++) {
+        int gen_cap = max_new;
+        if (gen_cap > ctx - pos - 2) gen_cap = ctx - pos - 2;
+        for (int step = 0; step < gen_cap && logits; step++) {
             const int tk = feng_sample_greedy(logits, v, hist, nhist, 1.15f, 3);
-            if (tk == tok.id_im_end || tk == tok.id_eot) break;
-            char b[16];
+            if (tk < 0 || tk == tok.id_im_end || tk == tok.id_eot) break;
+            char b[128];
             const int nb = feng_tok_decode_token(&tok, tk, b, sizeof(b));
             fwrite(b, 1, (size_t)nb, stdout);
             fflush(stdout);
@@ -192,10 +209,9 @@ int main(int argc, char **argv)
             else { memmove(hist, hist + 1, sizeof(hist) - sizeof(hist[0])); hist[63] = tk; }
             logits = feng_forward(&m, &kv, &ws, tk, pos++);
         }
-        /* 补进 KV 的 im_end / 换行不需要 logits，跳过 lm head */
-        logits = feng_forward_ex(&m, &kv, &ws, tok.id_im_end, pos++, 0);
-        if (nl_id > 0) logits = feng_forward_ex(&m, &kv, &ws, nl_id, pos++, 0);
-        (void)logits;
+        /* 补进 KV 的 im_end / 换行不需要 logits，跳过 lm head；只有还有空间才写。 */
+        if (pos < ctx) (void)feng_forward_ex(&m, &kv, &ws, tok.id_im_end, pos++, 0);
+        if (nl_id > 0 && pos < ctx) (void)feng_forward_ex(&m, &kv, &ws, nl_id, pos++, 0);
         kv.len = pos;
         printf(" >>END (ctx %d/%d)\n", kv.len, ctx);
     }

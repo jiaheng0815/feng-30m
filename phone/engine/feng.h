@@ -45,6 +45,20 @@ extern "C" {
 #ifndef FENG_KV_Q2_BLOCK
 #define FENG_KV_Q2_BLOCK 16      /* 每多少个值共享一个 fp16 scale（须整除 head_dim、是 4 的倍数） */
 #endif
+#if FENG_KV_Q2 && ((FENG_KV_Q2_BLOCK) % 4 != 0)
+#error "FENG_KV_Q2_BLOCK 必须是 4 的倍数"
+#endif
+/* 手机端把 scores 上限跟 FENG_PHONE_MAX_CTX 绑定（默认 4096）。
+ * 只有 feng_llm.c 使用；它在 include 本文件后还会 include feng_phone.h。 */
+#ifndef FENG_MAX_SCORES
+#define FENG_MAX_SCORES FENG_PHONE_MAX_CTX
+#endif
+#ifndef FENG_MAX_HEAD_DIM
+#define FENG_MAX_HEAD_DIM 128
+#endif
+#ifndef FENG_MAX_HIDDEN
+#define FENG_MAX_HIDDEN 512
+#endif
 /* q2 注意力内层用字节 LUT 取代移位/掩码/整数转浮点（数值与原式完全一致，结果逐位不变）。
  * 默认开；-DFENG_Q2_LUT=0 可切回原实现做 A/B。 */
 #ifndef FENG_Q2_LUT
@@ -184,6 +198,7 @@ void feng_gemv3_par(const void *w0, const void *w1, const void *w2, uint32_t dty
                     int n_out0, int n_out1, int n_out2, int n_in);
 
 /* start the worker threads; call once before using feng_gemv_par */
+void feng_quant_init(void);
 void feng_smp_init(void);
 
 /* transformer state (allocated by caller in PSRAM) */

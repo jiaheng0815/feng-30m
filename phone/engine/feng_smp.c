@@ -45,6 +45,7 @@ void feng_smp_init(void)
 {
     /* 线程池由 feng_phone_init() 建立；这里只做幂等确认，保持与板端同名 API。 */
     (void)feng_phone_init();
+    feng_quant_init();          /* LUT 必须先于 worker 首次 GEMV 建好 */
 }
 
 void feng_gemv_par(const void *tensor, uint32_t dtype, const float *x, float *y,

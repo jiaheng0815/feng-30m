@@ -117,7 +117,7 @@ int main(int argc, char **argv)
         }
         const int next_id = feng_argmax(logits, v);
         if (next_id == tok.id_im_end || next_id == tok.id_eot) break;
-        char tmp[32];
+        char tmp[128];
         const int nb = feng_tok_decode_token(&tok, next_id, tmp, sizeof(tmp));
         if (nb > 0 && written + nb < (int)sizeof(out) - 1) {
             memcpy(out + written, tmp, nb);

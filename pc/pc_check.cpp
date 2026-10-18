@@ -65,7 +65,7 @@ int main(int argc, char **argv)
     for (int i = 0; i < n; i++) printf(" %d", ids[i]);
     printf("\n");
     for (int i = 0; i < n; i++) {
-        char b[16];
+        char b[128];
         int nb = feng_tok_decode_token(&tok, ids[i], b, sizeof(b));
         b[nb] = 0;
         printf("%s", b);
@@ -127,15 +127,27 @@ int main(int argc, char **argv)
 
     const float *refl = (const float *)ref;
     const int ncmp = (int)(rlen / 4);
+    if (ncmp < v) {
+        fprintf(stderr, "ref_logits.bin 太短：%d floats，期望至少 %d\n", ncmp, v);
+        return 3;
+    }
+    /* Q4 权重的量化误差实测约 2.3~2.7；0.35 是 fp32 路径的阈值。
+     * 默认取 3.5 作为“实现错误”的门槛（garbage logits 会远大于它），
+     * fp32 严格对拍可用 FENG_MAX_DIFF=0.35。 */
+    double max_allowed = 3.5;
+    if (const char *e = getenv("FENG_MAX_DIFF")) {
+        const double x = atof(e);
+        if (x > 0) max_allowed = x;
+    }
     double maxdiff = 0, sum = 0;
     int argmax_c = feng_argmax(logits, v), argmax_r = feng_argmax(refl, v);
-    for (int i = 0; i < ncmp && i < v; i++) {
+    for (int i = 0; i < v; i++) {
         const double d = fabs((double)logits[i] - (double)refl[i]);
         if (d > maxdiff) maxdiff = d;
         sum += d;
     }
-    printf("logits check: n=%d max|diff|=%.4f mean|diff|=%.5f  argmax c=%d ref=%d %s\n",
-           ncmp < v ? ncmp : v, maxdiff, sum / (ncmp < v ? ncmp : v), argmax_c, argmax_r,
+    printf("logits check: n=%d max|diff|=%.4f (limit %.2f) mean|diff|=%.5f  "
+           "argmax c=%d ref=%d %s\n", v, maxdiff, max_allowed, sum / v, argmax_c, argmax_r,
            argmax_c == argmax_r ? "MATCH" : "MISMATCH");
     if (argc > 2) {                      /* optional: dump C logits for the torch-side check */
         snprintf(path, sizeof(path), "%s", argv[2]);
@@ -151,12 +163,12 @@ int main(int argc, char **argv)
     for (int step = 0; step < 24; step++) {
         const int t = feng_argmax(logits, v);
         if (t == tok.id_im_end || t == tok.id_eot) break;
-        char b[16];
+        char b[128];
         int nb = feng_tok_decode_token(&tok, t, b, sizeof(b));
         fwrite(b, 1, nb, stdout);
         fflush(stdout);
         logits = feng_forward(&m, &kv, &ws, t, use_n + step);
     }
     printf("\n");
-    return (maxdiff < 0.35 && argmax_c == argmax_r) ? 0 : 2;
+    return (maxdiff < max_allowed && argmax_c == argmax_r) ? 0 : 2;
 }

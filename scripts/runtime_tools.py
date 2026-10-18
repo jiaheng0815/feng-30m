@@ -193,9 +193,8 @@ def mem_answer(user):
             return "我还没有记住你的信息。"
         return "我记得：" + "；".join(items) + "。"
     if any(k in user for k in ("你叫什么名字", "你叫什么", "你是谁")):
-        if "谁训练" in user or "谁开发" in user:
-            return "个人开发者 jiaheng 训练了我，我叫 feng。"
-        return "我叫 feng，由个人开发者 jiaheng 开发训练。"
+        # 必须与 AGENTS.md §1 的身份自述逐字一致；tool 先于模型回答，模板就是用户看到的口径
+        return "我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。"
     if any(k in user for k in ("我叫什么", "我叫啥", "记得我叫什么",
                                "我的名字是什么", "我的名字是啥")):
         name = _MEM_SPECIAL.get("name")

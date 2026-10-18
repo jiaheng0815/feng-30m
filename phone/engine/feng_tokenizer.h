@@ -1,6 +1,3 @@
-/* phone/engine 派生副本：自 core/feng_tokenizer.h 拷贝（2026-10-15，v4.0 C23 迁移后）。
- * 手机端改动见 phone/README.md；板端原始文件未被修改，两边需手动同步。
- * 原版校验值见 phone/engine/SOURCE.sha256。 */
 #ifndef FENG_TOKENIZER_H
 #define FENG_TOKENIZER_H
 
@@ -36,8 +33,13 @@ void feng_tok_free(feng_tok_t *t);
 /* encode text (ASCII/UTF-8) -> token ids; returns number of ids (<= max_out) */
 int feng_tok_encode(const feng_tok_t *t, const char *text, int *out, int max_out);
 
-/* decode one token to raw bytes (byte-level -> original bytes); returns byte count */
+/* decode one token to raw bytes (byte-level -> original bytes); returns byte count.
+ * 最长 token 解码后约 49 字节，调用方缓冲至少给 64；目前驱动统一用 128。 */
 int feng_tok_decode_token(const feng_tok_t *t, int id, char *out, int max_out);
+
+/* 用户输入里是否包含聊天模板专用 token（<|im_start|>/<|im_end|>/<|endoftext|>）。
+ * 驱动在拼接 user prompt 前调用，命中则拒绝，避免用户伪造角色边界。 */
+int feng_tok_has_special(const char *text);
 
 #ifdef __cplusplus
 }

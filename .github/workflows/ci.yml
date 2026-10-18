@@ -29,16 +29,19 @@ jobs:
       #   core/*.c   推理核心，严格 C23（board / pc / phone 编同一份）
       #   pc/*.cpp   PC 侧驱动/套件，C++23
       # g++ 会把 .c 当 C++ 编，反之亦然，所以核心一律用 gcc -std=c23 先编成 .o。
-      - name: 编译核心（C23）
+      - name: 编译核心（C23，fp32 + q2 两套）
         working-directory: core
         run: |
           set -euo pipefail
-          mkdir -p /tmp/core
+          mkdir -p /tmp/core /tmp/core_q2
           for f in feng_model feng_llm feng_quant feng_smp feng_tokenizer \
                    feng_sample feng_calc feng_tools feng_memory; do
             gcc-14 -std=c23 -O2 -c $f.c -o /tmp/core/$f.o -I.
+            gcc-14 -std=c23 -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 \
+              -DFENG_FP16_WEIGHTS=1 -DFENG_MAX_SCORES=32768 \
+              -c $f.c -o /tmp/core_q2/$f.o -I.
           done
-          echo "C23 核心 9 个目标文件编译通过"
+          echo "C23 核心 fp32 + q2 两套编译通过"
 
       - name: 单测（算式 / 时间随机数 / 记忆 / 采样器）
         run: |
@@ -74,24 +77,31 @@ jobs:
         run: |
           set -euo pipefail
           CXXFLAGS="-std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2"
-          Q2="-DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8"
-          CORE="/tmp/core/feng_model.o /tmp/core/feng_llm.o /tmp/core/feng_quant.o \
+          Q2="-DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -DFENG_FP16_WEIGHTS=1 -DFENG_MAX_SCORES=32768"
+          CORE_Q2="/tmp/core_q2/feng_model.o /tmp/core_q2/feng_llm.o /tmp/core_q2/feng_quant.o \
+                /tmp/core_q2/feng_smp.o /tmp/core_q2/feng_tokenizer.o /tmp/core_q2/feng_calc.o \
+                /tmp/core_q2/feng_tools.o /tmp/core_q2/feng_memory.o /tmp/core_q2/feng_sample.o"
+          CORE_FP32="/tmp/core/feng_model.o /tmp/core/feng_llm.o /tmp/core/feng_quant.o \
                 /tmp/core/feng_smp.o /tmp/core/feng_tokenizer.o /tmp/core/feng_calc.o \
                 /tmp/core/feng_tools.o /tmp/core/feng_memory.o /tmp/core/feng_sample.o"
-          g++-14 $CXXFLAGS $Q2 -o /tmp/pc_chat_q2b8     pc/pc_chat.cpp     $CORE -Icore -lm
-          g++-14 $CXXFLAGS $Q2 -o /tmp/pc_kv_suite_q2b8 pc/pc_kv_suite.cpp $CORE -Icore -lm
-          g++-14 $CXXFLAGS $Q2 -o /tmp/pc_mt_suite      pc/pc_mt_suite.cpp $CORE -Icore -lm
-          g++-14 $CXXFLAGS     -o /tmp/pc_check         pc/pc_check.cpp    $CORE -Icore -lm
-          echo "PC 引擎全部编译通过"
+          g++-14 $CXXFLAGS $Q2 -o /tmp/pc_chat_q2b8     pc/pc_chat.cpp     $CORE_Q2 -Icore -lm
+          g++-14 $CXXFLAGS $Q2 -o /tmp/pc_kv_suite_q2b8 pc/pc_kv_suite.cpp $CORE_Q2 -Icore -lm
+          g++-14 $CXXFLAGS $Q2 -o /tmp/pc_mt_suite      pc/pc_mt_suite.cpp $CORE_Q2 -Icore -lm
+          g++-14 $CXXFLAGS     -o /tmp/pc_check         pc/pc_check.cpp    $CORE_FP32 -Icore -lm
+          echo "PC 引擎全部编译通过（q2 核心与驱动宏一致；pc_check 用 fp32 核心）"
 
-      - name: 手机端引擎编译（同一批 C23 核心，aarch64 交叉）
+      - name: 手机端引擎编译（host x86-64；aarch64/NEON 见 phone/cli/build_wsl_aarch64.sh）
         working-directory: phone/cli
         run: |
           set -euo pipefail
-          # 复用 phone/cli/build.sh 的口径，但显式指定 gcc-14（脚本自己只会探测到 gcc-13）
+          # CI 只验证同一份 C23 源码能在 host 编过；真正的 aarch64/NEON 需要
+          # phone/cli/build_wsl_aarch64.sh（qemu）或真机，不在 ubuntu-latest 上跑。
           CC=gcc-14 CXX=g++-14 OUT=/tmp/phone_build bash build.sh
           echo "phone_chat 等产物："
           ls -la /tmp/phone_build | grep -v '^d'
+
+      - name: 手机端派生副本漂移检查
+        run: python3 phone/tools/check_drift.py
 
       - name: 文档自检（干净 clone 口径）
         run: |

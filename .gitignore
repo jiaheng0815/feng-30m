@@ -86,6 +86,8 @@ tools/publish_all.py
 # pc_kv_suite_phone 等），必须显式排除整个 build 目录，否则会推上去一堆二进制。
 phone/cli/build/
 phone/cli/build-*/
+# 真机交叉编译产物（NDK / Termux 变体：build_android、build_android_32k…）
+phone/cli/build_android*/
 phone/android/app/build/
 phone/android/build/
 phone/android/.gradle/

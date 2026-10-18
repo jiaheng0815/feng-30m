@@ -118,7 +118,7 @@ int main(int argc, char **argv)
     for (int step = 0; step < max_new; step++) {
         const int t = feng_argmax(logits, v);
         if (t == tok.id_im_end || t == tok.id_eot) break;
-        char b[16];
+        char b[128];
         const int nb = feng_tok_decode_token(&tok, t, b, sizeof(b));
         fwrite(b, 1, nb, stdout);
         logits = feng_forward(&m, &kv, &ws, t, n + step);

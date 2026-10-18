@@ -66,9 +66,11 @@ static void f16_to_f32_vec(const uint16_t *src, float *dst, int n)
     }
 }
 
-/* scratch buffers live in .bss, not on the task stack (the S3's main stack is small) */
-static float g_scores[4096];    /* one score per (query, past key) position */
-static float g_tmp[512];
+/* scratch buffers live in .bss, not on the task stack (the S3's main stack is small).
+ * 大小不是“随便写死”：feng_model_init 会校验 head_dim/hidden 上限，
+ * feng_forward_ex 会校验 pos < kv->ctx 且 pos < FENG_MAX_SCORES。 */
+static float g_scores[FENG_MAX_SCORES];   /* one score per (query, past key) position */
+static float g_tmp[FENG_MAX_HIDDEN];
 #if FENG_KV_Q2 && FENG_Q2_LUT
 /* 字节 LUT：b -> { (b>>0&3)-1.5, (b>>2&3)-1.5, (b>>4&3)-1.5, (b>>6&3)-1.5 }
  * 表达式与原内层完全相同，只把移位/掩码/整数转浮点换成一次 L1 查表。 */
@@ -207,7 +209,10 @@ size_t feng_kv_scale_slots(const feng_model_t *m, int ctx)
 size_t feng_ws_bytes(const feng_model_t *m, int ctx)
 {
     const int h = m->hdr.hidden, f = m->hdr.ffn, v = m->hdr.vocab;
-    return (size_t)(h * 6 + f * 3 + v + ctx + 4096) * sizeof(float);
+    /* x/xn/q/k/v/attn/proj = 7h；gate/up/ffn = 3f；logits = v；
+     * scratch 至少 max(ctx, f)。 */
+    const int scratch = ctx > f ? ctx : f;
+    return (size_t)(h * 7 + f * 3 + v + scratch) * sizeof(float);
 }
 
 float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int token, int pos)
@@ -218,6 +223,9 @@ float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int to
 float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int token, int pos,
                        int want_logits)
 {
+    if (m == NULL || kv == NULL || ws == NULL) return NULL;
+    if (pos < 0 || pos >= kv->ctx || pos >= FENG_MAX_SCORES) return NULL;
+    if (token < 0 || token >= (int)m->hdr.vocab) return NULL;
 #if defined(FENG_USE_CUDA)
     /* 完整 GPU forward（q2 KV）：权重/KV/激活常驻显存，单 token 一次提交。
      * 不可用或失败时回退下面的 CPU 路径（失败发生在资源分配阶段，KV 状态未污染）。 */
@@ -550,7 +558,7 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
              * 每个 (t,head) 的 16 个打包字节顺序读完再累加；每个 d 对 t 的求和顺序
              * 与乘法分组 (scores[t]*bit)*sv 保持不变，结果逐位一致。 */
             {
-                float vacc[64];
+                float vacc[FENG_MAX_HEAD_DIM];
                 for (int d = 0; d < hd; d++) vacc[d] = 0.f;
 #if FENG_ATTN_PROF
                 const unsigned pv0 = (unsigned)esp_cpu_get_cycle_count();

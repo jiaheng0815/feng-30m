@@ -87,6 +87,14 @@ Java_com_feng_feng30m_FengNative_nativeAsk(JNIEnv *env, jclass cls, jlong handle
     int gen = 0;
     double pre_ms = 0, dec_ms = 0;
 
+    if (feng_tok_has_special(text)) {
+        call_string(env, callback, midToken, "输入包含保留的对话模板标记，已拒绝");
+        if (midDone) (*env)->CallVoidMethod(env, callback, midDone, (jint)0, (jlong)0);
+        pthread_mutex_unlock(&s->lock);
+        (*env)->ReleaseStringUTFChars(env, jtext, text);
+        return 0;
+    }
+
     (void)feng_mem_learn(text);
     if (feng_calc_answer(text, reply, sizeof(reply)) ||
         feng_mem_answer(text, reply, sizeof(reply)) ||
@@ -108,13 +116,13 @@ Java_com_feng_feng30m_FengNative_nativeAsk(JNIEnv *env, jclass cls, jlong handle
     const int cap = (int)strlen(text) + 64;
     int *ids = (int *)xmalloc(sizeof(int) * (size_t)cap);
     const int n = ids ? feng_tok_encode(&s->tok, prompt, ids, cap) : 0;
-    if (!ids || n <= 0 || n >= s->ctx - maxNew) {
+    if (!ids || n <= 0 || n + maxNew + 2 > s->ctx) {
         free(ids);
         pthread_mutex_unlock(&s->lock);
         (*env)->ReleaseStringUTFChars(env, jtext, text);
         return -1;
     }
-    if (s->kv.len > 0 && s->kv.len + n + maxNew + 4 > s->ctx) {
+    if (s->kv.len > 0 && s->kv.len + n + maxNew + 2 > s->ctx) {
         s->kv.len = 0;                 /* 上下文满：自动开新对话（与 CLI 同口径） */
         feng_mem_clear();
     }
@@ -124,17 +132,20 @@ Java_com_feng_feng30m_FengNative_nativeAsk(JNIEnv *env, jclass cls, jlong handle
     const double t0 = (double)feng_phone_uptime_us();
     for (int i = 0; i < n; i++) {
         logits = feng_forward_ex(&s->m, &s->kv, &s->ws, ids[i], pos++, i + 1 == n);
+        if (!logits) break;
     }
     const double t1 = (double)feng_phone_uptime_us();
     free(ids);
 
     int hist[64];
     int nhist = 0;
-    for (int step = 0; step < maxNew; step++) {
+    int gen_cap = maxNew;
+    if (gen_cap > s->ctx - pos - 2) gen_cap = s->ctx - pos - 2;
+    for (int step = 0; step < gen_cap && logits; step++) {
         if (__atomic_load_n(&s->abort_flag, __ATOMIC_RELAXED)) break;
         const int tk = feng_sample_greedy(logits, v, hist, nhist, 1.15f, 3);
-        if (tk == s->tok.id_im_end || tk == s->tok.id_eot) break;
-        char b[16];
+        if (tk < 0 || tk == s->tok.id_im_end || tk == s->tok.id_eot) break;
+        char b[128];
         const int nb = feng_tok_decode_token(&s->tok, tk, b, sizeof(b));
         if (nb > 0 && nb < (int)sizeof(b)) {
             b[nb] = 0;
@@ -149,9 +160,11 @@ Java_com_feng_feng30m_FengNative_nativeAsk(JNIEnv *env, jclass cls, jlong handle
     pre_ms = (t1 - t0) / 1000.0;
     dec_ms = (t2 - t1) / 1000.0;
 
-    /* 把 im_end / 换行也补进 KV，下一轮才有正确上下文 */
-    (void)feng_forward_ex(&s->m, &s->kv, &s->ws, s->tok.id_im_end, pos++, 0);
-    if (s->nl_id > 0) (void)feng_forward_ex(&s->m, &s->kv, &s->ws, s->nl_id, pos++, 0);
+    /* 把 im_end / 换行也补进 KV，下一轮才有正确上下文；只有还有空间才写 */
+    if (pos < s->ctx)
+        (void)feng_forward_ex(&s->m, &s->kv, &s->ws, s->tok.id_im_end, pos++, 0);
+    if (s->nl_id > 0 && pos < s->ctx)
+        (void)feng_forward_ex(&s->m, &s->kv, &s->ws, s->nl_id, pos++, 0);
     s->kv.len = pos;
 
     LOGI("ask: prompt %d tok, gen %d tok, prefill %.0f ms, decode %.0f ms (%.1f tok/s)",
@@ -263,6 +276,10 @@ Java_com_feng_feng30m_FengNative_nativeInit(JNIEnv *env, jclass cls, jstring jmo
     if (!s) goto fail;
 
     if (ctx < 256) ctx = 2048;
+    if (ctx > FENG_PHONE_MAX_CTX) {
+        LOGE("ctx %d 超过编译期上限 %d，已截断", ctx, FENG_PHONE_MAX_CTX);
+        ctx = FENG_PHONE_MAX_CTX;
+    }
     s->ctx = ctx;
 
     if (feng_phone_load(mp, &s->mblob, &s->mlen) != 0) {

@@ -184,12 +184,12 @@ int feng_gbk_to_utf8(const char *in, int n, char *out, int out_max)
 /*
  * 退化实现：不编那张 46 KB 映射表，**永远按 UTF-8 收发**。
  *
- * main.c 一行都不用改——靠这三个语义把 GBK 路径自然关掉：
+ * 靠这三个语义把 GBK 路径自然关掉：
  *   · feng_has_high_byte 恒 0 -> 输入侧不做编码嗅探，g_out_gbk 始终是 0；
  *   · feng_utf8_valid    恒 1 -> 即使被调用，也永远判定"这是 UTF-8"；
  *   · 两个转换函数原样拷贝    -> 万一有别的调用点闯进来，也不会崩。
  *
- * `\gbk` 命令在 main.c 里被条件编译成一句提示（见那里的 #if FENG_GBK）。
+ * main.c 里另有两处 `#if FENG_GBK`：`\gbk` 提示语、帮助/横幅不再列 `\gbk`。
  */
 
 #include <string.h>

@@ -14,7 +14,7 @@ import numpy as np
 import torch
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "board" / "tools"))
 from export_model import DT_FP16, DT_Q4, QK, quantize_q4   # noqa: E402
 
 MAGIC = 0x46574E31
@@ -128,6 +128,8 @@ def main():
     ap.add_argument("--export", required=True)
     ap.add_argument("--model", required=True, help="HF model dir (for the fp32 reference)")
     ap.add_argument("--c-logits", required=True)
+    ap.add_argument("--max-c-diff", type=float, default=0.02,
+                    help="C 引擎与 torch(Q4 round-trip) 的最大允许差（实现错误应接近 0）")
     args = ap.parse_args()
 
     mb = load_model_bin(Path(args.export) / "model.bin")
@@ -155,6 +157,11 @@ def main():
     d3 = np.abs(r - c_logits)
     print(f"[C vs torch(fp32)] max|diff|={d3.max():.4f} mean={d3.mean():.5f}")
 
+    ok = d.max() <= args.max_c_diff and int(c_logits.argmax()) == int(t_q4.argmax())
+    print("VERDICT:", "PASS" if ok else "FAIL",
+          f"(C vs torch(Q4) threshold {args.max_c_diff})")
+    return 0 if ok else 1
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

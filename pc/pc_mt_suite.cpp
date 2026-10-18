@@ -151,30 +151,38 @@ int main(int argc, char **argv)
     /* 生成一轮回答（含重复惩罚采样），返回文本长度 */
     #define GEN_TURN(user_text, out_buf, out_sz)                                        \
         do {                                                                            \
-            nhist = 0;                                                                  \
             char prompt_[2048];                                                         \
             snprintf(prompt_, sizeof(prompt_),                                          \
                      "<|im_start|>user\n%s<|im_end|>\n<|im_start|>assistant\n", user_text); \
             int np_ = feng_tok_encode(&tok, prompt_, ids, 1024);                        \
-            int pos_ = kv.len, w_ = 0;                                                  \
-            float *lg_ = NULL;                                                          \
             (out_buf)[0] = 0;                                                           \
             if (np_ <= 0) break;                                                        \
-            for (int i_ = 0; i_ < np_; i_++)                                            \
+            if (kv.len + np_ + max_new + 2 > ctx) {                                     \
+                kv.len = 0;                                                             \
+                nhist = 0;                                                              \
+            }                                                                           \
+            if (np_ + max_new + 2 > ctx) { printf("[skipped: prompt too long]\n"); break; } \
+            int pos_ = kv.len, w_ = 0;                                                  \
+            float *lg_ = NULL;                                                          \
+            for (int i_ = 0; i_ < np_; i_++) {                                          \
                 lg_ = feng_forward_ex(&m, &kv, &ws, ids[i_], pos_++, i_ + 1 == np_);    \
-            for (int step_ = 0; step_ < max_new; step_++) {                             \
+                if (!lg_) break;                                                        \
+            }                                                                           \
+            int cap_ = max_new;                                                         \
+            if (cap_ > ctx - pos_ - 2) cap_ = ctx - pos_ - 2;                           \
+            for (int step_ = 0; step_ < cap_ && lg_; step_++) {                         \
                 const int tk_ = feng_sample_greedy(lg_, v, hist, nhist, 1.15f, 3);      \
-                if (tk_ == tok.id_im_end || tk_ == tok.id_eot) break;                   \
-                char b_[16];                                                            \
+                if (tk_ < 0 || tk_ == tok.id_im_end || tk_ == tok.id_eot) break;        \
+                char b_[128];                                                           \
                 const int nb_ = feng_tok_decode_token(&tok, tk_, b_, sizeof(b_));       \
                 if (w_ + nb_ < (out_sz) - 1) { memcpy((out_buf) + w_, b_, (size_t)nb_); w_ += nb_; } \
                 if (nhist < 64) hist[nhist++] = tk_;                                    \
                 lg_ = feng_forward(&m, &kv, &ws, tk_, pos_++);                          \
             }                                                                           \
             (out_buf)[w_] = 0;                                                          \
-            (void)feng_forward_ex(&m, &kv, &ws, tok.id_im_end, pos_++, 0);              \
+            if (pos_ < ctx) (void)feng_forward_ex(&m, &kv, &ws, tok.id_im_end, pos_++, 0); \
             {   int nl_ = 0;                                                            \
-                if (feng_tok_encode(&tok, "\n", &nl_, 1) == 1)                          \
+                if (pos_ < ctx && feng_tok_encode(&tok, "\n", &nl_, 1) == 1)            \
                     (void)feng_forward_ex(&m, &kv, &ws, nl_, pos_++, 0); }              \
             kv.len = pos_;                                                              \
         } while (0)
@@ -184,6 +192,7 @@ int main(int argc, char **argv)
     for (int ci = 0; ci < n_cases; ci++) {
         const mt_case_t *c = &CASES[ci];
         kv.len = 0;
+        nhist = 0;
         char answer[512] = "";
         for (int t = 0; t < MAX_TURNS && c->turns[t]; t++) {
             GEN_TURN(c->turns[t], answer, sizeof(answer));
@@ -199,6 +208,7 @@ int main(int argc, char **argv)
 
     /* 板端同款：12 题在**一次连续对话**里跑完（esp32_memory.py 的口径） */
     kv.len = 0;
+    nhist = 0;
     int mok = 0;
     const int n_mem = (int)(sizeof(MEM12) / sizeof(MEM12[0]));
     for (int i = 0; i < n_mem; i++) {
@@ -218,6 +228,7 @@ int main(int argc, char **argv)
     for (int si = 0; si < n_seq; si++) {
         const seq_case_t *s = &SEQ_CASES[si];
         kv.len = 0;
+        nhist = 0;
         char answer[512];
         printf("[seq] %s\n", s->name);
         for (int t = 0; t < MAX_TURNS && s->turns[t]; t++) {

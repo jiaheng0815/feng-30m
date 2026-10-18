@@ -21,46 +21,55 @@
   → v3.20 = 引擎序列数数 tool + 统一采样器 + 体积/性能优化（固件 304,192 B）
   → **v4.0 = 引擎全面升级（当前）：推理核心迁到严格 C23（板端与 PC 共用同一份源码，
   PC 驱动仍 C++23、CUDA 独立），新增手机端 `phone/` 与编辑器代码提示；
-  固件 257,104 B、板端 2.33 tok/s**。
-  - **v4.0 训练链路（2026-10-17，进行中）**：教师数据 **36,916 条 → 34,143 收 / 2,773 拒**，
+  固件 260,480 B、板端 2.33 tok/s**。
+  - **v4.0 训练链路（2026-10-17 完成；板端权重未替换）**：教师数据 **36,916 条 → 34,143 收 / 2,773 拒**，
     SFT 合并 **38,298 条 / 52,964 轮**；PC 全参 SFT 两次（第一次掉分，见下），
     第二次 `v4/sft_pc2`（3 epoch / lr 1e-5 / 身份×4 / 补丁×8）**两套留出首次双超 v3.19**
-    （22/30、19/30，基线 19/30、18/30），探针 40/42、范围身份 10/10。
+    （旧 strict-v6：22/30、19/30，基线 19/30、18/30；2026-10-18 审计后 strict-v7 为 18/30、16/30，基线 17/30、15/30），探针 40/42、范围身份 10/10。
   - 之后还要做**检索回放**（`v3_retrieval_sft.py`）：纯 SFT 会把 32k 长文打回 7/32。
-    回放 2 epoch 后 `v4/retr_sft4`：针检索 **110/128**（32k **28/32**）、
-    「文中没有」拒答 **64/64**、留出 **22/30 + 21/30** —— 六项全部持平或反超 v3.19。
+    回放 2 epoch 后 `v4/retr_sft4`（旧字符口径）针检索 110/128（32k 28/32）、
+    「文中没有」拒答 64/64、留出（strict-v6）22/30 + 21/30。
+    **2026-10-18 修了评测脚本的字符/token 混淆**（旧输入实际短 20–35%，且 32k 没给生成留位）：
+    按 token 精确重测，最终 v4.0 = **103/128（32k 20/32）**、v3.19 = **106/128（32k 24/32）**，
+    拒答 v4 64/64 vs v3.19 62/64。**检索命中没有超过 v3.19，只有拒答更好**；
+    证据 `eval/longctx32_v4final.json`、`eval/longctx32_v319.json`。
   - 最后一步：`我叫X，请记住` 这个句式在 4.8 万轮数据里**一条都没有**，原始 4.0 会答
     "听起来不错，希望你喜欢"。加 **160 条定向补丁（末 2 层 / 5 epoch / lr 5e-6）**修掉，
-    得到最终 PC 权重 **`v4/patch_name_e5_lr5e-6`：留出 22/30 + 22/30**、探针 40/42、
-    检索引擎 110/128、拒答 64/64 —— 修名字**没有伤到别处**。
+    得到最终 PC 权重 **`v4/patch_name_e5_lr5e-6`：strict-v7 留出 18/30 + 16/30**、探针 40/42、
+    针检索 103/128（32k 20/32，token 精确口径）、拒答 64/64 —— 修名字**没有伤到别处**。
     教训：补丁的强度和样本量要一起降（第一次 10 epoch / lr 1e-5 把留出第一套打掉 2 题）。
   - **检索数据的负样本必须带诱饵、与评估口径同分布**，否则拒答学不会（实测 4/64 vs 64/64）。
-  - **板端双 QAT 两版都没过关卡 A，这一版板端沿用 v3.19-embed。**
+  - **板端双 QAT 前三版里两版没过关卡 A，这一版板端沿用 v3.19-embed。**
     从最终 PC 权重复现：3 epoch / lr 6e-6（5,034 步）→ **24/27**，1 epoch / lr 4e-6
     （1,678 步）→ **23/27**；都低于 v3.19-embed 的 27/27，所以不替换。
     1 epoch 反而更差——QAT 步数太少，权重**没适应** Q4/q2 噪声。
     3 epoch 则相当于又做一遍全参 SFT，把稀少行为（翻译、推荐）磨掉。
+    第三版 `v4/qat_20261017D` 在 PC 关卡 A 达到 27/27 + 4/4、两套留出 19/30 + 19/30、
+    42 题探针 42/42，但**尚未做板端 tool/记忆/实机验收**，暂不替换；证据在
+    `logs/gate_a_20261017D.txt`、`eval/*_20261017D.json`（随本次提交入库）。
     失败样本导出留在 `board/model_export_v4_qat_rejected/`（已 gitignore），别误发。
     下次方向：去掉 `--retr`（板端 MAX_CTX=2048，4096/8192 的长文 QAT 用不上，
     而那段 lr 1e-5 / gnorm 40 的更新对短任务伤害最大）、或只训末 N 层。
     详见 `docs/CHANGELOG.md` §4f。
   - **发布口径**：PC 权重 = v4.0（`v4/patch_name_e5_lr5e-6`），板端权重 = v3.19-embed，
     引擎两边都是 v4.0。**这两个版本号不要混着写。**
-  （标准基准在 v4.0 收窄到 SciQ / PIQA 两项，其余六项测不出信号已删，见下文。）
+  （标准基准在 v4.0 收窄到 SciQ / PIQA 两项；其余七项大多贴随机线，其中 BoolQ/OpenBookQA/ARC-C 显著低于随机线，是偏置信号而非“无信号”。SciQ prompt 含 support 证据段，是开卷口径。）
 - v3.19 现状（**当前发布**）：
   - PC 权重（已收进 `v4/base/`，也是 4.0 的 SFT 起点）：从 `archive/v3_14/pc2` 出发，用 440 条定向教师数据（常识/列举/情绪/寒暄/推理/身份六类，
     `scripts/v3_19_build_target_prompts.py`）+ 多轮/身份回放做**末 2 层 15 epoch** 微调；
-    留出 30 题 **19/30**（strict-v4 判定；v3.14 = 16/30）、单类别检索 **110**（v3.14 = 108）、
-    多类别 105（-2）、记忆 23/24（-1）、范围/身份/探针保持（`eval/v3_19pc4_*.json`）。
+    留出 30 题 **17/30**（strict-v7；旧 strict-v4 19/30；v3.14 = 16/30）、
+    单类别检索 **106/128**（token 精确口径；旧字符口径 110，v3.14 旧口径 108）、
+    多类别 105 是旧口径、未重测、记忆 23/24（-1）、范围/身份/探针保持（`eval/v3_19pc4_*.json`）。
   - 板端 v3.19-embed 权重（导出在 `board/model_export_v3_19b6/`）：在 `archive/v3_16/board_p3` 上做 **Q4+q2 双 QAT（4 epoch / lr 6e-6）**；
-    C++ 引擎矩阵 **27/27+4/4、召回 4/4、算术 21/21、pc_check MATCH**，HF 留出 **19/30**（v3.16 = 17）、
-    记忆 24/24；实机 tool 13/13、记忆 12/12、7 轮换名身份 7/7（`logs/pc_kv_suite32_v3_19b6_q2b8.txt`、
+    C++ 引擎矩阵 **27/27+4/4、召回 4/4、算术 21/21、pc_check MATCH**，HF 留出 **17/30**（strict-v7；旧 19/30；v3.16 = 17）、
+    记忆 24/24；实机 tool 13/13、记忆 12/12、8 轮身份序列 8/8（`logs/board_v3_16p3_identity_ctx_engmem.txt`、
     `logs/board_v3_19b6_memory12.txt`、`logs/esp32_multi.txt`）。
-  - **评测口径**：留出题判定用 strict-v6（子串假阳性、复读误判、"推荐运动"误命中、
+  - **评测口径**：留出题判定用 strict-v7（子串假阳性、复读误判、"推荐运动"误命中、
     问题关键词复读四类都拦，关键词大小写不敏感；`chat_probe_heldout.py --rescore`，
     重打分必须传对 case 表，否则未知题按原判保留）；
-  - **两套留出题**：第一套 30 题已当开发集（v3.19=19/30）；第二套 `chat_probe_heldout2.py`
-    未参与训练/调参（三版权重均 18/30），发版文案必须以第二套为准说明泛化水平；
+  - **两套留出题**：第一套 30 题已当开发集（strict-v7 v3.19=17/30、v4=18/30）；第二套
+    `chat_probe_heldout2.py` **在 v4 被用于选型**（e3/e5 补丁与 soup 候选都看过），
+    不再是未触碰的独立测试集（strict-v7 v3.19=15/30、v4=16/30）；发版文案必须注明这一点；
     **关键词判定会漏假阳性**（答案含"南极/米"等词即判 OK，即使方向答反或退化成词）——
     头条数字必须人工过一遍 `rows[].a`，推荐解码对照存 `eval/heldout2_*_rec.json`；
     留出 30 题已被多轮迭代用作开发集，只作版本对比，不当无偏泛化分数。
@@ -104,7 +113,7 @@
     身份 12/12、多轮 1.00；
     - 板端 `archive/v3_15/board_ctxid4/`：q2/2048 矩阵 **27/27 + 4/4**、算术子集 **21/21**、
     板端 默认/情绪/工具 **10/10 ｜ 10/10 ｜ 8/8**、跨轮记忆 10/12、1.80 tok/s；
-  - **固件（main.cpp）默认多轮上下文**：KV 跨轮累积、`\reset` 清空、写满自动开新对话；
+  - **固件（`board/main/main.c`）默认多轮上下文**：KV 跨轮累积、`\reset` 清空、写满自动开新对话；
     `scripts/esp32_multi.py` 默认每题前 `\reset`（独立探针口径），`--no-reset` 测连续对话。
 - v3.12（PC 上一版，`archive/v3_12/arith2l3/`）：算术 275/281、单类别 110、探针 42/42、记忆 5/24。
 - v3.11（板端上一版，`archive/v3_11/pol8/`）：q2 矩阵 27/27+4/4、算术子集 21/21、板端 30/30、1.81 tok/s；
@@ -112,7 +121,7 @@
   （掺 20% v3.9 权重就掉到 25/27），PC 32k 弱。
 - **PC 用 v3.19 权重（现收在 `v4/base/`，也是 4.0 的训练起点）；板端用 v3.19-embed 权重
   （导出在 `board/model_export_v3_19b6/`）；两边同一套 v4.0 / 严格 C23 引擎与固件**
-  （q2/2048 固件 **257,104 B**、板端 2.33 tok/s；见 `docs/CHANGELOG.md` v3.19/v3.20 节与
+  （q2/2048 固件 **260,480 B**、板端 2.33 tok/s；见 `docs/CHANGELOG.md` v3.19/v3.20 节与
   `docs/esp32-firmware.md`）。
 - **标准基准（英文，0-shot）**：**只有 SciQ 71.00/73.80 与 PIQA 53.37**。
   ARC/HellaSwag/OpenBookQA/Winogrande/BoolQ/SciCloze 六项曾跑过，但在这个 30M 中文模型上
@@ -141,7 +150,7 @@
 
 本目录是 git 仓库，远端 `origin = https://github.com/jiaheng0815/feng-30m`（公开仓库）。发布约定：
 **主仓库只放代码与文档**——数据集（`data/`、`v2/data/`）与权重/二进制（`*.safetensors`、`*.gguf`、`*.npy`、`*.bin` 等）
- 都由 `.gitignore` 排除，随 Release 发布（PC `feng-30m-v3.19-release.zip`、板端 `feng-30m-v3.19-embed-release.zip`）；
+ 都由 `.gitignore` 排除，随 Release 发布（PC `feng-30m-v4.0-release.zip`、板端 `feng-30m-v4.0-embed-release.zip`）；
 **v3.14 起不再发行 GGUF**（llama.cpp 没有 tool，见 CHANGELOG v3.14）。
 代码与权重均为 **Apache-2.0**（`LICENSE`）。
 开源数据集只含**教师蒸馏数据**（提示词与教师输出）；本地脚本生成的多轮/补丁/运算数据不入 Release 包。
@@ -241,7 +250,7 @@ g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Icore -lm       # 驱动 + 链
    `string_view::substr`（引用 `std::__throw_out_of_range_fmt`，拖进 libstdc++ 异常/字符串/
    pthread 运行时 ~5KB）；非热点模块（tokenizer/tool/model/gbk/main）用 `-Os`，热点
    （llm/quant/smp/sample）保持 `-O2`。改完对比固件体积：**不得超 C 版基线 307,392B
-   （q2/2048 配置）**，当前为 **257,104 B**（关掉彩蛋是 256,912 B）。
+   （q2/2048 配置）**，当前为 **260,480 B**（关掉彩蛋是 260,288 B）。
 8. **CUDA 后端（PC 可选，板端不含）**：`pc/feng_cuda.cu` + `build_pc_cuda.ps1`
    （MSVC + nvcc，`-fmad=false` 保证与 CPU 同运算顺序）；GEMV 权重常驻显存，其余算子在 CPU。
    **验收口径**：32 题矩阵须 27/27+4/4 且与 CPU 版**输出逐字一致**（`pc_kv_suite_cuda.exe`），
@@ -268,7 +277,7 @@ g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Icore -lm       # 驱动 + 链
 - **不要列进 `\help`**，读 README 也无法直接知道触发方式（README 的小字只提到
   `nobonus` 编译选项，靠它当唯一线索）；
 - 关掉它的开关是 `-DFENG_NO_BONUS=ON`（那时连混淆数据都不进二进制，实测省 208 B）；
-- 它占 **192 B** 固件空间（257,104 vs 256,912），在体积纪律的预算内。
+- 它占 **192 B** 固件空间（260,480 vs 260,288），在体积纪律的预算内。
 
 **维护要求**：重写命令链、清理"未引用代码"、或做体积优化时，别把它当成冗余删掉；
 它跟 `\help` 里那些命令一样是有意的。改 `main.c` 的命令分支时留意最后那个 `else`。
@@ -290,6 +299,9 @@ g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Icore -lm       # 驱动 + 链
 同步之后用 `phone/cli/build.sh` 验一遍：它复用 `pc/` 的
 **同一份 32 题矩阵套件源码**（不另写题表），所以在开发机上就能把两边的输出
 **逐字节对比**。当前基线：手机端 32 题 27/27 + 4/4，单线程与多线程输出均与板端一致。
+**NEON int8 路径是近似的**：裸模型 `pc_mt_suite` 在 P30 Pro 上是 mem12 9/12、seq 9/10；
+`FENG_PHONE_NEON=0` 重编后回到 12/12、10/10。产品路径先过记忆 tool，不受影响；
+需要与板端逐字对拍时用 NEON 关。
 
 > Windows（MSYS2）上也能编手机引擎：`feng_phone.c` 有 `_WIN32` 分支，走"读进堆"
 > 回退（MSYS2 没有 `sys/mman.h`），pthread/信号量由 winpthreads 提供。
@@ -338,8 +350,12 @@ python scripts\bench_standard.py --model v4/base --tag v3_19_pc4    # 英文基�
 
 数据与训练（Python 一律用上表的 venv 解释器）：
 
+**当前 v4.0 的完整链路见 [`docs/v4-pipeline.md`](docs/v4-pipeline.md)**（数据合并 → 检索重建 →
+全参 SFT → 检索回放 → 名字补丁 → 导出/验收），下面这一段是 v3 时代的**历史命令**，
+其中的 `archive/…` 目录已删除、不可复现，只作训练方法的参考。
+
 ```powershell
-# v3 渐进长文数据 → 训练 → 8k 对话微调 → 检索 SFT（严格按此顺序）
+# 【历史】v3 渐进长文数据 → 训练 → 8k 对话微调 → 检索 SFT（严格按此顺序）
 python scripts\v3_build_stages.py
 python scripts\v3_train.py                      # --stages ctx4096 可只跑某阶段；--steps-cap N 冒烟
 python scripts\v3_pack_sft.py
@@ -410,14 +426,14 @@ ESP32 固件（在 `board\` 下）：
 ```powershell
 # 0) 导出板端模型（从 HF 权重生成 model.bin / tokenizer.bin / ref_logits.bin）
 $py = "python"        # 换成装了 torch + transformers 的解释器
-& $py tools\export_model.py --model <仓库根>\v3_19\board6 --out model_export_v3_19b6
+& $py board\tools\export_model.py --model <板端 HF 权重目录> --out board\model_export_v3_19b6
 
 # 1) PC 端一致性自检（改内核后必跑）
-& "<MSYS2>\ucrt64\bin\gcc.exe" -std=c23 -O2 -c ..\main\feng_model.c -o fm.o -I..\main   # 核心逐个编成 .o
-& "<MSYS2>\ucrt64\bin\gcc.exe" -std=c23 -O2 -c ..\main\feng_llm.c   -o fl.o -I..\main
-& "<MSYS2>\ucrt64\bin\gcc.exe" -std=c23 -O2 -c ..\main\feng_quant.c -o fq.o -I..\main
-& "<MSYS2>\ucrt64\bin\gcc.exe" -std=c23 -O2 -c ..\main\feng_smp.c   -o fs.o -I..\main
-& "<MSYS2>\ucrt64\bin\gcc.exe" -std=c23 -O2 -c ..\main\feng_tokenizer.c -o ft.o -I..\main
+& "<MSYS2>\ucrt64\bin\gcc.exe" -std=c23 -O2 -c ..\core\feng_model.c -o fm.o -I..\core   # 核心逐个编成 .o
+& "<MSYS2>\ucrt64\bin\gcc.exe" -std=c23 -O2 -c ..\core\feng_llm.c   -o fl.o -I..\core
+& "<MSYS2>\ucrt64\bin\gcc.exe" -std=c23 -O2 -c ..\core\feng_quant.c -o fq.o -I..\core
+& "<MSYS2>\ucrt64\bin\gcc.exe" -std=c23 -O2 -c ..\core\feng_smp.c   -o fs.o -I..\core
+& "<MSYS2>\ucrt64\bin\gcc.exe" -std=c23 -O2 -c ..\core\feng_tokenizer.c -o ft.o -I..\core
 & "<MSYS2>\ucrt64\bin\g++.exe" -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics `
     -O2 -o pc\pc_check.exe pc_check.cpp fm.o fl.o fq.o fs.o ft.o -I..\main -lm
 .\pc\pc_check.exe ..\model_export_v3_19b6 ..\logs\c_logits_v3_19b6.bin
@@ -476,7 +492,7 @@ python scripts\esp32_enc_test.py COM20
 8.5 **采样器统一**：`core/feng_sample.c` 的 `feng_sample_greedy`（1.15 重复惩罚 + no-repeat 3-gram）是
    固件 / `pc_chat` / `pc_kv_suite` / `pc_mt_suite` 的唯一采样入口；改采样器后必须重跑 PC 32 题矩阵
    并与上一版输出对比（v3.20 那次为**逐字节 0 差异**），再上板。
-9. **量化格式耦合**：Q4 block-64（4.25 bpw）；改 `QK` 必须同步改 C 侧 `QK`，且 `tools/export_model.py` 会生成 `ref_ids.json` / `ref_logits.bin` 供一致性校验。
+9. **量化格式耦合**：Q4 block-64（4.25 bpw）；改 `QK` 必须同步改 C 侧 `QK`，且 `board/tools/export_model.py` 会生成 `ref_ids.json` / `ref_logits.bin` 供一致性校验。
 10. **SFT 采样顺序坑**：`v2_train.py --stage sft` 默认按长度排序喂样本（省 padding），
    **有界 `--steps` 只会看到最短的一段**——续训恢复实验里 3,000/28,178 步只覆盖最短 10%，
    身份样本完全没轮到（身份 0/12）。短轮/补丁训练请加 `--order interleave`，或跑满一个 epoch。
@@ -492,7 +508,7 @@ python scripts\esp32_enc_test.py COM20
 ## 7. 改动的验收清单
 
 - **改了训练脚本**：用 `--steps-cap 1`（或 `--steps`）跑冒烟，确认能落盘 `<阶段>/final/` 与 `summary.json`。
-- **改了 C++ 推理内核 / KV 量化**：必须重跑 `pc_check`（logits MATCH）→ `pc\verify_c_vs_torch.py`（fp32 路径要求 `max|diff| = 0.0000`）→ 板上 `scripts\esp32_multi.py`，并与 `logs\board_baseline_lut.txt` **逐字对比**回复。
+- **改了推理内核（`core/`，C23）/ KV 量化**：必须重跑 `pc_check`（logits MATCH）→ `pc\verify_c_vs_torch.py`（fp32 路径要求 `max|diff| = 0.0000`）→ 板上 `scripts\esp32_multi.py`，并与 `logs\board_baseline_lut.txt` **逐字对比**回复。
 - **改了文档**：跑 `python tools\check_md.py`（围栏/路径/过时数字）**和** `python tools\check_docs.py`
   （模型规格 / GGUF 体积与 chat template / v3.9~v3.12 探针、检索、算术分数 / 范围评测 / 检索 loss 与真实产物对齐）。
 - **写了数字**：数字必须能追到 `eval/*.json`、`summary.json` 或 `logs/` 里的实测；没有出处的一律删掉或标注"预期/估算"，

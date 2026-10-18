@@ -1125,6 +1125,55 @@ def _check_facts_legacy() -> None:
         elif p.exists():
             print(f"    {label}（与文档一致）")
 
+def _check_facts_v4() -> None:
+    """v4.0 事实层：参数量/固件体积/教师数据条数/最终留出/标准基准。"""
+    cfg_p = ROOT / "v4" / "base" / "config.json"
+    if cfg_p.exists():
+        cfg = json.loads(cfg_p.read_text(encoding="utf-8"))
+        want = f"{_params(cfg) / 1e6:.2f}M"
+        texts = {p: p.read_text(encoding="utf-8") for p in (
+            ROOT / "README.md", ROOT / "AGENTS.md", ROOT / "v4" / "base" / "MODEL_CARD.md")
+            if p.exists()}
+        if not all(want in t for t in texts.values()):
+            fail.append(f"v4 参数量：实际 {want}，README/AGENTS/MODEL_CARD 未全部写对")
+
+    fw = ROOT / "board" / "build" / "feng_30m.bin"
+    if fw.exists():
+        size = fw.stat().st_size
+        texts = {p: p.read_text(encoding="utf-8") for p in (
+            ROOT / "README.md", ROOT / "AGENTS.md", ROOT / "docs" / "USAGE.md",
+            ROOT / "docs" / "DELIVERY.md", ROOT / "docs" / "esp32-firmware.md")
+            if p.exists()}
+        needle = f"{size:,} B"
+        missing = [p.name for p, t in texts.items() if needle not in t]
+        if missing:
+            fail.append(f"v4 固件体积：实际 {needle}，这些文档没写对：{', '.join(missing)}")
+
+    teacher = ROOT / "data" / "v4_teacher.jsonl"
+    if teacher.exists():
+        n = sum(1 for _ in teacher.open(encoding="utf-8"))
+        if str(n) not in (ROOT / "README.md").read_text(encoding="utf-8") and \
+           f"{n:,}" not in (ROOT / "README.md").read_text(encoding="utf-8"):
+            fail.append(f"v4 教师数据：实际 {n} 条，README 未写对")
+        usage = ROOT / "docs" / "USAGE.md"
+        if usage.exists() and f"{n:,}" not in usage.read_text(encoding="utf-8"):
+            fail.append(f"v4 教师数据：实际 {n:,} 条，USAGE 未写对（不要写提示词总数）")
+
+    for f, key in ((ROOT / "eval" / "h1_patch_name_e5_lr5e-6.json", "18/30"),
+                   (ROOT / "eval" / "h2_patch_name_e5_lr5e-6.json", "16/30")):
+        if f.exists() and key not in (ROOT / "README.md").read_text(encoding="utf-8"):
+            fail.append(f"v4 留出：{f.name} 的 strict-v7 结果是 {key}，README 未写对")
+
+    bench = ROOT / "eval" / "lm_eval_v4_pn5_2026-10-17T15-42-09.162846.json"
+    if bench.exists():
+        d = json.loads(bench.read_text(encoding="utf-8"))["results"]
+        sciq = d["sciq"]["acc,none"] * 100
+        piqa = d["piqa"]["acc_norm,none"] * 100
+        comp = (ROOT / "docs" / "COMPARISON.md").read_text(encoding="utf-8")
+        if f"{sciq:.2f}" not in comp or f"{piqa:.2f}" not in comp:
+            fail.append(f"COMPARISON：v4.0 标准基准应为 SciQ {sciq:.2f} / PIQA {piqa:.2f}")
+
+
 def check_facts() -> None:
     """事实检查。
 
@@ -1132,8 +1181,8 @@ def check_facts() -> None:
     针对旧产物的核验没有对象可查——**明确跳过并说明**，比让它在干净 clone 上
     直接抛 FileNotFoundError 好。文本类核验（不依赖旧产物）照常执行。
 
-    ⚠️ v4 产出自己的权重与评测后，应当在这里补 v4 的核验，
-       否则「文档数字与产物对齐」这件事在 v4 时代事实上是没人守的。
+    v4 的核验见 `_check_facts_v4()`（参数量 / 固件体积 / 教师数据 / strict-v7
+    留出 / 标准基准），不依赖已删除的旧产物。
     """
     if (ROOT / "archive").exists() or (ROOT / "v2").exists():
         _check_facts_legacy()
@@ -1141,8 +1190,9 @@ def check_facts() -> None:
         print("[2] 事实检查（历史产物核验已跳过）")
         print("    v1/v2/v3 的模型产物已删除，针对它们的参数量/GGUF/各版评测核验无对象可查")
         print("    需要时从 GitHub Release 取回旧产物，本节自动恢复")
-        print("    ⚠️ v4 产出权重与评测后，应在此补 v4 的核验")
+        print("    v4 核验单独执行（参数量 / 固件体积 / 教师数据 / strict-v7 留出 / 标准基准）")
     _check_wording()
+    _check_facts_v4()
 
 
 def _check_wording() -> None:
@@ -1178,25 +1228,27 @@ def _check_wording() -> None:
                     ROOT / "docs" / "COMPARISON.md"]
     stale_claims = ("板端用 v3.16-embed", "板端用 v3.14-embed", "板端用 v3.13-embed",
                     "PC 用 v3.14", "PC 用 v3.13", "最终版 v3.6", "--model weights\\hf",
-                    "c-engine-model-v3.16-embed")
+                    "c-engine-model-v3.16-embed", "c-engine-model-v3.19-embed",
+                    "feng-30m-v3.19-release.zip", "feng-30m-v3.19-embed-firmware.zip",
+                    "feng-30m-v3.19-engine.zip")
     for doc in current_docs:
         t = doc.read_text(encoding="utf-8")
         rel = doc.relative_to(ROOT)
         for bad in stale_claims:
             if bad in t:
-                fail.append(f"{rel}: 出现旧版本口径「{bad}」（当前 PC=v3.14、板端=v3.16-embed）")
-    # 当前板端版：v4.0 起写成 `v4.0-embed`。4.0 发布后 v3.19-embed 只作历史对比出现。
+                fail.append(f"{rel}: 出现旧版本口径「{bad}」"
+                            f"（当前 PC=v4.0、板端=v3.19-embed、Release 包名 v4.0）")
+    # 当前板端版：v4.0 的 QAT 未过关卡，板端权重仍是 v3.19-embed；文档必须写清这一点，
+    # 不能只写 v4.0 让人以为板端也换了权重。
     for doc in (ROOT / "README.md", ROOT / "docs" / "USAGE.md", ROOT / "docs" / "DELIVERY.md"):
         t = doc.read_text(encoding="utf-8")
-        if "v4.0-embed" not in t and "v3.19-embed" not in t:
-            fail.append(f"{doc.relative_to(ROOT)}: 未标注当前板端版（v4.0-embed / v3.19-embed）")
+        if "v3.19-embed" not in t:
+            fail.append(f"{doc.relative_to(ROOT)}: 未标注当前板端权重（v3.19-embed）")
     # v4.0 起**不再单独发行** "C 引擎预导出模型" 包：engine 包给源码、embed-release 包给
     # model.bin/tokenizer.bin，两者合起来已经够用；再发一份 MSVC 编的 .exe 只会把
-    # 平台差异（Windows-only）伪装成"官方运行时"。所以这里改成检查四个包名有没有写全。
+    # 平台差异（Windows-only）伪装成"官方运行时"。所以这里检查四个包名有没有写全。
     for doc in (ROOT / "README.md", ROOT / "docs" / "USAGE.md"):
         t = doc.read_text(encoding="utf-8")
-        if "c-engine-model-v3.19-embed" in t:
-            continue                      # 还停在 3.19 口径的旧文档，先不拦
         for pkg in ("-release.zip", "-engine.zip", "-embed-release.zip", "-embed-firmware.zip"):
             if pkg not in t:
                 fail.append(f"{doc.relative_to(ROOT)}: 缺 Release 包名 `…{pkg}`")
@@ -1210,7 +1262,7 @@ def _check_wording() -> None:
             fail.append(f"logs/{fname}: 未记录「{needle}」")
         elif p.exists():
             print(f"    {label}（与日志一致）")
-    print("    当前版本口径（板端 v4.0-embed / 历史 v3.19-embed；引擎 v4.0 严格 C23，与文档一致）")
+    print("    当前版本口径（PC 权重 v4.0 / 板端权重 v3.19-embed；引擎 v4.0 严格 C23，与文档一致）")
 
 
 def main() -> int:

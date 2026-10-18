@@ -10,7 +10,7 @@
 | `feng-30m-v4.0-embed-firmware.zip` | 板端一包到底 | 预编译固件 + 模型 + 烧录说明（免装 ESP-IDF） |
 
 仓库本身只放代码与文档；权重、板端模型与蒸馏数据集都在 Release 包里。
-引擎当前版本 **v4.0 / 严格 C23**（PC 侧仍 C++23 + CUDA）：板端固件 **257,104 B**，板端 **2.33 tok/s**。
+引擎当前版本 **v4.0 / 严格 C23**（PC 侧仍 C++23 + CUDA）：板端固件 **260,480 B**，板端 **2.33 tok/s**。
 
 ## 1. 包内结构
 
@@ -24,7 +24,7 @@ feng-30m-v4.0/
 │   ├── hf/                   v4.0 完整权重（fp32 safetensors + 分词器 + chat template）
 │   └── （v3.14 起不再提供 GGUF：llama.cpp 路径没有 tool，算术/时间会退化成模型硬算）
 └── datasets/
-    └── v4_teacher.jsonl      教师蒸馏数据 36,916 条（自制提示词 + 27B 教师输出）
+    └── v4_teacher.jsonl      教师蒸馏数据 34,143 条（36,916 条提示词中收 34,143 / 拒 2,773）
 ```
 
 板端包 `feng-30m-v4.0-embed-release.zip` 的 `weights/esp32/` 即板端模型
@@ -58,7 +58,7 @@ g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -DFENG_KV_Q
   -o pc_chat.exe pc\pc_chat.cpp *.o -Icore -lm
 
 # 3) 聊天（tool 0.5s 秒回，多轮上下文默认开）
-.\pc_chat.exe model_export
+.\pc\pc_chat_q2b8.exe <model_export 目录>
 ```
 
 更省事：在仓库根跑 `pc\build_pc_chat.ps1`，一次编译全部 PC 运行时与单测。
@@ -88,10 +88,10 @@ tool 覆盖：多位数/小数/括号/中文数字（`五十九加一`）/`乘�
 ### 2.1 可选：CUDA 加速（RTX 显卡）
 
 ```powershell
-cd board
-.\build_pc_cuda.ps1        # 需要 VS Build Tools + CUDA Toolkit；产出 pc\*_cuda.exe
-.\pc\pc_chat_cuda.exe ..\feng-30m-c-engine-model
-.\pc\pc_bench_cuda.exe ..\feng-30m-c-engine-model "你好" 32
+cd pc
+.\build_pc_cuda.ps1        # 需要 VS Build Tools + CUDA Toolkit；产出 *_cuda.exe
+.\pc_chat_cuda.exe ..\board\model_export_v3_19b6
+.\pc_bench_cuda.exe ..\board\model_export_v3_19b6 "你好" 32
 ```
 
 | 指标（RTX 5060 Ti / q2 KV / 32 token） | CPU（MinGW g++） | CUDA |
@@ -155,8 +155,8 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 |---|---|
 | 32 题矩阵 + 长文召回 | **27/27 + 4/4** |
 | 工具 / 记忆 | **13/13** / **12/12** |
-| 速度 | **2.33 tok/s**（真实 decode 507 ms/token @ ctx 19） |
-| 固件体积 | **257,104 B**（C23 引擎，比 C 版小 50,288 B） |
+| 速度 | **2.33 tok/s**（短上下文/短回复的最佳值；逐 token 随上下文变化） |
+| 固件体积 | **260,480 B**（C23 引擎，比 C 版小 46,912 B） |
 
 ### 分区偏移（与 `board/partitions.csv` 一致）
 
@@ -168,7 +168,7 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 
 ### 烧录与对话
 
-> **不想装 ESP-IDF？** 直接下载 `feng-30m-v3.19-embed-firmware.zip`
+> **不想装 ESP-IDF？** 直接下载 `feng-30m-v4.0-embed-firmware.zip`
 > （预编译固件 + 模型 + 哈希清单，按上表偏移一次写完即可），跳过第 ① 步。
 
 ```powershell
@@ -179,24 +179,24 @@ $env:IDF_TOOLS_PATH = "<你的 IDF 工具链路径>"     # 本机路径见 scrip
 idf.py -DFENG_USE_Q2_KV=ON build                  # 发布配置：q2 / 2048 ctx
 
 # ② 烧录固件
-idf.py -p COM20 flash
+idf.py --port COM20 flash
 
 # ③ 烧录模型与分词器
-python -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000  weights\esp32\model.bin
-python -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 weights\esp32\tokenizer.bin
+python -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000  .\model_export_v3_19b6\model.bin
+python -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 .\model_export_v3_19b6\tokenizer.bin
 
 # ④ 串口对话与自检
-python scripts\esp32_chat.py  --port COM20 --question "你是谁？"
-python scripts\esp32_multi.py --port COM20                     # 多轮稳定性（默认每题 \reset）
-python scripts\esp32_memory.py --port COM20 --n 12             # 记忆 12 组
-python scripts\esp32_tool_test.py --port COM20                 # 时间/随机数/算式 13 项
-python scripts\esp32_enc_test.py COM20                         # GBK/UTF-8 双编码自检
+python ..\scripts\esp32_chat.py  --port COM20 --question "你是谁？"
+python ..\scripts\esp32_multi.py --port COM20                     # 多轮稳定性（默认每题 \reset）
+python ..\scripts\esp32_memory.py --port COM20 --n 12             # 记忆 12 组
+python ..\scripts\esp32_tool_test.py --port COM20                 # 时间/随机数/算式 13 项
+python ..\scripts\esp32_enc_test.py COM20                         # GBK/UTF-8 双编码自检
 ```
 
 串口协议：发一行提问 → `<< 回复内容 >>END` 流式输出（`>>END` 行含上下文占用与 tok/s）；
 开机自检会打印 mmap 带宽、双核 GEMV 加速比、tokenizer 自检（`你好` → id 5331）。
-编码自动跟随终端（GBK 进 GBK 出、UTF-8 进 UTF-8 出），也可用 `\gbk` / `\utf8` / `\stream N` /
-`\mem` / `\reset` / `\help` 手动控制。
+默认 **UTF-8 直通**；GBK 转码默认不编（`\gbk` 会提示），需要时用 `-DFENG_GBK=ON` 重编固件。
+`\utf8` / `\stream N` / `\mem` / `\reset` / `\help` 始终可用。
 
 ## 5. 数据集
 
@@ -256,14 +256,14 @@ v1 语料脚本已随 v1 归档，重建 v2/v3 数据需要 `FENG_DATA_DIR`（�
 
 | 项目 | v3.19 | **v4.0** | 出处 |
 |---|---|---|---|
-| 留出 30 题（开发集） | 19/30 | **22/30** | `eval/h1_patch_name_e5_lr5e-6.json` |
-| 独立留出 30 题（未参与调参） | 18/30 | **22/30** | `eval/h2_patch_name_e5_lr5e-6.json` |
+| 留出 30 题（开发集，strict-v7） | 17/30 | **18/30** | `eval/h1_patch_name_e5_lr5e-6.json` |
+| 留出第二套（v4 用于选型） | 15/30 | **16/30** | `eval/h2_patch_name_e5_lr5e-6.json` |
 | 日常对话探针（42 题） | **42/42** | 40/42（见下） | `eval/chat_probe_v4_pn5.json` |
 | 范围内 18 题 | 10/10 | 10/10 | `eval/v4_scope_pn5.json` |
 | 身份（12 题） | 12/12 | 见上（`scope` 同脚本） | — |
-| 针检索（每长度 32 题） | 110/128 | 110/128 | `eval/longctx32_pn5.json` |
-| 　└ 32k 单档 | 26/32 | **28/32** | 同上 |
-| 「文中没有」拒答 | 61/64 | **64/64** | 同上（`neg_hit`/`neg_n`） |
+| 针检索（每长度 32 题，token 精确） | 106/128 | 103/128 | `eval/longctx32_v319.json` / `eval/longctx32_v4final.json` |
+| 　└ 32k 单档 | 24/32 | 20/32 | 同上 |
+| 「文中没有」拒答 | 62/64 | **64/64** | 同上（`neg_hit`/`neg_n`） |
 | 记忆 24 题 | 23/24 | 未重测 | `eval/v3_19pc4_memory24.json` |
 | 标准英文基准（0-shot） | SciQ 71.00/73.80、PIQA 54.52/53.37 | SciQ **70.80/71.20**、PIQA **54.03/54.19**（三项退步，见下） | `eval/lm_eval_v4_pn5_*.json` |
 
@@ -277,22 +277,24 @@ v1 语料脚本已随 v1 归档，重建 v2/v3 数据需要 `FENG_DATA_DIR`（�
 >
 > **4.0 最终模型在四项英文分里退了三项**：SciQ acc −0.20、SciQ acc_norm **−2.60**、
 > PIQA acc −0.49，只有 PIQA acc_norm +0.82。检索回放与名字补丁之后掉的——
-> SFT 阶段曾到 72.50 / 72.60 / 54.41 / 54.46。只用中文对话能力换来的：
-> 同期留出两套各 +3 / +4、拒答 +3。
+> SFT 阶段曾到 72.50 / 72.60 / 54.41 / 54.46。同期换来的收益是：
+> strict-v7 留出两套各 **+1**（17→18、15→16）、拒答 +2（62→64/64）；
+> 旧 strict-v6 口径的 “+3 / +4” 已作废。
 
 ### 板端（**引擎 v4.0 + 权重 v3.19-embed** + q2 / 2048）
 
-> 4.0 的板端双 QAT 试了两版：3 epoch 关卡 A **24/27**、1 epoch **23/27**，都低于
-> v3.19-embed 的 27/27，所以**这一版沿用 v3.19-embed**（引擎仍是 4.0）。
+> 4.0 的板端双 QAT 试了三版：3 epoch 关卡 A **24/27**、1 epoch **23/27**、
+> 第三版 `20261017D` 达到 **27/27** 但没做板端 tool/记忆/实机验收；
+> 前两版都低于 v3.19-embed 的 27/27，所以**这一版沿用 v3.19-embed**（引擎仍是 4.0）。
 > 过程见 `docs/CHANGELOG.md` §4f。
 
 | 项目 | 结果 |
 |---|---|
 | 32 题矩阵 + 长文召回 | **27/27 + 4/4**（`logs/pc_kv_suite32_v3_19b6_q2b8.txt`） |
 | 算术子集（tool） | **21/21**（`logs/pc_arith_suite_v3_19b6_q2b8.txt`） |
-| tool 专项 / 记忆 / 身份序列 | **13/13** / **12/12** / **7/7**（`logs/board_tools_cpp23_q2_final.txt`、`logs/board_memory_cpp23_q2_final12.txt`） |
-| 速度 | **2.33 tok/s**（真实 decode 507 ms/token @ ctx 19） |
-| 多轮回归（PC 模拟固件） | mt-suite 7/10、mem12 12/12、seq 8/10（与 C 版逐值一致） |
+| tool 专项 / 记忆 / 身份序列 | **13/13** / **12/12** / **8/8**（`logs/board_tools_cpp23_q2_final.txt`、`logs/board_memory_cpp23_q2_final12.txt`、`logs/board_v3_16p3_identity_ctx_engmem.txt`） |
+| 速度 | **2.33 tok/s**（短上下文/短回复的最佳值；逐 token 随上下文变化） |
+| 多轮回归（PC 模拟固件） | mt-suite 8/10、mem12 12/12、seq 10/10（保留跨轮 nhist 的新口径） |
 
 ## 8. 已知限制
 
@@ -307,18 +309,22 @@ v1 语料脚本已随 v1 归档，重建 v2/v3 数据需要 `FENG_DATA_DIR`（�
 - **tool 只在带 tool 的运行时里**：板端固件 / PC C++ 引擎 / Python 脚本；GGUF 自 v3.14 起不再发行。
 - 量化抗性对权重回插极敏感（掺 20% 旧权重就掉点）：改板端行为要走
   「补数据 + 权重/KV 双 QAT」链路（CHANGELOG v3.10/v3.11）。
-- 32k 负样本拒答（61/64）经多轮专项未突破，已记录为平台（CHANGELOG v3.9 附录）。
+- 32k 负样本拒答在 v3.19 是 62/64；v4.0 通过"负样本带诱饵、与评估同分布"的检索回放
+  做到 **64/64**（CHANGELOG v4.0 §4d）；但按 token 精确重测，32k 命中是 20/32
+  （v3.19 为 24/32），仍是容量边界。旧脚本的 110/128、32k 28/32 因为输入偏短已作废。
 
 ## 9. 常见问题（FAQ）
 
-**串口乱码？** 固件自动跟随终端编码；仍乱码时先跑 `python scripts\esp32_enc_test.py COM20`，
-再用 `\gbk` / `\utf8` 锁定。开机横幅是纯 ASCII，任何编码下都不该乱码。
+**串口乱码？** 发布固件默认 **UTF-8 直通**，先把终端/串口工具设成 UTF-8；仍乱码时跑
+`python ..\scripts\esp32_enc_test.py COM20` 确认。需要 GBK（老式 ANSI 终端）时用
+`idf.py -DFENG_GBK=ON build` 重编，之后 `\gbk` / `\utf8` 才可切换。
+开机横幅是纯 ASCII，任何编码下都不该乱码。
 
 **烧录失败 / 端口占用？** 关闭 monitor/其他串口程序；CH343 在 COM20、原生 USB-JTAG 在 COM19；
 烧录用 921600，对话用 115200。`esptool` 报 port busy 时换 USB 口或重新插拔。
 
 **时间 tool 说"还没对上网络时间"？** 属预期：板子没有 RTC。跑一次
-`python scripts\esp32_chat.py --port COM20 --question "你好"`（脚本会自动对时），
+`python ..\scripts\esp32_chat.py --port COM20 --question "你好"`（脚本会自动对时），
 或手动发 `\settime <unix秒>`。
 
 **算术为什么不由模型算？** 30M 模型算不可靠，v3.14 起算式/时间/随机数交给引擎 tool
@@ -333,7 +339,7 @@ PC 的 HF 权重用在引擎上会 22/27；两个权重不能互换。
 **能上 32k 上下文吗？** 板端不能：2048 ctx 的 q2 KV 已占 9.62 MB PSRAM，
 32k 需要约 150 MB，超出硬件。32k 只在 PC 上可用。
 
-**固件多大？可以塞更多功能吗？** 当前 257,104 B，app 分区 1 MB（还剩 70%）。
+**固件多大？可以塞更多功能吗？** 当前 260,480 B，app 分区 1 MB（还剩 75%）。
 新增非热点模块用 `-Os`、热点保持 `-O2`；引擎约定见 [AGENTS.md](../AGENTS.md) 的 C23 条款。
 
 ## 10. 许可证

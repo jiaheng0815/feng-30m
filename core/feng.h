@@ -36,6 +36,9 @@ extern "C" {
 #ifndef FENG_KV_Q2_BLOCK
 #define FENG_KV_Q2_BLOCK 16      /* 每多少个值共享一个 fp16 scale（须整除 head_dim、是 4 的倍数） */
 #endif
+#if FENG_KV_Q2 && ((FENG_KV_Q2_BLOCK) % 4 != 0)
+#error "FENG_KV_Q2_BLOCK 必须是 4 的倍数"
+#endif
 /* fp16 KV：每值 2 字节、无 scale。只在手机/PC 上有意义——板端 16 MB PSRAM 下
  * 2048 上下文要 40.4 MB，放不下（q2 只要 9.62 MB）。 */
 #ifndef FENG_KV_FP16
@@ -102,6 +105,19 @@ enum {
     FENG_MAX_LAYERS  = 24,
     FENG_MAX_TENSORS = 168           /* 11 tensors/layer * layers + tok_embd + output_norm */
 };
+
+/* 固定工作区上限（全部有加载期校验；改模型规格时要同步改这里）。
+ * FENG_MAX_SCORES 默认 4096：板端 2048、PC/手机 4096 足够；PC 要跑 32k
+ * 可以在构建时 -DFENG_MAX_SCORES=32768。 */
+#ifndef FENG_MAX_SCORES
+#define FENG_MAX_SCORES 4096
+#endif
+#ifndef FENG_MAX_HEAD_DIM
+#define FENG_MAX_HEAD_DIM 128            /* q2 V 段 vacc[] 与 rope 表的上限 */
+#endif
+#ifndef FENG_MAX_HIDDEN
+#define FENG_MAX_HIDDEN 512              /* g_tmp[] / 启动基准 xref[] 的上限 */
+#endif
 
 /* 权重存储格式。FP16 = 0 是**历史上零初始化的默认**，别改这个取值。 */
 typedef enum { FENG_DT_FP16 = 0, FENG_DT_Q4 = 1 } feng_dtype_t;
@@ -185,6 +201,10 @@ void feng_gemv3(const void *w0, const void *w1, const void *w2, uint32_t dtype,
                 int n_out0, int n_out1, int n_out2, int n_in);
 /* FENG_GEMV_A8=1 时：每个 GEMV 调用前准备一次 int8 激活（两核并发只读） */
 void feng_gemv_a8_prepare(const float *x, int n_in);
+
+/* Q4/PIE 的启动期查表初始化；在拉起 worker 线程之前调用一次，避免多个
+ * worker 首次进入 GEMV 时并发写 LUT。 */
+void feng_quant_init(void);
 
 /* start the worker on core 1; call once before using feng_gemv_par */
 void feng_smp_init(void);

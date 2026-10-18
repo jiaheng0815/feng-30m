@@ -37,10 +37,11 @@ FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 # ── 各包的内容清单 ─────────────────────────────────────────────────────
 
 def pc_files(version: str, hf_dir: Path) -> list[tuple[Path, str]]:
-    """PC 包：USAGE + LICENSE + HF 权重 + 蒸馏数据集。"""
+    """PC 包：USAGE + LICENSE + MODEL_CARD + HF 权重 + 蒸馏数据集。"""
     out: list[tuple[Path, str]] = [
         (ROOT / "docs" / "USAGE.md", "USAGE.md"),
         (ROOT / "LICENSE", "LICENSE"),
+        (ROOT / "v4" / "base" / "MODEL_CARD.md", "MODEL_CARD.md"),
     ]
     for f in sorted(hf_dir.iterdir()):
         if f.is_file() and f.name != "MODEL_CARD.md":
@@ -51,18 +52,11 @@ def pc_files(version: str, hf_dir: Path) -> list[tuple[Path, str]]:
 
 
 def engine_files() -> list[tuple[Path, str]]:
-    """引擎包：能独立编出 pc_chat / pc_kv_suite 的那部分源码。
-
-    core/ 是**板端与 PC 共用的同一份**严格 C23 源码；board/main/ 是 IDF 组件目录
-    （放 main.c、彩蛋、GBK 表）；pc/ 是 C++23 驱动。
-    固件构建产物（board/build/）与模型导出目录不进包——前者由 idf.py 生成，
-    后者在 embed 包里。
-    """
+    """引擎包：能独立编出 pc_chat / pc_kv_suite / CUDA / pc_check 的那部分源码。"""
     out: list[tuple[Path, str]] = [
         (ROOT / "LICENSE", "LICENSE"),
         (ROOT / "docs" / "USAGE.md", "docs/USAGE.md"),
         (ROOT / "docs" / "esp32-firmware.md", "docs/esp32-firmware.md"),
-        (ROOT / "AGENTS.md", "AGENTS.md"),
     ]
 
     def add_dir(d: Path, prefix: str, patterns: tuple[str, ...]) -> None:
@@ -74,8 +68,8 @@ def engine_files() -> list[tuple[Path, str]]:
                     out.append((f, f"{prefix}/{f.name}"))
 
     add_dir(ROOT / "core", "core", ("*.c", "*.h"))
-    add_dir(ROOT / "pc", "pc", ("*.cpp", "*.cu", "*.ps1"))
-    add_dir(ROOT / "board" / "main", "board/main", ("*.c", "*.h", "CMakeLists.txt"))
+    add_dir(ROOT / "pc", "pc", ("*.cpp", "*.cu", "*.h", "*.ps1", "*.py", "*.txt"))
+    add_dir(ROOT / "board" / "main", "board/main", ("*.c", "*.h", "*.S", "CMakeLists.txt"))
     add_dir(ROOT / "board" / "tools", "board/tools", ("*.py",))
     add_dir(ROOT / "board", "board", ("partitions.csv", "sdkconfig*", "flash.ps1"))
     return out
@@ -101,6 +95,7 @@ def firmware_files(export_dir: Path) -> list[tuple[Path, str]]:
         (build / "bootloader" / "bootloader.bin", "firmware/bootloader.bin"),
         (build / "partition_table" / "partition-table.bin", "firmware/partition-table.bin"),
         (build / "feng_30m.bin", "firmware/feng_30m.bin"),
+        (ROOT / "board" / "partitions.csv", "partitions.csv"),
     ]
     for f in sorted(export_dir.iterdir()):
         if f.is_file():
@@ -138,7 +133,7 @@ COM20 换成你自己的串口。若烧录中断，按住 BOOT 再点 RST 进下
 
 三、对话
 --------
-  115200 8N1，发一行问题回车。固件自带多轮上下文，\\\\reset 清空。
+  115200 8N1，发一行问题回车。固件自带多轮上下文，\\reset 清空。
   终端不是 UTF-8 会显示乱码——若需要 GBK，得自己用 -DFENG_GBK=ON 重编固件。
 
 四、这包里没有的东西
@@ -182,20 +177,47 @@ def sha256(p: Path) -> str:
     return h.hexdigest()
 
 
+def manifest_text(entries: list[tuple[Path, str]]) -> str:
+    """包内 SHA256SUMS：按“包内相对路径”排序，每行 `sha256  path`。"""
+    lines = [f"{sha256(src)}  {rel}" for src, rel in sorted(entries, key=lambda x: x[1])]
+    return "\n".join(lines) + "\n"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--tag", default="v4.0", help="版本号，用于包名与包内顶层目录")
     ap.add_argument("--hf", default="v4/patch_name_e5_lr5e-6",
                     help="HF 格式权重目录（PC 最终模型）")
-    ap.add_argument("--esp", default="board/model_export_v4",
+    ap.add_argument("--esp", default="board/model_export_v3_19b6",
                     help="板端导出目录（model.bin / tokenizer.bin）")
     ap.add_argument("--dist", default="dist", help="zip 输出目录")
+    ap.add_argument("--allow-stale-firmware", action="store_true",
+                    help="允许 board/build 里的固件比源码旧（默认拒绝，避免发旧二进制）")
     a = ap.parse_args()
 
     hf_dir = (ROOT / a.hf).resolve()
     export_dir = (ROOT / a.esp).resolve()
     dist = (ROOT / a.dist).resolve()
     dist.mkdir(parents=True, exist_ok=True)
+
+    model = export_dir / "model.bin"
+    tok = export_dir / "tokenizer.bin"
+    if not model.exists() or not tok.exists():
+        raise SystemExit(f"缺 {model} / {tok}")
+    if model.stat().st_size > 0xEF0000:
+        raise SystemExit(f"model.bin {model.stat().st_size} B 超过 model 分区 0xEF0000")
+    if tok.stat().st_size > 0x80000:
+        raise SystemExit(f"tokenizer.bin {tok.stat().st_size} B 超过 tokdata 分区 0x80000")
+
+    fw = ROOT / "board" / "build" / "feng_30m.bin"
+    if fw.exists():
+        newest = max([p.stat().st_mtime for d in (ROOT / "core", ROOT / "board" / "main")
+                      for p in d.rglob("*") if p.is_file() and p.suffix in (".c", ".h", ".S", ".txt")] +
+                     [p.stat().st_mtime for p in (ROOT / "pc").glob("*.cpp")] + [0])
+        if fw.stat().st_mtime < newest and not a.allow_stale_firmware:
+            raise SystemExit("board/build/feng_30m.bin 比源码旧；先 idf.py build，"
+                             "或显式加 --allow-stale-firmware")
+
 
     jobs = [
         (f"feng-30m-{a.tag}-release.zip", f"feng-30m-{a.tag}",
@@ -215,10 +237,12 @@ def main() -> int:
 
     for name, top, entries, extra in jobs:
         out = dist / name
-        n, raw = write_zip(out, entries, top, extra)
+        extras = dict(extra or {})
+        extras.setdefault("SHA256SUMS", manifest_text(entries))
+        n, raw = write_zip(out, entries, top, extras)
         print(f"  ✓ {name:42s} {n:3d} 个文件  原始 {raw/1048576:7.2f} MB "
               f"→ zip {out.stat().st_size/1048576:6.2f} MB")
-        print(f"      sha256 {sha256(out)[:32]}…")
+        print(f"      sha256 {sha256(out)}")
 
     print(f"\n输出目录：{dist}")
     return 0

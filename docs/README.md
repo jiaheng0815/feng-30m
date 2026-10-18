@@ -23,7 +23,7 @@
 | 文件 | 内容 |
 |---|---|
 | [`USAGE.md`](USAGE.md) | 下载 / 推理 / 烧录 / 串口协议，以及本地一键验收 |
-| [`v4-pipeline.md`](v4-pipeline.md) | **4.0 训练链路**：数据合并 → 检索回放 → 全参 SFT → 板端 QAT → 导出 → 四道验收关卡（含每步该出现什么数字、对不上说明什么） |
+| [`v4-pipeline.md`](v4-pipeline.md) | **4.0 训练链路**：数据合并 → 全参 SFT → 检索回放 → 名字补丁 → 板端 QAT → 导出 → 四道验收关卡（含每步该出现什么数字、对不上说明什么） |
 | [`CHANGELOG.md`](CHANGELOG.md) | 按时间倒序的完整更新日志（**失败尝试也保留**，供避免重复踩坑） |
 | [`v3x-lesson.md`](v3x-lesson.md) | **v3.x 迭代复盘**：二十余次更新按问题类型归类——症状 / 根因 / 尝试 / 解法 / 教训，附**已证伪、不要再试**的路线清单 |
 | [`COMPARISON.md`](COMPARISON.md) | v1 / v2 / v3 / v4 四代的架构、语料、评测横向对比 |
@@ -34,13 +34,15 @@
 - [`../README.md`](../README.md) —— 仓库首页（GitHub 会渲染它，所以留在根）
 - [`../AGENTS.md`](../AGENTS.md) —— AI 编码代理的工作约定与硬性约束
 
-模型卡跟着模型目录走，不在这里：当前唯一的模型目录 `v4/base/` 的规格见
-[`../README.md`](../README.md) 的「模型规格」一节；v1/v2/v3 的历史模型卡随目录一并移除。
+模型卡跟着模型目录走：`v4/base/MODEL_CARD.md` 描述 HF 仓库（PC v4.0 + esp32 v3.19-embed）；
+本地最终 PC 权重在 `v4/patch_name_e5_lr5e-6/`，SFT 起点在 `v4/base/`。
+v1/v2/v3 的历史模型卡随目录一并移除。
 
 ## 数字的可追溯性
 
-文档里的每个数字都能追到 `eval/*.json`、`*/summary.json` 或 `logs/` 里的实测日志。
-两个自检脚本确保这件事一直成立：
+核心数字（参数量、固件体积、v4 留出、SciQ/PIQA）必须能追到 `eval/*.json`、
+`*/summary.json` 或 `logs/`；其余历史数字以 CHANGELOG 原文为准。
+两个自检脚本守住其中可自动核对的部分：
 
 ```powershell
 python tools\check_md.py      # 反引号路径是否存在、代码围栏是否成对、有没有过时表述

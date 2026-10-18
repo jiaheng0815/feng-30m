@@ -8,9 +8,10 @@
 > **当前发布（2026-10-17 更新）**
 >
 > - 权重：PC = **v4.0**（`v4/patch_name_e5_lr5e-6`）｜ 板端 = **v3.19-embed**（Q4 权重 + q2 KV 双 QAT）
-> - 引擎：**v4.0 / 严格 C23**（嵌入式侧，零堆、零全局构造；PC 侧 C++23 + CUDA）；板端固件 **257,104 B**，比 v3.20 的 C++23 版还小 47,088 B
-> - 板端实测：q2/2048 矩阵 **27/27 + 4/4**、工具 **13/13**、记忆 **12/12**、**2.33 tok/s**（真实 decode 507 ms/token）
+> - 引擎：**v4.0 / 严格 C23**（嵌入式侧，零堆、零全局构造；PC 侧 C++23 + CUDA）；板端固件 **260,480 B**，比 v3.20 的 C++23 版还小 43,712 B
+> - 板端实测：q2/2048 矩阵 **27/27 + 4/4**、工具 **13/13**、记忆 **12/12**、**2.33 tok/s**（固件统计口径，短回复最佳值）
 > - 身份自述：**「我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI」**
+> - 教师数据：36,916 条提示词 → **34,143 收 / 2,773 拒**（4.0 蒸馏链）
 > - 代码与权重均 **Apache-2.0**；**GGUF 自 v3.14 起不再发行**（llama.cpp 路径没有 tool）
 >
 > **4.0 = 引擎升级 + PC 权重重训。板端权重这一版没有换**：
@@ -56,13 +57,19 @@
 
 | 评测 | v3.19 | **v4.0** | 出处 |
 |---|---|---|---|
-| 留出 30 题（开发集） | 19/30 | **22/30** | `eval/h1_patch_name_e5_lr5e-6.json` |
-| 留出 30 题（**独立集**，未参与调参） | 18/30 | **22/30** | `eval/h2_patch_name_e5_lr5e-6.json` |
+| 留出 30 题（开发集，strict-v7） | 17/30 | **18/30** | `eval/h1_patch_name_e5_lr5e-6.json` |
+| 留出 30 题（**独立集**，v4 用于选型，见注） | 15/30 | **16/30** | `eval/h2_patch_name_e5_lr5e-6.json` |
 | 42 题广谱日常探针 | **42/42** | 40/42（见下） | `eval/chat_probe_v4_pn5.json` |
-| 针检索（每长度 32 题，单类别） | 110/128 | 110/128 | `eval/longctx32_pn5.json` |
-| 　└ 32k 单档 | 26/32 | **28/32** | 同上 |
-| 「文中没有」拒答 | 61/64 | **64/64** | 同上（`neg_hit`/`neg_n`） |
+| 针检索（每长度 32 题，单类别） | 106/128 | 103/128 | `eval/longctx32_v319.json` / `eval/longctx32_v4final.json` |
+| 　└ 32k 单档 | 24/32 | 20/32 | 同上 |
+| 「文中没有」拒答 | 62/64 | **64/64** | 同上（`neg_hit`/`neg_n`） |
 | 范围 / 身份 | 10/10 / 12/12 | 10/10 | `eval/v4_scope_pn5.json` |
+
+> **长文数字 2026-10-18 重测过**：旧脚本把 `ctx` 当**字符数**，标称 4k/8k/16k/32k 的输入
+> 实际只有约 3k/6k/13k/26k token，所以旧表里的 110/128、32k 28/32 偏乐观。
+> 现在按 token 精确造输入并预留 32 个生成位；同一协议下 **v3.19 = 106/128（32k 24/32）、
+> v4.0 = 103/128（32k 20/32）**。v4.0 的检索**没有超过** v3.19，换来的是拒答 62→64/64。
+> 复现：`python scripts\eval_longctx_many.py --models "v4=v4/patch_name_e5_lr5e-6" --n 32 --neg-n 16 --batch 1`。
 
 > **探针那 2 题**：一条是判分误判（「我很伤心」答的是「我在呢。难过的时候不用自己扛着。」，
 > 判分只找「伤心」）；另一条是**真的算错**——「2+3等于几」答成 6。后者是**故意放弃**的：
@@ -78,28 +85,35 @@
 | 随机数 | xorshift64*，seed = 运行时间×1.54×1000，丢第一个取第二个；骰子 / 硬币 / 区间 | 连续 3 次不重复 |
 | 记忆 | 从 `我叫X / 最喜欢Y / 住在Z / 养了W` 与通用键值槽抽事实，追问确定性作答；`\mem` 查看、`\reset` 清空 | 板端 **12/12**，身份永不串名 |
 
-板端 tool 专项 **13/13**、记忆 12 题 **12/12**、7 轮换名身份序列 **7/7**
-（`logs/board_tools_cpp23_q2_final.txt`、`logs/board_memory_cpp23_q2_final12.txt`）。
+板端 tool 专项 **13/13**、记忆 12 题 **12/12**（`logs/board_tools_cpp23_q2_final.txt`、
+`logs/board_memory_cpp23_q2_final12.txt`）。8 轮身份序列 **8/8** 由引擎记忆 tool 接管，
+见 `logs/board_v3_16p3_identity_ctx_engmem.txt`。
 模型不再学算术（训练数据用 tool 识别器过滤纯算式样本）。
 
 ### 嵌入式（**引擎 v4.0 + 权重 v3.19-embed** / q2 2048 固件）
 
-> 引擎是 4.0 的（严格 C23），权重是 3.19 的。4.0 的板端 QAT 两版都没过关卡 A
-> （24/27、23/27），低于这里的 27/27，所以没有替换——见 [§4f](docs/CHANGELOG.md)。
+> 引擎是 4.0 的（严格 C23），权重是 3.19 的。4.0 的板端 QAT 前三版里两版没过
+> 关卡 A（24/27、23/27）；第三版 `20261017D` 在 PC 关卡 A 达到 **27/27 + 4/4**、
+> 留出 19/30 + 19/30（strict-v6 旧口径）、42 题探针 42/42，但**尚未完成板端 tool/记忆/实机验收**，
+> 所以这一版仍沿用 v3.19-embed——见 [§4f](docs/CHANGELOG.md) 与 `logs/gate_a_20261017D.txt`。
 
 | 项目 | 结果 |
 |---|---|
-| 32 题矩阵 + 长文召回 | **27/27 + 4/4**（1963 token 输入） |
+| 32 题矩阵 + 长文召回 | **27/27 + 4/4**（PC C 引擎 q2/2048，输入约 1525 token；4 道数学题由 tool 回答） |
 | 算术子集 | **21/21**（算式走 tool） |
-| 速度 | **2.33 tok/s**（真实 decode 507 ms/token @ ctx 19） |
+| 速度 | **2.33 tok/s**（固件统计口径，短上下文/短回复最佳值；逐 token 随上下文/回复长度变化） |
 | 内存 | 权重 flash mmap（不占 PSRAM）；KV + 激活 9.62 MB PSRAM；内部 SRAM 仅留内核与工作区 |
+
+**2026-10-18 实机复测**（固件 260,480 B + v3.19-embed）：tool **13/13**、
+记忆 **12/12**、10 轮多轮 **10/10**，身份句逐字为
+「我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI」。
 
 ### 引擎（v4.0 / 严格 C23）
 
 - **严格 C23 核心**（`-std=c23`，板端与 PC 共用）+ **C++23 驱动**（`pc/*.cpp`）与 **CUDA**（`feng_cuda.cu`，nvcc）；两趟编译（两个 `/std:` 互斥，见 AGENTS.md）
 - **零堆**：8 个核心对象无 `malloc/free/new/delete`、无异常/RTTI 符号；唯一分配是 tokenizer
   **启动期**一次性 PSRAM 加载；全组件 `.init_array` 为空（无全局构造）
-- **体积**：257,104 B，比 C 版（307,392 B）小 50,288 B；非热点模块 `-Os`、推理热点保持 `-O2`
+- **体积**：260,480 B，比 C 版（307,392 B）小 46,912 B；非热点模块 `-Os`、推理热点保持 `-O2`
 - **性能**：板端 ms/token 与 C 版逐项相同；**PC CPU 多线程 654 tok/s**（单线程 157 → 4.2×，
   `build_pc_chat.ps1` 默认 OpenMP，行级并行、输出逐字一致）；CUDA 版生成 322 tok/s；
   C++/Python tool 一致性 **173 条** + 4 套单测全过
@@ -108,12 +122,12 @@
 
 ### 1) PC：C++ 引擎（推荐，自带四个 tool）
 
-下载 `feng-30m-v3.19-engine.zip`（引擎源码）与 `feng-30m-c-engine-model-v3.19-embed.zip`
-（预导出模型），解压到相邻目录后：
+下载 `feng-30m-v4.0-engine.zip`（引擎源码）与 `feng-30m-v4.0-embed-release.zip`
+（板端预导出 `weights/esp32/`），解压到相邻目录后：
 
 ```powershell
-.\build_pc_chat.ps1                      # Windows 默认 MSVC 两趟：核心 /std:clatest、驱动 /std:c++latest；-MinGW 备用
-.\pc_chat_q2b8.exe ..\feng-30m-c-engine-model
+.\pc\build_pc_chat.ps1                  # Windows 默认 MSVC 两趟：核心 /std:clatest、驱动 /std:c++latest；-MinGW 备用
+.\pc\pc_chat_q2b8.exe ..\feng-30m-v4.0-embed\weights\esp32
 # you> 4854+4411          -> [tool] 4854 加 4411 等于 9265。
 # you> 现在的时间戳是多少？  -> [tool] 时间戳：1791134671 —— 2026年10月05日 01:24:31（周一，UTC+8）。
 # you> 我叫小明，请记住     -> 模型正常回应
@@ -130,9 +144,9 @@ PC 引擎带一个**可选 CUDA 后端**：GEMV（Q4 block64 / fp16）交给 GPU
 其余算子仍在 CPU；板上固件不含此路径。构建需要 VS Build Tools + CUDA Toolkit：
 
 ```powershell
-cd board
-.\build_pc_cuda.ps1                       # MSVC(cl/link) + nvcc，产出 pc\*_cuda.exe
-.\pc\pc_bench_cuda.exe ..\model_export_v3_19b6 "你好" 32
+cd pc
+.\build_pc_cuda.ps1                       # MSVC(cl/link) + nvcc，产出 *_cuda.exe
+.\pc_bench_cuda.exe ..\board\model_export_v3_19b6 "你好" 32
 ```
 
 实测（RTX 5060 Ti / q2 KV / 32 token）：生成 **157 → 322 tok/s（约 2.0×）**；
@@ -161,9 +175,9 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 
 ### 3) ESP32-S3（WROOM-2-N32R16V）
 
-编译、烧录、串口协议的完整步骤见 [`docs/USAGE.md`](USAGE.md) 与
-[`docs/esp32-firmware.md`](board/README.md)；免装 IDF 的一包到底固件
-见 Release 的 `feng-30m-v3.19-embed-firmware.zip`。
+编译、烧录、串口协议的完整步骤见 [`docs/USAGE.md`](docs/USAGE.md) 与
+[`docs/esp32-firmware.md`](docs/esp32-firmware.md)；免装 IDF 的一包到底固件
+见 Release 的 `feng-30m-v4.0-embed-firmware.zip`（固件 + 板端 v3.19-embed 权重）。
 
 ## 标准基准（英文，0-shot）
 
@@ -182,7 +196,8 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 > 检索回放和名字补丁之后，英文基准掉了——SFT 阶段（`v4/sft_pc2`）那一组是
 > 72.50 / 72.60 / 54.41 / 54.46，最终权重是 70.80 / 71.20 / 54.03 / 54.19。
 > 只跑了一次、没有多次采样，**无法判断是否超出噪声，所以不写「在噪声范围内」**。
-> 这是用中文对话能力换来的：同期留出两套各 +3 / +4、拒答 +3。
+> 同期换来的收益是：strict-v7 留出两套各 **+1**（17→18、15→16）、拒答 +2（62→64/64）；
+> 旧 strict-v6 口径写的 +3 / +4 已作废。
 
 > 这是**英文**基准，而 feng-30m 是中文教师蒸馏的 30M 模型：SciQ 明显高于 4 选 1 随机线，
 > PIQA 略高于 2 选 1 随机线。**其余六项已从套件移除**——ARC / HellaSwag / OpenBookQA /
@@ -208,13 +223,15 @@ model = Qwen3ForCausalLM.from_pretrained("jiaheng0815/feng-30m")
 权重（fp32 / 板端模型）与蒸馏数据集也打包在
 **[Releases](https://github.com/jiaheng0815/feng-30m/releases)**：
 
-| 附件 | 内容 |
+| 附件（v4.0） | 内容 |
 |---|---|
-| `feng-30m-v3.19-release.zip` | PC 版：HF 权重 + 蒸馏数据集 |
-| `feng-30m-v3.19-embed-release.zip` | 板端版：Q4+q2 双 QAT 权重 + 可直接烧录的 `model.bin` / `tokenizer.bin` |
-| `feng-30m-v3.19-engine.zip` | PC 引擎源码（v3.19 时为 C++23；v4.0 起核心转 C23） |
-| `feng-30m-c-engine-model-v3.19-embed.zip` | 引擎预导出模型（免装 torch 直接跑） |
-| `feng-30m-v3.19-embed-firmware.zip` | 板端一包到底：预编译固件 + 模型 + 烧录说明（免装 ESP-IDF） |
+| `feng-30m-v4.0-release.zip` | PC 版：HF v4.0 权重 + 教师蒸馏数据集 + 模型卡 |
+| `feng-30m-v4.0-embed-release.zip` | 板端版：**v3.19-embed** Q4+q2 双 QAT 权重 + `model.bin` / `tokenizer.bin` |
+| `feng-30m-v4.0-engine.zip` | 引擎源码：严格 C23 核心 + C++23 PC 驱动 + 板端（含 tool） |
+| `feng-30m-v4.0-embed-firmware.zip` | 板端一包到底：预编译固件 + 模型 + `partitions.csv` + 烧录说明 |
+
+> 板端这一版**没有换权重**：包名里的 v4.0 指引擎版本，`weights/esp32/` 仍是
+> v3.19-embed（Q4+q2 双 QAT）。PC 包里的 `weights/hf/` 才是 v4.0。
 
 **本仓库只放代码与文档，训练数据与权重不入库**；旧附件（v3.14 / v3.16-embed）保留在对应 Release 页。
 
@@ -232,7 +249,7 @@ model = Qwen3ForCausalLM.from_pretrained("jiaheng0815/feng-30m")
 | 算式 / 时间 / 随机数 | 模型硬算 | 模型硬算 | 模型硬算 | 模型硬算 | 引擎 tool：0.5s 全对（含多位数/小数） | **同（tool）** |
 | 嵌入式 32 题矩阵（q2 KV） | 27/27+4/4 | 27/27+4/4 | — | 27/27+4/4 | 27/27+4/4 | **27/27+4/4** |
 | 板端算术子集 21 题（q2） | 12/21 | 21/21 | — | 21/21 | 21/21（数学题由 tool 回答） | **21/21** |
-| ESP32-S3 实机 | 10/10 + 10/10 | 30/30 + 记忆 6/6 | — | 30/30 + 记忆 6/6 | 工具 8/8 + 30/30 + 记忆 10/12，1.80 tok/s | ✅ **工具 13/13 + 记忆 12/12 + 身份 7/7** |
+| ESP32-S3 实机 | 10/10 + 10/10 | 30/30 + 记忆 6/6 | — | 30/30 + 记忆 6/6 | 工具 8/8 + 30/30 + 记忆 10/12，1.80 tok/s | ✅ **工具 13/13 + 记忆 12/12 + 身份序列 8/8** |
 
 > 同口径复测记录（结果 JSON 均在 `eval/`）：范围内评测 v3.7/v3.9~v3.12 = 10/10、v3.8 = 8/10、
 > v3.6 = 8/10、v3.5 = 7/10、v3.4 = 9/10；42 题探针 v3.4 = 27/42、v3.5 = 29/42、v3.6 起 42/42。
@@ -286,8 +303,8 @@ CI（GitHub Actions，每次 push/PR）在**干净 clone** 上跑完整链路—
 | v3.20 引擎 | 序列数数 tool + 统一采样器；全项目迁移 C++23（零堆/无异常/RTTI）并做体积/性能优化 | tool 为 C++ 零堆实现，不占权重 | `board/main/`、`docs/CHANGELOG.md` v3.20 节 |
 | **v4.0 引擎** | 引擎核心**迁到严格 C23**（板端 + PC 共用，PC 驱动仍 C++23、CUDA 后端独立）；加手机端与编辑器代码提示 | 同上，数值路径逐字节未变 | `board/main/`、`phone/`、`docs/esp32-firmware.md` |
 
-完整超参、每阶段 loss/耗时/显存见 [`docs/CHANGELOG.md`](CHANGELOG.md) 与
-[`docs/DELIVERY.md`](DELIVERY.md)。
+完整超参、每阶段 loss/耗时/显存见 [`docs/CHANGELOG.md`](docs/CHANGELOG.md) 与
+[`docs/DELIVERY.md`](docs/DELIVERY.md)。
 
 ## 仓库结构
 
@@ -331,13 +348,13 @@ tools/check_all.py     一键验收：文档 → 构建 → 单测 → 32 题矩
 - **30M 容量上限**：没覆盖到的自由问答会答偏或编造；复杂推理、专业领域、英文任务不可靠
   （标准基准大多贴近随机，见上）。
 - **推荐类只保训练分布内的**：书/电影推荐是补丁里逐条写的，换书名或要最新榜单会露馅。
-- **板端上下文 2048（q2 KV）**，32k 只在 PC 上可用；板上 32k 受 PSRAM/KV 内存限制不可能。
+- **板端上下文 2048（q2 KV）**；32k 需要 HF/Python 路径，或自己用 `-DFENG_MAX_SCORES=32768` 重编 PC C 引擎（`pc_chat --ctx`）；板上 32k 受 PSRAM/KV 内存限制不可能。
 - **PC 权重与板端权重不能互换**：PC 的 HF 权重没做量化感知训练，导进引擎会明显退化
-  （32 题矩阵 22/27 vs 27/27）；板端用双 QAT 权重（`feng-30m-c-engine-model-v3.19-embed.zip`）。
-- **留出 30 题是开发集**：19/30 只用于版本对比；未参与调参的独立留出为 18/30（双版本持平）。
+  （32 题矩阵 22/27 vs 27/27）；板端用双 QAT 权重（`feng-30m-v4.0-embed-release.zip` 的 `weights/esp32/`）。
+- **留出 30 题是开发集**（strict-v7 下 v3.19=17/30、v4.0=18/30）；第二套在 v4 用于选型，不再是独立测试集（strict-v7：v3.19=15/30、v4.0=16/30）。
 - **记忆不是持久化**：`\reset`/断电/上下文写满即忘；记忆 tool 只覆盖可枚举句式。
 - **板端时间需要宿主对时**：串口脚本连接时自动发 `\settime`（宿主 NTP），否则时间 tool 会提示未对时。
-- **板端速度 2.33 tok/s**（真实 decode 507 ms/token），长回答要等十几秒；
+- **板端速度约 2.3 tok/s**（短回复最佳值；长回答/长上下文更慢，见 `logs/board_v3_19b6_stress32.txt`）；
   Q4 GEMV 内层已实测到这颗芯片的极限（周期级剖析与 5 个候选优化的排除记录见
   `docs/CHANGELOG.md` v4.0 板端性能节），再要提升只能换芯片或缩小模型。
 - 量化抗性对权重回插极敏感：掺 20% 旧权重就掉点（CHANGELOG v3.10）；改板端行为要走

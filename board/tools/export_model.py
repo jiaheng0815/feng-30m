@@ -7,6 +7,7 @@ Outputs (into --out):
   export_info.json
 """
 import argparse
+import hashlib
 import json
 import struct
 import sys
@@ -50,6 +51,12 @@ def main():
     ap.add_argument("--weights-dtype", choices=["q4", "fp16"], default="q4",
                     help="2D 矩阵权重的存储格式。fp16 只有手机端/PC 端能跑"
                          "（58.9 MB，板端 16 MB mmap 窗口放不下）")
+    ap.add_argument("--ctx", type=int, default=2048,
+                    help="写进 export_info.json 的运行时上下文（板端 q2 默认 2048）")
+    ap.add_argument("--max-model-bytes", type=int, default=0,
+                    help=">0 时检查 model.bin 不超过该字节数（板端 0xEF0000）")
+    ap.add_argument("--max-tokenizer-bytes", type=int, default=0,
+                    help=">0 时检查 tokenizer.bin 不超过该字节数（板端 0x80000）")
     args = ap.parse_args()
 
     out = Path(args.out)
@@ -61,11 +68,23 @@ def main():
     n_layers = cfg.num_hidden_layers
     hidden = cfg.hidden_size
     n_heads = cfg.num_attention_heads
+    n_kv = getattr(cfg, "num_key_value_heads", n_heads)
     head_dim = cfg.head_dim or hidden // n_heads
     ffn = cfg.intermediate_size
     vocab = cfg.vocab_size
     rope_theta = float(getattr(cfg, "rope_theta", None)
                        or (getattr(cfg, "rope_parameters", {}) or {}).get("rope_theta", 1000000.0))
+    # C 引擎按 MHA（7 KV 头 = 7 头）和 tied head 实现；导出前先拒绝不兼容的模型，
+    # 否则板端会按错误布局静默解码。
+    if n_kv != n_heads:
+        raise SystemExit(f"不支持的模型：num_key_value_heads={n_kv} != num_attention_heads={n_heads}"
+                         "（C 引擎是 MHA）")
+    if not getattr(cfg, "tie_word_embeddings", False):
+        raise SystemExit("不支持的模型：tie_word_embeddings=False（C 引擎的 lm head 复用 tok_embd）")
+    if n_heads * head_dim != hidden:
+        raise SystemExit(f"不支持的模型：n_heads*head_dim={n_heads*head_dim} != hidden={hidden}")
+    if vocab != len(tok):
+        raise SystemExit(f"词表不一致：config.vocab_size={vocab}, tokenizer={len(tok)}")
     print(f"model: {n_layers}L hidden={hidden} heads={n_heads}x{head_dim} ffn={ffn} vocab={vocab} "
           f"rope_theta={rope_theta}")
 
@@ -165,6 +184,16 @@ def main():
             f.write(a.encode() + b.encode())
     print(f"tokenizer.bin: {(out / 'tokenizer.bin').stat().st_size / 1024:.0f} KB, "
           f"vocab {len(id2tok)}, merges {len(merges)}, specials {specials}")
+    model_path = out / "model.bin"
+    tok_path = out / "tokenizer.bin"
+    if args.max_model_bytes and model_path.stat().st_size > args.max_model_bytes:
+        raise SystemExit(f"model.bin {model_path.stat().st_size} B 超过 --max-model-bytes "
+                         f"{args.max_model_bytes}")
+    if args.max_tokenizer_bytes and tok_path.stat().st_size > args.max_tokenizer_bytes:
+        raise SystemExit(f"tokenizer.bin {tok_path.stat().st_size} B 超过 --max-tokenizer-bytes "
+                         f"{args.max_tokenizer_bytes}")
+    model_sha = hashlib.sha256(model_path.read_bytes()).hexdigest()
+    tok_sha = hashlib.sha256(tok_path.read_bytes()).hexdigest()
 
     # ---------- reference logits for the PC self-check
     prompt = "你好"
@@ -176,9 +205,14 @@ def main():
     (out / "ref_ids.json").write_text(json.dumps(ids), encoding="utf-8")
     (out / "export_info.json").write_text(json.dumps(
         {"model": args.model, "layers": n_layers, "hidden": hidden, "heads": n_heads,
-         "head_dim": head_dim, "ffn": ffn, "vocab": vocab, "ctx": 512,
+         "head_dim": head_dim, "ffn": ffn, "vocab": vocab, "ctx": args.ctx,
          "rope_theta": rope_theta, "rms_eps": float(cfg.rms_norm_eps),
-         "model_mb": round(size_mb, 2), "ref_prompt_ids": ids}, ensure_ascii=False, indent=2),
+         "model_mb": round(size_mb, 2),
+         "format_version": 1, "qk": QK,
+         "weights_dtype": args.weights_dtype, "keep": args.keep,
+         "quantize_embedding": bool(args.quantize_embedding),
+         "model_sha256": model_sha, "tokenizer_sha256": tok_sha,
+         "ref_prompt_ids": ids}, ensure_ascii=False, indent=2),
         encoding="utf-8")
     print("wrote ref_logits.bin / ref_ids.json / export_info.json")
 

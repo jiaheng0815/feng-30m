@@ -123,6 +123,14 @@ static void q4_lut_init(void)
     s_q4_lut_ready = 1;
 }
 
+void feng_quant_init(void)
+{
+    q4_lut_init();
+#if FENG_GEMV_PIE
+    q4_pair32_init();
+#endif
+}
+
 static inline float f16_to_f32(uint16_t h)
 {
     /* IEEE-754 half -> float */
@@ -197,6 +205,7 @@ FENG_HOT static void gemv_range_cpu(const void *tensor, uint32_t dtype, const fl
     }
 #endif
     const uint8_t *base = (const uint8_t *)tensor;
+    if (r1 <= r0 || n_in <= 0) return;
     if (dtype == FENG_DT_FP16) {
         const uint16_t *w = (const uint16_t *)tensor;
 #if defined(FENG_USE_OMP)
@@ -222,6 +231,11 @@ FENG_HOT static void gemv_range_cpu(const void *tensor, uint32_t dtype, const fl
         return;
     }
 #endif
+    if ((n_in % QK) != 0) {
+        /* 形状不对时宁可全零（明显是坏的），也不要按截断的 n_blocks 静默算错。 */
+        for (int o = r0; o < r1; o++) y[o] = 0.0f;
+        return;
+    }
     const int n_blocks = n_in / QK;
     const size_t row_bytes = (size_t)n_blocks * (2 + 32);
     q4_lut_init();

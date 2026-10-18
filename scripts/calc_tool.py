@@ -125,8 +125,9 @@ def calc_answer(user: str):
 
 def split_binary_like_c(expr: str):
     """复刻 C 侧 split_binary 的行为：找"最外层唯一运算符"的最简形式。
-    注意 C 的循环从下标 1 开始（首字符 '(' 不计入 depth），这里刻意保持一致。"""
-    depth = 0
+    循环从下标 1 开始（跳过可能的一元负号），所以开头的连续 '(' 要先单独计入
+    depth，否则 "(3+4)*2" 会在 "+" 处误拆。C 侧 2026-10-18 已按同一口径修正。"""
+    depth = 1 if expr.startswith("(") else 0
     for i in range(1, len(expr)):
         ch = expr[i]
         if ch == "(":

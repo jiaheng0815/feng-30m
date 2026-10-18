@@ -6,14 +6,17 @@
  * 纯栈上计算、零分配。 */
 #include "feng.h"
 
+#include <math.h>
 #include <string.h>
 
 [[nodiscard]] int feng_sample_greedy(float *logits, int n_logits,
                                      const int *hist, int n_hist,
                                      float penalty, int no_repeat_n)
 {
+    if (logits == NULL || n_logits <= 0) return -1;
     const int vocab = n_logits;
-    const int nhist = n_hist;
+    const int nhist = (hist == NULL || n_hist < 0) ? 0 : n_hist;
+    if (!isfinite(penalty) || penalty <= 0.0f) penalty = 1.0f;
     if (penalty > 0.0f && penalty != 1.0f) {
         for (int i = 0; i < nhist; i++) {
             const int t = hist[i];

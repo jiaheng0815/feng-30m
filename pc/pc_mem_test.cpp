@@ -31,6 +31,13 @@ int main(void)
 {
     feng_mem_clear();
 
+    /* “我是X”不等于报名字：老师/程序员等身份不能被记成名字 */
+    learn_is("我是老师", 0);
+    answer_is("我叫什么名字？", NULL);
+    learn_is("我是阿强", 1);
+    answer_is("我叫什么名字？", "你叫阿强。");
+    feng_mem_clear();
+
     /* 记忆套件的 12 个原始用例（说事实 → 追问） */
     learn_is("我叫小雨，请记住。", 1);
     answer_is("我叫什么名字？", "你叫小雨。");
@@ -54,10 +61,10 @@ int main(void)
     answer_is("我养了什么？", "你养了乌龟。");
 
     /* 身份：确定性口径（这正是板端"串名字"残余的最终保证） */
-    answer_is("你叫什么名字？", "我叫 feng，由个人开发者 jiaheng 开发训练。");
-    answer_is("你是谁？", "我叫 feng，由个人开发者 jiaheng 开发训练。");
-    answer_is("谁训练了你？", "个人开发者 jiaheng 训练了我，我叫 feng。");
-    answer_is("你是谁开发的？", "个人开发者 jiaheng 训练了我，我叫 feng。");
+    answer_is("你叫什么名字？", "我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。");
+    answer_is("你是谁？", "我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。");
+    answer_is("谁训练了你？", "我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。");
+    answer_is("你是谁开发的？", "我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。");
 
     /* 提问不能被当成陈述存进去 */
     feng_mem_clear();

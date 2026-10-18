@@ -3,12 +3,12 @@
 把 **feng-30m**（Qwen3 架构：11 层 / hidden 448 / 7 头 MHA / FFN 896 / 16k 词表 /
 tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话**。
 
-> **当前固件（2026-10-05）**
+> **当前固件（2026-10-18：引擎 v4.0；板端权重 v3.19-embed）**
 > - 权重：**v3.19-embed**（导出在 `../board/model_export_v3_19b6/`，Q4 权重 + q2 KV 双 QAT，4 epoch / lr 6e-6）
-> - 引擎：**v4.0 / 严格 C23**（零堆、零全局构造；PC 侧仍 C++23 + CUDA），app 分区 **257,104 B**
+> - 引擎：**v4.0 / 严格 C23**（零堆、零全局构造；PC 侧仍 C++23 + CUDA），app 分区 **260,480 B**
 > - 配置：**q2 block8 KV / 2048 ctx**（`idf.py -DFENG_USE_Q2_KV=ON build`），KV 9.62 MB PSRAM
 > - 实测：矩阵 **27/27 + 4/4**、算术子集 **21/21**、tool **13/13**、记忆 **12/12**、
->   速度 **2.33 tok/s**（真实 decode 507 ms/token @ ctx 19）
+>   速度 **2.33 tok/s**（短上下文/短回复的最佳值；逐 token 随上下文变化）
 
 ## 0. 硬件要求（复现必读）
 
@@ -31,7 +31,7 @@ VDD_SPI 1.8 V（同系列 N16R8V / N32R8V 已 EOL）。
 ┌─ ESP32-S3-WROOM-2-N32R16V（32MB Octal flash + 16MB Octal PSRAM，1.8V） ──────────┐
 │  flash: 0x110000   model.bin      14.93 MB, Q4 block-64, mmap 直读（不占 RAM）   │
 │         0x1000000  tokenizer.bin  413 KB, 启动时读入 PSRAM                       │
-│         0x0010000  app            257,104 B（factory 分区 1 MB，余 71%）         │
+│         0x0010000  app            260,480 B（factory 分区 1 MB，余 75.1%）         │
 │  PSRAM: KV cache q2/block8 2048 ctx = 9.62 MB + 工作区/分词 ≈ 1.0 MB             │
 │  时钟 : CPU 240MHz ×2   flash OPI-DTR 120MHz   PSRAM OCT 120MHz                  │
 │  串口 : UART0 115200 8N1（`you> ` 提示符，`<< 内容 >>END` 流式回复）             │
@@ -88,12 +88,13 @@ v3.17 固件 **64 轮 64/64 成功**（8 问循环 ×8，平均 12.5 s/轮，最
 
 ## 2. 拿模型（PC 上执行，二选一）
 
-推荐直接下载 Release 附件 **`feng-30m-c-engine-model-v3.19-embed.zip`**（已导出，板端/PC 引擎通用）。
+推荐直接下载 Release 附件 **`feng-30m-v4.0-embed-release.zip`**，取其中 `weights/esp32/`
+（已导出，板端/PC 引擎通用）。
 想自己导出（当前板端权重 = v3.19-embed，Q4+q2 双 QAT）：
 
 ```powershell
 $py = "python"                    # 换成装了 torch + transformers 的解释器
-& $py tools\export_model.py --model <v3.19-embed包>\weights\hf --out model_export_v3_19b6
+& $py board\tools\export_model.py --model <板端 HF 权重目录> --out board\model_export_v3_19b6
 # -> model_export_v3_19b6/model.bin      14.93 MB（Q4 块64 + fp16 norms/scales）
 #    model_export_v3_19b6/tokenizer.bin  413 KB
 #    ref_logits.bin / ref_ids.json / export_info.json
@@ -107,12 +108,11 @@ $py = "python"                    # 换成装了 torch + transformers 的解释�
 同一套 C23 核心在 PC 上编译运行（驱动仍是 C++23），与 PyTorch 参考逐值比对：
 
 ```powershell
-cd board
-$src = @('pc_check.cpp','..\main\feng_model.c','..\main\feng_llm.c','..\main\feng_quant.c',
-         '..\main\feng_smp.c','..\main\feng_tokenizer.c','-I..\main','-lm')
+$src = @('pc/pc_check.cpp','core/feng_model.c','core/feng_llm.c','core/feng_quant.c',
+         'core/feng_smp.c','core/feng_tokenizer.c','-Icore','-lm')
 & "<MSYS2>\ucrt64\bin\g++.exe" -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 `
   -o pc\pc_check.exe @src
-.\pc\pc_check.exe ..\model_export_v3_19b6 ..\logs\c_logits_v3_19b6.bin
+.\pc\pc_check.exe board\model_export_v3_19b6 logs\c_logits_v3_19b6.bin
 ```
 
 > 路径换成你本机的即可；`model_export_v3_19b6` 也可指向 Release 包里 `model.bin` 所在目录。
@@ -156,7 +156,7 @@ idf.py -DFENG_USE_Q2_KV=ON build     # 发布配置：q2 / 2048 ctx；不带 -D 
 > 全组件 `-std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics`；
 > 非热点模块（tokenizer / tool / model / gbk / main）用 `-Os`，推理热点
 > （`feng_llm` / `feng_quant` / `feng_smp` / `feng_sample`）保持 `-O2`。
-> 当前 app **257,104 B**（关掉彩蛋 256,912 B、v3.20 的 C++23 版 304,192 B、C 版基线 307,392 B）；新增代码后请对比该体积。
+> 当前 app **260,480 B**（关掉彩蛋 260,288 B、v3.20 的 C++23 版 304,192 B、C 版基线 307,392 B）；新增代码后请对比该体积。
 
 ## 5. 烧录（COM20 = CH343；COM19 = 芯片原生 USB-JTAG，两个都能烧）
 
@@ -174,7 +174,7 @@ $py = "python"        # 换成带 esptool 的解释器（ESP-IDF 自带的那个
 > 偏移量必须与 `partitions.csv` 一致（`model` 0x110000 / `tokdata` 0x1000000），
 > 否则会出现 MMU fault 或读不到模型。也可以直接用一键脚本：
 > `.\flash.ps1 -Port COM20 -EspIdfPath <esp-idf> -ModelDir ..\model_export_v3_19b6`。
-> **不想装 ESP-IDF**：Release 附件 `feng-30m-v3.19-embed-firmware.zip` 已含
+> **不想装 ESP-IDF**：Release 附件 `feng-30m-v4.0-embed-firmware.zip` 已含
 > bootloader + 分区表 + app + 模型 + 哈希与烧录命令，esptool 一次烧完。
 > 模型写 15 MB 约需 3.5 分钟（921600 波特率，压缩后约 13 MB）；
 > esptool 报 "port is busy or doesn't exist" 时先检查线/供电。
@@ -187,8 +187,8 @@ $py = "python"        # 换成带 esptool 的解释器（ESP-IDF 自带的那个
 | 输入 | 一行一句（回车发送），串口会回显你输入的字符 |
 | 输出 | 流式 `<< 内容 >>END`；默认按句读符或 30 字节成块发送，减少终端时间戳刷屏 |
 | 尾行 | `>>END (ctx N/2048, X.XX tok/s)` —— 与 PC 版同口径 |
-| 编码 | **自动跟随终端**：发 GBK 就回 GBK（SuperCom/XCOM 的 ANSI 模式），发 UTF-8 就回 UTF-8 |
-| 命令 | `\gbk` `\utf8`（手动锁编码）、`\stream N`（流式块大小，0 = 整段一次性输出）、`\mem`、`\reset`、`\help` |
+| 编码 | 默认 **UTF-8 直通**；GBK 转码默认不编译（省约 46 KB 映射表），需要时用 `idf.py -DFENG_GBK=ON build` 重编 |
+| 命令 | `\utf8`、`\stream N`（流式块大小，0 = 整段一次性输出）、`\mem`、`\reset`、`\help`；编了 GBK 才有 `\gbk` |
 
 开机自检会打印：mmap 带宽、双核 GEMV 加速比、KV 配置、tokenizer 自检（`你好` → id 5331）。
 PC 侧测试脚本：
@@ -209,10 +209,10 @@ python scripts\esp32_enc_test.py COM20                       # 双编码自检
 | KV 量化 | q2 block8（2 bit + 每块 fp16 scale）或 int8 + 每 (层,位置,头) fp16 scale | 开关在 `main/CMakeLists.txt` |
 | 生成长度 | 96 token | `MAX_NEW` |
 | 采样 | 贪心 + 重复惩罚 1.15 + no-repeat 3-gram | `core/feng_sample.c`，与 PC 引擎/套件同口径 |
-| 量化 | Q4 block-64（4.25 bpw） | `tools/export_model.py`；改 `QK` 需同步改 C++ 侧 `QK` |
+| 量化 | Q4 block-64（4.25 bpw） | `board/tools/export_model.py`；改 `QK` 需同步改 C++ 侧 `QK` |
 | 内核 | Q4 查表（256 项浮点 LUT）+ 4 累加器 + 双核分半 + IRAM | 见 `feng_quant.c` / `feng_smp.c` |
-| 速度 | **2.33 tok/s** | 真实 decode **507 ms/token**（固件打印的 1070 ms/token 是含 prefill 的总口径）；C23 迁移前后逐毫秒一致 |
-| 体积 | **257,104 B** | 非热点 `-Os` + 热点 `-O2`；C23 核心 + C++23 驱动约定见根 `../AGENTS.md` |
+| 速度 | **2.33 tok/s** | 固件统计口径（含 prefill）；短上下文/短回复最佳值，逐 token 随上下文变化 |
+| 体积 | **260,480 B** | 非热点 `-Os` + 热点 `-O2`；C23 核心 + C++23 驱动约定见根 `../AGENTS.md` |
 
 ## 8. 已验证结果（v3.19-embed + q2/2048，2026-10-05 实机）
 
@@ -242,9 +242,10 @@ I (2228) feng: gemv 896x448: 1-core 13186 us | 2-core 6837 us | speedup 1.93x
 |---|---|---|
 | 工具（时间/随机数/算式） | **13/13** | `../logs/board_tools_cpp23_q2_final.txt` |
 | 跨轮记忆 12 题 | **12/12** | `../logs/board_memory_cpp23_q2_final12.txt` |
-| 7 轮换名身份序列 | **7/7**（需 `--no-reset`） | `../logs/esp32_multi_cpp23_final.txt` |
+| 8 轮身份序列 | **8/8**（引擎记忆 tool） | `../logs/board_v3_16p3_identity_ctx_engmem.txt` |
 | 32 轮连续压测 | **32/32** | `../logs/board_v3_19b6_stress32.txt` |
 | 速度 | **2.26 / 4.62 / 8.05 tok/s**（ctx 19/38/54） | 见`CHANGELOG.md` v3.20 节 |
+| **2026-10-18 复测**（固件 260,480 B） | tool **13/13**、记忆 **12/12**、多轮 **10/10**、身份句逐字正确 | `../logs/board_tools_time_rand.txt`、`../logs/board_memory_24.txt` |
 
 历史记录：v3.11/v3.10/v3.7 q2 矩阵 27/27+4/4、v3.6 int8 1.85–1.86 tok/s、
 v3.4 10/10、v3 5 轮 5/5、v2 固件 10/10（各日志见 `../logs/`）。
@@ -252,25 +253,33 @@ v3.4 10/10、v3 5 轮 5/5、v2 固件 10/10（各日志见 `../logs/`）。
 ## 9. 目录与内核结构
 
 ```
+core/                      共享推理核心（严格 C23，board / pc / phone 编同一份源码）
+├── feng.h                 模型容器 / 推理 API / KV 模式开关（带 extern "C" 守卫）
+├── feng_model.c           model.bin 解析、张量定位与边界校验
+├── feng_quant.c           Q4 查表 / fp16 GEMV（启动期初始化 LUT）
+├── feng_llm.c             RMSNorm / QK-norm / RoPE / MHA / SwiGLU / tied head / KV
+├── feng_smp.c             双核 GEMV（PC 上退化为单核直通）
+├── feng_sample.c          统一采样器（重复惩罚 + no-repeat 3-gram）
+├── feng_calc.c / feng_tools.c / feng_memory.c   四个 tool
+└── feng_tokenizer.c       设备端 BPE（编译期字节表 + 堆排序）
+
 board/
-├── main/            推理核心（严格 C23）+ ESP-IDF 应用
-│   ├── feng.h            模型容器 / 推理 API / KV 模式开关（C23，带 extern "C" 守卫）
-│   ├── feng_model.c      model.bin 解析、张量定位
-│   ├── feng_quant.c      Q4 查表/fp16 GEMV
-│   ├── feng_llm.c        RMSNorm / QK-norm / RoPE / MHA / SwiGLU / tied head / KV
-│   ├── feng_smp.c        双核 GEMV（PC 上退化为单核直通）
-│   ├── feng_sample.c     统一采样器（重复惩罚 + no-repeat 3-gram）
-│   ├── feng_calc.c / feng_tools.c / feng_memory.c   四个 tool
-│   ├── gbk.c / gbk_table.c  串口编码转换（UTF-8 ↔ GBK）
-│   ├── feng_tokenizer.c  设备端 BPE（编译期字节表 + 堆排序）
-│   └── main.cpp            分区 mmap + PSRAM 分配 + 串口对话
-├── tools/export_model.py     HF → model.bin / tokenizer.bin / 参考 logits
-├── tools/gen_gbk_table.py    生成 GBK 转换表
-├── pc/pc_check.cpp             PC 端一致性验证（对比 ref_logits / PyTorch）
-├── pc/pc_bench.cpp             PC 端速度基准（同引擎单线程）
-├── pc/pc_mt_suite.cpp          多轮回归套件（报名字→身份/名字、12 题记忆）
-├── pc/gbk_selftest.cpp         编码转换自检
+├── main/                  ESP-IDF 应用层（严格 C23）
+│   ├── main.c             分区 mmap + PSRAM 分配 + 串口对话 + 命令链
+│   ├── feng_bonus.c       彩蛋（`-DFENG_NO_BONUS=ON` 可关，别当死代码删）
+│   ├── feng_gemv_bench.c / feng_pie_*.S   GEMV / PIE 基准（不参与发布路径）
+│   └── gbk.c / gbk_table.c   串口编码转换（`-DFENG_GBK=ON` 才编）
+├── tools/export_model.py  HF → model.bin / tokenizer.bin / 参考 logits
+├── tools/gen_gbk_table.py 生成 GBK 转换表
+├── model_export_v3_19b6/  当前板端权重（model.bin / tokenizer.bin / ref_*）
+├── flash.ps1              一键烧录（校验大小、偏移、退出码）
 └── partitions.csv / sdkconfig.defaults / CMakeLists.txt
+
+pc/                         PC 驱动与验收套件（C++23）
+├── pc_check.cpp            一致性验证（对比 ref_logits / PyTorch）
+├── pc_bench.cpp            速度基准（同引擎单线程）
+├── pc_mt_suite.cpp         多轮回归套件（报名字→身份/名字、12 题记忆）
+└── gbk_selftest.cpp        编码转换自检（需 `-DFENG_GBK=ON` 的核心）
 ```
 
 > 本引擎按 **MHA（7 个 Q 头 = 7 个 KV 头）** 实现；若改成 GQA/MQA（如 7 头 / 1 KV 头），

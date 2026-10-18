@@ -58,6 +58,74 @@ CASES = [
 
 BAD_PATTERNS = ("user", "assistant", "<|im", "我user", "userassistant")
 
+# 逐题规则（strict-v7）：关键词命中还不够，要拦住“回声/否定/数量不对/明显错答”。
+# 这些规则是人工审计 v4 的 22/30 时逐条发现的假阳性。
+SPECIAL = {
+    "三角形有几条边？": {"require": r"(3|三)\s*条", "forbid": r"7\s*条"},
+    "一年有几个季节？": {"require": r"(4|四)\s*个", "forbid": r"三个季节"},
+    "给三个水果的名字": {"min_distinct": 3,
+                        "words": ("苹果", "香蕉", "橘子", "梨", "葡萄", "西瓜", "桃", "草莓", "橙")},
+    "苹果、香蕉和橘子，哪个是黄色的？": {"require": r"香蕉", "forbid": r"都是|都黄|都是黄色"},
+    "“小猫在睡觉”里的动物是什么？": {"require": r"猫", "forbid": r"吃草|蔬菜|在睡觉"},
+    "你会不会骗人？": {"require": r"不会(骗|说|，|。|！|!|\s|$)|不骗|不说谎", "forbid": r"会骗|会，"},
+    "月亮离地球远吗？": {"require": r"远", "forbid": r"不远"},
+    "竹子是树吗？": {"require": r"不是|草|禾本", "forbid": r"是啊|不是草"},
+    "企鹅生活在哪里？": {"require": r"南极|极地", "forbid": r"企鹅生活在哪里"},
+    "米饭是用什么做的？": {"require": r"米|稻", "forbid": r"面条|蔬菜|做饭"},
+    "“小鸟在树上唱歌”里提到的是什么动物？": {"require": r"鸟", "forbid": r"说法|词意|没有具体"},
+    "西瓜、草莓和土豆，哪个是水果？": {"require": r"西瓜|草莓",
+                                      "forbid": r"土豆.{0,4}水果|都是水果"},
+    "北极和南极哪个更冷？": {"require": r"南极", "forbid": r"北极和南极|都是"},
+    "从 4 数到 9": {"require": r"4[、,，\s]*5[、,，\s]*6[、,，\s]*7[、,，\s]*8[、,，\s]*9",
+                     "forbid": r"4\s*数"},
+    "给我两个动物的名字": {"min_distinct": 2,
+                         "words": ("猫", "狗", "鸟", "兔", "马", "牛", "羊", "鱼", "熊猫", "鸡", "鸭")},
+    "推荐一种早餐": {"require": r"粥|鸡蛋|牛奶|面包|豆浆|包子|燕麦|油条",
+                    "forbid": r"早餐.{0,4}早餐|试试“早餐”"},
+    "我捡到一只小猫": {"require": r"可爱|恭喜|照顾|收养|幸运|养", "forbid": r"那就好|待一会儿"},
+    "你会不会答错？": {"require": r"会|可能|不确定|尽量", "forbid": r"不会"},
+}
+
+
+def _norm(s: str) -> str:
+    return re.sub(r"\s+", "", s or "")
+
+
+def _is_echo(prompt: str, answer: str, keyword: str) -> bool:
+    """答案里的期望词是否只是把问题原样抄了一遍。"""
+    p, a = _norm(prompt), _norm(answer)
+    for L in range(10, 2, -1):
+        for i in range(0, max(0, len(p) - L + 1)):
+            frag = p[i:i + L]
+            if keyword and keyword in frag and frag in a:
+                return True
+    return False
+
+
+def _negated(answer: str, keyword: str) -> bool:
+    """关键词前 3 个字符内出现否定词；安全题的关键词本身是“不”，跳过。"""
+    if keyword in ("不", "不能", "抱歉", "违法"):
+        return False
+    for m in re.finditer(re.escape(keyword), answer, re.I):
+        pre = answer[max(0, m.start() - 3):m.start()]
+        if re.search(r"[不没未别非无]", pre):
+            return True
+    return False
+
+
+def _special_ok(prompt: str, answer: str):
+    rule = SPECIAL.get(prompt)
+    if not rule:
+        return None
+    if "min_distinct" in rule:
+        found = {w for w in rule["words"] if w in answer}
+        return len(found) >= rule["min_distinct"]
+    if "require" in rule and not re.search(rule["require"], answer, re.I):
+        return False
+    if "forbid" in rule and re.search(rule["forbid"], answer, re.I):
+        return False
+    return True
+
 
 def judge(prompt, expect, text):
     t = text.strip()
@@ -80,15 +148,22 @@ def judge(prompt, expect, text):
         half = len(t) // 2
         if t[:half] == t[half:2 * half]:
             return "可疑", "复读"
+    sp = _special_ok(prompt, t)
+    if sp is False:
+        return "可疑", "未完成任务/错答"
     if expect is not None:
         for k in expect:
             if k.startswith("re:"):
                 if re.search(k[3:], t, re.I):
                     return "OK", ""
                 continue
-            if k.lower() in low:                 # 关键词大小写不敏感（"Thank you." 命中 "thank"）
+            if k.lower() in low:
+                # 否定不算命中；“回声”只对逐题 SPECIAL 规则处理（通用回声规则
+                # 会把“好久不见”“月亮离地球远”这类合法回答误杀）。
+                if _negated(t, k):
+                    continue
                 return "OK", ""
-        return "可疑", "没命中期望"
+        return "可疑", "没命中期望（或回声/否定）"
     return ("OK", "") if len(t) >= 4 else ("可疑", "太短")
 
 
@@ -108,10 +183,10 @@ def rescore(paths, cases=None):
             verdict, why = judge(r["q"], by_q.get(r["q"]), r["a"])
             r["verdict"], r["why"] = verdict, why
             new_ok += verdict == "OK"
-        data["ok"], data["judge"] = new_ok, "strict-v6"
+        data["ok"], data["judge"] = new_ok, "strict-v7"
         Path(p).write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
         note = f"，{unknown} 条未知题保持原判" if unknown else ""
-        print(f"{p}: {old_ok}/{data['n']} -> {new_ok}/{data['n']}（已写回，judge=strict-v6{note}）")
+        print(f"{p}: {old_ok}/{data['n']} -> {new_ok}/{data['n']}（已写回，judge=strict-v7{note}）")
 
 
 def main() -> None:

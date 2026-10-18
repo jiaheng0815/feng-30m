@@ -21,7 +21,7 @@ pkg install -y clang
 git clone <仓库地址> feng-30m && cd feng-30m/phone/cli
 ./build.sh                       # 产出 build/phone_chat
 
-# 模型：从 Release 的 feng-30m-c-engine-model-v3.19-embed.zip 解出 model.bin / tokenizer.bin
+# 模型：从 Release 的 feng-30m-v4.0-embed-release.zip 解出 weights/esp32/ 下的 model.bin / tokenizer.bin
 mkdir -p ~/.feng && cp model.bin tokenizer.bin ~/.feng/
 
 ./build/phone_chat ~/.feng                      # 开始对话
@@ -96,6 +96,14 @@ python board/tools/export_model.py --model <HF 权重> --out <目录> --weights-
 >
 > NEON fp16 内核（`vcvt_f32_f16` + `vfmaq_f32`）在支持 FP16 的 aarch64 上自动启用，
 > 用 `--neon 0` 可关掉；它与标量路径**不逐位一致**（累加顺序不同）。
+>
+> **Q4 NEON 内核（int8 `vdotq_s32`）是近似路径**：激活量化到 int8 后与 Q4 权重点积，
+> 与标量 fp32 LUT 路径有数值差（argmax 可能变）。2026-10-18 在 P30 Pro 上用
+> NDK arm64 实测：32 题矩阵仍是 **27/27 + 4/4**、算术 **21/21**，但**裸模型**的
+> `pc_mt_suite` 从 NEON 关的 `mem12 12/12 / seq 10/10` 掉到 **9/12 / 9/10**。
+> 产品路径不受影响——固件/CLI/APK 都会先过 `feng_memory` tool，身份与可枚举记忆
+> 是确定性回答；这个差异只出现在"关掉 tool、纯模型多轮"的验收套件里。
+> 需要与板端/PC 逐字对拍时，用 `FENG_PHONE_NEON=0` 或 `--neon 0`。
 
 ## 3. 性能与内存
 
@@ -105,7 +113,7 @@ python board/tools/export_model.py --model <HF 权重> --out <目录> --weights-
 |---|---|---|
 | 32 题矩阵（q2/block8，2048 ctx） | **27/27 + 4/4 长文召回** | `logs/phone_4t_kv.txt` |
 | 算术子集（tool 口径） | **21/21** | `logs/phone_arith.txt` |
-| 多轮记忆 | **mem12 12/12** | `logs/phone_mt.txt` |
+| 多轮记忆（**裸模型**） | **mem12 9/12（NEON 开，默认）**；关 NEON 后 **12/12** | 2026-10-18 P30 Pro 复测，见下 |
 | 与板端原始引擎输出对比 | **逐字节相同**（单线程与 4 线程都是） | `logs/phone_base_kv.txt` vs `logs/phone_1t_kv.txt`、`logs/phone_4t_kv.txt` |
 | 与 gcc 版对比：**clang 构建**（Termux 用的就是 clang） | 32 题 27/27，输出**逐字节相同** | `logs/phone_clang_kv.txt` |
 | NEON 内核 vs 标量 A8 路径 | **max\|diff\| = 0.000e+00**（逐位一致） | `logs/phone_a64_ab_a8.txt` |
@@ -251,17 +259,22 @@ phone/
 
 ## 7. 已知限制
 
-1. **真机性能未实测**。开发机没有 Android 设备也没有 adb，aarch64 只能靠 qemu 验证**正确性**
-   （qemu 逐条翻译指令，它的 tok/s 没有参考价值）。手机上的数字请在 Termux 里跑
-   `phone_chat --bench` 得到。
+1. **真机性能已测**（2026-10-18，P30 Pro / Kirin 980）：32 题矩阵 **27/27 + 4/4**、
+   算术 **21/21**、短提示 decode 约 **190–330 tok/s**（受系统负载影响很大）。
+   历史完整线程扫描见 `logs/phone_bench_p30pro.txt`。
 2. **上下文默认 2048**，与板端 QAT 训练的工作点一致。`--ctx` 可以放大到编译期上限
-   （默认 4096），但**没有验证过**放大后的质量，用之前先自己测。
+   （默认 4096）；要 32k 得用 `-DFENG_PHONE_MAX_CTX=32768` 重编。
+   已在 P30 Pro 上编出 32k 版并跑通：KV **154.00 MB**，短提示 decode **331 tok/s**。
+   但这份 v3.19-embed 权重是在 2048 上做的 QAT，32k 属于**偏离训练工作点**；
+   填充到 ~2600 token 时只有 32–43 tok/s，真填满 32k 约 2–3 tok/s。
+   所以默认不把 32k 当卖点——**能跑，不等于好用**。
 3. **要求 arm64 + ARMv8.2 dotprod**（Cortex-A55/A76 及以后的核）。没有 dotprod 的老设备
    能跑，但只能走标量路径，速度会明显下降。
 4. **APK 只出 arm64-v8a**，32 位设备不打包。
 5. **引擎单实例、非重入**：CLI 与 App 都只维护一个会话，并发调用会被锁串行化。
-6. **Kotlin/Compose 层没有本地构建验证**（开发机 JDK 是 26，AGP 8.x 只支持 17~21）。
-   native 层已用 NDK 编过，Gradle/Kotlin 部分由你第一次构建暴露问题。
+6. **APK 已在 P30 Pro 上构建并安装验证**（2026-10-18，JDK 21 + AGP 8.7 + NDK 27）。
+   构建脚本仍要求 JDK 17~21（系统的 JDK 26 不行）；本轮实测 APK 30.97 MB，
+   启动、中文生成、`59+1` tool 都正常。
 7. **还没做的进一步优化**（按预计收益排序，都不是必需的）：
    - **注意力按 head 并行**：现在 `feng_llm.c` 的 head 循环是串行的（7 个头顺序跑），
      长上下文时它是剩下的主要串行部分。按 head 并行是**位精确**的（每个 head 内部的
