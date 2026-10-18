@@ -17,11 +17,12 @@
   → v3.12 = PC 算术修复 → v3.13 = 记忆版 → v3.14 = tool 版（算术/时间/随机数交给 C++ 引擎，
   模型不再学算术）→ v3.15-embed（身份漂移修复）→ v3.16-embed（身份串名修复；p4–p7 证明是容量边界）
   → v3.17 = 引擎/固件记忆 tool（可枚举问答确定性回答，权重未变）→ **v3.19 = 定向教师数据修"模板串台"
-  （PC `v4/base`、板端导出 `model_export_v3_19b6`；留出 30 题 16/17 → 19/19，当前发布权重）**
+  （PC `v4/base`、板端导出 `model_export_v3_19b6`；当时发布，现为 PC 4.0 起点）**
   → v3.20 = 引擎序列数数 tool + 统一采样器 + 体积/性能优化（固件 304,192 B）
   → **v4.0 = 引擎全面升级（当前）：推理核心迁到严格 C23（板端与 PC 共用同一份源码，
   PC 驱动仍 C++23、CUDA 独立），新增手机端 `phone/` 与编辑器代码提示；
-  固件 280,736 B（含记忆 NVS 持久化）、板端 2.33 tok/s**。
+  固件 280,736 B（含记忆 NVS 持久化）、板端 2.33 tok/s**
+  → **4.0-embed = 手机/ESP32 发布权重（测试版 `4.0-20261018H`）**。
   - **记忆持久化（2026-10-18）**：`feng_mem_export/import` 把记忆导出为文本；
     板端存 NVS（`nvs_flash`，key `mem`），手机端存模型目录的 `mem.txt`；
     `\reset` / `\mem clear` / 上下文写满会清空并擦除副本。板端实测跨重启
@@ -63,7 +64,7 @@
     Q4 **26/27+4/4**、32k 0/16；D = C + 8ep 日常 QAT，Q4 **27/27+4/4**（关卡 A 全过），
     但 h1 **16/30**、32k **2/32**、拒答 16/16。**证明 4.0 能刷到 27/27，
     代价是把长文/泛化容量挤掉**；不要再把“27/27”当通用能力。产物 `v4/4.0-20261018C/D/`。
-  - **板端双 QAT 前三版里两版没过关卡 A，这一版板端沿用 v3.19-embed。**
+  - **板端双 QAT 前三版里两版没过关卡 A，这一版板端当时沿用 v3.19-embed（后续由 4.0-embed 取代）。**
     从最终 PC 权重复现：3 epoch / lr 6e-6（5,034 步）→ **24/27**，1 epoch / lr 4e-6
     （1,678 步）→ **23/27**；都低于 v3.19-embed 的 27/27，所以不替换。
     1 epoch 反而更差——QAT 步数太少，权重**没适应** Q4/q2 噪声。
@@ -75,10 +76,22 @@
     下次方向：去掉 `--retr`（板端 MAX_CTX=2048，4096/8192 的长文 QAT 用不上，
     而那段 lr 1e-5 / gnorm 40 的更新对短任务伤害最大）、或只训末 N 层。
     详见 `docs/CHANGELOG.md` §4f。
-  - **发布口径**：PC 权重 = v4.0（`v4/patch_name_e5_lr5e-6`），板端权重 = v3.19-embed，
-    引擎两边都是 v4.0。**这两个版本号不要混着写。**
+  - **发布口径**：PC 权重 = **4.0**（`v4/patch_name_e5_lr5e-6`），
+    手机 / ESP32 权重 = **4.0-embed**（导出 `board/model_export_4.0-embed`），
+    引擎两边都是 v4.0。**这几个版本号不要混着写。**
+  - **4.0-embed（2026-10-18 发布，手机/ESP32 权重）**：测试版 `4.0-20261018H`
+    = 4.0B 的全部 attention/FFN + v3.19-embed 的 tied embedding/lm_head。
+    Q4 32 题 **27/27 + 4/4**、PPL **102.99**（v3.19-embed 107.49）、留出 200 **85**
+    （v3.19 83）、长文 **108/128**、板端 tool 13/13、记忆 24/24、多轮 10/10。
+    这是“同硬件、同尺寸”的发布权重；PC 权重仍是 v4.0，两者不要混写。
+  - **模型命名规则（2026-10-18 起）**：
+    - **测试版本**：`x.y-yyyymmddC`，`C` 表示当天第几个小版本，按 **A–Z** 顺序
+      （如 `4.0-20261018A`、`4.0-20261018H`）；
+    - **PC 发布版本**：`x.y`（当前 `4.0`）；
+    - **手机 / ESP32 发布版本**：`x.y-embed`（当前 `4.0-embed`）。
+    发布目录：PC 权重在 `v4/<发布名>`，板端导出在 `board/model_export_<发布名>`。
   （标准基准在 v4.0 收窄到 SciQ / PIQA 两项；其余七项大多贴随机线，其中 BoolQ/OpenBookQA/ARC-C 显著低于随机线，是偏置信号而非“无信号”。SciQ prompt 含 support 证据段，是开卷口径。）
-- v3.19 现状（**当前发布**）：
+- v3.19 现状（**历史；PC 4.0 的训练起点，板端上一版**）：
   - PC 权重（已收进 `v4/base/`，也是 4.0 的 SFT 起点）：从 `archive/v3_14/pc2` 出发，用 440 条定向教师数据（常识/列举/情绪/寒暄/推理/身份六类，
     `scripts/v3_19_build_target_prompts.py`）+ 多轮/身份回放做**末 2 层 15 epoch** 微调；
     留出 30 题 **17/30**（strict-v7；旧 strict-v4 19/30；v3.14 = 16/30）、
@@ -150,9 +163,9 @@
 - v3.11（板端上一版，`archive/v3_11/pol8/`）：q2 矩阵 27/27+4/4、算术子集 21/21、板端 30/30、1.81 tok/s；
   关键技巧是 **Q4 权重/q2 KV 双 QAT**（`v3_7_kv_qat.py --wqat`），量化抗性对权重回插极敏感
   （掺 20% v3.9 权重就掉到 25/27），PC 32k 弱。
-- **PC 用 v3.19 权重（现收在 `v4/base/`，也是 4.0 的训练起点）；板端用 v3.19-embed 权重
-  （导出在 `board/model_export_v3_19b6/`）；两边同一套 v4.0 / 严格 C23 引擎与固件**
-  （q2/2048 固件 **280,736 B**、板端 2.33 tok/s；见 `docs/CHANGELOG.md` v3.19/v3.20 节与
+- **PC 用 v4.0 权重（`v4/patch_name_e5_lr5e-6`）；手机 / ESP32 用 4.0-embed
+  （导出在 `board/model_export_4.0-embed/`）；两边同一套 v4.0 / 严格 C23 引擎与固件**
+  （q2/2048 固件 **280,736 B**、板端 2.33 tok/s；见 `docs/CHANGELOG.md` 4.0-embed 节与
   `docs/esp32-firmware.md`）。
 - **标准基准（英文，0-shot）**：**只有 SciQ 71.00/73.80 与 PIQA 53.37**。
   ARC/HellaSwag/OpenBookQA/Winogrande/BoolQ/SciCloze 六项曾跑过，但在这个 30M 中文模型上
@@ -206,7 +219,7 @@
 | `eval/` | 评测结果 JSON（范围 / 针检索 / 记忆 / 留出 / `lm_eval_*.json` 标准基准）；`eval/README.md` 记录命名约定 |
 | `logs/` | 所有构建 / 训练 / 烧录 / 板上测试日志；`board_baseline_lut.txt` 是板上精度基线 |
 | `core/` | **共享 C23 推理核心**（严格 C23、零堆、零全局构造）：`feng_llm` / `feng_quant` / `feng_model` / `feng_smp` / `feng_sample` / `feng_tokenizer` + 四个 tool（`feng_calc` / `feng_tools` / `feng_memory`）。**board / pc / phone 编的是同一份源码**，改这里三家全变 |
-| `board/` | ESP32-S3 固件工程：`main/`（IDF 组件，放 `main.c`、彩蛋 `feng_bonus`、GBK 表、PIE/bench）、`partitions.csv`、`sdkconfig*`、`flash.ps1`、`tools/export_model.py`、`model_export_v3_19b6/`（当前板端权重）。工程说明见 `docs/esp32-firmware.md` |
+| `board/` | ESP32-S3 固件工程：`main/`（IDF 组件，放 `main.c`、彩蛋 `feng_bonus`、GBK 表、PIE/bench）、`partitions.csv`、`sdkconfig*`、`flash.ps1`、`tools/export_model.py`、`model_export_4.0-embed/`（当前板端权重）。工程说明见 `docs/esp32-firmware.md` |
 | `pc/` | PC 驱动与验收套件（**C++23**）：`pc_chat` / `pc_kv_suite` / `pc_mt_suite` / `pc_check` / 各 tool 单测，GPU 后端 `feng_cuda.cu`，构建脚本 `build_pc_chat.ps1` / `build_pc_cuda.ps1` |
 | `phone/` | 手机端（Termux CLI + Android APK），`phone/engine/` 是 `core/` 的**派生副本**（带 `SOURCE.sha256` 溯源）；详见 `phone/README.md` |
 | `tools/check_md.py`、`tools/check_docs.py` | 文档自检：前者查围栏/路径/过时表述，后者把**全部 md 的关键数字与实际产物对齐**（参数量、固件体积、各版评测分数、检索 loss） |
@@ -465,7 +478,7 @@ ESP32 固件（在 `board\` 下）：
 ```powershell
 # 0) 导出板端模型（从 HF 权重生成 model.bin / tokenizer.bin / ref_logits.bin）
 $py = "python"        # 换成装了 torch + transformers 的解释器
-& $py board\tools\export_model.py --model <板端 HF 权重目录> --out board\model_export_v3_19b6
+& $py board/tools/export_model.py --model v4/hybrid_B_emb319 --out board/model_export_4.0-embed
 
 # 1) PC 端一致性自检（改内核后必跑）
 & "<MSYS2>\ucrt64\bin\gcc.exe" -std=c23 -O2 -c ..\core\feng_model.c -o fm.o -I..\core   # 核心逐个编成 .o
@@ -475,14 +488,14 @@ $py = "python"        # 换成装了 torch + transformers 的解释器
 & "<MSYS2>\ucrt64\bin\gcc.exe" -std=c23 -O2 -c ..\core\feng_tokenizer.c -o ft.o -I..\core
 & "<MSYS2>\ucrt64\bin\g++.exe" -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics `
     -O2 -o pc\pc_check.exe pc_check.cpp fm.o fl.o fq.o fs.o ft.o -I..\main -lm
-.\pc\pc_check.exe ..\model_export_v3_19b6 ..\logs\c_logits_v3_19b6.bin
+.\pc\pc_check.exe ..\model_export_4.0-embed ..\model_export_4.0-embed/ref_logits.bin
 
 # 1b) 带 tool 的 PC 运行时 / 板端代理套件（必须带 feng_calc.c + feng_tools.c + feng_memory.c）
 #    （核心同样是 gcc -std=c23 逐个编成 .o 后交给 g++ 链接，见上面 pc_check 那段）
 & "<MSYS2>\ucrt64\bin\g++.exe" -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics `
     -O2 -DFENG_KV_Q2=1 -DFENG_KV_Q2_BLOCK=8 -o pc\pc_kv_suite_q2b8.exe `
     pc_kv_suite.cpp fm.o fl.o fq.o fs.o ft.o feng_calc.o feng_tools.o feng_memory.o feng_sample.o -I..\main -lm
-.\pc\pc_kv_suite_q2b8.exe ..\model_export_v3_19b6 ..\pc\prompt_long.txt 5200    # 27/27 + 4/4
+.\pc\pc_kv_suite_q2b8.exe ..\model_export_4.0-embed ..\pc\prompt_long.txt 5200    # 27/27 + 4/4
 
 # 2) 编译固件
 $env:IDF_TOOLS_PATH = "<IDF 工具链目录>"      # 本机路径见 scripts/local_paths.json
@@ -493,11 +506,11 @@ idf.py -DFENG_USE_Q2_KV=ON build      # 发布配置：q2 / 2048 ctx
 $esp = "python"                              # 换成带 esptool 的解释器
 & $esp -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash `
     0x0 build\bootloader\bootloader.bin 0x8000 build\partition_table\partition-table.bin 0x10000 build\feng_30m.bin
-& $esp -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000  model_export_v3_19b6\model.bin
-& $esp -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 model_export_v3_19b6\tokenizer.bin
+& $esp -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000  model_export_4.0-embed\model.bin
+& $esp -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 model_export_4.0-embed\tokenizer.bin
 
 # 或者直接用一键脚本（路径走参数/环境变量，偏移已对齐 partitions.csv）
-.\flash.ps1 -Port COM20 -EspIdfPath "<esp-idf>" -ModelDir .\model_export_v3_19b6
+.\flash.ps1 -Port COM20 -EspIdfPath "<esp-idf>" -ModelDir .\model_export_4.0-embed
 
 # 4) 串口对话 / 稳定性 / 编码自检
 python scripts\esp32_chat.py --port COM20 --question "你是谁？"
@@ -524,7 +537,7 @@ python scripts\esp32_enc_test.py COM20
 6. **flash 前 16MB 的 mmap 窗口是硬边界**（NOR flash 24 位地址上限，**不是模块容量**——模块是 32MB）：`model.bin`（15,659,904 B = 0xEEF380）必须结束在 0x1000000 之前；现行分区为 `model 0x110000/0xEF0000`、`tokdata 0x1000000/0x80000`（tokdata 用 `esp_partition_read` 读，可放窗口外）。烧录偏移必须与 `board/partitions.csv` 保持一致：`flash.ps1` 已按此修正为 `model=0x110000` / `tokdata=0x1000000`，改动分区表时要同步改脚本。
 7. **板端内存账**：权重只能 flash mmap 流式读，不能预载进 SRAM（每层 Q4 ≈0.95MB，内部 SRAM 只剩 ~271KB）；
    KV 默认 int8（`FENG_KV_INT8=1`，`MAX_CTX=1024`，9.93MB PSRAM），可选 q2 block8
-   （`idf.py -DFENG_USE_Q2_KV=ON build`，`MAX_CTX=2048`，9.62MB，v3.19-embed 的 32 题 PC 矩阵 27/27 + 召回 4/4
+   （`idf.py -DFENG_USE_Q2_KV=ON build`，`MAX_CTX=2048`，9.62MB，4.0-embed 的 32 题 PC 矩阵 27/27 + 召回 4/4
    + 算术子集 21/21；固件默认多轮上下文、`\reset` 清空，见 `docs/CHANGELOG.md` 的 v3.13 节）；板上 32k 上下文在 KV 内存上不可能，
    长文只能走滑窗/attention sink/线性注意力。
 8. **速度现状**：标量路径已到 S3 单发射天花板（每步 ~4-5 周期；短上下文 2.26 tok/s ≈ 938 ms/token @ ctx 19（q2/2048 发布配置））。默认开启三项小幅数值优化（`FENG_GEMV_MADD` 纯 madd 链、`FENG_FAST_EXP` 快速 exp、`FENG_Q2_VFOLD` V 段折叠）：三者累计 logits 差 **4.8e-6**（Q4 量化误差 2.94）、32 题矩阵输出与优化前**逐字相同**。**长上下文成本仍在注意力本体**：q2/2048 单次 forward 从 **2.20 s 降到 1.58 s**（2026-10-18：7 个 head 按 4/3 切给两个核，K/softmax/V 全并行；单核基准 2199 ms → 双核 1584 ms、1024 ctx 1342→1034 ms、256 ctx 694→616 ms，5 条固定提示输出**逐字相同**；开关 `-DFENG_ATTN_PARTS=1` 可回退单核 A/B）。原单核成本 = K 0.84 + softmax 0.05 + V 0.83 + 权重等 0.51；短上下文仍由 Q4 权重流式读主导（2.33 tok/s）。q2 注意力另有四处位精确优化（字节 LUT + `[layer][head][t]` 顺序布局 + 内联 fp16→fp32 + 2-token 展开）；prefill 用 `feng_forward_ex(..., want_logits=0)` 跳过中间 token 的 lm head（每个省 ~115 ms，最后一个 token 必须算）。**A8 整数 GEMV 已实测：S3 上比 FPU 慢 36%（`mull` 慢），只在 PC 上快 20%，默认关闭**。改 GEMV/注意力/布局后必须用 PC 32 题矩阵与上一版对比（位精确改动要求**逐字节**，数值改动要求 27/27+4/4 且给出差异量级）。**PIE 路线已实测结案**：裸吞吐 0.63–1.38 周期/MAC 有空间，但 S3 没有字节移位指令、4-bit 权重必须靠 LUT 展开（≥1 次标量 load+store / 权重），正确的整块内核只做到 **1.05×**——不要再写 PIE 内核（`docs/CHANGELOG.md` v3.16-embed 附录）；不要再做没有实测收益的内层微调。
@@ -553,7 +566,7 @@ python scripts\esp32_enc_test.py COM20
 - **写了数字**：数字必须能追到 `eval/*.json`、`summary.json` 或 `logs/` 里的实测；没有出处的一律删掉或标注"预期/估算"，
   不要写没有日志支撑的精确值。
 - **换了模型版本**：重跑 `eval_planA_scope.py` + `eval_longctx.py`，数字同步进 `docs/CHANGELOG.md` / `README.md` / `docs/USAGE.md`
--  （PC 与板端两套口径必须分别标清：**权重** PC=v3.19 / 板端=v3.19-embed，**引擎**=v4.0（严格 C23）；算式的验收口径是
+-  （PC 与板端两套口径必须分别标清：**权重** PC=v4.0 / 手机/ESP32=4.0-embed，**引擎**=v4.0（严格 C23）；算式的验收口径是
   **tool 回答**，不是模型算——pc_kv_suite 会把算式任务路由到 feng_calc）。
 
 ## 8. 排障速查

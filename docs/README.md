@@ -29,13 +29,13 @@
 | [`COMPARISON.md`](COMPARISON.md) | v1 / v2 / v3 / v4 四代的架构、语料、评测横向对比 |
 | [`DELIVERY.md`](DELIVERY.md) | 交付清单、验收口径、硬件约束与踩过的坑 |
 | [`esp32-firmware.md`](esp32-firmware.md) | 固件工程：硬件要求、引擎结构、编译烧录、串口协议、实测结果 |
-| [`board-qat.md`](board-qat.md) | **实验分支 `board-qat`**：同尺寸把板端权重从 v3.19 升到 4.0B 的 QAT 配方（候选，未发布） |
+| [`board-qat.md`](board-qat.md) | **4.0-embed 的发布记录**：H 候选（4.0B + v3.19 embedding）的 QAT/soup 失败对照与最终指标 |
 
 根目录另外两个：
 - [`../README.md`](../README.md) —— 仓库首页（GitHub 会渲染它，所以留在根）
 - [`../AGENTS.md`](../AGENTS.md) —— AI 编码代理的工作约定与硬性约束
 
-模型卡跟着模型目录走：`v4/base/MODEL_CARD.md` 描述 HF 仓库（PC v4.0 + esp32 v3.19-embed）；
+模型卡跟着模型目录走：`v4/base/MODEL_CARD.md` 描述 HF 仓库（PC 4.0 + esp32 4.0-embed）；
 本地最终 PC 权重在 `v4/patch_name_e5_lr5e-6/`，SFT 起点在 `v4/base/`。
 v1/v2/v3 的历史模型卡随目录一并移除。
 

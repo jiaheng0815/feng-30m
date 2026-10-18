@@ -188,7 +188,7 @@ def main() -> int:
     ap.add_argument("--tag", default="v4.0", help="版本号，用于包名与包内顶层目录")
     ap.add_argument("--hf", default="v4/patch_name_e5_lr5e-6",
                     help="HF 格式权重目录（PC 最终模型）")
-    ap.add_argument("--esp", default="board/model_export_v3_19b6",
+    ap.add_argument("--esp", default="board/model_export_4.0-embed",
                     help="板端导出目录（model.bin / tokenizer.bin）")
     ap.add_argument("--dist", default="dist", help="zip 输出目录")
     ap.add_argument("--allow-stale-firmware", action="store_true",

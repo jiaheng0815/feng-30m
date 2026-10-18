@@ -1,6 +1,6 @@
 ﻿<#
   一键烧录 feng-30m 到 ESP32-S3 (N32R16V)
-  用法:  .\flash.ps1 -Port COM20 [-SkipBuild] [-Monitor] [-ModelDir .\model_export_v3_19b6]
+  用法:  .\flash.ps1 -Port COM20 [-SkipBuild] [-Monitor] [-ModelDir .\model_export_4.0-embed]
          [-KvMode q2|int8] [-EspIdfPath <esp-idf 目录>] [-EspToolPy <python.exe>]
 
   工具链不再写死盘符：优先用参数，其次用环境变量 IDF_PATH / IDF_TOOLS_PATH /
@@ -35,7 +35,7 @@ function Invoke-Checked {
 
 if ($ModelDir -eq "") {
     $candidates = @(
-        (Join-Path $PSScriptRoot "model_export_v3_19b6"),
+        (Join-Path $PSScriptRoot "model_export_4.0-embed"),
         (Join-Path $PSScriptRoot "model_export_v4"),
         (Join-Path $PSScriptRoot "model_export_20261017D")
     )

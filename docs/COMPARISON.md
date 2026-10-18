@@ -3,13 +3,14 @@
 同一套 30M 参数预算演化出的三代模型。所有数字都是本机实测（RTX 5060 Ti 16GB +
 i7-12700KF），评测脚本与协议在各代之间保持一致，便于横向比较。
 
-> **状态（2026-10-17 更新）**：本文件是 **v1/v2/v3 的历史横向对比**。
-> 当前**已发布**为 **PC 权重 = v4.0（`v4/patch_name_e5_lr5e-6`）；板端权重 = v3.19-embed；
-> 引擎 = v4.0 / 严格 C23**（四个 tool；板端 12 题记忆 12/12、身份永不串名、
+> **状态（2026-10-18 更新）**：本文件是 **v1/v2/v3 的历史横向对比**。
+> 当前**已发布**为 **PC 权重 = 4.0（`v4/patch_name_e5_lr5e-6`）；手机/ESP32 权重 = 4.0-embed；
+> 引擎 = v4.0 / 严格 C23**（四个 tool；板端 24 题记忆 24/24、身份永不串名、
 > 固件 280,736 B / 2.33 tok/s）。
 >
-> **v4.0 的板端双 QAT 试了三版**：24/27、23/27、QAT D 27/27。D 版虽追平 v3.19-embed 的
-> 矩阵分数，但没做板端 tool/记忆/实机验收，这一版**不替换**板端权重。
+> **4.0-embed 由测试版 `4.0-20261018H` 发布**：4.0B 的 attention/FFN +
+> v3.19-embed 的 tied embedding/lm_head。Q4 网关 27/27 + 4/4、PPL 102.99、
+> 留出 200 85、长文 108/128。
 > 因此下面的主表**不含 v4.0**，四代 fp32 横比单独列：
 >
 > | 指标 | v1 | v2 | v3 | **v4.0** |
@@ -151,7 +152,7 @@ i7-12700KF），评测脚本与协议在各代之间保持一致，便于横向�
 
 产物（历史路径，目录已删）：`archive/v3/retr_sft/ctx32768/final`（v3 链条终点）、`archive/v3/ctx{4096,8192,16384,32768}/final`（各阶段）、
 `archive/v3/gguf/feng-30m-Q4_K_M.gguf`；（历史）v3.6 时期权重在 `archive/v3_6/release/`；
-**当前交付是 PC v4.0 权重（`v4/patch_name_e5_lr5e-6`）+ 板端 v3.19-embed + v4.0/C23 引擎**。v1/v2/v3 的历史目录已从仓库移除，**权重与 GGUF 从
+**当前交付是 PC 4.0 权重（`v4/patch_name_e5_lr5e-6`）+ 手机/ESP32 4.0-embed + v4.0/C23 引擎**。v1/v2/v3 的历史目录已从仓库移除，**权重与 GGUF 从
 [Releases](https://github.com/jiaheng0815/feng-30m/releases) 下载**。评测记录：`eval/longctx_v2.json`、
 `eval/longctx_v3.json`、`eval/v3_scope.json`、`eval/v3_6_scope.json`。
 

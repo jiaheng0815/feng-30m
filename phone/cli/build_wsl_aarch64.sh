@@ -17,7 +17,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 ENG="$HERE/../engine"
 PC="$ROOT/pc"
-MODEL="${MODEL:-$ROOT/board/model_export_v3_19b6}"
+MODEL="${MODEL:-$ROOT/board/model_export_4.0-embed}"
 LOGDIR="$ROOT/logs"
 FULL=0
 [ "${1:-}" = "--full" ] && FULL=1

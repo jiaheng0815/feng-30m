@@ -1237,13 +1237,12 @@ def _check_wording() -> None:
         for bad in stale_claims:
             if bad in t:
                 fail.append(f"{rel}: 出现旧版本口径「{bad}」"
-                            f"（当前 PC=v4.0、板端=v3.19-embed、Release 包名 v4.0）")
-    # 当前板端版：v4.0 的 QAT 未过关卡，板端权重仍是 v3.19-embed；文档必须写清这一点，
-    # 不能只写 v4.0 让人以为板端也换了权重。
+                            f"（当前 PC=4.0、手机/ESP32=4.0-embed、Release 包名 v4.0）")
+    # 当前手机/ESP32 版：4.0-embed（测试版 4.0-20261018H）；文档必须写清。
     for doc in (ROOT / "README.md", ROOT / "docs" / "USAGE.md", ROOT / "docs" / "DELIVERY.md"):
         t = doc.read_text(encoding="utf-8")
-        if "v3.19-embed" not in t:
-            fail.append(f"{doc.relative_to(ROOT)}: 未标注当前板端权重（v3.19-embed）")
+        if "4.0-embed" not in t:
+            fail.append(f"{doc.relative_to(ROOT)}: 未标注当前手机/ESP32 权重（4.0-embed）")
     # v4.0 起**不再单独发行** "C 引擎预导出模型" 包：engine 包给源码、embed-release 包给
     # model.bin/tokenizer.bin，两者合起来已经够用；再发一份 MSVC 编的 .exe 只会把
     # 平台差异（Windows-only）伪装成"官方运行时"。所以这里检查四个包名有没有写全。
@@ -1262,7 +1261,7 @@ def _check_wording() -> None:
             fail.append(f"logs/{fname}: 未记录「{needle}」")
         elif p.exists():
             print(f"    {label}（与日志一致）")
-    print("    当前版本口径（PC 权重 v4.0 / 板端权重 v3.19-embed；引擎 v4.0 严格 C23，与文档一致）")
+    print("    当前版本口径（PC 4.0 / 手机/ESP32 4.0-embed；引擎 v4.0 严格 C23，与文档一致）")
 
 
 def main() -> int:

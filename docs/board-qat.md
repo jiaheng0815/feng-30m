@@ -1,7 +1,7 @@
-# 板端权重升级实验（分支 `board-qat`，候选）
+# 4.0-embed 发布记录（测试版 4.0-20261018H）
 
-目标：**硬件不变、模型大小不变**，把板端权重从 `v3.19-embed` 换成 4.0 的
-高质量权重，靠 QAT 过关卡 A，而不是靠放大模型。
+目标：**硬件不变、模型大小不变**，把手机/ESP32 权重从 `v3.19-embed` 升级到 4.0 的
+高质量权重，靠权重组合与 Q4 验证过关卡 A，而不是靠放大模型。
 
 ## 为什么选 4.0-20261018B
 
@@ -101,5 +101,6 @@ python scripts\make_hybrid_embedding.py `
 python board\tools\export_model.py --model v4\hybrid_B_emb319 --out board\model_export_hybrid_emb319
 ```
 
-> 候选 H 还没有替换发布权重；release 口径仍是板端 v3.19-embed。
-> 若确认发布，需要把 H 重命名成正式版本并同步 README/AGENTS/CHANGELOG/DELIVERY。
+> **H 已发布为 `4.0-embed`**（2026-10-18）。测试版名 `4.0-20261018H`；
+> 正式导出在 `board/model_export_4.0-embed/`，手机/ESP32 共用。
+> PC 发布版本仍是 `4.0`。命名规则见根 `AGENTS.md`。

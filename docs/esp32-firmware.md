@@ -3,8 +3,8 @@
 把 **feng-30m**（Qwen3 架构：11 层 / hidden 448 / 7 头 MHA / FFN 896 / 16k 词表 /
 tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话**。
 
-> **当前固件（2026-10-18：引擎 v4.0；板端权重 v3.19-embed）**
-> - 权重：**v3.19-embed**（导出在 `../board/model_export_v3_19b6/`，Q4 权重 + q2 KV 双 QAT，4 epoch / lr 6e-6）
+> **当前固件（2026-10-18：引擎 v4.0；手机/ESP32 权重 4.0-embed）**
+> - 权重：**4.0-embed**（导出在 `../board/model_export_4.0-embed/`，Q4 权重 + q2 KV；测试版 `4.0-20261018H`）
 > - 引擎：**v4.0 / 严格 C23**（零堆、零全局构造；PC 侧仍 C++23 + CUDA），app 分区 **280,736 B**
 > - 配置：**q2 block8 KV / 2048 ctx**（`idf.py -DFENG_USE_Q2_KV=ON build`），KV 9.62 MB PSRAM
 > - 记忆：工具抽取的事实写 **NVS**，断电/重启不丢；`\reset` / `\mem clear` / 写满自动开新对话时清空
@@ -91,13 +91,13 @@ v3.17 固件 **64 轮 64/64 成功**（8 问循环 ×8，平均 12.5 s/轮，最
 
 推荐直接下载 Release 附件 **`feng-30m-v4.0-embed-release.zip`**，取其中 `weights/esp32/`
 （已导出，板端/PC 引擎通用）。
-想自己导出（当前板端权重 = v3.19-embed，Q4+q2 双 QAT）：
+想自己导出（当前板端权重 = 4.0-embed，Q4 权重 + q2 KV）：
 
 ```powershell
 $py = "python"                    # 换成装了 torch + transformers 的解释器
-& $py board\tools\export_model.py --model <板端 HF 权重目录> --out board\model_export_v3_19b6
-# -> model_export_v3_19b6/model.bin      14.93 MB（Q4 块64 + fp16 norms/scales）
-#    model_export_v3_19b6/tokenizer.bin  413 KB
+& $py board\tools\export_model.py --model <板端 HF 权重目录> --out board\model_export_4.0-embed
+# -> model_export_4.0-embed/model.bin      14.93 MB（Q4 块64 + fp16 norms/scales）
+#    model_export_4.0-embed/tokenizer.bin  413 KB
 #    ref_logits.bin / ref_ids.json / export_info.json
 ```
 
@@ -113,27 +113,27 @@ $src = @('pc/pc_check.cpp','core/feng_model.c','core/feng_llm.c','core/feng_quan
          'core/feng_smp.c','core/feng_tokenizer.c','-Icore','-lm')
 & "<MSYS2>\ucrt64\bin\g++.exe" -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 `
   -o pc\pc_check.exe @src
-.\pc\pc_check.exe board\model_export_v3_19b6 logs\c_logits_v3_19b6.bin
+pc/pc_check.exe board/model_export_4.0-embed board/model_export_4.0-embed/ref_logits.bin
 ```
 
-> 路径换成你本机的即可；`model_export_v3_19b6` 也可指向 Release 包里 `model.bin` 所在目录。
+> 路径换成你本机的即可；`model_export_4.0-embed` 也可指向 Release 包里 `model.bin` 所在目录。
 > 更省事：`.\build_pc_chat.ps1`（Windows 默认 **MSVC 两趟**，自动加载 vcvars64：
 > 核心 `/std:clatest /TC`、驱动 `/std:c++latest /TP`）
 > 一次构建全部 13 个 PC 产物；上面的 g++ 命令等价于 `-MinGW` 备用路径。
 
-期望输出（v3.19-embed 实测）：
+期望输出（4.0-embed 实测）：
 
 ```
-logits check: n=16384 max|diff|=2.6604 mean|diff|=0.45821  argmax c=5331 ref=5331 MATCH
+logits check: n=16384 max|diff|=1.2744 mean|diff|=0.41395  argmax c=5331 ref=5331 MATCH
 ```
 
-这里的 2.66 是**纯 Q4 量化误差**（对 fp32 参考）。要验证实现本身是否等价，再跑：
+这里的 1.27 是**纯 Q4 量化误差**（对 fp32 参考）。要验证实现本身是否等价，再跑：
 
 ```powershell
 $env:CUDA_VISIBLE_DEVICES=''
 & "<带 torch 的 python>" pc\verify_c_vs_torch.py `
-   --export ..\model_export_v3_19b6 --model <v3.19-embed包>\weights\hf `
-   --c-logits ..\logs\c_logits_v3_19b6.bin
+   --export ..\model_export_4.0-embed --model <4.0-embed包>\weights\hf `
+   --c-logits ../model_export_4.0-embed/ref_logits.bin
 # [C vs torch(Q4)] max|diff| = 0.0000   ← 实现逐位一致
 ```
 
@@ -168,13 +168,13 @@ $py = "python"        # 换成带 esptool 的解释器（ESP-IDF 自带的那个
     0x0 build\bootloader\bootloader.bin 0x8000 build\partition_table\partition-table.bin `
     0x10000 build\feng_30m.bin
 # ② 换模型只需这两条
-& $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000  model_export_v3_19b6\model.bin
-& $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 model_export_v3_19b6\tokenizer.bin
+& $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000  model_export_4.0-embed\model.bin
+& $py -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 model_export_4.0-embed\tokenizer.bin
 ```
 
 > 偏移量必须与 `partitions.csv` 一致（`model` 0x110000 / `tokdata` 0x1000000），
 > 否则会出现 MMU fault 或读不到模型。也可以直接用一键脚本：
-> `.\flash.ps1 -Port COM20 -EspIdfPath <esp-idf> -ModelDir ..\model_export_v3_19b6`。
+> `.\flash.ps1 -Port COM20 -EspIdfPath <esp-idf> -ModelDir ..\model_export_4.0-embed`。
 > **不想装 ESP-IDF**：Release 附件 `feng-30m-v4.0-embed-firmware.zip` 已含
 > bootloader + 分区表 + app + 模型 + 哈希与烧录命令，esptool 一次烧完。
 > 模型写 15 MB 约需 3.5 分钟（921600 波特率，压缩后约 13 MB）；
@@ -248,6 +248,7 @@ I (2228) feng: gemv 896x448: 1-core 13186 us | 2-core 6837 us | speedup 1.93x
 | 32 轮连续压测 | **32/32** | `../logs/board_v3_19b6_stress32.txt` |
 | 速度 | **2.26 / 4.62 / 8.05 tok/s**（ctx 19/38/54） | 见`CHANGELOG.md` v3.20 节 |
 | **2026-10-18 复测**（固件 280,736 B） | tool **13/13**、记忆 **12/12**、多轮 **10/10**、身份句逐字正确 | `../logs/board_tools_time_rand.txt`、`../logs/board_memory_24.txt` |
+| **2026-10-18 4.0-embed 发布验收** | Q4 27/27 + 4/4、PPL 102.99、留出 200 85、长文 108/128；板端 tool 13/13、记忆 24/24、多轮 10/10 | `../logs/gate_hybrid.txt`、`../eval/ppl_hybrid_B_emb319.json` |
 
 历史记录：v3.11/v3.10/v3.7 q2 矩阵 27/27+4/4、v3.6 int8 1.85–1.86 tok/s、
 v3.4 10/10、v3 5 轮 5/5、v2 固件 10/10（各日志见 `../logs/`）。
@@ -273,7 +274,7 @@ board/
 │   └── gbk.c / gbk_table.c   串口编码转换（`-DFENG_GBK=ON` 才编）
 ├── tools/export_model.py  HF → model.bin / tokenizer.bin / 参考 logits
 ├── tools/gen_gbk_table.py 生成 GBK 转换表
-├── model_export_v3_19b6/  当前板端权重（model.bin / tokenizer.bin / ref_*）
+├── model_export_4.0-embed/  当前板端权重（model.bin / tokenizer.bin / ref_*）
 ├── flash.ps1              一键烧录（校验大小、偏移、退出码）
 └── partitions.csv / sdkconfig.defaults / CMakeLists.txt
 

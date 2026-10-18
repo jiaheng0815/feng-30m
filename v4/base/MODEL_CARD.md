@@ -39,10 +39,10 @@ microcontroller** — Q4 weights streamed from flash via mmap, q2 KV cache in PS
 [GitHub](https://github.com/jiaheng0815/feng-30m) ·
 [Gitee](https://gitee.com/fengjiaheng123/feng-30m)（国内镜像）
 
-- 权重版本：**v4.0**（PC，本仓库根目录）
-- **板端（`esp32/` 子目录）= v3.19-embed，不是 4.0**：4.0 的 Q4+q2 双 QAT 试了两版，
-  32 题矩阵只有 24/27 和 23/27，都低于 v3.19-embed 的 27/27，所以这一版没有采用。
-  详见 [CHANGELOG §4f](https://github.com/jiaheng0815/feng-30m/blob/main/docs/CHANGELOG.md)
+- 权重版本：**4.0**（PC，本仓库根目录）
+- **手机/ESP32（`esp32/` 子目录）= 4.0-embed，不是 PC 4.0 的 QAT**：
+  由测试版 `4.0-20261018H` 发布，Q4 网关 27/27 + 4/4、PPL 102.99。
+  详见 [CHANGELOG 4.0-embed 节](https://github.com/jiaheng0815/feng-30m/blob/main/docs/CHANGELOG.md)
 - 文档：[使用说明](https://github.com/jiaheng0815/feng-30m/blob/main/docs/USAGE.md) ·
   [版本演进](https://github.com/jiaheng0815/feng-30m/blob/main/docs/CHANGELOG.md) ·
   [固件工程](https://github.com/jiaheng0815/feng-30m/blob/main/docs/esp32-firmware.md)
@@ -134,13 +134,13 @@ Q: 掷骰子                A: 掷骰子：4 点。
 > 只有 PIQA acc_norm +0.82。同期换来的收益是：strict-v7 留出两套各 **+1**（17→18、15→16）、
 > 拒答 62→64/64；长文命中反而少了 3 题。只跑一次、没有多次采样，无法判断是否超出噪声。
 
-**板端（v3.19-embed，Q4 权重 + q2 KV，2048 上下文，9.62 MB PSRAM）**
+**手机/ESP32（4.0-embed，Q4 权重 + q2 KV，2048 上下文，9.62 MB PSRAM）**
 
 | 评测 | 结果 |
 |---|---|
 | 32 题矩阵 + 算术子集 | **27/27 + 4/4**、**21/21** |
 | 长文召回 | 4/4（旧口径，约 1525 token） |
-| tool / 记忆 | 13/13 / **12/12** |
+| tool / 记忆 | 13/13 / **24/24** |
 | 生成速度 | **2.33 tok/s**（固件统计口径，短回复最佳值） |
 | 固件体积 | 280,736 B |
 
@@ -181,13 +181,13 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 
 ## ESP32 部署
 
-板端要的不是这份 fp32 权重，而是 **Q4 + q2 双 QAT** 导出版（直接拿这份导出给引擎会退化：
+板端要的不是这份 fp32 权重，而是 **4.0-embed 的 Q4 导出**（直接拿这份导出给引擎会退化：
 同套 32 题矩阵实测 22/27 vs 27/27）。
 
-> ⚠️ **`esp32/` 里放的是 v3.19-embed 的权重**，不是 4.0 的。
-> 4.0 的双 QAT 试了两版（3 epoch → 24/27、1 epoch → 23/27），都没达到 v3.19-embed 的
-> 27/27，所以这一版板端**沿用旧权重**。宁可用已验证的 27/27，也不发一个退化的新权重。
-> 过程与失败原因见 [CHANGELOG §4f](https://github.com/jiaheng0815/feng-30m/blob/main/docs/CHANGELOG.md)。
+> ⚠️ **`esp32/` 里放的是 4.0-embed 的权重**：4.0B 的 attention/FFN +
+> v3.19-embed 的 tied embedding/lm_head，Q4 网关 27/27 + 4/4、PPL 102.99。
+> 它不是 PC 4.0 的 QAT，也不能用 PC 4.0 的 fp32 权重直接导出。
+> 实验记录见 [docs/board-qat.md](https://github.com/jiaheng0815/feng-30m/blob/main/docs/board-qat.md)。
 
 ```powershell
 idf.py -DFENG_USE_Q2_KV=ON build      # 发布配置：q2 KV / 2048 上下文

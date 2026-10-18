@@ -185,7 +185,7 @@ New-Item -ItemType Directory -Force -Path $assets | Out-Null
 if (-not $SkipModel) {
     if (-not $ModelDir) {
         if ($LocalJson["model_export"]) { $ModelDir = $LocalJson["model_export"] }
-        else { $ModelDir = Join-Path $Root "board\model_export_v3_19b6" }
+        else { $ModelDir = Join-Path $Root "board\model_export_4.0-embed" }
     }
     foreach ($f in @("model.bin", "tokenizer.bin")) {
         $src = Join-Path $ModelDir $f

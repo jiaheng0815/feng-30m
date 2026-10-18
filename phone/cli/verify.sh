@@ -12,7 +12,7 @@ set -uo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
-MODEL="${1:-$ROOT/board/model_export_v3_19b6}"
+MODEL="${1:-$ROOT/board/model_export_4.0-embed}"
 FILLER="$ROOT/pc/prompt_long.txt"
 LOGDIR="$ROOT/logs"
 BASE="$HERE/build-baseline"

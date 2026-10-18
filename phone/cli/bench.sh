@@ -9,7 +9,7 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
-MODEL="${1:-$ROOT/board/model_export_v3_19b6}"
+MODEL="${1:-$ROOT/board/model_export_4.0-embed}"
 NGEN="${2:-32}"
 BIN="$HERE/build/phone_chat"
 LOGDIR="$ROOT/logs"

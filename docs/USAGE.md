@@ -5,7 +5,7 @@
 | 包 | 用途 | 内容 |
 |---|---|---|
 | `feng-30m-v4.0-release.zip` | PC（transformers） | HF fp32 权重 + 蒸馏数据集 |
-| `feng-30m-v4.0-embed-release.zip` | 板端权重 | Q4+q2 双 QAT 权重 + 可直接烧录的 `model.bin` / `tokenizer.bin` |
+| `feng-30m-v4.0-embed-release.zip` | 手机/ESP32 权重 | **4.0-embed** Q4 权重 + q2 KV + 可直接烧录的 `model.bin` / `tokenizer.bin` |
 | `feng-30m-v4.0-engine.zip` | 引擎源码 | 严格 C23 核心 + C++23 PC 驱动 + 板端（自带四个 tool） |
 | `feng-30m-v4.0-embed-firmware.zip` | 板端一包到底 | 预编译固件 + 模型 + 烧录说明（免装 ESP-IDF） |
 
@@ -69,7 +69,7 @@ g++ -std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics -O2 -DFENG_KV_Q
 > 输出行级并行、逐字不变）。默认线程数 = 逻辑核 3/4，可用 `OMP_NUM_THREADS` 覆盖。
 
 > **别用 PC 的 HF 权重导出给引擎**：引擎的 `model.bin` 是 Q4 权重 + q2 KV 双 QAT 格式，
-> 只有板端 v3.19-embed 权重扛得住。实测同套 32 题矩阵：PC 权重 **22/27**（翻译/情绪/推荐崩），
+> 只有 4.0-embed 权重扛得住。实测同套 32 题矩阵：PC 权重 **22/27**（翻译/情绪/推荐崩），
 > 板端 QAT 权重 **27/27 + 召回 4/4**（`logs/pc_kv_suite32_v3_14pc2_q2b8.txt`）。
 > PC 的 HF 权重请走 transformers（第 3 节）或 Python 脚本。
 
@@ -90,8 +90,8 @@ tool 覆盖：多位数/小数/括号/中文数字（`五十九加一`）/`乘�
 ```powershell
 cd pc
 .\build_pc_cuda.ps1        # 需要 VS Build Tools + CUDA Toolkit；产出 *_cuda.exe
-.\pc_chat_cuda.exe ..\board\model_export_v3_19b6
-.\pc_bench_cuda.exe ..\board\model_export_v3_19b6 "你好" 32
+.\pc_chat_cuda.exe ..\board\model_export_4.0-embed
+.\pc_bench_cuda.exe ..\board\model_export_4.0-embed "你好" 32
 ```
 
 | 指标（RTX 5060 Ti / q2 KV / 32 token） | CPU（MinGW g++） | CUDA |
@@ -182,8 +182,8 @@ idf.py -DFENG_USE_Q2_KV=ON build                  # 发布配置：q2 / 2048 ctx
 idf.py --port COM20 flash
 
 # ③ 烧录模型与分词器
-python -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000  .\model_export_v3_19b6\model.bin
-python -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 .\model_export_v3_19b6\tokenizer.bin
+python -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x110000  .\model_export_4.0-embed\model.bin
+python -m esptool --chip esp32s3 --port COM20 -b 921600 write_flash 0x1000000 .\model_export_4.0-embed\tokenizer.bin
 
 # ④ 串口对话与自检
 python ..\scripts\esp32_chat.py  --port COM20 --question "你是谁？"
@@ -254,7 +254,7 @@ v1 语料脚本已随 v1 归档，重建 v2/v3 数据需要 `FENG_DATA_DIR`（�
 
 ### PC（v4.0，贪心解码；脚本与结果 JSON 都在仓库里）
 
-| 项目 | v3.19 | **v4.0** | 出处 |
+| 项目 | v3.19 | **4.0** | 出处 |
 |---|---|---|---|
 | 留出 30 题（开发集，strict-v7） | 17/30 | **18/30** | `eval/h1_patch_name_e5_lr5e-6.json` |
 | 留出第二套（v4 用于选型） | 15/30 | **16/30** | `eval/h2_patch_name_e5_lr5e-6.json` |
@@ -281,19 +281,20 @@ v1 语料脚本已随 v1 归档，重建 v2/v3 数据需要 `FENG_DATA_DIR`（�
 > strict-v7 留出两套各 **+1**（17→18、15→16）、拒答 +2（62→64/64）；
 > 旧 strict-v6 口径的 “+3 / +4” 已作废。
 
-### 板端（**引擎 v4.0 + 权重 v3.19-embed** + q2 / 2048）
+### 手机 / ESP32（**引擎 v4.0 + 权重 4.0-embed** + q2 / 2048）
 
 > 4.0 的板端双 QAT 试了三版：3 epoch 关卡 A **24/27**、1 epoch **23/27**、
 > 第三版 `20261017D` 达到 **27/27** 但没做板端 tool/记忆/实机验收；
-> 前两版都低于 v3.19-embed 的 27/27，所以**这一版沿用 v3.19-embed**（引擎仍是 4.0）。
+> 4.0-embed 由测试版 `4.0-20261018H` 发布：Q4 网关 **27/27 + 4/4**，引擎仍是 4.0。
 > 过程见 `docs/CHANGELOG.md` §4f。
 
 | 项目 | 结果 |
 |---|---|
-| 32 题矩阵 + 长文召回 | **27/27 + 4/4**（`logs/pc_kv_suite32_v3_19b6_q2b8.txt`） |
+| 32 题矩阵 + 长文召回 | **27/27 + 4/4**（`logs/gate_hybrid.txt`） |
 | 算术子集（tool） | **21/21**（`logs/pc_arith_suite_v3_19b6_q2b8.txt`） |
-| tool 专项 / 记忆 / 身份序列 | **13/13** / **12/12** / **8/8**（`logs/board_tools_cpp23_q2_final.txt`、`logs/board_memory_cpp23_q2_final12.txt`、`logs/board_v3_16p3_identity_ctx_engmem.txt`） |
+| tool 专项 / 记忆 / 多轮 | **13/13** / **24/24** / **10/10**（`logs/board_tools_time_rand.txt`、`logs/board_memory_24.txt`、`logs/esp32_multi.txt`） |
 | 速度 | **2.33 tok/s**（短上下文/短回复的最佳值；逐 token 随上下文变化） |
+| PPL（v4_val） | **102.99**（v3.19-embed 107.49） |
 | 多轮回归（PC 模拟固件） | mt-suite 8/10、mem12 12/12、seq 10/10（保留跨轮 nhist 的新口径） |
 
 ## 8. 已知限制
@@ -330,7 +331,7 @@ v1 语料脚本已随 v1 归档，重建 v2/v3 数据需要 `FENG_DATA_DIR`（�
 **算术为什么不由模型算？** 30M 模型算不可靠，v3.14 起算式/时间/随机数交给引擎 tool
 （0.5 s、100% 正确）；模型只负责对话。GGUF 路径没有 tool，所以不再发行。
 
-**为什么换了板端权重矩阵分数掉？** 引擎要 Q4+q2 双 QAT 权重（v3.19-embed）。
+**为什么换了板端权重矩阵分数掉？** 引擎要 Q4 权重（4.0-embed）。
 PC 的 HF 权重用在引擎上会 22/27；两个权重不能互换。
 
 **记忆会丢吗？** 板端记忆写在 NVS、手机端写在模型目录的 `mem.txt`，断电/重启后仍在；

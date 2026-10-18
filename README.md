@@ -5,20 +5,20 @@
 **一个 29.43M 参数的中文对话模型：从零训练、原生 32k 上下文；Q4 量化后运行在 ESP32-S3 上，
 算术 / 时间 / 随机数 / 记忆四个 tool 由板内严格 C23 引擎确定性作答（记忆落 NVS，断电不丢）。**
 
-> **当前发布（2026-10-17 更新）**
+> **当前发布（2026-10-18 更新）**
 >
-> - 权重：PC = **v4.0**（`v4/patch_name_e5_lr5e-6`）｜ 板端 = **v3.19-embed**（Q4 权重 + q2 KV 双 QAT）
+> - 权重：PC = **4.0**（`v4/patch_name_e5_lr5e-6`）｜ 手机 / ESP32 = **4.0-embed**（`board/model_export_4.0-embed/`）
 > - 引擎：**v4.0 / 严格 C23**（嵌入式侧，零堆、零全局构造；PC 侧 C++23 + CUDA）；板端固件 **280,736 B**，比 v3.20 的 C++23 版还小 23,456 B
-> - 板端实测：q2/2048 矩阵 **27/27 + 4/4**、工具 **13/13**、记忆 **12/12**、**2.33 tok/s**（固件统计口径，短回复最佳值）
+> - 板端实测：q2/2048 矩阵 **27/27 + 4/4**、工具 **13/13**、记忆 **24/24**、**2.33 tok/s**（固件统计口径，短回复最佳值）
+> - 板端权重 4.0-embed：PPL **102.99**、留出 200 **85/200**、长文 **108/128**；同尺寸 14.93MB
 > - 身份自述：**「我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI」**
 > - 教师数据：36,916 条提示词 → **34,143 收 / 2,773 拒**（4.0 蒸馏链）
 > - 代码与权重均 **Apache-2.0**；**GGUF 自 v3.14 起不再发行**（llama.cpp 路径没有 tool）
 >
-> **4.0 = 引擎升级 + PC 权重重训。板端权重这一版没有换**：
-> 从 4.0 的 PC 权重做 Q4+q2 双 QAT 试了两版，32 题矩阵只有 **24/27**（3 epoch）和
-> **23/27**（1 epoch），都低于 v3.19-embed 的 **27/27**，所以板端继续用旧权重。
-> 宁可用已验证的 27/27，也不发一个退化的新权重——过程与原因写在
-> [`docs/CHANGELOG.md`](docs/CHANGELOG.md) 的 §4f。
+> **4.0-embed 不是 v3.19-embed 的直接替换，也不是 PC 4.0 的 QAT 版**：
+> 它把 4.0B 的 attention/FFN 与 v3.19-embed 的 tied embedding/lm_head 组合，
+> 解决了 4.0B 的 Q4 翻译/25% 检索失败，同时保住 PPL 与长文收益。
+> 命名规则与实验记录见 [`AGENTS.md`](AGENTS.md) 与 [`docs/board-qat.md`](docs/board-qat.md)。
 
 ## 目录
 
@@ -53,9 +53,9 @@
 
 ## 现在能做什么（实测）
 
-### 对话与长文（v4.0 / PC，fp32）
+### 对话与长文（4.0 / PC，fp32）
 
-| 评测 | v3.19 | **v4.0** | 出处 |
+| 评测 | v3.19 | **4.0** | 出处 |
 |---|---|---|---|
 | 留出 30 题（开发集，strict-v7） | 17/30 | **18/30** | `eval/h1_patch_name_e5_lr5e-6.json` |
 | 留出 30 题（**独立集**，v4 用于选型，见注） | 15/30 | **16/30** | `eval/h2_patch_name_e5_lr5e-6.json` |
@@ -68,7 +68,7 @@
 > **长文数字 2026-10-18 重测过**：旧脚本把 `ctx` 当**字符数**，标称 4k/8k/16k/32k 的输入
 > 实际只有约 3k/6k/13k/26k token，所以旧表里的 110/128、32k 28/32 偏乐观。
 > 现在按 token 精确造输入并预留 32 个生成位；同一协议下 **v3.19 = 106/128（32k 24/32）、
-> v4.0 = 103/128（32k 20/32）**。v4.0 的检索**没有超过** v3.19，换来的是拒答 62→64/64。
+> 4.0 = 103/128（32k 20/32）**。4.0 的检索**没有超过** v3.19，换来的是拒答 62→64/64。
 > 复现：`python scripts\eval_longctx_many.py --models "v4=v4/patch_name_e5_lr5e-6" --n 32 --neg-n 16 --batch 1`。
 
 > **探针那 2 题**：一条是判分误判（「我很伤心」答的是「我在呢。难过的时候不用自己扛着。」，
@@ -90,12 +90,12 @@
 见 `logs/board_v3_16p3_identity_ctx_engmem.txt`。
 模型不再学算术（训练数据用 tool 识别器过滤纯算式样本）。
 
-### 嵌入式（**引擎 v4.0 + 权重 v3.19-embed** / q2 2048 固件）
+### 嵌入式（**引擎 v4.0 + 权重 4.0-embed** / q2 2048 固件）
 
-> 引擎是 4.0 的（严格 C23），权重是 3.19 的。4.0 的板端 QAT 前三版里两版没过
-> 关卡 A（24/27、23/27）；第三版 `20261017D` 在 PC 关卡 A 达到 **27/27 + 4/4**、
-> 留出 19/30 + 19/30（strict-v6 旧口径）、42 题探针 42/42，但**尚未完成板端 tool/记忆/实机验收**，
-> 所以这一版仍沿用 v3.19-embed——见 [§4f](docs/CHANGELOG.md) 与 `logs/gate_a_20261017D.txt`。
+> 引擎是 4.0 的（严格 C23），手机/ESP32 权重是 **4.0-embed**。
+> 4.0-embed 由 `4.0-20261018H` 测试版发布：4.0B 的 attention/FFN +
+> v3.19-embed 的 tied embedding/lm_head，Q4 网关 27/27 + 4/4。
+> 详细对比见 [`docs/board-qat.md`](docs/board-qat.md)。
 
 | 项目 | 结果 |
 |---|---|
@@ -104,8 +104,8 @@
 | 速度 | **2.33 tok/s**（固件统计口径，短上下文/短回复最佳值；逐 token 随上下文/回复长度变化） |
 | 内存 | 权重 flash mmap（不占 PSRAM）；KV + 激活 9.62 MB PSRAM；内部 SRAM 仅留内核与工作区 |
 
-**2026-10-18 实机复测**（固件 280,736 B + v3.19-embed）：tool **13/13**、
-记忆 **12/12**、10 轮多轮 **10/10**，身份句逐字为
+**2026-10-18 实机复测**（固件 280,736 B + 4.0-embed）：tool **13/13**、
+记忆 **24/24**、10 轮多轮 **10/10**，身份句逐字为
 「我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI」。
 
 ### 引擎（v4.0 / 严格 C23）
@@ -134,7 +134,7 @@
 # you> 我叫什么名字？       -> [tool] 你叫小明。（0.5 秒秒回）
 ```
 
-> 引擎的 `model.bin` 是 **Q4 权重 + q2 KV 双 QAT** 格式，必须用板端 v3.19-embed 权重导出
+> 引擎的 `model.bin` 是 **Q4 权重 + q2 KV** 格式，必须用 4.0-embed 导出的 `weights/esp32/`
 > （预导出包已做好）。**PC 的 HF 权重没做量化感知训练，导出给引擎会明显退化**
 > （同套 32 题矩阵实测 22/27 vs 27/27，`logs/pc_kv_suite32_v3_14pc2_q2b8.txt`）。
 
@@ -146,7 +146,7 @@ PC 引擎带一个**可选 CUDA 后端**：GEMV（Q4 block64 / fp16）交给 GPU
 ```powershell
 cd pc
 .\build_pc_cuda.ps1                       # MSVC(cl/link) + nvcc，产出 *_cuda.exe
-.\pc_bench_cuda.exe ..\board\model_export_v3_19b6 "你好" 32
+.\pc_bench_cuda.exe ..\board\model_export_4.0-embed "你好" 32
 ```
 
 实测（RTX 5060 Ti / q2 KV / 32 token）：生成 **157 → 322 tok/s（约 2.0×）**；
@@ -177,7 +177,7 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 
 编译、烧录、串口协议的完整步骤见 [`docs/USAGE.md`](docs/USAGE.md) 与
 [`docs/esp32-firmware.md`](docs/esp32-firmware.md)；免装 IDF 的一包到底固件
-见 Release 的 `feng-30m-v4.0-embed-firmware.zip`（固件 + 板端 v3.19-embed 权重）。
+见 Release 的 `feng-30m-v4.0-embed-firmware.zip`（固件 + 4.0-embed 权重）。
 
 ## 标准基准（英文，0-shot）
 
@@ -185,7 +185,7 @@ print(tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True))
 `prefix_token_id=0`（自训 tokenizer 没有 bos/eos）。
 复现：`python scripts/bench_standard.py --model v4/patch_name_e5_lr5e-6 --tag v4_pn5`。
 
-| 基准 | 指标 | v3.19 | **v4.0 最终** | 变化 |
+| 基准 | 指标 | v3.19 | **4.0** | 变化 |
 |---|---|---|---|---|
 | SciQ | Accuracy | **71.00%** ±1.44 | 70.80% ±1.44 | −0.20 |
 | SciQ | Normalized | **73.80%** ±1.39 | 71.20% ±1.43 | **−2.60** |
@@ -225,19 +225,19 @@ model = Qwen3ForCausalLM.from_pretrained("jiaheng0815/feng-30m")
 
 | 附件（v4.0） | 内容 |
 |---|---|
-| `feng-30m-v4.0-release.zip` | PC 版：HF v4.0 权重 + 教师蒸馏数据集 + 模型卡 |
-| `feng-30m-v4.0-embed-release.zip` | 板端版：**v3.19-embed** Q4+q2 双 QAT 权重 + `model.bin` / `tokenizer.bin` |
+| `feng-30m-v4.0-release.zip` | PC 版：HF **4.0** 权重 + 教师蒸馏数据集 + 模型卡 |
+| `feng-30m-v4.0-embed-release.zip` | 手机/ESP32 版：**4.0-embed** Q4 权重 + q2 KV + `model.bin` / `tokenizer.bin` |
 | `feng-30m-v4.0-engine.zip` | 引擎源码：严格 C23 核心 + C++23 PC 驱动 + 板端（含 tool） |
 | `feng-30m-v4.0-embed-firmware.zip` | 板端一包到底：预编译固件 + 模型 + `partitions.csv` + 烧录说明 |
 
-> 板端这一版**没有换权重**：包名里的 v4.0 指引擎版本，`weights/esp32/` 仍是
-> v3.19-embed（Q4+q2 双 QAT）。PC 包里的 `weights/hf/` 才是 v4.0。
+> 包名里的 v4.0 是引擎版本；`weights/esp32/` 是 **4.0-embed**（Q4 权重，
+> embedding/lm_head 来自 v3.19-embed），PC 包里的 `weights/hf/` 才是 **4.0**。
 
 **本仓库只放代码与文档，训练数据与权重不入库**；旧附件（v3.14 / v3.16-embed）保留在对应 Release 页。
 
 ## 版本速览
 
-| | v3.10 | v3.11 | v3.12 | v3.13 | v3.14 | **v3.19（当前）** |
+| | v3.10 | v3.11 | v3.12 | v3.13 | v3.14 | **v3.19（历史）** |
 |---|---|---|---|---|---|---|
 | 累计训练量 | v3.9 + 约 6M KV-QAT | v3.10 + 约 14M 双 QAT（权重+KV） | v3.9 + 约 12M 末层算术微调 | v3.12/v3.11 + 约 12M 记忆混训 | v3.13/v3.9 底座 + **约 14M 无算术混训**（tool 接管算术） | v3.14/pc2 + **440 条定向教师数据**（末 2 层 15ep） |
 | 身份自述 | 同（12/12） | 同（12/12） | 同（12/12） | 同（12/12） | 同（12/12） | **同（12/12）** |
@@ -350,7 +350,7 @@ tools/check_all.py     一键验收：文档 → 构建 → 单测 → 32 题矩
 - **推荐类只保训练分布内的**：书/电影推荐是补丁里逐条写的，换书名或要最新榜单会露馅。
 - **板端上下文 2048（q2 KV）**；32k 需要 HF/Python 路径，或自己用 `-DFENG_MAX_SCORES=32768` 重编 PC C 引擎（`pc_chat --ctx`）；板上 32k 受 PSRAM/KV 内存限制不可能。
 - **PC 权重与板端权重不能互换**：PC 的 HF 权重没做量化感知训练，导进引擎会明显退化
-  （32 题矩阵 22/27 vs 27/27）；板端用双 QAT 权重（`feng-30m-v4.0-embed-release.zip` 的 `weights/esp32/`）。
+  （32 题矩阵 22/27 vs 27/27）；手机/ESP32 用 4.0-embed（`feng-30m-v4.0-embed-release.zip` 的 `weights/esp32/`）。
 - **留出 30 题是开发集**（strict-v7 下 v3.19=17/30、v4.0=18/30）；第二套在 v4 用于选型，不再是独立测试集（strict-v7：v3.19=15/30、v4.0=16/30）。
 - **记忆只覆盖可枚举句式**：`\reset` / `\mem clear` / 上下文写满会清空；板端写在 NVS、手机端写在模型目录的 `mem.txt`，断电重启仍在（PC `pc_chat` 仍只在 RAM）。
 - **板端时间需要宿主对时**：串口脚本连接时自动发 `\settime`（宿主 NTP），否则时间 tool 会提示未对时。
