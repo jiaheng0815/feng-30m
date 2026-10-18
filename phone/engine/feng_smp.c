@@ -126,3 +126,12 @@ void feng_gemv3_par(const void *w0, const void *w1, const void *w2, uint32_t dty
     }
     feng_phone_parallel_for(total_chunks, gemv3_row_chunk, &job);
 }
+
+/* 通用并行回调：手机的 q2 注意力已有自己的 feng_phone_parallel_for（按 token/维度切），
+ * 这里先按顺序执行，保持与 core/feng_smp.c 的 API 一致；后续可接线程池。 */
+void feng_par_run(feng_par_fn fn, void *arg, int nparts)
+{
+    if (fn == NULL) return;
+    if (nparts < 1) nparts = 1;
+    for (int i = 0; i < nparts; i++) fn(arg, i, nparts);
+}

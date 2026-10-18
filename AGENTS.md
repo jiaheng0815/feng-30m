@@ -21,7 +21,7 @@
   → v3.20 = 引擎序列数数 tool + 统一采样器 + 体积/性能优化（固件 304,192 B）
   → **v4.0 = 引擎全面升级（当前）：推理核心迁到严格 C23（板端与 PC 共用同一份源码，
   PC 驱动仍 C++23、CUDA 独立），新增手机端 `phone/` 与编辑器代码提示；
-  固件 280,624 B（含记忆 NVS 持久化）、板端 2.33 tok/s**。
+  固件 280,736 B（含记忆 NVS 持久化）、板端 2.33 tok/s**。
   - **记忆持久化（2026-10-18）**：`feng_mem_export/import` 把记忆导出为文本；
     板端存 NVS（`nvs_flash`，key `mem`），手机端存模型目录的 `mem.txt`；
     `\reset` / `\mem clear` / 上下文写满会清空并擦除副本。板端实测跨重启
@@ -152,7 +152,7 @@
   （掺 20% v3.9 权重就掉到 25/27），PC 32k 弱。
 - **PC 用 v3.19 权重（现收在 `v4/base/`，也是 4.0 的训练起点）；板端用 v3.19-embed 权重
   （导出在 `board/model_export_v3_19b6/`）；两边同一套 v4.0 / 严格 C23 引擎与固件**
-  （q2/2048 固件 **280,624 B**、板端 2.33 tok/s；见 `docs/CHANGELOG.md` v3.19/v3.20 节与
+  （q2/2048 固件 **280,736 B**、板端 2.33 tok/s；见 `docs/CHANGELOG.md` v3.19/v3.20 节与
   `docs/esp32-firmware.md`）。
 - **标准基准（英文，0-shot）**：**只有 SciQ 71.00/73.80 与 PIQA 53.37**。
   ARC/HellaSwag/OpenBookQA/Winogrande/BoolQ/SciCloze 六项曾跑过，但在这个 30M 中文模型上
@@ -282,7 +282,7 @@ g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Icore -lm       # 驱动 + 链
    `string_view::substr`（引用 `std::__throw_out_of_range_fmt`，拖进 libstdc++ 异常/字符串/
    pthread 运行时 ~5KB）；非热点模块（tokenizer/tool/model/gbk/main）用 `-Os`，热点
    （llm/quant/smp/sample）保持 `-O2`。改完对比固件体积：**不得超 C 版基线 307,392B
-   （q2/2048 配置）**，当前为 **280,624 B**（关掉彩蛋是 280,096 B）。
+   （q2/2048 配置）**，当前为 **280,736 B**（关掉彩蛋是 280,272 B）。
 8. **CUDA 后端（PC 可选，板端不含）**：`pc/feng_cuda.cu` + `build_pc_cuda.ps1`
    （MSVC + nvcc，`-fmad=false` 保证与 CPU 同运算顺序）；GEMV 权重常驻显存，其余算子在 CPU。
    **验收口径**：32 题矩阵须 27/27+4/4 且与 CPU 版**输出逐字一致**（`pc_kv_suite_cuda.exe`），
@@ -309,7 +309,7 @@ g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Icore -lm       # 驱动 + 链
 - **不要列进 `\help`**，读 README 也无法直接知道触发方式（README 的小字只提到
   `nobonus` 编译选项，靠它当唯一线索）；
 - 关掉它的开关是 `-DFENG_NO_BONUS=ON`（那时连混淆数据都不进二进制，实测省 208 B）；
-- 它占 **528 B** 固件空间（280,624 vs 280,096），在体积纪律的预算内。
+- 它占 **464 B** 固件空间（280,736 vs 280,272），在体积纪律的预算内。
 
 **维护要求**：重写命令链、清理"未引用代码"、或做体积优化时，别把它当成冗余删掉；
 它跟 `\help` 里那些命令一样是有意的。改 `main.c` 的命令分支时留意最后那个 `else`。
@@ -527,7 +527,7 @@ python scripts\esp32_enc_test.py COM20
    （`idf.py -DFENG_USE_Q2_KV=ON build`，`MAX_CTX=2048`，9.62MB，v3.19-embed 的 32 题 PC 矩阵 27/27 + 召回 4/4
    + 算术子集 21/21；固件默认多轮上下文、`\reset` 清空，见 `docs/CHANGELOG.md` 的 v3.13 节）；板上 32k 上下文在 KV 内存上不可能，
    长文只能走滑窗/attention sink/线性注意力。
-8. **速度现状**：标量路径已到 S3 单发射天花板（每步 ~4-5 周期；短上下文 2.26 tok/s ≈ 938 ms/token @ ctx 19（q2/2048 发布配置））。默认开启三项小幅数值优化（`FENG_GEMV_MADD` 纯 madd 链、`FENG_FAST_EXP` 快速 exp、`FENG_Q2_VFOLD` V 段折叠）：三者累计 logits 差 **4.8e-6**（Q4 量化误差 2.94）、32 题矩阵输出与优化前**逐字相同**。**长上下文成本仍在注意力本体**（q2/2048 单次 forward **2.22 s** = K 0.84 + softmax 0.05 + V 0.83 + 权重等 0.51，本次会话累计 **-37%**）。q2 注意力另有四处位精确优化（字节 LUT + `[layer][head][t]` 顺序布局 + 内联 fp16→fp32 + 2-token 展开）；prefill 用 `feng_forward_ex(..., want_logits=0)` 跳过中间 token 的 lm head（每个省 ~115 ms，最后一个 token 必须算）。**A8 整数 GEMV 已实测：S3 上比 FPU 慢 36%（`mull` 慢），只在 PC 上快 20%，默认关闭**。改 GEMV/注意力/布局后必须用 PC 32 题矩阵与上一版对比（位精确改动要求**逐字节**，数值改动要求 27/27+4/4 且给出差异量级）。**PIE 路线已实测结案**：裸吞吐 0.63–1.38 周期/MAC 有空间，但 S3 没有字节移位指令、4-bit 权重必须靠 LUT 展开（≥1 次标量 load+store / 权重），正确的整块内核只做到 **1.05×**——不要再写 PIE 内核（`docs/CHANGELOG.md` v3.16-embed 附录）；不要再做没有实测收益的内层微调。
+8. **速度现状**：标量路径已到 S3 单发射天花板（每步 ~4-5 周期；短上下文 2.26 tok/s ≈ 938 ms/token @ ctx 19（q2/2048 发布配置））。默认开启三项小幅数值优化（`FENG_GEMV_MADD` 纯 madd 链、`FENG_FAST_EXP` 快速 exp、`FENG_Q2_VFOLD` V 段折叠）：三者累计 logits 差 **4.8e-6**（Q4 量化误差 2.94）、32 题矩阵输出与优化前**逐字相同**。**长上下文成本仍在注意力本体**：q2/2048 单次 forward 从 **2.20 s 降到 1.58 s**（2026-10-18：7 个 head 按 4/3 切给两个核，K/softmax/V 全并行；单核基准 2199 ms → 双核 1584 ms、1024 ctx 1342→1034 ms、256 ctx 694→616 ms，5 条固定提示输出**逐字相同**；开关 `-DFENG_ATTN_PARTS=1` 可回退单核 A/B）。原单核成本 = K 0.84 + softmax 0.05 + V 0.83 + 权重等 0.51；短上下文仍由 Q4 权重流式读主导（2.33 tok/s）。q2 注意力另有四处位精确优化（字节 LUT + `[layer][head][t]` 顺序布局 + 内联 fp16→fp32 + 2-token 展开）；prefill 用 `feng_forward_ex(..., want_logits=0)` 跳过中间 token 的 lm head（每个省 ~115 ms，最后一个 token 必须算）。**A8 整数 GEMV 已实测：S3 上比 FPU 慢 36%（`mull` 慢），只在 PC 上快 20%，默认关闭**。改 GEMV/注意力/布局后必须用 PC 32 题矩阵与上一版对比（位精确改动要求**逐字节**，数值改动要求 27/27+4/4 且给出差异量级）。**PIE 路线已实测结案**：裸吞吐 0.63–1.38 周期/MAC 有空间，但 S3 没有字节移位指令、4-bit 权重必须靠 LUT 展开（≥1 次标量 load+store / 权重），正确的整块内核只做到 **1.05×**——不要再写 PIE 内核（`docs/CHANGELOG.md` v3.16-embed 附录）；不要再做没有实测收益的内层微调。
 8.5 **采样器统一**：`core/feng_sample.c` 的 `feng_sample_greedy`（1.15 重复惩罚 + no-repeat 3-gram）是
    固件 / `pc_chat` / `pc_kv_suite` / `pc_mt_suite` 的唯一采样入口；改采样器后必须重跑 PC 32 题矩阵
    并与上一版输出对比（v3.20 那次为**逐字节 0 差异**），再上板。

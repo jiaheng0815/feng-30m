@@ -193,6 +193,13 @@ void feng_gemv_range(const void *tensor, uint32_t dtype, const float *x, float *
 /* two-core version of feng_gemv (falls back to single core if init failed) */
 void feng_gemv_par(const void *tensor, uint32_t dtype, const float *x, float *y,
                    int n_out, int n_in);
+
+/* 通用两核并行：把 [0,nparts) 分给 worker；回调必须自己保证各 part 写不相交。
+ * 板端用两个常驻 worker，PC/手机没有 worker 时顺序执行（结果不变）。
+ * 目前只给 q2 注意力的按 head 切分用；不要在回调里再调用 feng_gemv_par
+ * （会重入同一组 worker）。 */
+typedef void (*feng_par_fn)(void *arg, int part, int nparts);
+void feng_par_run(feng_par_fn fn, void *arg, int nparts);
 /* 共享同一输入 x 的 2~3 个 GEMV 合并提交（q/k/v 或 gate/up 常成对出现）：
  *   y_i = W_i * x；w_i == NULL 表示跳过。CPU/板端 = 顺序调用 feng_gemv_par；
  * PC CUDA 后端 = 一次 H2D + 多次 kernel，减少每 token 的固定调度开销。 */

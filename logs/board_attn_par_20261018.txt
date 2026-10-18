@@ -1,0 +1,58 @@
+# 板端 q2 注意力双核并行 A/B（2026-10-18）
+
+固件：q2 block8 / 2048 ctx，板端权重 4.0D（`board/model_export_4.0D`）。
+对照组用 `-DFENG_ATTN_PARTS=1` 重编，其余配置相同；启动时 `FENG_BENCH_CTX=1`
+会自动跑 256/1024/2048 上下文的单次 forward。
+
+## 启动基准（串口原始输出摘录）
+
+单核（`build_seq`）：
+
+```
+I (3887)  feng: attn bench ctx= 256: cold 694 ms/forward | warm 694 ms/forward
+I (6725)  feng: attn bench ctx=1024: cold 1342 ms/forward | warm 1342 ms/forward
+I (11431) feng: attn bench ctx=2048: cold 2199 ms/forward | warm 2199 ms/forward
+```
+
+双核（`build_bench`，`FENG_ATTN_PARTS=2`）：
+
+```
+I (3733) feng: attn bench ctx= 256: cold 617 ms/forward | warm 616 ms/forward
+I (5957) feng: attn bench ctx=1024: cold 1034 ms/forward | warm 1035 ms/forward
+I (9433) feng: attn bench ctx=2048: cold 1584 ms/forward | warm 1584 ms/forward
+I (10271) feng: lm head @pos0: with 475 ms | without 363 ms (prefill 每个中间 token 省 112 ms)
+```
+
+| 上下文 | 单核 | 双核 | 加速 |
+|---:|---:|---:|---:|
+| 256 | 694 ms | 616 ms | 1.13× |
+| 1024 | 1342 ms | 1034 ms | 1.30× |
+| 2048 | 2199 ms | 1584 ms | **1.39×** |
+
+## 逐字一致性
+
+同一组 5 条固定提示（身份 / 笑话 / 常识 / 推荐 / 翻译），单核与双核固件各跑一遍，
+`回复内容:` 行完全一致：
+
+```
+我是 feng，一个由个人开发者 jiaheng 独立开发训练的 AI。
+有只猫掉进了纸箱，它想了半天，说：这箱子挺舒服。
+中国的首都是北京。
+可以读读《小王子》，故事简单又耐人寻味。
+The weather is nice today.
+```
+
+## 回归
+
+- PC q2 32 题矩阵：27/27 + 4/4；算术 21/21；`pc_check` argmax MATCH。
+- 板端：tool 13/13（`logs/board_tools_time_rand.txt`）、记忆 24/24
+  （`logs/board_memory_24.txt`）、10 轮多轮 10/10。
+- 短上下文速度仍约 2.33 tok/s（权重流式读主导，注意力并行对它帮助很小）。
+
+## 复现
+
+```powershell
+cd board
+idf.py -B build_bench -DFENG_USE_Q2_KV=ON -DFENG_BENCH_CTX=ON build   # 双核
+idf.py -B build_seq   -DFENG_USE_Q2_KV=ON -DFENG_BENCH_CTX=ON -DFENG_ATTN_PARTS=1 build
+```

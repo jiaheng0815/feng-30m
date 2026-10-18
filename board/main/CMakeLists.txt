@@ -107,6 +107,9 @@ option(FENG_BENCH_CTX "benchmark attention at 256/1024/2048 ctx on boot" OFF)
 if(FENG_BENCH_CTX)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_BENCH_CTX=1)
 endif()
+# q2 注意力按 head 切给两个核。设 1 退回单核，用于 A/B 与逐字对比。
+set(FENG_ATTN_PARTS 2 CACHE STRING "q2 attention parts (1=single core, 2=dual core)")
+target_compile_definitions(${COMPONENT_LIB} PRIVATE FENG_ATTN_PARTS=${FENG_ATTN_PARTS})
 # 测试用：-DFENG_Q2_LUT=OFF 关闭 q2 注意力内层的字节 LUT（A/B 基准）
 option(FENG_Q2_LUT "use a byte LUT in q2 attention inner loops" ON)
 if(NOT FENG_Q2_LUT)

@@ -17,17 +17,23 @@
 #include "esp_timer.h"
 
 #define SMP_NPARTS 2
-#define SMP_TASK_STACK 4096
+#define SMP_TASK_STACK 6144      /* q2 注意力回调的 vacc[64] 等栈上局部量更大 */
 #define SMP_TASK_PRIO 5
+
+enum { SMP_JOB_GEMV = 0, SMP_JOB_CALLBACK = 1 };
 
 typedef struct {
     SemaphoreHandle_t start;
     SemaphoreHandle_t done;
+    int kind;
     const void *tensor;
     uint32_t dtype;
     const float *x;
     float *y;
     int n_in, r0, r1;
+    feng_par_fn fn;
+    void *arg;
+    int part, nparts;
     /* diagnostics */
     int core, runs;
     int64_t us_last;
@@ -46,7 +52,11 @@ static void smp_worker(void *arg)
         if (xSemaphoreTake(p->start, portMAX_DELAY) != pdTRUE) continue;
         p->core = xPortGetCoreID();
         const int64_t t0 = esp_timer_get_time();
-        feng_gemv_range(p->tensor, p->dtype, p->x, p->y, p->r0, p->r1, p->n_in);
+        if (p->kind == SMP_JOB_CALLBACK) {
+            p->fn(p->arg, p->part, p->nparts);
+        } else {
+            feng_gemv_range(p->tensor, p->dtype, p->x, p->y, p->r0, p->r1, p->n_in);
+        }
         p->us_last = esp_timer_get_time() - t0;
         p->runs++;
         xSemaphoreGive(p->done);
@@ -103,6 +113,7 @@ void feng_gemv_par(const void *tensor, uint32_t dtype, const float *x, float *y,
     const int mid = n_out / 2;
     for (int i = 0; i < SMP_NPARTS; i++) {
         smp_part_t *p = &s_parts[i];
+        p->kind = SMP_JOB_GEMV;
         p->tensor = tensor;
         p->dtype = dtype;
         p->x = x;
@@ -128,6 +139,31 @@ void feng_gemv_par(const void *tensor, uint32_t dtype, const float *x, float *y,
     }
 }
 
+void feng_par_run(feng_par_fn fn, void *arg, int nparts)
+{
+    if (fn == NULL) return;
+    if (!s_smp_ok || nparts <= 1) {
+        fn(arg, 0, 1);
+        return;
+    }
+    if (nparts > SMP_NPARTS) nparts = SMP_NPARTS;
+    for (int i = 0; i < SMP_NPARTS; i++) {
+        smp_part_t *p = &s_parts[i];
+        p->kind = SMP_JOB_CALLBACK;
+        p->fn = fn;
+        p->arg = arg;
+        p->part = i;
+        p->nparts = nparts;
+    }
+    const UBaseType_t old_prio = uxTaskPriorityGet(NULL);
+    if (old_prio <= SMP_TASK_PRIO) vTaskPrioritySet(NULL, SMP_TASK_PRIO + 1);
+    xSemaphoreGive(s_parts[0].start);
+    xSemaphoreGive(s_parts[1].start);
+    if (old_prio <= SMP_TASK_PRIO) vTaskPrioritySet(NULL, old_prio);
+    xSemaphoreTake(s_parts[0].done, portMAX_DELAY);
+    xSemaphoreTake(s_parts[1].done, portMAX_DELAY);
+}
+
 #else /* host build (tools/pc check): single core, no RTOS */
 
 void feng_smp_init(void)
@@ -142,6 +178,14 @@ void feng_gemv_par(const void *tensor, uint32_t dtype, const float *x, float *y,
     feng_gemv_a8_prepare(x, n_in);
 #endif
     feng_gemv_range(tensor, dtype, x, y, 0, n_out, n_in);
+}
+
+/* 宿主/PC 没有 RTOS worker：顺序跑每个 part，结果与并行版相同。 */
+void feng_par_run(feng_par_fn fn, void *arg, int nparts)
+{
+    if (fn == NULL) return;
+    if (nparts < 1) nparts = 1;
+    for (int i = 0; i < nparts; i++) fn(arg, i, nparts);
 }
 
 #endif
