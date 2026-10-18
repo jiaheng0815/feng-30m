@@ -12,6 +12,8 @@
 | `chat_probe_*` | 42 题聊天探针（关键词判定） | `chat_probe.py` |
 | `heldout*` / `h1_*` | 30 题留出**第一套**（**strict-v7 判定**） | `chat_probe_heldout.py` |
 | `heldout2_*` / `h2_*` | 30 题留出**第二套**（同 strict-v7） | `chat_probe_heldout2.py` |
+| `heldout200_*` | **冻结留出 200 题**（2026-10-18；只在发版/大改时跑，不用于调参） | `chat_probe_heldout200.py` |
+| `ppl_*` | 留出集困惑度（不依赖关键词判分器的稳定指标） | `eval_ppl.py` |
 | `longctx32*` | 长文针检索（4k/8k/16k/32k；**2026-10-18 起 token 精确、预留 32 生成位**） | `eval_longctx_many.py` |
 | `identity_*` | 身份题专项 | `eval_identity.py` |
 | `arith_*` | 算术子集（tool 口径） | `pc_kv_suite`（`FENG_SUITE=arith`） |
@@ -34,3 +36,11 @@
 - **长文评测新旧文件不能混比**：2026-10-18 之前的 `longctx32_*` 把 ctx 当字符数
   （标称 32k 实际约 26k token），且没有给生成预留位置。现行口径见
   `longctx32_v319.json` / `longctx32_v4final.json`（token 精确，输入 = ctx − 32）。
+- **冻结留出 200 题**：`scripts/chat_probe_heldout200.py` 的 200 条已与
+  `data/v4_sft.jsonl` 做**精确 prompt 去重（0 重合）**，只用于发版对比。
+  **禁止把它加入训练/补丁/提示词池**；一旦用于调参，这组分数就作废。
+  2026-10-18 基线：v3.19 **83/200**、v4 final **92/200**（McNemar p=0.16，
+  配对差 95% CI −1~+10 个百分点——方向有利，但 200 题还不足以在 95% 水平显著）。
+- **PPL 是稳定指标**：`eval_ppl.py` 在 `data/v4_val.jsonl`（v4 SFT 的验证集）上
+  对 assistant token 算困惑度。2026-10-18：v3.19 **107.49**、v4 final **51.20**、
+  B **97.45**、D **161.29**。PPL 与关键词分数分开看，能发现"分数没掉但语言能力退化"。

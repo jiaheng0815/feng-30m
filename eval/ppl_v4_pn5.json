@@ -1,0 +1,11 @@
+{
+ "model": "v4/patch_name_e5_lr5e-6",
+ "data": "E:\\feng-30m\\data\\v4_val.jsonl",
+ "samples": 689,
+ "assistant_tokens": 62366,
+ "all_tokens": 86101,
+ "nll_assistant": 245455.13169082254,
+ "nll_all": 362795.079372406,
+ "ppl_assistant": 51.1990148862705,
+ "ppl_all": 67.5993863682906
+}

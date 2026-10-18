@@ -1,0 +1,11 @@
+{
+ "model": "v4/base",
+ "data": "E:\\feng-30m\\data\\v4_val.jsonl",
+ "samples": 689,
+ "assistant_tokens": 62366,
+ "all_tokens": 86101,
+ "nll_assistant": 291711.08913577534,
+ "nll_all": 415592.84016418457,
+ "ppl_assistant": 107.4908560740525,
+ "ppl_all": 124.81169913792043
+}
