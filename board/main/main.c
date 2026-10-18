@@ -15,6 +15,8 @@
 #include "esp_log.h"
 #include "esp_partition.h"
 #include "esp_timer.h"
+#include "nvs.h"
+#include "nvs_flash.h"
 #include "driver/uart.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -33,6 +35,53 @@ static const char *TAG = "feng";
 #define MODEL_PART "model"
 #define TOK_PART "tokdata"
 #define UART_PORT UART_NUM_0
+
+/* ---- 记忆持久化（NVS "mem" 键）----
+ * 引擎侧记忆原来只在 RAM，\reset/断电就忘。这里用 1KB 文本快照存 NVS，
+ * 开机导入；每次学到/忘掉事实后保存。NVS 分区只有 24KB，键值远小于上限。 */
+static nvs_handle_t s_mem_nvs;
+static int s_mem_nvs_ok;
+
+static void mem_store_init(void)
+{
+    esp_err_t e = nvs_flash_init();
+    if (e == ESP_ERR_NVS_NO_FREE_PAGES || e == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        (void)nvs_flash_erase();
+        e = nvs_flash_init();
+    }
+    if (e == ESP_OK && nvs_open("feng", NVS_READWRITE, &s_mem_nvs) == ESP_OK)
+        s_mem_nvs_ok = 1;
+    else
+        ESP_LOGW(TAG, "NVS 打不开，记忆只在本次上电有效");
+}
+
+static void mem_store_load(void)
+{
+    if (!s_mem_nvs_ok) return;
+    char buf[1024];
+    size_t len = sizeof(buf);
+    if (nvs_get_str(s_mem_nvs, "mem", buf, &len) == ESP_OK) {
+        (void)feng_mem_import(buf);
+        ESP_LOGI(TAG, "从 NVS 恢复记忆（%u 字节）", (unsigned)len);
+    }
+}
+
+static void mem_store_save(void)
+{
+    if (!s_mem_nvs_ok) return;
+    char buf[1024];
+    const int n = feng_mem_export(buf, sizeof(buf));
+    if (n < 0) return;
+    if (n == 0) (void)nvs_erase_key(s_mem_nvs, "mem");
+    else (void)nvs_set_str(s_mem_nvs, "mem", buf);
+    (void)nvs_commit(s_mem_nvs);
+}
+
+static int line_may_forget(const char *s)
+{
+    return strstr(s, "忘掉") || strstr(s, "忘记") || strstr(s, "别记") ||
+           strstr(s, "删掉") || strstr(s, "不要记");
+}
 /* KV cache is fp32 in PSRAM: n_layers*MAX_CTX*hidden*4 bytes per cache (K and V).
  * 11*512*448*4 = 10.1 MB each -> 20 MB total, more than the 16 MB PSRAM.
  * 11*256*448*4 =  5.05 MB each -> 10.1 MB total, fits comfortably. */
@@ -514,6 +563,7 @@ static int generate(const int *prompt, int np, char *out, int out_max, int keep)
         s_kv.len = 0;
         s_nhist = 0;
         feng_mem_clear();          /* 写满=开新对话：引擎侧记忆一起清 */
+        mem_store_save();
     }
     int written = 0, pos = s_kv.len;
     const int vocab = s_model.hdr.vocab;
@@ -625,6 +675,7 @@ static void chat_once(const char *user)
         s_kv.len = 0;
         s_nhist = 0;
         feng_mem_clear();           /* 与 generate(keep=0) 的注释保持一致：新对话=记忆一起清 */
+        mem_store_save();
     }
     ESP_LOGI(TAG, "in: %s (%d prompt tokens, ctx %d -> %d/%d)", user, n, s_kv.len,
              s_kv.len + n, MAX_CTX);
@@ -651,6 +702,8 @@ void app_main(void)
 
     esp_chip_info(&info);
     ESP_LOGI(TAG, "feng-30m on ESP32-S3 (%d cores), flash 32MB / PSRAM 16MB", info.cores);
+    mem_store_init();
+    mem_store_load();
     setup_model();
 #if FENG_BENCH_CTX && FENG_KV_Q2
     bench_forward_ctx();
@@ -720,10 +773,12 @@ void app_main(void)
                 s_kv.len = 0;
                 s_nhist = 0;
                 feng_mem_clear();
+                mem_store_save();
                 out_printf("context cleared（记忆也一起清了，\\mem 可查看）\n");
             } else if (cmd_is(line, "\\mem")) {
                 if (cmd_is(line, "\\mem clear")) {
                     feng_mem_clear();
+                    mem_store_save();
                     out_printf("memory cleared\n");
                 } else {
                     char snap[256];
@@ -786,16 +841,18 @@ void app_main(void)
             out_printf("[输入包含保留的对话模板标记（<|im_start|> 等），已拒绝]\n");
             continue;
         }
-        (void)feng_mem_learn(u8);      /* 先记事实（不拦截：模型仍能看到这句，保持自己的多轮能力） */
+        const int learned = feng_mem_learn(u8);  /* 先记事实（不拦截，模型仍能看到这句） */
         if (feng_calc_answer(u8, calc_reply, sizeof(calc_reply)) ||
             feng_mem_answer(u8, calc_reply, sizeof(calc_reply)) ||
             feng_time_answer(u8, calc_reply, sizeof(calc_reply)) ||
             feng_random_answer(u8, calc_reply, sizeof(calc_reply))) {
+            if (learned || line_may_forget(u8)) mem_store_save();
             ESP_LOGI(TAG, "tool: %s -> %s", u8, calc_reply);
             out_printf("<< %s\n>>END\n", calc_reply);
             fflush(stdout);
             continue;
         }
+        if (learned || line_may_forget(u8)) mem_store_save();
         chat_once(u8);
     }
 }

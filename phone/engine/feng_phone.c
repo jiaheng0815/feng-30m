@@ -43,6 +43,12 @@
 #else
 #include <sys/mman.h>
 #endif
+/* Windows 的 CRT 默认以文本模式打开文件：模型/分词器是二进制，遇到 0x1A（Ctrl-Z）
+ * 会被当成 EOF，read 提前返回 0，feng_phone_load 报 rc=-2。POSIX 上 O_BINARY 未定义，
+ * 补 0 即可。这是开发机上验证手机引擎的必需项，Android/Linux 行为不变。 */
+#ifndef O_BINARY
+#define O_BINARY 0
+#endif
 
 /* ------------------------------------------------------------------ */
 /* 配置                                                                */
@@ -261,7 +267,7 @@ int feng_phone_load(const char *path, const uint8_t **blob, size_t *len)
 {
     *blob = NULL;
     *len = 0;
-    const int fd = open(path, O_RDONLY | O_CLOEXEC);
+    const int fd = open(path, O_RDONLY | O_BINARY | O_CLOEXEC);
     if (fd < 0) return -1;
 
     struct stat st;

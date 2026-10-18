@@ -7,7 +7,7 @@
 > **阅读导航**
 > - 本文按**时间倒序**排列（最新在最上）；当前发布 = **PC 权重 v4.0**
 >   （`v4/patch_name_e5_lr5e-6`）+ **板端权重 v3.19-embed** + **v4.0 引擎**
->   （严格 C23、四个 tool、固件 **260,576 B**）。
+>   （严格 C23、四个 tool、固件 **280,624 B**）。
 >   v4.0 的板端双 QAT 未过关卡，所以板端权重仍是 v3.19-embed；见顶部 v4.0 一节与 §4f。
 > - 故事线与横向对比见 [`COMPARISON.md`](COMPARISON.md)；使用说明见 [`USAGE.md`](USAGE.md)。
 > - 每节的**失败尝试都保留**（含被证伪的路线），供后续避免重复踩坑；
@@ -19,6 +19,28 @@
 >   保留不改写（改写历史记录比留一个失效路径更糟），读的时候当成"当时的目录名"即可。
 >   旧版权重需要时从 GitHub Release 取（`ghfast.top` 镜像实测 11 MB/s）。
 >   `tools/check_md.py` 已把这三个前缀列为"允许缺失"。
+
+---
+
+## v4.0 补丁（2026-10-18）—— 记忆持久化（板端 NVS / 手机端文件）
+
+可枚举事实由引擎记忆 tool 回答，但此前只存在 RAM：断电、`\reset`、上下文写满就全丢。
+这一版把记忆落盘，板端与手机端共用同一份导出格式（`core/feng_memory.c`）：
+
+- 新增 `feng_mem_export(char *out, int cap)` / `feng_mem_import(const char *text)`：
+  文本行格式 `name\t小明`、`city\t武汉`、`pet\t乌龟`、`slot\t颜色\t蓝色`、`forgot\t生日`，
+  值里的制表符/换行会转义；导入前先清空当前记忆。
+- **板端**：`nvs_flash_init` + 命名空间 `feng`、key `mem`；`app_main` 启动时导入，
+  学到一个新事实（`feng_mem_learn` 返回 1）或有遗忘语句、`\reset`、`\mem clear`、
+  上下文写满自动开新对话时导出/擦除。实测：说「我叫小明，请记住。」→ EN 复位 →
+  问「我叫什么名字？」→ tool 答「你叫小明。」；`\reset` 后再问不再命中。
+  回归：记忆 **24/24**、tool **13/13**（`logs/board_memory_24.txt`、`logs/board_tools_time_rand.txt`）。
+- **手机端**：Termux CLI 与 Android JNI 同口径，文件是模型目录下的 `mem.txt`
+  （Android 从 `model.bin` 绝对路径推导）；读写失败只提示，不影响对话。
+- 顺带修了 MSYS2/Windows 主机验证手机引擎时的读取 bug：`feng_phone_load` 用
+  `open()` 默认文本模式，模型二进制里的 0x1A 被当成 EOF，报 `rc=-2`；加 `O_BINARY`
+  后正常（Android/Linux 上该宏定义为 0，行为不变）。
+- 固件体积 **260,480 → 280,624 B**（NVS 驱动 + 导出/导入），仍在 1 MB app 分区内。
 
 ---
 

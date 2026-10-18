@@ -53,7 +53,8 @@ if(FENG_BENCH_PIE OR FENG_GEMV_PIE)
     list(APPEND FENG_SRCS "feng_pie_bench.S" "feng_pie_gemv.S")
 endif()
 
-idf_component_register(SRCS ${FENG_SRCS} INCLUDE_DIRS "." "${FENG_CORE_DIR}")
+idf_component_register(SRCS ${FENG_SRCS} INCLUDE_DIRS "." "${FENG_CORE_DIR}"
+                       PRIV_REQUIRES nvs_flash esp_timer esp_partition esp_driver_uart)
 
 # 全组件严格 C23（v4.0 起，嵌入式侧从 C++23 迁到 C23）。
 # C_EXTENSIONS OFF = -std=c23 而不是 -std=gnu23，与 PC 侧口径一致。

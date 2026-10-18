@@ -37,8 +37,50 @@ typedef struct {
     int nl_id;
     int abort_flag;
     int lock_inited;
+    char mem_path[512];     /* 持久化记忆：模型目录下的 mem.txt */
     pthread_mutex_t lock;
 } jni_session;
+
+/* 记忆持久化：与板端 NVS 共用 feng_mem_export/import 的文本格式。
+ * 调用方一般已持有 lock；读写失败只记日志，不影响对话。 */
+static void mem_store_load(jni_session *s)
+{
+    if (!s->mem_path[0]) return;
+    FILE *f = fopen(s->mem_path, "rb");
+    if (!f) return;
+    char buf[1024];
+    const size_t n = fread(buf, 1, sizeof(buf) - 1, f);
+    fclose(f);
+    buf[n] = 0;
+    if (!feng_mem_import(buf))
+        LOGI("mem.txt 为空或解析失败，已忽略");
+}
+
+static void mem_store_save(jni_session *s)
+{
+    if (!s->mem_path[0]) return;
+    char buf[1024];
+    const int n = feng_mem_export(buf, sizeof(buf));
+    if (n < 0) return;
+    if (n == 0) { (void)remove(s->mem_path); return; }
+    FILE *f = fopen(s->mem_path, "wb");
+    if (!f) { LOGE("写不了 %s", s->mem_path); return; }
+    fwrite(buf, 1, (size_t)n, f);
+    fclose(f);
+}
+
+/* 从 model.bin 的绝对路径推出同目录的 mem.txt（Kotlin 把两个模型文件都解包到 filesDir）。 */
+static int mem_path_from_model(jni_session *s, const char *model_path)
+{
+    const char *slash = strrchr(model_path, '/');
+    const char *bslash = strrchr(model_path, '\\');
+    if (bslash && (!slash || bslash > slash)) slash = bslash;
+    const size_t dirlen = slash ? (size_t)(slash - model_path) : 0;
+    if (dirlen + 9 >= sizeof(s->mem_path)) return -1;
+    memcpy(s->mem_path, model_path, dirlen);
+    memcpy(s->mem_path + dirlen, "/mem.txt", 9);
+    return 0;
+}
 
 static void *xmalloc(size_t n)
 {
@@ -96,12 +138,13 @@ Java_com_feng_feng30m_FengNative_nativeAsk(JNIEnv *env, jclass cls, jlong handle
         return 0;
     }
 
-    (void)feng_mem_learn(text);
+    const int learned = feng_mem_learn(text);
     if (feng_calc_answer(text, reply, sizeof(reply)) ||
         feng_mem_answer(text, reply, sizeof(reply)) ||
         feng_time_answer(text, reply, sizeof(reply)) ||
         feng_random_answer(text, reply, sizeof(reply))) {
         /* tool 秒回：一次回调交完，gen 记 0 让界面知道这不是模型生成的 */
+        if (learned || strstr(text, "忘")) mem_store_save(s);
         call_string(env, callback, midToken, reply);
         if (midDone) (*env)->CallVoidMethod(env, callback, midDone, (jint)0, (jlong)0);
         pthread_mutex_unlock(&s->lock);
@@ -126,6 +169,7 @@ Java_com_feng_feng30m_FengNative_nativeAsk(JNIEnv *env, jclass cls, jlong handle
     if (s->kv.len > 0 && s->kv.len + n + maxNew + 2 > s->ctx) {
         s->kv.len = 0;                 /* 上下文满：自动开新对话（与 CLI 同口径） */
         feng_mem_clear();
+        mem_store_save(s);
     }
 
     int pos = s->kv.len;
@@ -173,6 +217,7 @@ Java_com_feng_feng30m_FengNative_nativeAsk(JNIEnv *env, jclass cls, jlong handle
 
     if (midDone) (*env)->CallVoidMethod(env, callback, midDone, (jint)gen, (jlong)(dec_ms + 0.5));
 
+    if (learned || strstr(text, "忘")) mem_store_save(s);
     pthread_mutex_unlock(&s->lock);
     (*env)->ReleaseStringUTFChars(env, jtext, text);
     return (jint)gen;
@@ -195,6 +240,7 @@ Java_com_feng_feng30m_FengNative_nativeReset(JNIEnv *env, jclass cls, jlong hand
     pthread_mutex_lock(&s->lock);
     s->kv.len = 0;
     feng_mem_clear();
+    mem_store_save(s);
     pthread_mutex_unlock(&s->lock);
 }
 
@@ -287,6 +333,10 @@ Java_com_feng_feng30m_FengNative_nativeInit(JNIEnv *env, jclass cls, jstring jmo
         ctx = FENG_PHONE_MAX_CTX;
     }
     s->ctx = ctx;
+    if (mem_path_from_model(s, mp) != 0) {
+        LOGE("模型路径太长，记忆持久化关闭：%s", mp);
+        s->mem_path[0] = 0;
+    }
 
     if (feng_phone_load(mp, &s->mblob, &s->mlen) != 0) {
         LOGE("打不开 %s", mp); goto fail;
@@ -339,6 +389,7 @@ Java_com_feng_feng30m_FengNative_nativeInit(JNIEnv *env, jclass cls, jstring jmo
     }
 
     { int one = 0; s->nl_id = (feng_tok_encode(&s->tok, "\n", &one, 1) == 1) ? one : 0; }
+    mem_store_load(s);
     pthread_mutex_init(&s->lock, NULL);
     s->lock_inited = 1;
 

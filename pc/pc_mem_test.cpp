@@ -133,6 +133,22 @@ int main(void)
     answer_is("把记住的都忘掉", "好，我把记住的这些都忘掉了。");
     answer_is("你还记得什么？", "我还没有记住你的信息。");
 
+    /* 持久化：导出/导入（NVS/文件共用格式） */
+    feng_mem_clear();
+    char store[1024];
+    if (feng_mem_export(store, sizeof(store)) != 0) { fails++; puts("[FAIL] 空记忆导出应为 0"); }
+    learn_is("我叫小雨。", 1);
+    learn_is("我最喜欢的颜色是蓝色。", 1);
+    learn_is("我养了一只乌龟。", 1);
+    answer_is("忘掉我的生日", "我没有记过你的生日。");
+    const int elen = feng_mem_export(store, sizeof(store));
+    if (elen <= 0) { fails++; puts("[FAIL] 导出失败"); }
+    feng_mem_clear();
+    if (!feng_mem_import(store)) { fails++; puts("[FAIL] 导入失败"); }
+    answer_is("我叫什么名字？", "你叫小雨。");
+    answer_is("我最喜欢什么颜色？", "你最喜欢蓝色。");
+    answer_is("我养了什么？", "你养了乌龟。");
+
     printf("\n%s（%d 个失败）\n", fails ? "有失败" : "全部通过", fails);
     return fails ? 1 : 0;
 }

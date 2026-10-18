@@ -21,6 +21,10 @@ int feng_mem_learn(const char *user);
 int feng_mem_answer(const char *user, char *answer, int answer_sz);
 /* 供 \mem 命令展示：把当前已知事实写进 buf（没有事实时写"（空）"） */
 void feng_mem_snapshot(char *buf, int buf_sz);
+/* 持久化：导出为可存 NVS/文件的文本；导入前会先清空当前记忆。
+ * 返回导出的字节数（0 = 没有可存内容，-1 = 缓冲不足）；导入返回 1 = 至少恢复一条。 */
+int feng_mem_export(char *out, int cap);
+int feng_mem_import(const char *text);
 
 #ifdef __cplusplus
 }

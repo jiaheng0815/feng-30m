@@ -568,3 +568,96 @@ void feng_mem_snapshot(char *buf, int buf_sz)
                        g_slots[i].key[0] ? g_slots[i].key : "(偏好)", g_slots[i].val);
     }
 }
+
+/* 持久化文本格式（每行）：name/city/pet<TAB>值、slot<TAB>键<TAB>值、forgot<TAB>键。
+ * 值里的 TAB/换行在导出时替换成空格，避免一条事实把文件格式撑破。 */
+static void export_val(char *dst, int cap, const char *src)
+{
+    int i = 0;
+    if (cap <= 0) return;
+    for (; src[i] && i < cap - 1; i++) {
+        const char c = src[i];
+        dst[i] = (c == '\t' || c == '\n' || c == '\r') ? ' ' : c;
+    }
+    dst[i] = 0;
+}
+
+int feng_mem_export(char *out, int cap)
+{
+    if (out == NULL || cap <= 1) return -1;
+    int n = 0;
+    char v[VAL_CAP + 4];
+    out[0] = 0;
+    if (g_has_name) {
+        export_val(v, sizeof(v), g_name);
+        mem_append_fmt(out, cap, &n, "name\t%s\n", v);
+    }
+    if (g_has_city) {
+        export_val(v, sizeof(v), g_city);
+        mem_append_fmt(out, cap, &n, "city\t%s\n", v);
+    }
+    if (g_has_pet) {
+        export_val(v, sizeof(v), g_pet);
+        mem_append_fmt(out, cap, &n, "pet\t%s\n", v);
+    }
+    for (int i = 0; i < MAX_SLOTS; i++) {
+        if (!g_slots[i].used) continue;
+        char k[KEY_CAP + 4];
+        export_val(k, sizeof(k), g_slots[i].key);
+        export_val(v, sizeof(v), g_slots[i].val);
+        mem_append_fmt(out, cap, &n, "slot\t%s\t%s\n", k, v);
+    }
+    for (int i = 0; i < g_nforgot; i++) {
+        char k[KEY_CAP + 4];
+        export_val(k, sizeof(k), g_forgot[i]);
+        mem_append_fmt(out, cap, &n, "forgot\t%s\n", k);
+    }
+    return n;
+}
+
+int feng_mem_import(const char *text)
+{
+    if (text == NULL) return 0;
+    feng_mem_clear();
+    int got = 0;
+    const char *p = text;
+    while (*p) {
+        const char *e = strchr(p, '\n');
+        size_t len = e ? (size_t)(e - p) : strlen(p);
+        char line[256];
+        if (len >= sizeof(line)) len = sizeof(line) - 1;
+        memcpy(line, p, len);
+        line[len] = 0;
+        if (len > 0 && line[len - 1] == '\r') line[--len] = 0;
+        char *t1 = strchr(line, '\t');
+        if (t1 != NULL) {
+            *t1 = 0;
+            char *t2 = strchr(t1 + 1, '\t');
+            if (t2 != NULL) *t2 = 0;
+            if (strcmp(line, "name") == 0 && t1[1]) {
+                snprintf(g_name, VAL_CAP, "%s", t1 + 1);
+                g_has_name = 1;
+                clear_forgot("名字");
+                got = 1;
+            } else if (strcmp(line, "city") == 0 && t1[1]) {
+                snprintf(g_city, VAL_CAP, "%s", t1 + 1);
+                g_has_city = 1;
+                clear_forgot("城市");
+                got = 1;
+            } else if (strcmp(line, "pet") == 0 && t1[1]) {
+                snprintf(g_pet, VAL_CAP, "%s", t1 + 1);
+                g_has_pet = 1;
+                clear_forgot("宠物");
+                got = 1;
+            } else if (strcmp(line, "slot") == 0 && t2 != NULL && t2[1]) {
+                slot_put(t1 + 1, t2 + 1);
+                got = 1;
+            } else if (strcmp(line, "forgot") == 0 && t1[1]) {
+                mark_forgot(t1 + 1);
+                got = 1;
+            }
+        }
+        p = e ? e + 1 : p + len;
+    }
+    return got;
+}

@@ -65,13 +65,50 @@ typedef struct {
     size_t tlen;
     int ctx;
     int nl_id;
+    char mem_path[512];     /* 持久化记忆：<模型目录>/mem.txt */
 } session_t;
+
+/* 记忆持久化：与板端 NVS 共用同一份导出格式（feng_mem_export/import）。
+ * 空记忆不写文件，避免留下空壳；读写失败只提示，不影响对话。 */
+static void mem_store_load(session_t *s)
+{
+    FILE *f = fopen(s->mem_path, "rb");
+    if (!f) return;
+    char buf[1024];
+    const size_t n = fread(buf, 1, sizeof(buf) - 1, f);
+    fclose(f);
+    buf[n] = 0;
+    if (!feng_mem_import(buf))
+        fprintf(stderr, "mem.txt 解析失败或为空，已忽略\n");
+}
+
+static void mem_store_save(session_t *s)
+{
+    char buf[1024];
+    const int n = feng_mem_export(buf, sizeof(buf));
+    if (n < 0) return;
+    if (n == 0) { (void)remove(s->mem_path); return; }
+    FILE *f = fopen(s->mem_path, "wb");
+    if (!f) { fprintf(stderr, "写不了 %s\n", s->mem_path); return; }
+    fwrite(buf, 1, (size_t)n, f);
+    fclose(f);
+}
+
+/* 遗忘语句没有返回值可判断，按关键字补一次落盘（与板端 line_may_forget 同口径）。 */
+static int line_may_forget(const char *line)
+{
+    return strstr(line, "忘") != NULL;
+}
 
 static int session_open(session_t *s, const char *dir, int ctx)
 {
     char path[512];
     memset(s, 0, sizeof(*s));
     s->ctx = ctx;
+    if (snprintf(s->mem_path, sizeof(s->mem_path), "%s/mem.txt", dir) >= (int)sizeof(s->mem_path)) {
+        fprintf(stderr, "模型目录路径太长：%s\n", dir);
+        return -1;
+    }
 
     snprintf(path, sizeof(path), "%s/model.bin", dir);
     int rc = feng_phone_load(path, &s->mblob, &s->mlen);
@@ -119,6 +156,7 @@ static int session_open(session_t *s, const char *dir, int ctx)
 
     int one = 0;
     s->nl_id = (feng_tok_encode(&s->tok, "\n", &one, 1) == 1) ? one : 0;
+    mem_store_load(s);
     return 0;
 }
 
@@ -147,6 +185,7 @@ static int session_generate(session_t *s, const char *user, int max_new,
         printf("[上下文已满 %d/%d，自动开始新对话]\n", s->kv.len, ctx);
         s->kv.len = 0;
         feng_mem_clear();
+        mem_store_save(s);
     }
 
     int pos = s->kv.len;
@@ -425,11 +464,12 @@ int main(int argc, char **argv)
         /* 与 REPL / APK 同一条 tool 链：--prompt 是脚本化入口，不能绕过
          * 算式/记忆/时间/随机数，否则测出来的行为与产品路径不一致。 */
         char tool_reply[256];
-        (void)feng_mem_learn(one_shot);
+        const int learned = feng_mem_learn(one_shot);
         if (feng_calc_answer(one_shot, tool_reply, sizeof(tool_reply)) ||
             feng_mem_answer(one_shot, tool_reply, sizeof(tool_reply)) ||
             feng_time_answer(one_shot, tool_reply, sizeof(tool_reply)) ||
             feng_random_answer(one_shot, tool_reply, sizeof(tool_reply))) {
+            if (learned || line_may_forget(one_shot)) mem_store_save(&s);
             printf("[tool] %s\n", tool_reply);
             return 0;
         }
@@ -439,6 +479,7 @@ int main(int argc, char **argv)
         double t_pre = 0, t_dec = 0;
         s.kv.len = 0;
         const int gen = session_generate(&s, one_shot, max_new, out, sizeof(out), &olen, &t_pre, &t_dec);
+        if (learned || line_may_forget(one_shot)) mem_store_save(&s);
         out[olen] = 0;
         fputs(out, stdout);
         printf("\n[%d tok ｜ decode %.0f ms ｜ %.1f tok/s]\n", gen, t_dec,
@@ -463,12 +504,14 @@ int main(int argc, char **argv)
         if (strcmp(line, "\\reset") == 0) {
             s.kv.len = 0;
             feng_mem_clear();
+            mem_store_save(&s);
             printf("(context cleared，记忆也清了；\\mem 查看)\n");
             continue;
         }
         if (strncmp(line, "\\mem", 4) == 0) {
             if (strncmp(line, "\\mem clear", 10) == 0) {
                 feng_mem_clear();
+                mem_store_save(&s);
                 printf("(memory cleared)\n");
             } else {
                 char snap[256];
@@ -485,11 +528,12 @@ int main(int argc, char **argv)
         }
 
         char calc_reply[256];
-        (void)feng_mem_learn(line);     /* 先记事实，模型仍能看到这句 */
+        const int learned = feng_mem_learn(line);     /* 先记事实，模型仍能看到这句 */
         if (feng_calc_answer(line, calc_reply, sizeof(calc_reply)) ||
             feng_mem_answer(line, calc_reply, sizeof(calc_reply)) ||
             feng_time_answer(line, calc_reply, sizeof(calc_reply)) ||
             feng_random_answer(line, calc_reply, sizeof(calc_reply))) {
+            if (learned || line_may_forget(line)) mem_store_save(&s);
             printf("[tool] %s\n", calc_reply);
             continue;
         }
@@ -498,6 +542,7 @@ int main(int argc, char **argv)
         int olen = 0;
         double t_pre = 0, t_dec = 0;
         const int gen = session_generate(&s, line, max_new, out, sizeof(out), &olen, &t_pre, &t_dec);
+        if (learned || line_may_forget(line)) mem_store_save(&s);
         out[olen] = 0;
         printf("<< ");
         fputs(out, stdout);

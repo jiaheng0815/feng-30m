@@ -30,6 +30,8 @@ FENG_PHONE_THREADS=4 ./build/phone_chat ~/.feng  # 指定线程数
 ```
 
 REPL 里：`\reset` 清空上下文与记忆、`\mem` 看记忆、`\stats` 看运行状态、`\exit` 退出。
+记忆会写到模型目录的 `mem.txt`（APK 为应用私有目录 `filesDir` 下的 `mem.txt`），重启/重开应用后仍在；
+`\reset`、`\mem clear` 或上下文写满会自动清空并删除该文件。
 
 常用参数：
 
