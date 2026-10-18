@@ -44,7 +44,7 @@ I (225) octal_psram: VCC          : 0x00 (1.8V)
 I (229) octal_psram: SRF          : 0x01 (Fast Refresh)
 I (234) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
 I (239) octal_psram: BurstLen     : 0x01 (32 Byte)
-I (243) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (244) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
 I (249) octal_psram: DriveStrength: 0x00 (1/1)
 I (253) MSPI Timing: Enter psram timing tuning
 I (264) esp_psram: Found 16MB PSRAM device
@@ -61,11 +61,11 @@ I (697) app_init: Project name:     feng_30m
 I (701) app_init: App version:      v4.0-9-g28e7443-dirty
 I (706) app_init: Compile time:     Oct 18 2026 08:55:22
 I (711) app_init: ELF file SHA256:  902ddaa8c...
-I (715) app_init: ESP-IDF:          v5.5.5-dirty
+I (716) app_init: ESP-IDF:          v5.5.5-dirty
 I (720) efuse_init: Min chip rev:     v0.0
 I (724) efuse_init: Max chip rev:     v0.99 
 I (728) efuse_init: Chip rev:         v0.2
-I (731) heap_init: Initializing. RAM available for dynamic allocation:
+I (732) heap_init: Initializing. RAM available for dynamic allocation:
 I (738) heap_init: At 3FCB1590 len 00038180 (224 KiB): RAM
 I (743) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
 I (748) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
@@ -83,7 +83,7 @@ I (813) feng: [mem] uart        internal  230579 B | psram 16585100 B (largest i
 I (813) feng: feng-30m on ESP32-S3 (2 cores), flash 32MB / PSRAM 16MB
 I (814) feng: model mapped at 0x3d000000 (15296 KB)
 I (814) feng: [mem] mmap        internal  229947 B | psram 16585100 B (largest int 163840)
-I (958) feng: mmap stream read: 15296 KB in 144 ms -> 108.3 MB/s (checksum 33240768)
+I (958) feng: mmap stream read: 15296 KB in 144 ms -> 108.3 MB/s (checksum 33241264)
 I (961) feng: [mem] model       internal  229727 B | psram 16585100 B (largest int 163840)
 I (961) feng: model: 11 layers, hidden 448, 7 heads x 64, ffn 896, vocab 16384, rope 1000000
 I (2082) feng: tokenizer: vocab 16384, merges 16124
@@ -95,9 +95,9 @@ I (2084) feng: PSRAM free after setup: 5568 KB
 I (2084) feng: [mem] kv/ws       internal  220599 B | psram  5701692 B (largest int 163840)
 I (2084) feng_smp: heap before workers: internal 220599 B (largest 163840), psram 5701692 B
 I (2084) feng_smp: GEMV workers up on core 0 + core 1
-I (2352) feng_smp: par n_out=896: part0 core0 rows[0,448) 6653us | part1 core1 rows[448,896) 6662us
-I (2359) feng_smp: par n_out=896: part0 core0 rows[0,448) 6652us | part1 core1 rows[448,896) 6661us
-I (2366) feng_smp: par n_out=896: part0 core0 rows[0,448) 6676us | part1 core1 rows[448,896) 6656us
+I (2352) feng_smp: par n_out=896: part0 core0 rows[0,448) 6652us | part1 core1 rows[448,896) 6662us
+I (2359) feng_smp: par n_out=896: part0 core0 rows[0,448) 6650us | part1 core1 rows[448,896) 6660us
+I (2366) feng_smp: par n_out=896: part0 core0 rows[0,448) 6679us | part1 core1 rows[448,896) 6658us
 I (2480) feng: gemv 896x448: 1-core 13093 us (16 MB/s) | 2-core 6699 us (32 MB/s) | speedup 1.95x
 
 === feng-30m on ESP32-S3 (serial chat) ===

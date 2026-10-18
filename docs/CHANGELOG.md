@@ -223,6 +223,13 @@ pc/pc_kv_suite_q2b8.exe <fp16 导出目录> pc/prompt_long.txt 5200
 > 证据 `eval/longctx32_4.0B.json`、`eval/h1_4.0_20261018B.json`、
 > `eval/h2_4.0_20261018B.json`。下一步若要上板，需在 B 上做 Q4+q2 双 QAT 并过
 > 27/27+4/4 与实机验收。
+>
+> **2026-10-18 实机部署测试（实验，不是发布）**：把 B 的 Q4 导出
+> （`board/model_export_4.0B`）烧到 ESP32、并打进手机 APK。手机 32 题
+> **26/27 + 4/4**、板端 tool **13/13**、记忆 **12/12**、多轮 **10/10**，
+> 身份句正确；但「再见」用英语怎么说？**答成 "Good morning."**（v3.19-embed
+> 答 Goodbye），与 PC Q4 导出的 26/27 是同一处退化。**实验部署保留，发布权重仍是
+> v3.19-embed**；恢复命令见 `docs/esp32-firmware.md`/手机 README。
 
 ---
 
