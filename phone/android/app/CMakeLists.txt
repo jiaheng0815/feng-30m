@@ -40,8 +40,10 @@ add_library(feng SHARED
 
 target_include_directories(feng PRIVATE ${ENGINE_DIR})
 
-# 与板端发布配置一致：q2 KV / block8（2048 上下文约 9.6MB）
-target_compile_definitions(feng PRIVATE FENG_KV_Q2=1 FENG_KV_Q2_BLOCK=8)
+# 与板端发布配置一致：q2 KV / block8。容量上限 32768（KV 154MB），
+# App 默认 32k、分配失败回退 2048（9.6MB）。
+target_compile_definitions(feng PRIVATE
+    FENG_KV_Q2=1 FENG_KV_Q2_BLOCK=8 FENG_PHONE_MAX_CTX=32768)
 
 # 热点 -O2、非热点 -Os（与 main/CMakeLists.txt 的分组一致，控制 .so 体积）
 set_source_files_properties(${FENG_HOT} PROPERTIES COMPILE_OPTIONS "-O2")

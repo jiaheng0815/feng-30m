@@ -36,6 +36,7 @@ typedef struct {
     int ctx;
     int nl_id;
     int abort_flag;
+    int lock_inited;
     pthread_mutex_t lock;
 } jni_session;
 
@@ -235,11 +236,9 @@ Java_com_feng_feng30m_FengNative_nativeBackend(JNIEnv *env, jclass cls, jlong ha
     return (*env)->NewStringUTF(env, buf);
 }
 
-JNIEXPORT void JNICALL
-Java_com_feng_feng30m_FengNative_nativeFree(JNIEnv *env, jclass cls, jlong handle)
+/* 统一释放：成功路径与初始化失败路径共用，避免 32k 分配失败时泄漏 154MB KV。 */
+static void session_free(jni_session *s)
 {
-    (void)env; (void)cls;
-    jni_session *s = (jni_session *)(intptr_t)handle;
     if (!s) return;
     feng_phone_unload(s->mblob, s->mlen);
     feng_phone_unload(s->tblob, s->tlen);
@@ -251,8 +250,15 @@ Java_com_feng_feng30m_FengNative_nativeFree(JNIEnv *env, jclass cls, jlong handl
     free(s->ws.attn); free(s->ws.proj); free(s->ws.gate); free(s->ws.up);
     free(s->ws.ffn); free(s->ws.logits); free(s->ws.scratch);
     feng_tok_free(&s->tok);
-    pthread_mutex_destroy(&s->lock);
+    if (s->lock_inited) pthread_mutex_destroy(&s->lock);
     free(s);
+}
+
+JNIEXPORT void JNICALL
+Java_com_feng_feng30m_FengNative_nativeFree(JNIEnv *env, jclass cls, jlong handle)
+{
+    (void)env; (void)cls;
+    session_free((jni_session *)(intptr_t)handle);
 }
 
 /* 初始化：加载模型 + tokenizer、分配 KV/workspace、拉起线程池。
@@ -334,6 +340,7 @@ Java_com_feng_feng30m_FengNative_nativeInit(JNIEnv *env, jclass cls, jstring jmo
 
     { int one = 0; s->nl_id = (feng_tok_encode(&s->tok, "\n", &one, 1) == 1) ? one : 0; }
     pthread_mutex_init(&s->lock, NULL);
+    s->lock_inited = 1;
 
     LOGI("初始化完成：%u 层 / h=%u / vocab=%u ｜ ctx=%d ｜ KV %.2f MB ｜ 线程 %d ｜ NEON %s",
          s->m.hdr.n_layers, s->m.hdr.hidden, s->m.hdr.vocab, ctx,
@@ -344,7 +351,7 @@ Java_com_feng_feng30m_FengNative_nativeInit(JNIEnv *env, jclass cls, jstring jmo
     return (jlong)(intptr_t)s;
 
 fail:
-    if (s) free(s);
+    session_free(s);
     (*env)->ReleaseStringUTFChars(env, jmodel, mp);
     (*env)->ReleaseStringUTFChars(env, jtok, tp);
     return 0;

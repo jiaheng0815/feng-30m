@@ -188,6 +188,63 @@ static int session_generate(session_t *s, const char *user, int max_new,
     return gen;
 }
 
+/* 预 tokenized 输入：给 32k 长文验收用，绕过 4KB prompt 缓冲和 O(n²) BPE。
+ * ids 文件是空白分隔的整数（完整 chat template，含 assistant 起始标记）。 */
+static int session_generate_ids(session_t *s, const int *ids, int n, int max_new,
+                                char *out, int out_sz, int *olen,
+                                double *t_pre_ms, double *t_dec_ms)
+{
+    const int v = s->m.hdr.vocab;
+    const int ctx = s->ctx;
+    if (olen) *olen = 0;
+    if (n <= 0 || n + max_new + 2 > ctx) {
+        fprintf(stderr, "[ids 太长或为空：%d tokens / ctx %d]\n", n, ctx);
+        return 0;
+    }
+    s->kv.len = 0;
+    int pos = 0;
+    float *logits = NULL;
+    const double p0 = now_ms();
+    for (int i = 0; i < n; i++) {
+        logits = feng_forward_ex(&s->m, &s->kv, &s->ws, ids[i], pos++, i + 1 == n);
+        if (!logits) break;
+    }
+    const double p1 = now_ms();
+
+    int hist[64];
+    int nhist = 0, gen = 0;
+    int gen_cap = max_new;
+    if (gen_cap > ctx - pos - 2) gen_cap = ctx - pos - 2;
+    for (int step = 0; step < gen_cap && logits; step++) {
+        const int tk = feng_sample_greedy(logits, v, hist, nhist, 1.15f, 3);
+        if (tk < 0 || tk == s->tok.id_im_end || tk == s->tok.id_eot) break;
+        char b[128];
+        const int nb = feng_tok_decode_token(&s->tok, tk, b, sizeof(b));
+        if (out && olen && *olen + nb < out_sz - 1) {
+            memcpy(out + *olen, b, (size_t)nb);
+            *olen += nb;
+        }
+        if (nhist < 64) hist[nhist++] = tk;
+        else { memmove(hist, hist + 1, sizeof(hist) - sizeof(hist[0])); hist[63] = tk; }
+        logits = feng_forward(&s->m, &s->kv, &s->ws, tk, pos++);
+        gen++;
+    }
+    if (out && olen) out[*olen] = 0;
+    if (t_pre_ms) *t_pre_ms = p1 - p0;
+    if (t_dec_ms) *t_dec_ms = now_ms() - p1;
+    return gen;
+}
+
+static int load_ids_file(const char *path, int *ids, int cap)
+{
+    FILE *f = fopen(path, "r");
+    if (!f) return -1;
+    int n = 0, v = 0;
+    while (n < cap && fscanf(f, "%d", &v) == 1) ids[n++] = v;
+    fclose(f);
+    return n;
+}
+
 /* ---------------- 模式 ---------------- */
 
 static void print_banner(const session_t *s, int threads)
@@ -279,6 +336,7 @@ static void usage(void)
         "  --neon 0|1     NEON 内核开关（默认 1）\n"
         "  --max-new N    单轮最多生成 token（默认 96）\n"
         "  --prompt TEXT  问一句就退出\n"
+        "  --ids-file F   预 tokenized 输入（空白分隔的 token id，长文验收用）\n"
         "  --bench [N]    基准模式：生成 N 个 token 并打印 tok/s（默认 32）\n"
         "  --ab           NEON 开/关 logits 自检\n"
         "  -h, --help     本帮助\n",
@@ -294,6 +352,7 @@ int main(int argc, char **argv)
     int bench = -1;          /* >=0 表示基准模式 */
     int do_ab = 0;
     const char *one_shot = NULL;
+    const char *ids_file = NULL;
     int neon = -1;
 
     for (int i = 1; i < argc; i++) {
@@ -304,6 +363,7 @@ int main(int argc, char **argv)
         else if (strcmp(a, "--neon") == 0 && i + 1 < argc) neon = atoi(argv[++i]);
         else if (strcmp(a, "--max-new") == 0 && i + 1 < argc) max_new = atoi(argv[++i]);
         else if (strcmp(a, "--prompt") == 0 && i + 1 < argc) one_shot = argv[++i];
+        else if (strcmp(a, "--ids-file") == 0 && i + 1 < argc) ids_file = argv[++i];
         else if (strcmp(a, "--bench") == 0) {
             bench = 32;
             /* 只有紧跟着**数字**才当成 token 数；否则下一个参数是模型目录 */
@@ -337,6 +397,25 @@ int main(int argc, char **argv)
 
     if (do_ab) return run_ab(&s);
     if (bench >= 0) { print_banner(&s, feng_phone_threads()); return run_bench(&s, bench); }
+
+    if (ids_file) {
+        int *ids = (int *)xmalloc(sizeof(int) * (size_t)(ctx + 1));
+        const int n = ids ? load_ids_file(ids_file, ids, ctx + 1) : -1;
+        if (n <= 0) {
+            fprintf(stderr, "读不到 token ids：%s\n", ids_file);
+            free(ids);
+            return 2;
+        }
+        char out[4096];
+        int olen = 0;
+        double t_pre = 0, t_dec = 0;
+        const int gen = session_generate_ids(&s, ids, n, max_new, out, sizeof(out),
+                                             &olen, &t_pre, &t_dec);
+        printf("%s\n[%d tok ｜ prefill %.0f ms ｜ decode %.0f ms ｜ %.1f tok/s]\n",
+               out, gen, t_pre, t_dec, t_dec > 0 ? (double)gen * 1000.0 / t_dec : 0.0);
+        free(ids);
+        return gen > 0 ? 0 : 1;
+    }
 
     if (one_shot) {
         if (feng_tok_has_special(one_shot)) {

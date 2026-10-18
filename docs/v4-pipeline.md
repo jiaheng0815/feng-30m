@@ -173,6 +173,30 @@ python scripts\v3_6_sft_patch.py --init v4\retr_sft4\ctx32768\final `
 
 ---
 
+## 3d. 32k KV-QAT 试训（2026-10-18，负结果，不采用）
+
+```powershell
+python scripts\v3_7_kv_qat.py --init v4\patch_name_e5_lr5e-6 `
+    --data data\v4_daily.jsonl --mt data\v4_sft.jsonl --mt-n 400 --identity-n 150 `
+    --out v4\qat32k_trial --epochs 1 --lr 2e-6 --batch 8 --max-len 1024 `
+    --retr data\retr_v4 `
+    --retr-n "4096:128:2,8192:96:1,16384:64:1,32768:128:1" `
+    --retr-epochs 1 --retr-lr 3e-6 --save-every 50
+```
+
+- 6.55M 长文 token，KV-only（**不** `--wqat`），990 条短锚点
+- **4k/8k/16k 28/31/29**（基线 27/30/26），**32k 14/32**（基线 20/32）
+- 两套留出 18/30 + 16/30、探针 40/42、范围 10/10 不变
+- 32k 只有 80 个唯一窗口，被重复采样，64 步 loss 2.8 → 0.0006，是**过拟合**
+- **不导出、不发布**；证据 `eval/longctx32_qat32k.json`
+- 下一步不要直接加 epoch：先把 32k 唯一窗口扩到 256–512，或先做 prefill 优化
+
+> 手机端 prefill 是 O(n²)：4k 实测 **107 s → 58 s**（q2 注意力四核并行后），
+> 8k 210 s，32k 外推约 **1 h**。**QAT 不会改善 prefill**；32k 目前只能当容量，
+> 不能当可交互的长文上下文。再往上需要批量/分块 GEMM。
+
+---
+
 ## 4. 板端权重（Q4 + q2 KV 双 QAT）
 
 > ⚠️ **v4.0 的 QAT 没有过关卡 A，板端权重仍用 v3.19-embed。**

@@ -39,6 +39,11 @@
     针检索 103/128（32k 20/32，token 精确口径）、拒答 64/64 —— 修名字**没有伤到别处**。
     教训：补丁的强度和样本量要一起降（第一次 10 epoch / lr 1e-5 把留出第一套打掉 2 题）。
   - **检索数据的负样本必须带诱饵、与评估口径同分布**，否则拒答学不会（实测 4/64 vs 64/64）。
+  - **32k KV-QAT 试训（2026-10-18）是负结果，不采用**：从 `v4/patch_name_e5_lr5e-6`
+    做 KV-only QAT（6.55M token / 1 epoch / retr-lr 3e-6），4k/8k/16k 28/31/29（略升），
+    **32k 14/32（基线 20/32）**，总 102/128；短行为不变。32k 只有 80 个唯一窗口，
+    是过拟合。证据 `eval/longctx32_qat32k.json`。**不要再直接加 epoch**；先扩 32k
+    唯一窗口到 256–512，或先解决手机 prefill（4k 107s、32k 约 2h）。
   - **板端双 QAT 前三版里两版没过关卡 A，这一版板端沿用 v3.19-embed。**
     从最终 PC 权重复现：3 epoch / lr 6e-6（5,034 步）→ **24/27**，1 epoch / lr 4e-6
     （1,678 步）→ **23/27**；都低于 v3.19-embed 的 27/27，所以不替换。
@@ -302,6 +307,13 @@ g++ -std=c++23 -O2 pc/pc_kv_suite.cpp feng_llm.o -Icore -lm       # 驱动 + 链
 **NEON int8 路径是近似的**：裸模型 `pc_mt_suite` 在 P30 Pro 上是 mem12 9/12、seq 9/10；
 `FENG_PHONE_NEON=0` 重编后回到 12/12、10/10。产品路径先过记忆 tool，不受影响；
 需要与板端逐字对拍时用 NEON 关。
+
+**手机 32k 是容量，不是可交互长文**：`FENG_PHONE_MAX_CTX` 默认已放到 32768
+（q2 KV 154MB；APK 默认 32k、失败回退 2048）。prefill 是 O(n²)：P30 Pro 上
+4064 token 预填从 **107 秒降到 58 秒**（q2 注意力 K 按 token、V 按 8 维 block
+分给 4 核；`FENG_Q2_PAR_K/V=0` 可关），8k 210 秒，外推 32k 仍约 **1 小时**。
+长文验收用 `phone_chat --ids-file`（预 tokenized，绕过 4KB prompt 缓冲和 O(n²) BPE），
+不要用普通输入喂长文。再往上需要批量/分块 GEMM 摊销权重读取，QAT 解决不了 prefill。
 
 > Windows（MSYS2）上也能编手机引擎：`feng_phone.c` 有 `_WIN32` 分支，走"读进堆"
 > 回退（MSYS2 没有 `sys/mman.h`），pthread/信号量由 winpthreads 提供。

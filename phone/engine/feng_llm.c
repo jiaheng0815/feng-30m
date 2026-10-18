@@ -89,7 +89,75 @@ static void q2_lut_init(void)
     }
     g_q2_lut_ready = 1;
 }
-#endif
+
+#if FENG_PHONE_NEON
+/* q2 注意力的多线程分块：K 按上下文 token 切，V 按 8 维 block 切。
+ * 每个分块内部的运算顺序与标量路径完全一致，所以结果逐位不变；
+ * 只是把长上下文最重的 O(n) 内层循环分给 4 个核。 */
+#define Q2K_CHUNKS 32
+
+typedef struct {
+    const uint8_t *krow;
+    const uint16_t *ksrow;
+    int qb, nb, total;
+    const float *qh;
+    float *scores;
+    float scale;
+} q2k_ctx;
+
+static void q2k_worker(void *vp, int idx)
+{
+    q2k_ctx *c = (q2k_ctx *)vp;
+    const int t0 = (int)((long long)c->total * idx / Q2K_CHUNKS);
+    const int t1 = (int)((long long)c->total * (idx + 1) / Q2K_CHUNKS);
+    for (int t = t0; t < t1; t++) {
+        const uint8_t *kh = c->krow + (size_t)t * c->qb;
+        const uint16_t *ks = c->ksrow + (size_t)t * c->nb;
+        float s = 0.f;
+        for (int blk = 0; blk < c->nb; blk++) {
+            const float sk = f16_to_f32_local(ks[blk]);
+            const uint8_t *bb = kh + blk * 2;
+            int d = blk * 8;
+            for (int j = 0; j < 2; j++) {
+                const float *lu = g_q2_lut[bb[j]];
+                for (int k4 = 0; k4 < 4; k4++) {
+                    s += c->qh[d++] * lu[k4] * sk;
+                }
+            }
+        }
+        c->scores[t] = s * c->scale;
+    }
+}
+
+typedef struct {
+    const uint8_t *vrow;
+    const uint16_t *vsrow;
+    int qb, nb, total;
+    const float *scores;
+    float *vacc;
+} q2v_ctx;
+
+static void q2v_worker(void *vp, int blk)
+{
+    q2v_ctx *c = (q2v_ctx *)vp;
+    float acc[8];
+    for (int j = 0; j < 8; j++) acc[j] = 0.f;
+    for (int t = 0; t < c->total; t++) {
+        const float st = c->scores[t];
+        const float sv = f16_to_f32_local(c->vsrow[(size_t)t * c->nb + blk]);
+        const uint8_t *bb = c->vrow + (size_t)t * c->qb + blk * 2;
+        int j = 0;
+        for (int by = 0; by < 2; by++) {
+            const float *lu = g_q2_lut[bb[by]];
+            for (int k4 = 0; k4 < 4; k4++) {
+                acc[j++] += (st * lu[k4]) * sv;
+            }
+        }
+    }
+    for (int j = 0; j < 8; j++) c->vacc[blk * 8 + j] = acc[j];
+}
+#endif  /* FENG_PHONE_NEON */
+#endif  /* FENG_Q2_LUT */
 /* RoPE inverse frequencies, computed once (powf per token per head is expensive) */
 static float g_rope_inv[128];
 static int g_rope_ready;
@@ -403,6 +471,23 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
 #if FENG_ATTN_PROF
             const unsigned pc0 = (unsigned)esp_cpu_get_cycle_count();
 #endif
+#ifndef FENG_Q2_PAR_K
+#define FENG_Q2_PAR_K 1
+#endif
+#ifndef FENG_Q2_PAR_V
+#define FENG_Q2_PAR_V 1
+#endif
+#if FENG_PHONE_NEON && FENG_Q2_LUT && FENG_Q2_PAR_K
+            if (pos >= 256 && feng_phone_threads() > 1) {
+                /* 长上下文：把 t=0..pos 切成 32 段，4 个核并行算 K score。
+                 * 每段的 score 累加顺序与标量完全一致 -> 数值逐位不变。 */
+                q2k_ctx c = { krow, ksrow, qb, nb, pos + 1, qh, scores, scale };
+                feng_phone_parallel_for(Q2K_CHUNKS, q2k_worker, &c);
+                for (int t = 0; t <= pos; t++)
+                    if (scores[t] > maxs) maxs = scores[t];
+            } else
+#endif
+            {
 #if FENG_Q2_LUT && FENG_Q2_PAIR
             /* 一次算 2 个上下文 token：两条独立的累加链填满 FPU 流水线，
              * qh 只加载一次、相邻 token 的 16B 数据同处一条 32B 缓存行。
@@ -490,6 +575,7 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
                 if (s > maxs) maxs = s;
             }
 #endif
+            }   /* FENG_PHONE_NEON 分支结束 */
 #if FENG_ATTN_PROF
             {
                 const unsigned pc1 = (unsigned)esp_cpu_get_cycle_count();
@@ -561,6 +647,14 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
                 const uint8_t *vrow = (const uint8_t *)kv->v_cache
                                       + ((size_t)l * nh + hh) * kv->ctx * qb;
                 const uint16_t *vsrow = kv->v_scale + ((size_t)l * nh + hh) * kv->ctx * nb;
+#if FENG_PHONE_NEON && FENG_Q2_LUT && FENG_Q2_PAR_V
+                if (pos >= 256 && feng_phone_threads() > 1) {
+                    /* V 按 8 维 block 切给多个核；每个 d 对 t 的求和顺序不变。 */
+                    q2v_ctx c = { vrow, vsrow, qb, nb, pos + 1, scores, vacc };
+                    feng_phone_parallel_for(nb, q2v_worker, &c);
+                } else
+#endif
+                {
 #if FENG_Q2_LUT && FENG_Q2_PAIR
                 {
                     int t = 0;
@@ -649,6 +743,7 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
 #endif
                 }
 #endif
+                }   /* FENG_PHONE_NEON 分支结束 */
                 for (int d = 0; d < hd; d++) attn[hh * hd + d] = vacc[d] * inv;
 #if FENG_ATTN_PROF
                 g_prof_cycles[2] += (unsigned long long)((unsigned)esp_cpu_get_cycle_count() - pv0);

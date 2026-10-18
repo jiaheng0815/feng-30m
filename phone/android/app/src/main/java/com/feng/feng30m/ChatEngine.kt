@@ -18,7 +18,10 @@ class ChatEngine(private val context: Context) {
     val isReady: Boolean get() = handle != 0L
 
     companion object {
-        const val CTX = 2048
+        /** 默认 32k 容量（q2 KV 154 MB）；低内存设备由 open() 自动回退。 */
+        const val CTX = 32768
+        /** 32k 分配失败时的保守回退（板端 QAT 工作点）。 */
+        const val FALLBACK_CTX = 2048
         const val MAX_NEW = 96
 
         /** 引擎默认线程数：min(4, 可用核数)，与 CLI 口径一致 */
@@ -91,6 +94,16 @@ class ChatEngine(private val context: Context) {
             ctx,
             threads
         )
+        // 32k 需要 154 MB 连续 KV；低内存/后台压力大时可能失败。
+        // 回退到 2048 保证 App 仍可用，状态栏会显示实际 ctx。
+        if (handle == 0L && ctx > FALLBACK_CTX) {
+            handle = FengNative.nativeInit(
+                modelFile("model.bin").absolutePath,
+                modelFile("tokenizer.bin").absolutePath,
+                FALLBACK_CTX,
+                threads
+            )
+        }
         return handle != 0L
     }
 

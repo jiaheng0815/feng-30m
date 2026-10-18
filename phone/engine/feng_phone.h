@@ -13,10 +13,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* 上下文上限（编译期）。板端 MAX_CTX=2048（q2），手机内存宽裕，默认放到 4096；
- * feng_llm.c 里的 g_scores 会按这个值放大。改大不会改数值，只多吃 .bss。 */
+/* 上下文上限（编译期）。板端 MAX_CTX=2048（q2）；手机默认放到 32768，
+ * 与底座模型的训练上限一致。注意这是**容量上限，不是默认工作点**：
+ *   - q2 KV @32768 = 154 MB（@2048 只要 9.62 MB），初始化时才分配；
+ *   - 板端 v3.19-embed 的 QAT 工作点是 2048，32k 属于偏离训练分布；
+ *   - CLI 仍默认 --ctx 2048；APK 默认 32768，失败时回退 2048。
+ * feng_llm.c 里的 g_scores 会按这个值放大（32768 个 float ≈128 KB .bss）。 */
 #ifndef FENG_PHONE_MAX_CTX
-#define FENG_PHONE_MAX_CTX 4096
+#define FENG_PHONE_MAX_CTX 32768
 #endif
 
 /* 线程数硬上限（worker 线程 + 调用者）。 */

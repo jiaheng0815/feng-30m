@@ -35,14 +35,26 @@ REPL 里：`\reset` 清空上下文与记忆、`\mem` 看记忆、`\stats` 看�
 
 | 参数 | 说明 |
 |---|---|
-| `--ctx N` | 上下文长度，默认 2048（上限 = 编译期 `FENG_PHONE_MAX_CTX`，默认 4096） |
+| `--ctx N` | 上下文长度，默认 2048（上限 = 编译期 `FENG_PHONE_MAX_CTX`，默认 **32768**；32k 的 q2 KV = 154 MB） |
 | `--threads N` | 线程数，默认 `min(4, 在线 CPU 数)` |
 | `--neon 0\|1` | 强制 NEON 内核开关（A/B 用） |
 | `--bench [N]` | 基准：固定问题生成 N 个 token 并打印 tok/s |
 | `--ab` | 自检：NEON 开/关各跑一遍，比对 logits 与 argmax |
 | `--prompt TEXT` | 问一句就退出（脚本化用） |
+| `--ids-file F` | 直接喂预 tokenized 的 id 文件（长文 32k 验收；绕过 4KB 输入与 BPE） |
 
 环境变量：`FENG_PHONE_THREADS`、`FENG_PHONE_NEON`（运行时覆盖编译期默认）。
+
+32k 长文验收（预 tokenized，绕过 4KB 输入缓冲）：
+
+```bash
+# PC 上生成 ids（4k/8k/16k/32k，各 8 正 + 2 负）
+python scripts/make_longctx_ids.py --ctx 4096,8192,16384,32768 --n 8 --neg-n 2
+adb push eval/longctx_ids /data/local/tmp/feng/ids
+# 手机上跑（4k 约 2 分钟/题；32k 约 2 小时/题）
+adb shell "cd /data/local/tmp/feng && ./phone_chat32k --ctx 4096 \
+  --ids-file ids/ctx4096_000.ids ."
+```
 
 ---
 
@@ -63,15 +75,19 @@ REPL 里：`\reset` 清空上下文与记忆、`\mem` 看记忆、`\stats` 看�
 **注意**：模型文件不入库（仓库约定：主仓库只放代码与文档），所以 `phone/android/app/src/main/assets/` 里平时是空的，
 必须由构建脚本填充。
 
-**体积（估算，未实测）**：模型 16.1 MB（15.66 + 0.42）已经是硬底，加上原生库
-（`check_android_native.sh` 实测 `libfeng.so` 80.7 KB）与 Compose 运行时，APK 预计
-落在 20 MB 上下。没有实机构建环境，这个数字以你构建出来的为准。
+**体积（P30 Pro 实测）**：debug APK **31.06 MB**（2026-10-18）。模型 16.1 MB
+（15.66 + 0.42）是硬底，其余是 Compose 运行时与原生库。
+
+**上下文默认值（2026-10-18 起）**：APK 默认 **32k**（q2 KV 154 MB）；
+初始化失败会自动回退 2048。CLI 仍默认 2048，需要 32k 时显式
+`--ctx 32768`。32k 的代价与质量注意见 §7。
 
 ---
 
 ## 2.5 fp16 权重与 fp16 KV（可选）
 
-默认是 **Q4 权重 + q2/block8 KV**（与板端一致，352 tok/s，KV 9.62 MB）。
+CLI 默认是 **Q4 权重 + q2/block8 KV @2048**（与板端一致，352 tok/s，KV 9.62 MB）；
+APK 默认 32k（KV 154 MB）。
 想换 fp16 精度：
 
 ```bash
@@ -114,6 +130,9 @@ python board/tools/export_model.py --model <HF 权重> --out <目录> --weights-
 | 32 题矩阵（q2/block8，2048 ctx） | **27/27 + 4/4 长文召回** | `logs/phone_4t_kv.txt` |
 | 算术子集（tool 口径） | **21/21** | `logs/phone_arith.txt` |
 | 多轮记忆（**裸模型**） | **mem12 9/12（NEON 开，默认）**；关 NEON 后 **12/12** | 2026-10-18 P30 Pro 复测，见下 |
+| 4k prefill（`--ids-file`，4064 tok） | **58 s**（q2 注意力四核并行；串行 107 s） | 2026-10-18 P30 Pro |
+| 8k prefill（8160 tok） | **210 s** | 同上 |
+| 32k prefill（外推） | **约 1 h** | 4k/8k 的 O(n²) 外推 |
 | 与板端原始引擎输出对比 | **逐字节相同**（单线程与 4 线程都是） | `logs/phone_base_kv.txt` vs `logs/phone_1t_kv.txt`、`logs/phone_4t_kv.txt` |
 | 与 gcc 版对比：**clang 构建**（Termux 用的就是 clang） | 32 题 27/27，输出**逐字节相同** | `logs/phone_clang_kv.txt` |
 | NEON 内核 vs 标量 A8 路径 | **max\|diff\| = 0.000e+00**（逐位一致） | `logs/phone_a64_ab_a8.txt` |
@@ -262,19 +281,27 @@ phone/
 1. **真机性能已测**（2026-10-18，P30 Pro / Kirin 980）：32 题矩阵 **27/27 + 4/4**、
    算术 **21/21**、短提示 decode 约 **190–330 tok/s**（受系统负载影响很大）。
    历史完整线程扫描见 `logs/phone_bench_p30pro.txt`。
-2. **上下文默认 2048**，与板端 QAT 训练的工作点一致。`--ctx` 可以放大到编译期上限
-   （默认 4096）；要 32k 得用 `-DFENG_PHONE_MAX_CTX=32768` 重编。
-   已在 P30 Pro 上编出 32k 版并跑通：KV **154.00 MB**，短提示 decode **331 tok/s**。
-   但这份 v3.19-embed 权重是在 2048 上做的 QAT，32k 属于**偏离训练工作点**；
-   填充到 ~2600 token 时只有 32–43 tok/s，真填满 32k 约 2–3 tok/s。
-   所以默认不把 32k 当卖点——**能跑，不等于好用**。
+2. **上下文**：APK 默认 **32768**（P30 Pro 实测 `ctx 0/32768 ｜ KV 154.00 MB`），
+   分配失败自动回退 2048；CLI 默认 2048，`--ctx 32768` 可开。
+   32k 的代价：q2 KV **154 MB**（2048 只要 9.62 MB）、短提示 decode 约 331 tok/s，
+   但填到 ~2600 token 只剩 32–43 tok/s，真填满 32k 约 2–3 tok/s。
+   更关键的是**prefill 是 O(n²)**。P30 Pro 上 4064 token 的预填实测：
+   **优化前 107 秒；q2 注意力按 token/维度分给 4 核后 58 秒**（约 1.8–2.5×，
+   热态波动大），8k 为 210 秒；按平方外推 32k 仍约 **1 小时**。
+   所以 32k **能分配、能跑，但不是可交互的长文上下文**；要真正用 32k，
+   下一步是批量/分块 GEMM（一次 prefill 多个 token，摊销权重读取），QAT 解决不了这个。
+   A/B 开关：`-DFENG_Q2_PAR_K=0` / `-DFENG_Q2_PAR_V=0`（默认都开）。
+   线程数保持默认 **4**：P30 Pro 上 8 线程实测 157 s，反而比 4 线程的 58 s 慢
+   （大核调度/线程池争用）。
+   质量上 v3.19-embed 的 QAT 工作点是 2048，32k 也偏离训练分布；
+   需要高质量 32k 请用 PC fp32 / HF 路径。
 3. **要求 arm64 + ARMv8.2 dotprod**（Cortex-A55/A76 及以后的核）。没有 dotprod 的老设备
    能跑，但只能走标量路径，速度会明显下降。
 4. **APK 只出 arm64-v8a**，32 位设备不打包。
 5. **引擎单实例、非重入**：CLI 与 App 都只维护一个会话，并发调用会被锁串行化。
 6. **APK 已在 P30 Pro 上构建并安装验证**（2026-10-18，JDK 21 + AGP 8.7 + NDK 27）。
-   构建脚本仍要求 JDK 17~21（系统的 JDK 26 不行）；本轮实测 APK 30.97 MB，
-   启动、中文生成、`59+1` tool 都正常。
+   构建脚本仍要求 JDK 17~21（系统的 JDK 26 不行）；本轮实测 APK 31.06 MB，
+   32k 初始化、中文生成、`59+1` tool 都正常。
 7. **还没做的进一步优化**（按预计收益排序，都不是必需的）：
    - **注意力按 head 并行**：现在 `feng_llm.c` 的 head 循环是串行的（7 个头顺序跑），
      长上下文时它是剩下的主要串行部分。按 head 并行是**位精确**的（每个 head 内部的

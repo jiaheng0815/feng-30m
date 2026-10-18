@@ -128,6 +128,8 @@ def main() -> None:
                     help="每个长度的窗口数与 batch，如 4096:200:2,8192:60:1（省略 batch 默认 4096→2、其他→1）")
     ap.add_argument("--retr-epochs", type=float, default=1.0)
     ap.add_argument("--retr-lr", type=float, default=1e-5)
+    ap.add_argument("--save-every", type=int, default=0,
+                    help="每 N 个训练步保存一次 <out>/rolling/stepN（0=只在结束时保存）")
     ap.add_argument("--seed", type=int, default=20261004)
     args = ap.parse_args()
 
@@ -181,6 +183,19 @@ def main() -> None:
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(0.9, 0.95), eps=1e-8,
                             weight_decay=0.05, fused=True)
 
+    dest = Path(args.out)
+    dest.mkdir(parents=True, exist_ok=True)
+    ckpt_step = 0
+    def save_rolling(step: int) -> None:
+        """训练中途落盘；32k 长跑 OOM/断点后不用从头再来。"""
+        d = dest / "rolling" / f"step{step}"
+        d.mkdir(parents=True, exist_ok=True)
+        model.config.use_cache = True
+        model.save_pretrained(d, safe_serialization=True)
+        tok.save_pretrained(d)
+        model.config.use_cache = False
+        log(f"saved rolling -> {d}")
+
     steps_per_epoch = max(1, len(samples) // args.batch)
     total = max(1, int(steps_per_epoch * args.epochs))
     t0, loss_last = time.time(), None
@@ -213,7 +228,10 @@ def main() -> None:
         loss.backward()
         gn = float(torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0))
         opt.step()
+        ckpt_step += 1
         loss_last = float(loss.detach())
+        if args.save_every > 0 and ckpt_step % args.save_every == 0:
+            save_rolling(ckpt_step)
         if step % 25 == 0 or step == total:
             log(f"step {step}/{total} loss {loss_last:.4f} lr {lr:.2e} gnorm {gn:.2f} "
                 f"{(time.time() - t0) / 60:.1f}min")
@@ -257,12 +275,13 @@ def main() -> None:
                     ls += float(loss_all.detach())
                 gn = float(torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0))
                 opt.step()
+                ckpt_step += 1
+                if args.save_every > 0 and ckpt_step % args.save_every == 0:
+                    save_rolling(ckpt_step)
                 if step % 10 == 0 or step == steps:
                     log(f"[longQAT{L}] step {step}/{steps} loss {ls/accum:.4f} lr {lr:.2e} "
                         f"gnorm {gn:.2f} {(time.time()-t0)/60:.1f}min")
 
-    dest = Path(args.out)
-    dest.mkdir(parents=True, exist_ok=True)
     model.config.use_cache = True
     model.save_pretrained(dest, safe_serialization=True)
     tok.save_pretrained(dest)

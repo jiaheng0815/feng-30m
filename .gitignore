@@ -88,6 +88,11 @@ phone/cli/build/
 phone/cli/build-*/
 # 真机交叉编译产物（NDK / Termux 变体：build_android、build_android_32k…）
 phone/cli/build_android*/
+# 长文验收的预 tokenized id 文件（由 scripts/make_longctx_ids.py 生成）
+eval/longctx_ids/
+# 一次性训练试验（权重/checkpoint 不入库；结论写进 CHANGELOG/eval）
+v4/qat32k_trial/
+v4/qat32k_smoke/
 phone/android/app/build/
 phone/android/build/
 phone/android/.gradle/
