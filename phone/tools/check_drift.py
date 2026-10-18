@@ -30,8 +30,14 @@ FORKED = {"feng_smp.c", "feng_quant.c", "feng_llm.c", "feng.h"}
 
 
 def sha256(p: Path) -> str:
+    """按 LF 归一化后取哈希。
+
+    Windows 工作区（core.autocrlf）是 CRLF，CI/干净 clone 是 LF；
+    直接哈希原始字节会让同一份源码在两个平台得到不同校验值，
+    CI 的漂移检查就会误报。SOURCE 基准本身也用这个函数重建。
+    """
     h = hashlib.sha256()
-    h.update(p.read_bytes())
+    h.update(p.read_bytes().replace(b"\r\n", b"\n"))
     return h.hexdigest()
 
 
