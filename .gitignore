@@ -93,6 +93,8 @@ eval/longctx_ids/
 # 一次性训练试验（权重/checkpoint 不入库；结论写进 CHANGELOG/eval）
 v4/qat32k_trial/
 v4/qat32k_smoke/
+v4/base_v319b6_deq/
+v4/4.0-20261018A/
 phone/android/app/build/
 phone/android/build/
 phone/android/.gradle/

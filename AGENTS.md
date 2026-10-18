@@ -44,6 +44,11 @@
     **32k 14/32（基线 20/32）**，总 102/128；短行为不变。32k 只有 80 个唯一窗口，
     是过拟合。证据 `eval/longctx32_qat32k.json`。**不要再直接加 epoch**；先扩 32k
     唯一窗口到 256–512，或先解决手机 prefill（4k 107s、32k 约 2h）。
+  - **4.0-20261018A（后训练实验，不发布）**：`board/model_export_v3_19b6` 反量化成 HF
+    （`tools/dequant_model_bin.py`）后，从 34,143 条教师数据抽 1 万条 + 身份/日常补丁
+    （15,164 条）做全参 SFT 1 epoch / lr 1e-5。留出 **19/30 + 16/30**、探针 41/42、
+    范围 10/10；但长文 4k/8k/16k/32k = 30/30/25/**1**、拒答 34/64，Q4 导出 27/27 + **3/4**。
+    **短对话变好、长文塌方，不替换发布权重**；产物 `v4/4.0-20261018A/`。
   - **板端双 QAT 前三版里两版没过关卡 A，这一版板端沿用 v3.19-embed。**
     从最终 PC 权重复现：3 epoch / lr 6e-6（5,034 步）→ **24/27**，1 epoch / lr 4e-6
     （1,678 步）→ **23/27**；都低于 v3.19-embed 的 27/27，所以不替换。
@@ -187,6 +192,7 @@
 | `tools/gen_compile_commands.py` | 生成仓库根的 `compile_commands.json`（编辑器代码提示数据），见「编辑器配置与代码提示」一节 |
 | `tools/bench_teacher_real.py` | 用**真实提示词**测教师服务吞吐（4 线程 / max_tokens 200，与生产同口径）。`scripts/bench_teacher_conc.py` 用的是 8 条五个字的短问题，测出来是纯 decode 上限（59.3 tok/s），**不能拿来跟生产日志里的 37.8 比** |
 | `tools/publish_all.py` | 一键发布：代码推 GitHub+Gitee、模型传 Hugging Face+ModelScope。**已 gitignore**（内嵌魔搭令牌），换机器要自己重建 |
+| `tools/dequant_model_bin.py` | 把板端 `model.bin`（Q4/fp16）反量化回 HF 目录，供继续训练/评测；Q4 舍入误差保留，不改导出本身 |
 
 > **历史目录已删除（2026-10-15）**：v1（原 `student/`）、v2、v3.19 与全部 v3 历史版本
 > 目录（原 `archive/`，52 个）从工作区移除，仓库只保留 v4 一条线；训练起点收进 `v4/base/`。
