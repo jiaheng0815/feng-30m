@@ -1,5 +1,10 @@
 # AGENTS.md — feng-30m 项目工作指南
 
+> **当前在 `ternary` 实验分支**：只加了 PC 端三值 PTQ/QAT 脚本与实验记录，
+> **没有改** `core/`、`board/`、`phone/engine/` 的推理路径，也不改变发布口径。
+> 结论见 [`docs/ternary.md`](docs/ternary.md)：30M 规模上 PTQ 崩、SFT-only QAT
+> 也远未恢复，暂不做板端 2-bit 内核。
+
 本文件供在此仓库工作的 AI 编码代理（Codex 等）阅读。**本项目的文档、注释、提交说明与回复统一用中文。**
 
 ## 1. 项目是什么

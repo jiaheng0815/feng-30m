@@ -103,6 +103,8 @@ v4/4.0-20261018C/
 v4/4.0-20261018D/
 # 已删除的 moe 实验分支留下的本机产物
 v4/moe_*/
+# ternary 分支的三值实验产物
+v4/ternary_*/
 phone/android/app/build/
 phone/android/build/
 phone/android/.gradle/

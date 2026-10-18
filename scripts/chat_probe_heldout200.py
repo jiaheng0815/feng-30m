@@ -258,9 +258,11 @@ def main() -> None:
     ap.add_argument("--out", default="")
     ap.add_argument("--max-new", type=int, default=48)
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--ternary", action="store_true",
+                    help="按 ternary_qat 的 block64/group64 包装 Linear（实验）")
     args = ap.parse_args()
 
-    from transformers import AutoTokenizer, Qwen3ForCausalLM
+    from transformers import AutoTokenizer, AutoModelForCausalLM
     tok = AutoTokenizer.from_pretrained(args.model)
     if not getattr(tok, "chat_template", None):
         tok.chat_template = (
@@ -268,8 +270,13 @@ def main() -> None:
             r"{{- '<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>\n' }}"
             r"{%- endfor %}"
             r"{%- if add_generation_prompt %}{{- '<|im_start|>assistant\n' }}{%- endif %}")
-    model = Qwen3ForCausalLM.from_pretrained(args.model, dtype=torch.bfloat16,
-                                             attn_implementation="sdpa").to("cuda").eval()
+    dtype = torch.float32 if args.ternary else torch.bfloat16
+    model = AutoModelForCausalLM.from_pretrained(args.model, dtype=dtype,
+                                                 attn_implementation="sdpa").to("cuda").eval()
+    if args.ternary:
+        from ternary_qat import replace_linears
+        replace_linears(model, 64, 64, 20261018, True, [])
+        model.eval()
     cases = CASES[:args.limit] if args.limit > 0 else CASES
     rows, ok = [], 0
     for kind, q, expect in cases:
