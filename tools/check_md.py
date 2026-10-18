@@ -46,6 +46,9 @@ LOCAL_PREFIXES = ("archive/", "v2/", "student/", "v3_", "v3/", "data/", "v4/sft/
                   # ⚠️ 新增阶段目录后记得加进来，否则本地（目录在）过、CI（干净 clone）炸。
                   "v4/sft_smoke/", "v4/sft_pc/", "v4/sft_pc2/", "v4/qat_board/",
                   "v4/retr_sft/", "v4/retr_sft2/",
+                  # 后训练/反量化产物（权重 gitignore，干净 clone 上目录不存在）
+                  "v4/patch_name", "v4/4.0-", "v4/base_v319b6_deq/",
+                  "v4/qat32k", "v4/retr_sft4/",
                   "board/model_export_", "logs/", "scripts/local_paths.json",
                   # `esp32/` 是**模型平台仓库里的子目录**（HF / 魔搭的 esp32/model.bin），
                   # 不是本仓库的路径。MODEL_CARD.md 会反复引用它，所以按"允许缺失"处理。
