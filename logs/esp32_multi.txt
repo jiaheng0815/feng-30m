@@ -75,30 +75,30 @@ I (771) spi_flash: detected chip: mxic (opi)
 I (775) spi_flash: flash io: opi_dtr
 I (778) sleep_gpio: Configure to isolate all GPIO pins in sleep state
 I (785) sleep_gpio: Enable automatic switching of GPIO sleep configuration
-I (791) main_task: Started on CPU0
-I (794) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
-I (802) main_task: Calling app_main()
-I (805) feng: [mem] app_main    internal  230703 B | psram 16590580 B (largest int 163840)
-I (813) feng: [mem] uart        internal  230579 B | psram 16585100 B (largest int 163840)
-I (813) feng: feng-30m on ESP32-S3 (2 cores), flash 32MB / PSRAM 16MB
-I (814) feng: model mapped at 0x3d000000 (15296 KB)
-I (814) feng: [mem] mmap        internal  229947 B | psram 16585100 B (largest int 163840)
-I (958) feng: mmap stream read: 15296 KB in 144 ms -> 108.3 MB/s (checksum 33241264)
-I (961) feng: [mem] model       internal  229727 B | psram 16585100 B (largest int 163840)
-I (961) feng: model: 11 layers, hidden 448, 7 heads x 64, ffn 896, vocab 16384, rope 1000000
-I (2082) feng: tokenizer: vocab 16384, merges 16124
-I (2082) feng: [mem] tokenizer   internal  229639 B | psram 16015212 B (largest int 163840)
-I (2082) feng: tokenizer self-test: 1 ids -> 5331 
-I (2082) feng: tokenizer decode round-trip ok=1 (6 bytes)
-I (2084) feng: KV cache: q2/block8, ctx 2048, 9.62 MB
-I (2084) feng: PSRAM free after setup: 5568 KB
-I (2084) feng: [mem] kv/ws       internal  220599 B | psram  5701692 B (largest int 163840)
-I (2084) feng_smp: heap before workers: internal 220599 B (largest 163840), psram 5701692 B
-I (2084) feng_smp: GEMV workers up on core 0 + core 1
-I (2352) feng_smp: par n_out=896: part0 core0 rows[0,448) 6652us | part1 core1 rows[448,896) 6662us
-I (2359) feng_smp: par n_out=896: part0 core0 rows[0,448) 6650us | part1 core1 rows[448,896) 6660us
-I (2366) feng_smp: par n_out=896: part0 core0 rows[0,448) 6679us | part1 core1 rows[448,896) 6658us
-I (2480) feng: gemv 896x448: 1-core 13093 us (16 MB/s) | 2-core 6699 us (32 MB/s) | speedup 1.95x
+I (792) main_task: Started on CPU0
+I (795) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (803) main_task: Calling app_main()
+I (806) feng: [mem] app_main    internal  230703 B | psram 16590580 B (largest int 163840)
+I (814) feng: [mem] uart        internal  230579 B | psram 16585100 B (largest int 163840)
+I (814) feng: feng-30m on ESP32-S3 (2 cores), flash 32MB / PSRAM 16MB
+I (815) feng: model mapped at 0x3d000000 (15296 KB)
+I (815) feng: [mem] mmap        internal  229947 B | psram 16585100 B (largest int 163840)
+I (959) feng: mmap stream read: 15296 KB in 144 ms -> 108.3 MB/s (checksum 33241712)
+I (962) feng: [mem] model       internal  229727 B | psram 16585100 B (largest int 163840)
+I (962) feng: model: 11 layers, hidden 448, 7 heads x 64, ffn 896, vocab 16384, rope 1000000
+I (2083) feng: tokenizer: vocab 16384, merges 16124
+I (2083) feng: [mem] tokenizer   internal  229639 B | psram 16015212 B (largest int 163840)
+I (2083) feng: tokenizer self-test: 1 ids -> 5331 
+I (2083) feng: tokenizer decode round-trip ok=1 (6 bytes)
+I (2085) feng: KV cache: q2/block8, ctx 2048, 9.62 MB
+I (2085) feng: PSRAM free after setup: 5568 KB
+I (2085) feng: [mem] kv/ws       internal  220599 B | psram  5701692 B (largest int 163840)
+I (2085) feng_smp: heap before workers: internal 220599 B (largest 163840), psram 5701692 B
+I (2085) feng_smp: GEMV workers up on core 0 + core 1
+I (2353) feng_smp: par n_out=896: part0 core0 rows[0,448) 6652us | part1 core1 rows[448,896) 6663us
+I (2360) feng_smp: par n_out=896: part0 core0 rows[0,448) 6651us | part1 core1 rows[448,896) 6661us
+I (2367) feng_smp: par n_out=896: part0 core0 rows[0,448) 6678us | part1 core1 rows[448,896) 6657us
+I (2481) feng: gemv 896x448: 1-core 13093 us (16 MB/s) | 2-core 6699 us (32 MB/s) | speedup 1.95x
 
 === feng-30m on ESP32-S3 (serial chat) ===
 one sentence per line; the reply streams between << and >>END
@@ -118,13 +118,13 @@ you> [ 1] OK        9.4s  Q: 你好
      A: 中国的首都是北京。
 [ 6] OK        0.5s  Q: 1+1等于几？
      A: 1 加 1 等于 2。
-[ 7] OK       13.0s  Q: 把'今天天气很好'翻译成英文
+[ 7] OK       12.9s  Q: 把'今天天气很好'翻译成英文
      A: The weather is nice today.
 [ 8] OK       12.5s  Q: 什么是人工智能？
      A: 人工智能是让机器学会完成需要动脑的任务的技术。
 [ 9] OK       14.5s  Q: 推荐一本好书
      A: 可以读读《小王子》，故事简单又耐人寻味。
-[10] OK       11.9s  Q: 谢谢，再见
-     A: 不客气，能帮上忙就好。
+[10] OK        8.1s  Q: 谢谢，再见
+     A: 不客气。
 
 === 10 成功 / 0 失败 (共 10 轮) ===
