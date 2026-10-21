@@ -11,9 +11,11 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 ROOT = Path(__file__).resolve().parents[1]
 TICK = chr(96)
-# v4.0 起全部说明文档归到 docs/：根目录只留 README.md（仓库首页）与 AGENTS.md（代理约定）。
+# v4.0 起全部说明文档归到 docs/：根目录只留 README.md（英文首页）、
+# README_CN.md（中文首页）与 AGENTS.md（代理约定）。
 # 模型卡跟着模型目录走（archive/v1/*/MODEL_CARD.md 等）。
-DOCS = [ROOT / "README.md", ROOT / "AGENTS.md", ROOT / "phone" / "README.md"]
+DOCS = [ROOT / "README.md", ROOT / "README_CN.md", ROOT / "AGENTS.md",
+        ROOT / "phone" / "README.md"]
 DOCS += sorted((ROOT / "docs").glob("*.md"))
 # 这几个 README 也是对外文档，之前漏检导致 board/README.md 的目录树长期过期。
 for extra in (ROOT / "board" / "README.md", ROOT / "eval" / "README.md",

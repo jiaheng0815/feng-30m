@@ -205,12 +205,14 @@
 
 ## 3. 目录地图
 
-> **v4.0 起根目录只留 `README.md`（仓库首页）与 `AGENTS.md`（本文件）**，
+> **v4.0 起根目录只留 `README.md`（仓库首页，英文）、`README_CN.md`（中文版）与 `AGENTS.md`（本文件）**，
 > 其余说明文档全部归到 `docs/`。历史版本目录一律进 `archive/`。
+> 两个 README **只有语言不同**，改一个必须同步改另一个（结构和数字必须一致）。
 
 | 路径 | 内容 |
 |---|---|
-| `README.md` | 仓库首页：是什么、跑分、快速上手 |
+| `README.md` | 仓库首页（英文）：是什么、跑分、快速上手 |
+| `README_CN.md` | 仓库首页中文版，与 `README.md` 内容一一对应 |
 | `AGENTS.md` | 本文件：工作约定、硬性约束、命令速查 |
 | `docs/` | **全部说明文档**（索引见 `docs/README.md`）：`USAGE.md`（跑起来）、`CHANGELOG.md`（版本演进，失败尝试也保留）、`COMPARISON.md`（四代横向对比）、`DELIVERY.md`（交付与验收口径）、`esp32-firmware.md`（固件工程） |
 | `v4/` | **唯一的模型线**。`v4/base/` = 4.0 SFT 起点（HF 格式：`model.safetensors` + `config.json` + 自带 `tokenizer.json`/`tokenizer_config.json`/`chat_template.jinja`，来自 v3.19 pc4 的 Release）。训练输出按阶段建子目录（`v4/sft/`、`v4/qat/`…），产物结构与 v2/v3 时代一致：`<阶段>/final/` + `summary.json` + `train_log.jsonl` |
