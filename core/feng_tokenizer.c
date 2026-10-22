@@ -37,9 +37,11 @@ static void *tok_calloc(size_t n)
     if (!p) p = heap_caps_calloc(1, n, MALLOC_CAP_8BIT);
     return p;
 }
+static void tok_free(void *p) { heap_caps_free(p); }
 #else
 static void *tok_alloc(size_t n) { return malloc(n); }
 static void *tok_calloc(size_t n) { return calloc(1, n); }
+static void tok_free(void *p) { free(p); }
 #endif
 
 static inline int imin(int a, int b) { return a < b ? a : b; }
@@ -261,42 +263,45 @@ int feng_tok_load(feng_tok_t *t, const void *data, size_t size)
     const uint8_t *p = (const uint8_t *)data;
     size_t off = 0;
     uint32_t vocab = 0, n_merges = 0;
+    if (t == NULL) return -1;
+    memset(t, 0, sizeof(*t));          /* 失败路径要靠它判断哪些指针已经分配 */
+    if (data == NULL || size < 8) return -1;
     tok_build_uni_table();
-    memset(t, 0, sizeof(*t));
-    if (size < 8) return -1;
     memcpy(&vocab, p, 4);
     memcpy(&n_merges, p + 4, 4);
     /* 上限校验：vocab 要放进 int16 的 byte_to_token；n_merges 决定分配大小。
-     * 旧实现对任意 u32 直接 calloc，32 位平台上乘 sizeof 还会回绕。 */
-    if (vocab < 256u || vocab > 65535u) return -1;
+     * 旧实现对任意 u32 直接 calloc，32 位平台上乘 sizeof 还会回绕；
+     * 而 vocab 允许到 65535 时 (int16_t)id 会变负数，加载必然失败（-6），
+     * 所以这里直接把上限定在 INT16_MAX，报错更早也更明确。 */
+    if (vocab < 256u || vocab > 32767u) return -1;
     if (n_merges == 0u || n_merges > 4000000u) return -1;
     p += 8; off = 8;
     t->vocab_size = (int)vocab;
     t->tokens = (char **)tok_calloc((size_t)vocab * sizeof(char *));
     t->token_len = (uint16_t *)tok_calloc((size_t)vocab * sizeof(uint16_t));
     t->vocab_order = (int *)tok_calloc((size_t)vocab * sizeof(int));
-    if (!t->tokens || !t->token_len || !t->vocab_order) return -2;
+    if (!t->tokens || !t->token_len || !t->vocab_order) goto oom;
     /* all token strings in one contiguous block */
     size_t strbytes = 0;
     {
         size_t o = off;
         for (uint32_t i = 0; i < vocab; i++) {
             uint16_t len;
-            if (o + 2 > size) return -3;
+            if (o + 2 > size) goto truncated;
             memcpy(&len, p + (o - off), 2); o += 2;
-            if (o + len + 1 > size) return -3;
+            if (o + len > size) goto truncated;
             strbytes += (size_t)len + 1;
             o += len;
         }
     }
     char *strblob = (char *)tok_alloc(strbytes);
-    if (!strblob) return -2;
+    if (!strblob) goto oom;
     t->token_blob = strblob;
     for (uint32_t i = 0; i < vocab; i++) {
         uint16_t len;
-        if (off + 2 > size) return -3;
+        if (off + 2 > size) goto truncated;
         memcpy(&len, p, 2); p += 2; off += 2;
-        if (off + len > size) return -3;
+        if (off + len > size) goto truncated;
         t->tokens[i] = strblob;
         memcpy(t->tokens[i], p, len);
         t->tokens[i][len] = 0;
@@ -313,25 +318,25 @@ int feng_tok_load(feng_tok_t *t, const void *data, size_t size)
     t->pair_result = (uint16_t *)tok_calloc((n_merges ? n_merges : 1) * sizeof(uint16_t));
     t->sorted_key = (uint32_t *)tok_calloc((n_merges ? n_merges : 1) * sizeof(uint32_t));
     t->sorted_rank = (int *)tok_calloc((n_merges ? n_merges : 1) * sizeof(int));
-    if (!t->pair_key || !t->pair_result || !t->sorted_key || !t->sorted_rank) return -4;
+    if (!t->pair_key || !t->pair_result || !t->sorted_key || !t->sorted_rank) goto oom;
     uint32_t n_ok = 0;
     for (uint32_t m = 0; m < n_merges; m++) {
         uint16_t la, lb;
-        if (off + 4 > size) return -3;           /* 截断的 merge 表：拒绝，而不是静默少一半 */
+        if (off + 4 > size) goto truncated;      /* 截断的 merge 表：拒绝，而不是静默少一半 */
         memcpy(&la, p, 2); memcpy(&lb, p + 2, 2);
         p += 4; off += 4;
-        if (off + la + lb > size) return -3;
+        if (off + la + lb > size) goto truncated;
         const char *ls = (const char *)p; p += la;
         const char *rs = (const char *)p; p += lb; off += la + lb;
         const int li = find_token(t, ls, la);
         const int ri = find_token(t, rs, lb);
-        if (li < 0 || ri < 0) return -5;          /* merge 引用了词表里不存在的 token */
+        if (li < 0 || ri < 0) goto bad_merge;    /* merge 引用了词表里不存在的 token */
         char cat[640];
-        if ((size_t)(la + lb) >= sizeof(cat)) return -5;
+        if ((size_t)(la + lb) >= sizeof(cat)) goto bad_merge;
         memcpy(cat, ls, la);
         memcpy(cat + la, rs, lb);
         const int mi = find_token(t, cat, (size_t)(la + lb));
-        if (mi < 0) return -5;
+        if (mi < 0) goto bad_merge;
         t->pair_key[n_ok] = ((uint32_t)li << 16) | (uint32_t)ri;
         t->pair_result[n_ok] = (uint16_t)mi;
         n_ok++;
@@ -341,7 +346,7 @@ int feng_tok_load(feng_tok_t *t, const void *data, size_t size)
     {
         struct merge_entry_t *ents =
             (struct merge_entry_t *)tok_alloc((n_ok ? n_ok : 1) * sizeof(struct merge_entry_t));
-        if (!ents) return -4;
+        if (!ents) goto oom;
         for (uint32_t i = 0; i < n_ok; i++) {
             ents[i].key = t->pair_key[i];
             ents[i].rank = (int)i;
@@ -351,7 +356,7 @@ int feng_tok_load(feng_tok_t *t, const void *data, size_t size)
             t->sorted_key[i] = ents[i].key;
             t->sorted_rank[i] = ents[i].rank;
         }
-        free(ents);
+        tok_free(ents);
     }
 
     /* byte -> base token */
@@ -359,13 +364,29 @@ int feng_tok_load(feng_tok_t *t, const void *data, size_t size)
         char tmp[8];
         const int n = utf8_encode((uint32_t)bytes_to_uni(b), tmp);
         t->byte_to_token[b] = (int16_t)find_token(t, tmp, (size_t)n);
-        if (t->byte_to_token[b] < 0) return -6;      /* 词表必须覆盖全部 256 个字节 */
+        if (t->byte_to_token[b] < 0) goto bad_byte;   /* 词表必须覆盖全部 256 个字节 */
     }
     t->id_im_start = find_token(t, "<|im_start|>", 12);
     t->id_im_end = find_token(t, "<|im_end|>", 10);
     t->id_eot = find_token(t, "<|endoftext|>", 13);
-    if (t->id_im_start < 0 || t->id_im_end < 0 || t->id_eot < 0) return -7;
+    if (t->id_im_start < 0 || t->id_im_end < 0 || t->id_eot < 0) goto bad_special;
     return 0;
+
+oom:
+    feng_tok_free(t);                  /* 失败也要把已分配的表释放掉（旧实现全泄漏） */
+    return -2;
+truncated:
+    feng_tok_free(t);
+    return -3;
+bad_merge:
+    feng_tok_free(t);
+    return -5;
+bad_byte:
+    feng_tok_free(t);
+    return -6;
+bad_special:
+    feng_tok_free(t);
+    return -7;
 }
 
 void feng_tok_free(feng_tok_t *t)
@@ -373,14 +394,14 @@ void feng_tok_free(feng_tok_t *t)
     if (!t) return;
     /* 所有 token 字符串共用 token_blob 一块内存，必须整体释放一次。
      * （旧实现逐个 free(tokens[i]) 会 double-free —— v3.20 C++23 迁移时修正。） */
-    free(t->token_blob);
-    free(t->tokens);
-    free(t->token_len);
-    free(t->vocab_order);
-    free(t->pair_key);
-    free(t->pair_result);
-    free(t->sorted_key);
-    free(t->sorted_rank);
+    tok_free(t->token_blob);
+    tok_free(t->tokens);
+    tok_free(t->token_len);
+    tok_free(t->vocab_order);
+    tok_free(t->pair_key);
+    tok_free(t->pair_result);
+    tok_free(t->sorted_key);
+    tok_free(t->sorted_rank);
     memset(t, 0, sizeof(*t));
 }
 

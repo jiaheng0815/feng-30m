@@ -23,6 +23,51 @@
 
 ---
 
+## v4.0 引擎安全加固（2026-10-22）—— 模糊测试驱动的一轮内存安全/UB 修复
+
+权重不变、行为不变（验收套件输出与基线**逐字节一致**），只修引擎里的
+内存安全与未定义行为问题。全部由 ASAN+UBSAN 模糊测试驱动，每个修复都带
+回归用例。
+
+| 文件 | 问题 | 修法 |
+|---|---|---|
+| `core/feng_calc.c` | `cn_to_ascii` 纯数字串累加溢出 long long（85 个「九」即 UB，实测算出「结果是 -1。」） | 累加前判 `val > (LLONG_MAX-d)/10`，超界封顶 `LLONG_MAX` 并停止 |
+| `core/feng_calc.c` | `cn_to_ascii` 回写按调用方缓冲大小而非 `s` 处剩余长度 | 函数签名加 `room` 参数，放不下就放弃转换、`s` 原样保留（后续字符校验会拒） |
+| `core/feng_calc.c` | 「X的平方/立方」展开按 `sizeof(work)` 写，前导空格输入写穿栈（实测 40 字节） | 按 `work 末尾 - s` 的剩余长度算，放不下整条拒绝 |
+| `core/feng_calc.c` | `feng_calc_fmt` 先判整数再转 `long long`，`\|v\| ≥ 2^63` 时强转是 UB（1e20 → INT64_MIN） | 先判 `\|v\| < 1e15` 再转；补 NULL/size 防御 |
+| `core/feng_calc.c` | `feng_calc_fmt` 的 `buf_sz` 未校验 | 入口判 `buf == NULL \|\| buf_sz <= 0` |
+| `core/feng_tools.c` | `feng_rand_range` 的 `(hi-lo)+1` 有符号溢出（UB），C/Python 分叉 | 区间长度全程 64 位无符号算；`span==0`（全值域）直接返回随机数 |
+| `scripts/runtime_tools.py` | 同上，Python 侧对齐 | `_as_i64` 补码解释 + 无符号区间；`tools/check_rand_parity.py` 补 4 组极端区间用例（88/88 一致） |
+| `core/feng_tokenizer.c` | `feng_tok_load` 失败路径全泄漏（8 张表 + blob） | `goto` 统一到 `feng_tok_free`；入口 `memset` 后置保证失败路径可安全释放 |
+| `core/feng_tokenizer.c` | 词表上限 65535 放进 `int16_t` 的 `byte_to_token` 必负 | 上限定到 `INT16_MAX`，报错更早更明确 |
+| `core/feng_tokenizer.c` | 扫描循环 `o + len + 1 > size`  off-by-one，末 token 恰好贴边时误拒 | 改为 `o + len > size`（NUL 写进 blob，不从输入读） |
+| `core/feng_model.c` | `shape[0] > UINT64_MAX/2` 恒假（u32 乘 2 不可能溢出 u64），检查形同虚设还触发 `-Wtype-limits` | 删死检查，保留真正的 `nbytes` 校验 |
+| `phone/engine/feng_phone.c` | 线程池只等 `nw` 个 done，但所有 worker 都 post；调小线程数后信号量计数虚高，下一轮 `sem_wait` 直接返回（主线程在 worker 算完前就往下走，结果错乱） | 新增 `s_job_nw`，本轮只允许前 `nw` 个 worker 领活并 post |
+| `pc/pc_chat.cpp` | `ids[1024]` 比 prompt 字节数窄，长输入静默截断模板尾部的 `<|im_start|>assistant` | `ids[2048]` + `np >= 2048` 显式拒绝 |
+| `phone/cli/build.sh` | MSYS2 Git Bash 下 `pwd` 给 POSIX 路径，原生 PE 编译器第一行就 "no such file" | `pwd -W` 可用时换 Windows 路径（Linux/Termux 行为不变） |
+
+**验证**（全部本机实测）：
+
+- `pc_calc_test` / `pc_tools_test` / `pc_mem_test` / `pc_sample_test` 四套单测
+  **全部通过**（新增回归用例：前导空格+平方、85 个「九」、万连写、截断 UTF-8、
+  `fmt(±1e20)`、极端区间随机数）；
+- ASAN+UBSAN（clang 22）：20 万次随机输入 + 定向病态串模糊测试**零报告**；
+  旧代码在「85 个九」上 UBSAN 实锤（`signed integer overflow`）；
+- `pc_check`：logits `max|diff|=0.0000`、argmax MATCH；
+- `pc_kv_suite`（PC 与手机端各一遍）：**27/27 + 4/4**，与发布口径一致；
+- `pc_mt_suite`：输出与 2026-10-22 基线**逐字节一致**；
+- `tools/check_rand_parity.py`：**88/88**；
+- 板端工具链（xtensa gcc 14.2，用 `build/compile_commands.json` 的真实参数）：
+  core/ 9 个文件 **9/9 零警告**；
+- 手机端 `phone/cli/build.sh`（clang 22，-Wall）编译通过；
+- `phone/tools/check_drift.py`：phone/engine 副本已同步，基准已重建。
+
+教训：中文数字的单位展开（「万」连写）在**字节数**上永远是压缩的，真正的
+溢出入口是**纯数字串**（20 个以上连续中文数字）；模糊测试要覆盖「连续同段」
+而不是只拼随机片段。
+
+---
+
 ## 4.0-embed（2026-10-18 发布）—— 手机/ESP32 权重；测试版 4.0-20261018H
 
 **命名规则（2026-10-18 起）**：测试版本 `x.y-yyyymmddC`（C 按 A–Z 排当天小版本）；

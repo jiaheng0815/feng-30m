@@ -7,6 +7,7 @@
  *   gcc -O2 -o pc/pc_tools_test.exe pc/pc_tools_test.c ../main/feng_tools.c -I../main -lm
  */
 #include <stdio.h>
+#include <limits.h>
 #include <string.h>
 
 #include "feng_tools.h"
@@ -170,6 +171,29 @@ int main(void)
     check_true("超大范围不溢出",
                feng_random_answer("随机数 1 到 999999999999999999999", buf, sizeof(buf)) == 1 &&
                strstr(buf, "随机数") != NULL, buf);
+    /* 极端区间：旧实现 (hi - lo) + 1 有符号溢出（UB），C 与 Python 会分叉。
+     * 现在两端都用 64 位无符号算区间长度，结果必须落在 [lo, hi] 内。 */
+    {
+        const long long lo = LLONG_MIN, hi = LLONG_MAX;
+        int in_range = 1;
+        for (unsigned long long s = 1; s <= 64; s++) {
+            const long long v = feng_rand_range(s, lo, hi);
+            (void)v;                                  /* 全值域：任何值都合法 */
+        }
+        for (unsigned long long s = 1; s <= 64; s++) {
+            const long long v = feng_rand_range(s, LLONG_MIN + 1, LLONG_MAX);
+            if (v < LLONG_MIN + 1) in_range = 0;
+        }
+        check_true("极端区间不溢出(1)", in_range, "");
+        int bounded = 1;
+        for (unsigned long long s = 1; s <= 64; s++) {
+            const long long v = feng_rand_range(s, LLONG_MIN, LLONG_MAX - 1);
+            if (v > LLONG_MAX - 1) bounded = 0;
+        }
+        check_true("极端区间不溢出(2)", bounded, "");
+        const long long n = feng_rand_range(7, -5, -1);
+        check_true("负区间", n >= -5 && n <= -1, "");
+    }
 
     printf("\n%s（%d 个失败）\n", fails ? "有失败" : "全部通过", fails);
     return fails ? 1 : 0;

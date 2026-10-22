@@ -134,6 +134,7 @@ static sem_t s_done_sem;                          /* worker -> 主线程（计�
 static fp_job_fn s_job;
 static void *s_job_ctx;
 static int s_job_n;                 /* 本轮任务数（经 s_round 发布，读侧用 acquire） */
+static int s_job_nw;                /* 本轮参与的 worker 数（同上发布） */
 static int s_next;                  /* 下一个要领取的索引（原子 add） */
 static int s_round;                 /* 轮次号：worker 靠它判断有新活（主线程自增） */
 static int s_parked[FP_MAXW > 0 ? FP_MAXW : 1];   /* worker 是否已登记「我要睡了」 */
@@ -169,12 +170,18 @@ static void *fp_worker(void *arg)
         fp_job_fn fn = s_job;
         void *ctx = s_job_ctx;
         const int n = __atomic_load_n(&s_job_n, __ATOMIC_ACQUIRE);
-        for (;;) {
-            const int i = __atomic_fetch_add(&s_next, 1, __ATOMIC_RELAXED);
-            if (i >= n) break;
-            fn(ctx, i);
+        /* 本轮只允许前 s_job_nw 个 worker 领活。旧实现所有 worker 都领，
+         * 但主线程只等 nw 个 done：线程数被调小之后会多 post 出几个信号量计数，
+         * 下一轮 sem_wait 直接返回，主线程在 worker 还没算完时就往下走（结果错乱）。 */
+        const int my_nw = __atomic_load_n(&s_job_nw, __ATOMIC_ACQUIRE);
+        if (me < my_nw) {
+            for (;;) {
+                const int i = __atomic_fetch_add(&s_next, 1, __ATOMIC_RELAXED);
+                if (i >= n) break;
+                fn(ctx, i);
+            }
+            sem_post(&s_done_sem);
         }
-        sem_post(&s_done_sem);
     }
 }
 
@@ -235,6 +242,7 @@ void feng_phone_parallel_for(int n, void (*fn)(void *, int), void *ctx)
     s_job_ctx = ctx;
     __atomic_store_n(&s_next, 0, __ATOMIC_RELAXED);
     __atomic_store_n(&s_job_n, n, __ATOMIC_RELAXED);          /* 由下面的 release 发布 */
+    __atomic_store_n(&s_job_nw, nw, __ATOMIC_RELAXED);        /* 同上：本轮参与的 worker 数 */
     __atomic_store_n(&s_round, __atomic_load_n(&s_round, __ATOMIC_RELAXED) + 1,
                      __ATOMIC_SEQ_CST);                        /* 放行 worker */
     /* 只叫醒已经登记休眠的那些；还在自旋的 worker 会自己看到轮次变化 */

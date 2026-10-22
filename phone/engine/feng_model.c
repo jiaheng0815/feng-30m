@@ -97,8 +97,9 @@ static const char *const kLayerTensorNames[11] = {
                 return -9;
             }
         } else if (d->shape[0] && d->dtype == FENG_DT_FP16) {
-            if ((uint64_t)d->shape[0] > UINT64_MAX / 2u ||
-                d->nbytes != (uint64_t)d->shape[0] * 2u) return -15;
+            /* shape[0] 是 u32，乘 2 不可能溢出 u64——旧写法 `shape[0] > UINT64_MAX/2`
+             * 恒为假（-Wtype-limits），等于没有检查；真正的检查只有下面这条。 */
+            if (d->nbytes != (uint64_t)d->shape[0] * 2u) return -15;
         } else if (d->dtype != FENG_DT_FP16 && d->dtype != FENG_DT_Q4) {
             return -9;
         }

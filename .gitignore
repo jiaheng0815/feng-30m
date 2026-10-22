@@ -115,3 +115,10 @@ phone/android/local.properties
 phone/android/app/.cxx/
 # 打进 APK 的模型副本（由 phone/tools/build_apk.ps1 从模型目录拷入）
 phone/android/app/src/main/assets/*.bin
+
+# PC 端两套工具链的中间产物目录（build_pc_chat.ps1 生成；*.o/*.obj/*.exe
+# 已被上面的规则挡住，但目录里的 .link.err 等辅助文件和 drv/ 子目录会漏出来）
+pc/msvc_obj/
+pc/mingw_obj/
+# 本地临时验证目录（模糊测试夹具、探针、编译器探测；随时可删）
+.cache/

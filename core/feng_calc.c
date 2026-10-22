@@ -1,6 +1,7 @@
 /* 计算 tool 实现：纯 C、无动态内存，ESP32-S3 的 FPU 直接算。 */
 #include "feng_calc.h"
 
+#include <limits.h>
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -127,16 +128,32 @@ static int cn_map(unsigned cp)
 }
 
 /* 把 s 里的中文数字段替换成阿拉伯数字（就地重写）。
+ * room 是 s 处可写的字节数（含结尾 NUL）——s 可能指向调用方缓冲的中段
+ * （前导空格被剥掉之后），不能用"整个缓冲的大小"当边界。
+ * 返回 1 = 转换完成；0 = 结果放不下，此时 s 保持原样（内容本来就在缓冲里，
+ * 不会越界；后续校验遇到中文字节会判"不是算式"，语义上也安全）。
  *
  * 两类写法都要支持：
  *   - 带单位的数字：五十九 / 一百零五 / 两千三（=2300）/ 一万二（=12000）；
  *   - 纯数字串：二零二六（=2026，年份/编号常用）。
- * 旧实现把“两千三”算成 2003，把“二零二六”算成 6。 */
-static void cn_to_ascii(char *s)
+ * 旧实现把“两千三”算成 2003，把“二零二六”算成 6。
+ *
+ * 累加全程防溢出：85 个「九」会把 val 乘出 long long（有符号溢出是 UB），
+ * 「万」连写也会让 section/total 爆掉。超界一律封顶 LLONG_MAX——
+ * 这种病态输入后续都会被校验拦下，重要的是过程无 UB、结果确定。 */
+static int sat_add_ll(long long *acc, long long add)
+{
+    if (*acc > LLONG_MAX - add) { *acc = LLONG_MAX; return 0; }
+    *acc += add;
+    return 1;
+}
+
+static int cn_to_ascii(char *s, int room)
 {
     char out[CALC_MAX];
     int n = 0;
     const unsigned char *p = (const unsigned char *)s;
+    if (room < 1) return 0;
     out[0] = 0;
     while (*p && n < (int)sizeof(out) - 1) {
         unsigned cp;
@@ -166,14 +183,19 @@ static void cn_to_ascii(char *s)
             while (r < q) {
                 unsigned c2;
                 const int l2 = utf8_cp(r, (size_t)(q - r), &c2);
-                val = val * 10 + cn_map(c2);
+                const int d = cn_map(c2);
                 r += l2;
+                /* 纯数字串可能无限长：85 个「九」就会把 long long 乘溢出
+                 * （有符号溢出是 UB，各编译器/优化级别行为不一）。
+                 * 超界封顶 LLONG_MAX 并停止累加。 */
+                if (val > (LLONG_MAX - d) / 10) { val = LLONG_MAX; break; }
+                val = val * 10 + d;
             }
         } else {
             long long total = 0, section = 0, cur = 0;
-            int last_unit = 1, after_zero = 0;
+            int last_unit = 1, after_zero = 0, ovf = 0;
             const unsigned char *r = seg;
-            while (r < q) {
+            while (r < q && !ovf) {
                 unsigned c2;
                 const int l2 = utf8_cp(r, (size_t)(q - r), &c2);
                 const int v = cn_map(c2);
@@ -197,25 +219,43 @@ static void cn_to_ascii(char *s)
                         cur *= last_unit / 10;
                     after_zero = 0;
                 } else if (v < 10000) {
-                    section += (cur ? cur : 1) * v;
+                    /* cur ≤ 900、v ≤ 1000，乘积不会溢出；section 可能已经很大 */
+                    if (!sat_add_ll(&section, (cur ? cur : 1) * v)) { ovf = 1; break; }
                     last_unit = v;
                     cur = 0;
                     after_zero = 0;
                 } else {
-                    total += (section + cur) * 10000;
+                    /* 「万」：先并段再进 total。section + cur 与 ×10000 两步都要防溢出 */
+                    if (section > LLONG_MAX - cur) { ovf = 1; break; }
+                    const long long base = section + cur;
+                    if (base > LLONG_MAX / 10000) { ovf = 1; break; }
+                    if (!sat_add_ll(&total, base * 10000)) { ovf = 1; break; }
                     section = 0;
                     cur = 0;
                     last_unit = 10000;
                     after_zero = 0;
                 }
             }
-            val = total + section + cur;
+            if (ovf) {
+                val = LLONG_MAX;
+            } else if (total > LLONG_MAX - section || section > LLONG_MAX - cur) {
+                val = LLONG_MAX;
+            } else {
+                val = total + section + cur;
+            }
         }
         append_fmt(out, (int)sizeof(out), &n, "%lld", val);
         p = q;
     }
     out[n] = 0;
+    /* 回写前按 room 卡边界：中文数字转换是"压缩"（3 字节 -> 1~几个数字），
+     * 但「万」连写这类单位展开是"放大"（12 字节 -> 17 字节），out 最长 255
+     * 字节，而 s 可能指向调用方缓冲的中段（前导空格剥掉之后）。
+     * 旧实现无条件 memcpy(s, out, n+1)，"   + 一万万…" 这类输入会越过
+     * 调用方缓冲末尾（实测 3 字节）。放不下就放弃转换、s 原样保留。 */
+    if (n + 1 > room) return 0;
     memcpy(s, out, (size_t)n + 1);
+    return 1;
 }
 
 /* 后缀/前缀外壳：返回 1 表示剥掉了一层 */
@@ -299,8 +339,13 @@ int feng_calc_extract(const char *user, char *expr, int expr_sz)
         while (n > 0 && is_space(s[n - 1])) s[--n] = 0;
         if (!changed) break;
     }
-    /* 中文数字放在外壳剥离之后转换（否则"帮我算一下"里的"一"会被改成 1） */
-    cn_to_ascii(s);
+    /* 中文数字放在外壳剥离之后转换（否则"帮我算一下"里的"一"会被改成 1）。
+     * s 可能指向 work 中段，可写长度是 "work 末尾 - s"；转换失败（放不下）时
+     * s 保持中文原样，后续校验会拒，不会越界。 */
+    if (!cn_to_ascii(s, (int)sizeof(work) - (int)(s - work))) {
+        /* 保留原样即可：后面还有「的/根号/平方」改写与字符校验，
+         * 中文字节不在白名单里，最终会被判为"不是算式"。 */
+    }
     /* "100的15%" -> "100*15%"：只有一个"的"且换成 * 后是合法算式时才认 */
     {
         char *de = strstr(s, "的");
@@ -315,15 +360,25 @@ int feng_calc_extract(const char *user, char *expr, int expr_sz)
         memmove(s + 1, s + 6, strlen(s + 6) + 1);
         s[0] = 'V';
     }
-    /* "X的平方/立方" 已在上一步变成 "X*平方/立方"？——中文单位先转成重复乘法 */
+    /* "X的平方/立方" 已在上一步变成 "X*平方/立方"？——中文单位先转成重复乘法。
+     * 注意 s 可能指向 work 的中段（输入有前导空格），所以目标缓冲的可用长度是
+     * "work 末尾 - s"，不是 sizeof(work)。旧实现按 sizeof(work) 写，
+     * "   1+1+…的平方" 这类输入会把 work 后面的栈写穿（实测 40 字节）。
+     * 放不下时直接判定"不是算式"，不要输出被截断的半截表达式。 */
     {
         char tmp[CALC_MAX];
-        strcpy(tmp, s);
+        snprintf(tmp, sizeof(tmp), "%s", s);
         char *p = strstr(tmp, "*平方");
-        if (p) { *p = 0; snprintf(s, sizeof(tmp), "%s*%s", tmp, tmp); }
-        else {
-            char *q = strstr(tmp, "*立方");
-            if (q) { *q = 0; snprintf(s, sizeof(tmp), "%s*%s*%s", tmp, tmp, tmp); }
+        char *q = p ? NULL : strstr(tmp, "*立方");
+        if (p || q) {
+            char *hit = p ? p : q;
+            *hit = 0;
+            const int len = (int)strlen(tmp);
+            const int need = (p ? len * 2 + 2 : len * 3 + 3);
+            const int room = (int)sizeof(work) - (int)(s - work);
+            if (need >= room) return 0;
+            if (p) snprintf(s, (size_t)room, "%s*%s", tmp, tmp);
+            else snprintf(s, (size_t)room, "%s*%s*%s", tmp, tmp, tmp);
         }
     }
     /* 日期/电话形态默认不当作算式；只有明确说“算/等于/减”时才放行。 */
@@ -464,12 +519,15 @@ int feng_calc_eval(const char *expr, double *out)
 
 void feng_calc_fmt(double v, char *buf, int buf_sz)
 {
+    if (buf == NULL || buf_sz <= 0) return;
     if (v == 0) v = 0;                                   /* 去掉 -0 */
-    if (fabs(v - (double)(long long)v) < 1e-9 && fabs(v) < 1e15) {
-        snprintf(buf, buf_sz, "%lld", (long long)v);
+    /* 先判范围再转 long long：|v| ≥ 2^63 时 (long long)v 是未定义行为
+     * （实测 1e20 在 x86-64 上得到 INT64_MIN）。 */
+    if (fabs(v) < 1e15 && fabs(v - (double)(long long)v) < 1e-9) {
+        snprintf(buf, (size_t)buf_sz, "%lld", (long long)v);
         return;
     }
-    snprintf(buf, buf_sz, "%.4f", v);
+    snprintf(buf, (size_t)buf_sz, "%.4f", v);
     int n = (int)strlen(buf);
     while (n > 0 && buf[n - 1] == '0') buf[--n] = 0;
     if (n > 0 && buf[n - 1] == '.') buf[--n] = 0;
@@ -520,7 +578,9 @@ static int feng_calc_seq_answer(const char *user, char *answer, int answer_sz)
     char work[CALC_MAX];
     strncpy(work, user, sizeof(work) - 1);
     work[sizeof(work) - 1] = 0;
-    cn_to_ascii(work);
+    /* 转换失败（放不下）时 work 保持中文原样，下面按 ASCII 数字扫描，
+     * 找不到两个数就走 nf < 2 的拒绝路径。 */
+    (void)cn_to_ascii(work, (int)sizeof(work));
     int found[8];
     int nf = 0;
     int too_big = 0;

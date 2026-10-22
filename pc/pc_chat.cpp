@@ -178,8 +178,11 @@ int main(int argc, char **argv)
         char prompt[2048];
         snprintf(prompt, sizeof(prompt),
                  "<|im_start|>user\n%s<|im_end|>\n<|im_start|>assistant\n", line);
-        int ids[1024];
-        const int np = feng_tok_encode(&tok, prompt, ids, 1024);
+        /* ids 必须比 prompt 的字节数宽：一个汉字/标点可能 1~3 个 token，
+         * 1024 在长输入下会静默截断模板尾部的 <|im_start|>assistant。 */
+        int ids[2048];
+        const int np = feng_tok_encode(&tok, prompt, ids, 2048);
+        if (np >= 2048) { printf("[输入太长]\n"); continue; }
         if (kv.len + np + max_new + 2 > ctx) {
             printf("[上下文已满 %d/%d，自动开始新对话]\n", kv.len, ctx);
             kv.len = 0;

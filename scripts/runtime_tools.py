@@ -42,8 +42,18 @@ def _xs64(state):
     return x, (x * 2685821657736338717) & _MASK64
 
 
+def _as_i64(v):
+    """把 64 位无符号结果按补码解释成有符号（与 C 的 (long long) 强转同结果）。"""
+    v &= _MASK64
+    return v - (1 << 64) if v >= (1 << 63) else v
+
+
 def rand_range(seed, lo, hi):
-    """与 C 版 feng_rand_range 完全一致：第 1 个随机数丢弃，取第 2 个。"""
+    """与 C 版 feng_rand_range 完全一致：第 1 个随机数丢弃，取第 2 个。
+
+    区间长度用 64 位无符号算（C 侧同样用 unsigned long long），
+    这样 lo=-2^63+1、hi=2^63-1 这类极端区间不会因有符号溢出而分叉。
+    """
     if seed == 0:
         seed = 88172645463325252
     state = seed & _MASK64
@@ -51,7 +61,12 @@ def rand_range(seed, lo, hi):
     state, r = _xs64(state)
     if hi < lo:
         lo, hi = hi, lo
-    return lo + r % (hi - lo + 1)
+    if lo == -(1 << 63) and hi == (1 << 63) - 1:
+        return _as_i64(r)                      # 全值域：直接返回 64 位随机数
+    span = ((hi - lo) + 1) & _MASK64           # == C 的 (ull)hi - (ull)lo + 1
+    if span == 0:
+        return _as_i64(r)
+    return _as_i64((lo + r % span) & _MASK64)
 _QUESTION_PREFIX = ("什么", "啥", "哪", "几", "谁", "多少", "吗", "呢", "怎么")
 
 

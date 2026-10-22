@@ -209,10 +209,11 @@ long long feng_rand_range(unsigned long long seed, long long lo, long long hi)
     if (hi < lo) { const long long t = hi; hi = lo; lo = t; }
     /* 全值域：直接返回 64 位随机数，避免 hi-lo 的有符号溢出。 */
     if (lo == LLONG_MIN && hi == LLONG_MAX) return (long long)r;
-    /* hi-lo+1 在极端范围会溢出为 0，r % 0 是 UB。 */
-    const unsigned long long span = (unsigned long long)((hi - lo) + 1);
+    /* span 用无符号算：(hi - lo) 在 lo=-2^63+1、hi=2^63-1 时是有符号溢出（UB）。
+     * 无符号减法按 2^64 取模，正好是需要的区间长度；span==0 表示覆盖整个 64 位值域。 */
+    const unsigned long long span = (unsigned long long)hi - (unsigned long long)lo + 1ULL;
     if (span == 0) return (long long)r;
-    return lo + (long long)(r % span);
+    return (long long)((unsigned long long)lo + (r % span));
 }
 
 int feng_random_answer(const char *user, char *answer, int answer_sz)

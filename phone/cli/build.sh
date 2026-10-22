@@ -19,6 +19,16 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
+# MSYS2 / Cygwin（Windows 开发机）的 bash 里 pwd 输出 POSIX 路径（/e/...），
+# 而 msys2 的 clang/gcc 是原生 PE 程序，不认这种路径——直接跑会在第一行
+# 编译就报 "no such file or directory"。pwd -W 输出 Windows 路径（E:/...），
+# 把所有要交给编译器/链接器的路径都换成它。Linux / Termux / WSL 没有 -W，
+# 保持原样（行为不变）。
+if W="$(cd "$HERE" && pwd -W 2>/dev/null)" && [ -n "$W" ]; then
+    HERE="$W"
+    R="$(cd "$ROOT" && pwd -W 2>/dev/null || true)"
+    [ -n "$R" ] && ROOT="$R"
+fi
 ENG="$HERE/../engine"
 SUITE_DIR="$ROOT/pc"
 
