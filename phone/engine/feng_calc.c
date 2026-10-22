@@ -562,6 +562,7 @@ static int split_binary(const char *expr, char *a, int asz, char *op, char *b, i
  * 避免"我从1数到100也数不完"这类普通陈述被截走。返回 1 = 已作答。 */
 static int feng_calc_seq_answer(const char *user, char *answer, int answer_sz)
 {
+    if (user == NULL || answer == NULL || answer_sz <= 0) return 0;
     const int rev = (strstr(user, "倒着数") != NULL) || (strstr(user, "倒序") != NULL) ||
                     (strstr(user, "倒过来数") != NULL);
     int fwd = 0;
@@ -603,7 +604,7 @@ static int feng_calc_seq_answer(const char *user, char *answer, int answer_sz)
     if (!rev && a > b) return 0;             /* "从8数到3"这类交给模型 */
     if (a > b) { const int t = a; a = b; b = t; }
     if (b - a > 50) {
-        snprintf(answer, answer_sz, "范围有点大（%d 到 %d），给我 50 个以内的区间吧。", a, b);
+        snprintf(answer, (size_t)answer_sz, "范围有点大（%d 到 %d），给我 50 个以内的区间吧。", a, b);
         return 1;
     }
     /* 先算实际输出长度：10 位数的 50 个区间会超过 256 字节，旧实现会写穿。
@@ -615,7 +616,7 @@ static int feng_calc_seq_answer(const char *user, char *answer, int answer_sz)
         if (need >= answer_sz) break;
     }
     if (need >= answer_sz) {
-        snprintf(answer, answer_sz, "范围有点大（%d 到 %d），输出放不下，换个小一点的区间吧。", a, b);
+        snprintf(answer, (size_t)answer_sz, "范围有点大（%d 到 %d），输出放不下，换个小一点的区间吧。", a, b);
         return 1;
     }
     int n = 0;
@@ -633,6 +634,7 @@ static int feng_calc_seq_answer(const char *user, char *answer, int answer_sz)
 
 int feng_calc_answer(const char *user, char *answer, int answer_sz)
 {
+    if (user == NULL || answer == NULL || answer_sz <= 0) return 0;
     /* 序列任务（"把1到5倒着数一遍"/"从3数到8"）也走引擎，确定性输出 */
     if (feng_calc_seq_answer(user, answer, answer_sz)) return 1;
     char expr[CALC_MAX];
@@ -640,7 +642,7 @@ int feng_calc_answer(const char *user, char *answer, int answer_sz)
     double v = 0;
     const int rc = feng_calc_eval(expr, &v);
     if (rc < 0) {
-        snprintf(answer, answer_sz, "%s", rc == -1 ? "这个算式里除数是 0，算不出来。" : "这个算式我没看懂。");
+        snprintf(answer, (size_t)answer_sz, "%s", rc == -1 ? "这个算式里除数是 0，算不出来。" : "这个算式我没看懂。");
         return 1;
     }
     char a[64], b[64], op = 0;
@@ -648,9 +650,9 @@ int feng_calc_answer(const char *user, char *answer, int answer_sz)
     feng_calc_fmt(v, num, sizeof(num));
     if (split_binary(expr, a, sizeof(a), &op, b, sizeof(b))) {
         const char *sym = op == '+' ? "加" : op == '-' ? "减" : op == '*' ? "乘" : "除以";
-        snprintf(answer, answer_sz, "%s %s %s 等于 %s。", a, sym, b, num);
+        snprintf(answer, (size_t)answer_sz, "%s %s %s 等于 %s。", a, sym, b, num);
     } else {
-        snprintf(answer, answer_sz, "结果是 %s。", num);
+        snprintf(answer, (size_t)answer_sz, "结果是 %s。", num);
     }
     return 1;
 }

@@ -436,7 +436,9 @@ int feng_mem_learn(const char *user)
 
 static int answer_fmt(char *out, int cap, const char *fmt, const char *a, const char *b)
 {
-    snprintf(out, cap, fmt, a, b);
+    /* cap 来自调用方的 sizeof()，恒为正；仍按有界写处理，与 feng_calc 的口径一致 */
+    if (out == NULL || cap <= 0) return 1;
+    snprintf(out, (size_t)cap, fmt, a, b);
     return 1;
 }
 

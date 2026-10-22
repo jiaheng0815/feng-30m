@@ -35,6 +35,7 @@ static int contains(const char *s, const char *kw);
 
 void feng_time_format_utc8(long long epoch, char *buf, int buf_sz)
 {
+    if (buf == NULL || buf_sz <= 0) return;
     long long t = epoch + 8 * 3600;                  /* UTC+8 */
     long long days = t / 86400;
     long long rem = t % 86400;
@@ -43,18 +44,19 @@ void feng_time_format_utc8(long long epoch, char *buf, int buf_sz)
     civil_from_days(days, &y, &m, &d);
     const int hh = (int)(rem / 3600), mm = (int)((rem % 3600) / 60), ss = (int)(rem % 60);
     const int wd = (int)((days % 7 + 11) % 7);       /* 1970-01-01 是周四 */
-    snprintf(buf, buf_sz, "%04d年%02d月%02d日 %02d:%02d:%02d（周%s，UTC+8）",
+    snprintf(buf, (size_t)buf_sz, "%04d年%02d月%02d日 %02d:%02d:%02d（周%s，UTC+8）",
              y, m, d, hh, mm, ss, k_week[wd]);
 }
 
 void feng_time_format_date_utc8(long long epoch, char *buf, int buf_sz)
 {
+    if (buf == NULL || buf_sz <= 0) return;
     long long t = epoch + 8 * 3600;
     long long days = t / 86400;
     int y, m, d;
     civil_from_days(days, &y, &m, &d);
     const int wd = (int)((days % 7 + 11) % 7);
-    snprintf(buf, buf_sz, "%04d年%02d月%02d日（周%s）", y, m, d, k_week[wd]);
+    snprintf(buf, (size_t)buf_sz, "%04d年%02d月%02d日（周%s）", y, m, d, k_week[wd]);
 }
 
 /* 从 "3天后" 里取出 3；返回 0 表示没有这种模式 */
@@ -133,16 +135,17 @@ static int time_math_answer(const char *user, char *answer, int answer_sz)
     int day = total / 24;
     int hh2 = total % 24;
     if (hh2 < 0) { hh2 += 24; day--; }
-    if (day == 0) snprintf(answer, answer_sz, "再过 %d 小时是 %d 点。", delta, hh2);
-    else if (day == 1) snprintf(answer, answer_sz, "再过 %d 小时是明天 %d 点。", delta, hh2);
-    else if (day == -1) snprintf(answer, answer_sz, "%d 小时前是昨天 %d 点。", -delta, hh2);
-    else if (day == 2) snprintf(answer, answer_sz, "再过 %d 小时是后天 %d 点。", delta, hh2);
-    else snprintf(answer, answer_sz, "再过 %d 小时是 %d 天后 %d 点。", delta, day, hh2);
+    if (day == 0) snprintf(answer, (size_t)answer_sz, "再过 %d 小时是 %d 点。", delta, hh2);
+    else if (day == 1) snprintf(answer, (size_t)answer_sz, "再过 %d 小时是明天 %d 点。", delta, hh2);
+    else if (day == -1) snprintf(answer, (size_t)answer_sz, "%d 小时前是昨天 %d 点。", -delta, hh2);
+    else if (day == 2) snprintf(answer, (size_t)answer_sz, "再过 %d 小时是后天 %d 点。", delta, hh2);
+    else snprintf(answer, (size_t)answer_sz, "再过 %d 小时是 %d 天后 %d 点。", delta, day, hh2);
     return 1;
 }
 
 int feng_time_answer(const char *user, char *answer, int answer_sz)
 {
+    if (user == NULL || answer == NULL || answer_sz <= 0) return 0;
     if (time_math_answer(user, answer, answer_sz)) return 1;
     /* 相对日期只在明确问日期/星期时触发；"明天会下雨吗"这种普通句子交给模型。
      * 旧实现只要出现"明天"就直接答日期，属于典型的 tool 误触发。 */
@@ -163,13 +166,13 @@ int feng_time_answer(const char *user, char *answer, int answer_sz)
     if (!hit) return 0;
     const long long now = s_epoch_fn ? s_epoch_fn() : 0;
     if (now <= 0) {
-        snprintf(answer, answer_sz, "我还没对上网络时间（宿主连接后会自动发 \\settime）。");
+        snprintf(answer, (size_t)answer_sz, "我还没对上网络时间（宿主连接后会自动发 \\settime）。");
         return 1;
     }
     if (contains(user, "时间戳")) {                  /* 要原始 Unix 秒 + UTC+8 换算 */
         char t[128];
         feng_time_format_utc8(now, t, sizeof(t));
-        snprintf(answer, answer_sz, "时间戳：%lld —— %s。", now, t);
+        snprintf(answer, (size_t)answer_sz, "时间戳：%lld —— %s。", now, t);
         return 1;
     }
     int days = 0;
@@ -177,15 +180,15 @@ int feng_time_answer(const char *user, char *answer, int answer_sz)
         char d[96], t[128];
         feng_time_format_date_utc8(now + (long long)days * 86400, d, sizeof(d));
         feng_time_format_utc8(now, t, sizeof(t));
-        if (days > 0) snprintf(answer, answer_sz, "%d 天后是 %s。", days, d);
-        else if (days < 0) snprintf(answer, answer_sz, "%d 天前是 %s。", -days, d);
-        else snprintf(answer, answer_sz, "今天是 %s。", d);
+        if (days > 0) snprintf(answer, (size_t)answer_sz, "%d 天后是 %s。", days, d);
+        else if (days < 0) snprintf(answer, (size_t)answer_sz, "%d 天前是 %s。", -days, d);
+        else snprintf(answer, (size_t)answer_sz, "今天是 %s。", d);
         (void)t;
         return 1;
     }
     char t[128];
     feng_time_format_utc8(now, t, sizeof(t));
-    snprintf(answer, answer_sz, "现在是 %s。", t);
+    snprintf(answer, (size_t)answer_sz, "现在是 %s。", t);
     return 1;
 }
 
@@ -218,6 +221,7 @@ long long feng_rand_range(unsigned long long seed, long long lo, long long hi)
 
 int feng_random_answer(const char *user, char *answer, int answer_sz)
 {
+    if (user == NULL || answer == NULL || answer_sz <= 0) return 0;
     const int random_intent = contains(user, "随机");
     /* "硬币/骰子"单独出现不算意图（"硬币是什么材质"不应被截走）；
      * 必须同时有抛/掷/扔/摇/正反/随机这类动作。 */
@@ -233,7 +237,7 @@ int feng_random_answer(const char *user, char *answer, int answer_sz)
     const unsigned long long seed0 = (unsigned long long)(sec0 * 1.54 * 1000.0);
     if (coin) {
         const long long v = feng_rand_range(seed0, 0, 1);
-        snprintf(answer, answer_sz, "抛硬币：%s。", v ? "正面" : "反面");
+        snprintf(answer, (size_t)answer_sz, "抛硬币：%s。", v ? "正面" : "反面");
         return 1;
     }
     /* 解析可选范围："1到100" / "1-100" / "0~9"；默认 1..100（骰子默认 1..6） */
@@ -256,7 +260,7 @@ int feng_random_answer(const char *user, char *answer, int answer_sz)
     }
     if (nnum == 2) { lo = nums[0]; hi = nums[1]; }
     const long long v = feng_rand_range(seed0, lo, hi);
-    if (dice) snprintf(answer, answer_sz, "掷骰子：%lld 点。", v);
-    else snprintf(answer, answer_sz, "随机数（%lld~%lld）：%lld。", lo, hi, v);
+    if (dice) snprintf(answer, (size_t)answer_sz, "掷骰子：%lld 点。", v);
+    else snprintf(answer, (size_t)answer_sz, "随机数（%lld~%lld）：%lld。", lo, hi, v);
     return 1;
 }
