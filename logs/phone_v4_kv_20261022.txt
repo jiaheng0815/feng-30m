@@ -32,4 +32,3 @@ mode=q2 block=8 ctx=2048 kv=9.62 MB
 召回75%  [1525 tok] [PASS] 648153   [expect 648153]
 召回90%  [1525 tok] [PASS] 290475   [expect 290475]
 SUMMARY mode=q2 kv=9.62MB  短任务 27/27 + 1(自由)  长文召回 4/4
-rc=0

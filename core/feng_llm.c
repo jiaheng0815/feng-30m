@@ -461,6 +461,490 @@ static void q2_attn_range(void *arg, int part, int nparts)
 }
 #endif /* FENG_KV_Q2 */
 
+/* 把单个位置的 K/V 写进 cache（按 KV 模式量化）。
+ * 从 feng_forward_ex 抽出（2026-10-22 批量 prefill）：逐位置复用，
+ * 两条前向路径写进去的字节完全一致。 */
+static void kv_append_one(feng_kv_t *kv, const float *k, const float *v, int l, int pos,
+                          int nh, int hd, int h)
+{
+    (void)h;                        /* q2 布局按 head 寻址，用不到 h；int8/fp32 用 */
+    (void)nh;                       /* q2 布局用不到；int8 的 scale 按 head 存 */
+    (void)hd;                       /* fp32 布局用不到；int8/q2 用 */
+    /* append to KV cache (int8 with per-head fp16 scale, or fp32) */
+#if FENG_KV_INT8
+    int8_t *kc = (int8_t *)kv->k_cache + (size_t)l * kv->ctx * h;
+    int8_t *vc = (int8_t *)kv->v_cache + (size_t)l * kv->ctx * h;
+    uint16_t *ksc = kv->k_scale + (size_t)l * kv->ctx * nh;
+    uint16_t *vsc = kv->v_scale + (size_t)l * kv->ctx * nh;
+    for (int hh = 0; hh < nh; hh++) {
+        float ak = 1e-8f, av = 1e-8f;
+        for (int d = 0; d < hd; d++) {
+            const float a = fabsf(k[hh * hd + d]);
+            const float b = fabsf(v[hh * hd + d]);
+            if (a > ak) ak = a;
+            if (b > av) av = b;
+        }
+        const float sk = ak / 127.0f, sv = av / 127.0f;
+        ksc[(size_t)pos * nh + hh] = feng_f32_to_f16(sk);
+        vsc[(size_t)pos * nh + hh] = feng_f32_to_f16(sv);
+        int8_t *kd = kc + (size_t)pos * h + hh * hd;
+        int8_t *vd = vc + (size_t)pos * h + hh * hd;
+        for (int d = 0; d < hd; d++) {
+            int qk = (int)lrintf(k[hh * hd + d] / sk);
+            int qv = (int)lrintf(v[hh * hd + d] / sv);
+            if (qk > 127) qk = 127; else if (qk < -127) qk = -127;
+            if (qv > 127) qv = 127; else if (qv < -127) qv = -127;
+            kd[d] = (int8_t)qk;
+            vd[d] = (int8_t)qv;
+        }
+    }
+#elif FENG_KV_Q2
+    /* 2-bit 对称量化 + 每 FENG_KV_Q2_BLOCK 个值一个 fp16 scale（scale = 块内 max|·|/1.5，
+     * q ∈ {0,1,2,3} → (q-1.5)*scale）；每字节打包 4 个值（低位在前）。
+     * block=8 实测比 block=16 的续写保真高很多（0.33→0.73），代价是 scale 内存翻倍。 */
+    const int qb = hd / 4;
+    const int nb = hd / FENG_KV_Q2_BLOCK;         /* 每 head 的块数 */
+    const int bw = FENG_KV_Q2_BLOCK / 4;          /* 每块的字节数 */
+    /* q2 布局是 [layer][head][t]（与 int8/fp32 的 [layer][t][head] 不同）：
+     * 逐 head 扫描时 t 连续，长上下文下是 PSRAM 顺序读；[layer][t][head] 每次
+     * 只取 16B 却要占一条 32B 缓存行（利用率 50%），长文时被放大。 */
+    for (int hh = 0; hh < nh; hh++) {
+        const size_t row = ((size_t)l * nh + hh) * kv->ctx + pos;
+        uint8_t *kd = (uint8_t *)kv->k_cache + row * qb;
+        uint8_t *vd = (uint8_t *)kv->v_cache + row * qb;
+        uint16_t *ksp = kv->k_scale + row * nb;
+        uint16_t *vsp = kv->v_scale + row * nb;
+        for (int blk = 0; blk < nb; blk++) {
+            const int base = hh * hd + blk * FENG_KV_Q2_BLOCK;
+            float ak = 1e-8f, av = 1e-8f;
+            for (int d = 0; d < FENG_KV_Q2_BLOCK; d++) {
+                const float a = fabsf(k[base + d]);
+                const float b = fabsf(v[base + d]);
+                if (a > ak) ak = a;
+                if (b > av) av = b;
+            }
+            const float sk = ak / 1.5f, sv = av / 1.5f;
+            ksp[blk] = feng_f32_to_f16(sk);
+            vsp[blk] = feng_f32_to_f16(sv);
+            for (int j = 0; j < bw; j++) {
+                uint8_t kb = 0, vb = 0;
+                for (int k4 = 0; k4 < 4; k4++) {
+                    const int d = blk * FENG_KV_Q2_BLOCK + j * 4 + k4;
+                    int qk = (int)lrintf(k[hh * hd + d] / sk + 1.5f);
+                    int qv = (int)lrintf(v[hh * hd + d] / sv + 1.5f);
+                    if (qk < 0) qk = 0; else if (qk > 3) qk = 3;
+                    if (qv < 0) qv = 0; else if (qv > 3) qv = 3;
+                    kb |= (uint8_t)(qk << (2 * k4));
+                    vb |= (uint8_t)(qv << (2 * k4));
+                }
+                kd[blk * bw + j] = kb; vd[blk * bw + j] = vb;
+            }
+        }
+    }
+#elif FENG_KV_FP16
+    /* [layer][ctx][hidden]，与 fp32 同一布局，只是每值 2 字节。
+     * 不学 q2 的 [layer][head][ctx]：fp16 KV 只在手机/PC 上用，
+     * 定位是"精度参照"，越接近 fp32 路径越好验证。 */
+    uint16_t *kc = (uint16_t *)kv->k_cache + (size_t)l * kv->ctx * h;
+    uint16_t *vc = (uint16_t *)kv->v_cache + (size_t)l * kv->ctx * h;
+    for (int i = 0; i < h; i++) {
+        kc[(size_t)pos * h + i] = feng_f32_to_f16(k[i]);
+        vc[(size_t)pos * h + i] = feng_f32_to_f16(v[i]);
+    }
+#else
+    float *kc = (float *)kv->k_cache + (size_t)l * kv->ctx * h;
+    float *vc = (float *)kv->v_cache + (size_t)l * kv->ctx * h;
+    memcpy(kc + (size_t)pos * h, k, h * sizeof(float));
+    memcpy(vc + (size_t)pos * h, v, h * sizeof(float));
+#endif
+}
+
+/* 单个 query 位置的注意力：K 打分 + softmax + V 累加，写满 attn[nh*hd]。
+ * pos 位置的 KV 必须已由调用方 append 进 cache（先写后读；批内按位置递增调用，
+ * 因果序由此保证）。从 feng_forward_ex 抽出（2026-10-22 批量 prefill），
+ * 逐位置复用同一份内核：两条前向路径的注意力数值完全一致。 */
+static void attn_one(const feng_kv_t *kv, feng_workspace_t *ws,
+                     const float *q, float *attn, int l, int pos,
+                     int nh, int hd, int h)
+{
+    (void)ws;                       /* 仅 int8 KV 路径用（ws->scratch 当 pv） */
+    (void)h;                        /* 仅 int8/fp32 布局用；q2 按 head 寻址 */
+    const float scale = 1.0f / sqrtf((float)hd);
+#if FENG_KV_Q2
+    const int qb = hd / 4;
+    const int nb = hd / FENG_KV_Q2_BLOCK;         /* 每 head 的块数 */
+    const int bw = FENG_KV_Q2_BLOCK / 4;          /* 每块的字节数 */
+#endif
+#if FENG_KV_INT8
+    const int8_t *kc = (const int8_t *)kv->k_cache + (size_t)l * kv->ctx * h;
+    const int8_t *vc = (const int8_t *)kv->v_cache + (size_t)l * kv->ctx * h;
+    const uint16_t *ksc = kv->k_scale + (size_t)l * kv->ctx * nh;
+    const uint16_t *vsc = kv->v_scale + (size_t)l * kv->ctx * nh;
+#elif !FENG_KV_Q2 && !FENG_KV_FP16
+    const float *kc = (const float *)kv->k_cache + (size_t)l * kv->ctx * h;
+    const float *vc = (const float *)kv->v_cache + (size_t)l * kv->ctx * h;
+#endif
+    memset(attn, 0, (size_t)nh * hd * sizeof(float));
+#if FENG_KV_Q2
+    {
+        q2_attn_ctx_t ac;
+        ac.kv = kv;
+        ac.q = q;
+        ac.attn = attn;
+        ac.l = l;
+        ac.pos = pos;
+        ac.nh = nh;
+        ac.hd = hd;
+        ac.qb = qb;
+        ac.nb = nb;
+        ac.bw = bw;
+        ac.scale = scale;
+        ac.scores = &g_scores[0][0];
+#if FENG_ATTN_PROF || FENG_ATTN_PARTS <= 1
+        q2_attn_range(&ac, 0, 1);       /* profiling 的计数器非原子，串行跑 */
+#else
+        feng_par_run(q2_attn_range, &ac, FENG_ATTN_PARTS);
+#endif
+    }
+#else
+    for (int hh = 0; hh < nh; hh++) {
+        const float *qh = q + hh * hd;
+        float *scores = g_scores[0];
+        float maxs = -1e30f;
+#if FENG_KV_INT8
+        for (int t = 0; t <= pos; t++) {
+            const int8_t *kh = kc + (size_t)t * h + hh * hd;
+            float s = 0.f;
+            for (int d = 0; d < hd; d++) s += qh[d] * (float)kh[d];
+            s *= f16_to_f32_local(ksc[(size_t)t * nh + hh]) * scale;
+            scores[t] = s;
+            if (s > maxs) maxs = s;
+        }
+#elif FENG_KV_Q2
+        const uint8_t *krow = (const uint8_t *)kv->k_cache
+                              + ((size_t)l * nh + hh) * kv->ctx * qb;
+        const uint16_t *ksrow = kv->k_scale + ((size_t)l * nh + hh) * kv->ctx * nb;
+#if FENG_ATTN_PROF
+        const unsigned pc0 = (unsigned)esp_cpu_get_cycle_count();
+#endif
+#if FENG_Q2_LUT && FENG_Q2_PAIR
+        /* 一次算 2 个上下文 token：两条独立的累加链填满 FPU 流水线，
+         * qh 只加载一次、相邻 token 的 16B 数据同处一条 32B 缓存行。
+         * 每个 score 的累加顺序与单 token 版完全一致 -> 逐位一致。 */
+        {
+            int t = 0;
+            for (; t + 1 <= pos; t += 2) {
+                const uint8_t *kh0 = krow + (size_t)t * qb;
+                const uint8_t *kh1 = kh0 + qb;
+                const uint16_t *ks0 = ksrow + (size_t)t * nb;
+                const uint16_t *ks1 = ks0 + nb;
+                float s0 = 0.f, s1 = 0.f;
+                for (int blk = 0; blk < nb; blk++) {
+                    const float sk0 = f16_to_f32_local(ks0[blk]);
+                    const float sk1 = f16_to_f32_local(ks1[blk]);
+                    const uint8_t *b0 = kh0 + blk * bw, *b1 = kh1 + blk * bw;
+                    int d = blk * FENG_KV_Q2_BLOCK;
+                    for (int j = 0; j < bw; j++) {
+                        const float *l0 = g_q2_lut[b0[j]];
+                        const float *l1 = g_q2_lut[b1[j]];
+                        for (int k4 = 0; k4 < 4; k4++) {
+                            const float qd = qh[d++];
+                            s0 += qd * l0[k4] * sk0;
+                            s1 += qd * l1[k4] * sk1;
+                        }
+                    }
+                }
+                s0 *= scale;
+                s1 *= scale;
+                scores[t] = s0;
+                scores[t + 1] = s1;
+                if (s0 > maxs) maxs = s0;
+                if (s1 > maxs) maxs = s1;
+            }
+            if (t <= pos) {                      /* 奇数长度：尾部单 token */
+                const uint8_t *kh = krow + (size_t)t * qb;
+                const uint16_t *ks = ksrow + (size_t)t * nb;
+                float s = 0.f;
+                for (int blk = 0; blk < nb; blk++) {
+                    const float sk = f16_to_f32_local(ks[blk]);
+                    const uint8_t *bb = kh + blk * bw;
+                    int d = blk * FENG_KV_Q2_BLOCK;
+                    for (int j = 0; j < bw; j++) {
+                        const float *lu = g_q2_lut[bb[j]];
+                        for (int k4 = 0; k4 < 4; k4++) s += qh[d++] * lu[k4] * sk;
+                    }
+                }
+                s *= scale;
+                scores[t] = s;
+                if (s > maxs) maxs = s;
+            }
+        }
+#else
+        for (int t = 0; t <= pos; t++) {
+            const uint8_t *kh = krow + (size_t)t * qb;
+            const uint16_t *ks = ksrow + (size_t)t * nb;
+            float s = 0.f;
+#if FENG_Q2_LUT
+            for (int blk = 0; blk < nb; blk++) {
+                const float sk = f16_to_f32_local(ks[blk]);
+                const uint8_t *bb = kh + blk * bw;
+                int d = blk * FENG_KV_Q2_BLOCK;
+                for (int j = 0; j < bw; j++) {
+                    const float *lu = g_q2_lut[bb[j]];
+                    for (int k4 = 0; k4 < 4; k4++) {
+                        s += qh[d++] * lu[k4] * sk;
+                    }
+                }
+            }
+#else
+            for (int blk = 0; blk < nb; blk++) {
+                const float sk = f16_to_f32_local(ks[blk]);
+                for (int j = 0; j < bw; j++) {
+                    const uint8_t b = kh[blk * bw + j];
+                    for (int k4 = 0; k4 < 4; k4++) {
+                        const int qq = (b >> (2 * k4)) & 3;
+                        s += qh[blk * FENG_KV_Q2_BLOCK + j * 4 + k4]
+                             * ((float)qq - 1.5f) * sk;
+                    }
+                }
+            }
+#endif
+            s *= scale;
+            scores[t] = s;
+            if (s > maxs) maxs = s;
+        }
+#endif
+#if FENG_ATTN_PROF
+        {
+            const unsigned pc1 = (unsigned)esp_cpu_get_cycle_count();
+            g_prof_cycles[0] += (unsigned long long)(pc1 - pc0);
+        }
+#endif
+#elif FENG_KV_FP16
+        {
+            const uint16_t *krow = (const uint16_t *)kv->k_cache
+                                 + (size_t)l * kv->ctx * h + (size_t)hh * hd;
+            for (int t = 0; t <= pos; t++) {
+                const uint16_t *kh = krow + (size_t)t * h;
+                float s = 0.f;
+                for (int d = 0; d < hd; d++) s += qh[d] * f16_to_f32_local(kh[d]);
+                s *= scale;
+                scores[t] = s;
+                if (s > maxs) maxs = s;
+            }
+        }
+#else
+        for (int t = 0; t <= pos; t++) {
+            const float *kh = kc + (size_t)t * h + hh * hd;
+            float s = 0.f;
+            for (int d = 0; d < hd; d++) s += qh[d] * kh[d];
+            s *= scale;
+            scores[t] = s;
+            if (s > maxs) maxs = s;
+        }
+#endif
+        float sum = 0.f;
+#if FENG_ATTN_PROF
+        const unsigned ps0 = (unsigned)esp_cpu_get_cycle_count();
+#endif
+        for (int t = 0; t <= pos; t++) {
+#if FENG_FAST_EXP
+            scores[t] = fast_expf(scores[t] - maxs);
+#else
+            scores[t] = expf(scores[t] - maxs);
+#endif
+            sum += scores[t];
+        }
+        const float inv = 1.0f / sum;
+#if FENG_ATTN_PROF
+        g_prof_cycles[1] += (unsigned long long)((unsigned)esp_cpu_get_cycle_count() - ps0);
+#endif
+#if FENG_KV_INT8
+        float *pv = ws->scratch;      /* scaled attention probabilities（仅 int8 路径用） */
+        for (int t = 0; t <= pos; t++) {
+            pv[t] = scores[t] * f16_to_f32_local(vsc[(size_t)t * nh + hh]);
+        }
+        for (int d = 0; d < hd; d++) {
+            float acc = 0.f;
+            for (int t = 0; t <= pos; t++) {
+                acc += pv[t] * (float)vc[(size_t)t * h + hh * hd + d];
+            }
+            attn[hh * hd + d] = acc * inv;
+        }
+#elif FENG_KV_Q2
+        /* 连续访问版：原实现对每个输出维度 d 都按 112B 跨步去 PSRAM 抓 1 个字节
+         * （缓存行利用率 1/32，长上下文时被放大成几十秒/轮）。改成 t 外层、
+         * 每个 (t,head) 的 16 个打包字节顺序读完再累加；每个 d 对 t 的求和顺序
+         * 与乘法分组 (scores[t]*bit)*sv 保持不变，结果逐位一致。 */
+        {
+            float vacc[FENG_MAX_HEAD_DIM];
+            for (int d = 0; d < hd; d++) vacc[d] = 0.f;
+#if FENG_ATTN_PROF
+            const unsigned pv0 = (unsigned)esp_cpu_get_cycle_count();
+#endif
+            const uint8_t *vrow = (const uint8_t *)kv->v_cache
+                                  + ((size_t)l * nh + hh) * kv->ctx * qb;
+            const uint16_t *vsrow = kv->v_scale + ((size_t)l * nh + hh) * kv->ctx * nb;
+#if FENG_Q2_LUT && FENG_Q2_PAIR
+            {
+                int t = 0;
+                for (; t + 1 <= pos; t += 2) {
+                    const uint8_t *vb0 = vrow + (size_t)t * qb;
+                    const uint8_t *vb1 = vb0 + qb;
+                    const uint16_t *vs0 = vsrow + (size_t)t * nb;
+                    const uint16_t *vs1 = vs0 + nb;
+                    const float st0 = scores[t], st1 = scores[t + 1];
+                    for (int blk = 0; blk < nb; blk++) {
+                        const float sv0 = f16_to_f32_local(vs0[blk]);
+                        const float sv1 = f16_to_f32_local(vs1[blk]);
+                        const uint8_t *b0 = vb0 + blk * bw, *b1 = vb1 + blk * bw;
+                        int d = blk * FENG_KV_Q2_BLOCK;
+#if FENG_Q2_VFOLD
+                        const float stv0 = st0 * sv0, stv1 = st1 * sv1;
+#endif
+                        for (int j = 0; j < bw; j++) {
+                            const float *l0 = g_q2_lut[b0[j]];
+                            const float *l1 = g_q2_lut[b1[j]];
+                            for (int k4 = 0; k4 < 4; k4++) {
+#if FENG_Q2_VFOLD
+                                vacc[d] += stv0 * l0[k4];
+                                vacc[d] += stv1 * l1[k4];
+#else
+                                vacc[d] += (st0 * l0[k4]) * sv0;
+                                vacc[d] += (st1 * l1[k4]) * sv1;
+#endif
+                                d++;
+                            }
+                        }
+                    }
+                }
+                if (t <= pos) {                  /* 奇数长度：尾部单 token */
+                    const uint8_t *vb = vrow + (size_t)t * qb;
+                    const uint16_t *vs = vsrow + (size_t)t * nb;
+                    const float st = scores[t];
+                    for (int blk = 0; blk < nb; blk++) {
+                        const float sv = f16_to_f32_local(vs[blk]);
+                        const uint8_t *bb = vb + blk * bw;
+                        int d = blk * FENG_KV_Q2_BLOCK;
+#if FENG_Q2_VFOLD
+                        const float stv = st * sv;
+#endif
+                        for (int j = 0; j < bw; j++) {
+                            const float *lu = g_q2_lut[bb[j]];
+                            for (int k4 = 0; k4 < 4; k4++) {
+#if FENG_Q2_VFOLD
+                                vacc[d++] += stv * lu[k4];
+#else
+                                vacc[d++] += (st * lu[k4]) * sv;
+#endif
+                            }
+                        }
+                    }
+                }
+            }
+#else
+            for (int t = 0; t <= pos; t++) {
+                const uint8_t *vb = vrow + (size_t)t * qb;
+                const uint16_t *vs = vsrow + (size_t)t * nb;
+                const float st = scores[t];
+#if FENG_Q2_LUT
+                for (int blk = 0; blk < nb; blk++) {
+                    const float sv = f16_to_f32_local(vs[blk]);
+                    const uint8_t *bb = vb + blk * bw;
+                    int d = blk * FENG_KV_Q2_BLOCK;
+                    for (int j = 0; j < bw; j++) {
+                        const float *lu = g_q2_lut[bb[j]];
+                        for (int k4 = 0; k4 < 4; k4++) {
+                            vacc[d++] += (st * lu[k4]) * sv;
+                        }
+                    }
+                }
+#else
+                for (int blk = 0; blk < nb; blk++) {
+                    const float sv = f16_to_f32_local(vs[blk]);
+                    for (int j = 0; j < bw; j++) {
+                        const uint8_t b = vb[blk * bw + j];
+                        for (int k4 = 0; k4 < 4; k4++) {
+                            const int d = blk * FENG_KV_Q2_BLOCK + j * 4 + k4;
+                            vacc[d] += (st * ((float)((b >> (2 * k4)) & 3) - 1.5f)) * sv;
+                        }
+                    }
+                }
+#endif
+            }
+#endif
+            for (int d = 0; d < hd; d++) attn[hh * hd + d] = vacc[d] * inv;
+#if FENG_ATTN_PROF
+            g_prof_cycles[2] += (unsigned long long)((unsigned)esp_cpu_get_cycle_count() - pv0);
+#endif
+        }
+#elif FENG_KV_FP16
+        {
+            const uint16_t *vrow = (const uint16_t *)kv->v_cache
+                                 + (size_t)l * kv->ctx * h + (size_t)hh * hd;
+            for (int d = 0; d < hd; d++) {
+                float acc = 0.f;
+                for (int t = 0; t <= pos; t++) {
+                    acc += scores[t] * f16_to_f32_local(vrow[(size_t)t * h + d]);
+                }
+                attn[hh * hd + d] = acc * inv;
+            }
+        }
+#else
+        for (int d = 0; d < hd; d++) {
+            float acc = 0.f;
+            for (int t = 0; t <= pos; t++) {
+                acc += scores[t] * vc[(size_t)t * h + hh * hd + d];
+            }
+            attn[hh * hd + d] = acc * inv;
+        }
+#endif
+    }
+#endif
+}
+
+
+/* embedding 查表（fp16 一行或 Q4 一行解量化），写进 x[h]。
+ * 从 feng_forward_ex 抽出（2026-10-22 批量 prefill）：逐 token 复用。 */
+static void emb_lookup(const feng_model_t *m, int token, float *x, int h)
+{
+/* embedding lookup (fp16) */
+if (m->tok_embd_dtype == FENG_DT_FP16) {
+    const uint16_t *emb = (const uint16_t *)m->tok_embd;
+    f16_to_f32_vec(emb + (size_t)token * h, x, h);
+} else {
+    /* Q4 embedding row dequant (block 64) for a single row */
+    const uint8_t *base = (const uint8_t *)m->tok_embd;
+    const int n_blocks = h / 64;
+    const size_t row_bytes = (size_t)n_blocks * (2 + 32);
+    const uint8_t *row = base + (size_t)token * row_bytes;
+    const uint8_t *scales = row;
+    const uint8_t *packed = row + (size_t)n_blocks * 2;
+    for (int b = 0; b < n_blocks; b++) {
+        uint16_t hs;
+        memcpy(&hs, scales + b * 2, 2);
+        float sc;
+        {
+            uint32_t sign = (hs >> 15) & 1u, exp = (hs >> 10) & 0x1Fu, man = hs & 0x3FFu, f;
+            if (exp == 0) {
+                if (man == 0) f = sign << 31;
+                else { exp = 113; while ((man & 0x400u) == 0) { man <<= 1; exp--; } man &= 0x3FFu;
+                       f = (sign << 31) | (exp << 23) | (man << 13); }
+            } else if (exp == 31) f = (sign << 31) | 0x7F800000u | (man << 13);
+            else f = (sign << 31) | ((exp + 112) << 23) | (man << 13);
+            memcpy(&sc, &f, 4);
+        }
+        const uint8_t *p = packed + (size_t)b * 32;
+        for (int j = 0; j < 32; j++) {
+            const int lo = (int)(p[j] & 0x0F) - 8;
+            const int hi = (int)(p[j] >> 4) - 8;
+            x[b * 64 + 2 * j] = (float)lo * sc;
+            x[b * 64 + 2 * j + 1] = (float)hi * sc;
+        }
+    }
+}
+}
+
 float *feng_forward(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int token, int pos)
 {
     return feng_forward_ex(m, kv, ws, token, pos, 1);
@@ -488,41 +972,7 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
     q2_lut_init();
 #endif
 
-    /* embedding lookup (fp16) */
-    if (m->tok_embd_dtype == FENG_DT_FP16) {
-        const uint16_t *emb = (const uint16_t *)m->tok_embd;
-        f16_to_f32_vec(emb + (size_t)token * h, x, h);
-    } else {
-        /* Q4 embedding row dequant (block 64) for a single row */
-        const uint8_t *base = (const uint8_t *)m->tok_embd;
-        const int n_blocks = h / 64;
-        const size_t row_bytes = (size_t)n_blocks * (2 + 32);
-        const uint8_t *row = base + (size_t)token * row_bytes;
-        const uint8_t *scales = row;
-        const uint8_t *packed = row + (size_t)n_blocks * 2;
-        for (int b = 0; b < n_blocks; b++) {
-            uint16_t hs;
-            memcpy(&hs, scales + b * 2, 2);
-            float sc;
-            {
-                uint32_t sign = (hs >> 15) & 1u, exp = (hs >> 10) & 0x1Fu, man = hs & 0x3FFu, f;
-                if (exp == 0) {
-                    if (man == 0) f = sign << 31;
-                    else { exp = 113; while ((man & 0x400u) == 0) { man <<= 1; exp--; } man &= 0x3FFu;
-                           f = (sign << 31) | (exp << 23) | (man << 13); }
-                } else if (exp == 31) f = (sign << 31) | 0x7F800000u | (man << 13);
-                else f = (sign << 31) | ((exp + 112) << 23) | (man << 13);
-                memcpy(&sc, &f, 4);
-            }
-            const uint8_t *p = packed + (size_t)b * 32;
-            for (int j = 0; j < 32; j++) {
-                const int lo = (int)(p[j] & 0x0F) - 8;
-                const int hi = (int)(p[j] >> 4) - 8;
-                x[b * 64 + 2 * j] = (float)lo * sc;
-                x[b * 64 + 2 * j + 1] = (float)hi * sc;
-            }
-        }
-    }
+    emb_lookup(m, token, x, h);
 
     for (int l = 0; l < (int)m->hdr.n_layers; l++) {
         const feng_layer_t *L = &m->layers[l];
@@ -544,412 +994,8 @@ float *feng_forward_ex(feng_model_t *m, feng_kv_t *kv, feng_workspace_t *ws, int
         rope(q, nh, hd, pos, m->hdr.rope_theta);
         rope(k, nh, hd, pos, m->hdr.rope_theta);
 
-        /* append to KV cache (int8 with per-head fp16 scale, or fp32) */
-        const float scale = 1.0f / sqrtf((float)hd);
-#if FENG_KV_INT8
-        int8_t *kc = (int8_t *)kv->k_cache + (size_t)l * kv->ctx * h;
-        int8_t *vc = (int8_t *)kv->v_cache + (size_t)l * kv->ctx * h;
-        uint16_t *ksc = kv->k_scale + (size_t)l * kv->ctx * nh;
-        uint16_t *vsc = kv->v_scale + (size_t)l * kv->ctx * nh;
-        for (int hh = 0; hh < nh; hh++) {
-            float ak = 1e-8f, av = 1e-8f;
-            for (int d = 0; d < hd; d++) {
-                const float a = fabsf(k[hh * hd + d]);
-                const float b = fabsf(v[hh * hd + d]);
-                if (a > ak) ak = a;
-                if (b > av) av = b;
-            }
-            const float sk = ak / 127.0f, sv = av / 127.0f;
-            ksc[(size_t)pos * nh + hh] = feng_f32_to_f16(sk);
-            vsc[(size_t)pos * nh + hh] = feng_f32_to_f16(sv);
-            int8_t *kd = kc + (size_t)pos * h + hh * hd;
-            int8_t *vd = vc + (size_t)pos * h + hh * hd;
-            for (int d = 0; d < hd; d++) {
-                int qk = (int)lrintf(k[hh * hd + d] / sk);
-                int qv = (int)lrintf(v[hh * hd + d] / sv);
-                if (qk > 127) qk = 127; else if (qk < -127) qk = -127;
-                if (qv > 127) qv = 127; else if (qv < -127) qv = -127;
-                kd[d] = (int8_t)qk;
-                vd[d] = (int8_t)qv;
-            }
-        }
-#elif FENG_KV_Q2
-        /* 2-bit 对称量化 + 每 FENG_KV_Q2_BLOCK 个值一个 fp16 scale（scale = 块内 max|·|/1.5，
-         * q ∈ {0,1,2,3} → (q-1.5)*scale）；每字节打包 4 个值（低位在前）。
-         * block=8 实测比 block=16 的续写保真高很多（0.33→0.73），代价是 scale 内存翻倍。 */
-        const int qb = hd / 4;
-        const int nb = hd / FENG_KV_Q2_BLOCK;         /* 每 head 的块数 */
-        const int bw = FENG_KV_Q2_BLOCK / 4;          /* 每块的字节数 */
-        /* q2 布局是 [layer][head][t]（与 int8/fp32 的 [layer][t][head] 不同）：
-         * 逐 head 扫描时 t 连续，长上下文下是 PSRAM 顺序读；[layer][t][head] 每次
-         * 只取 16B 却要占一条 32B 缓存行（利用率 50%），长文时被放大。 */
-        for (int hh = 0; hh < nh; hh++) {
-            const size_t row = ((size_t)l * nh + hh) * kv->ctx + pos;
-            uint8_t *kd = (uint8_t *)kv->k_cache + row * qb;
-            uint8_t *vd = (uint8_t *)kv->v_cache + row * qb;
-            uint16_t *ksp = kv->k_scale + row * nb;
-            uint16_t *vsp = kv->v_scale + row * nb;
-            for (int blk = 0; blk < nb; blk++) {
-                const int base = hh * hd + blk * FENG_KV_Q2_BLOCK;
-                float ak = 1e-8f, av = 1e-8f;
-                for (int d = 0; d < FENG_KV_Q2_BLOCK; d++) {
-                    const float a = fabsf(k[base + d]);
-                    const float b = fabsf(v[base + d]);
-                    if (a > ak) ak = a;
-                    if (b > av) av = b;
-                }
-                const float sk = ak / 1.5f, sv = av / 1.5f;
-                ksp[blk] = feng_f32_to_f16(sk);
-                vsp[blk] = feng_f32_to_f16(sv);
-                for (int j = 0; j < bw; j++) {
-                    uint8_t kb = 0, vb = 0;
-                    for (int k4 = 0; k4 < 4; k4++) {
-                        const int d = blk * FENG_KV_Q2_BLOCK + j * 4 + k4;
-                        int qk = (int)lrintf(k[hh * hd + d] / sk + 1.5f);
-                        int qv = (int)lrintf(v[hh * hd + d] / sv + 1.5f);
-                        if (qk < 0) qk = 0; else if (qk > 3) qk = 3;
-                        if (qv < 0) qv = 0; else if (qv > 3) qv = 3;
-                        kb |= (uint8_t)(qk << (2 * k4));
-                        vb |= (uint8_t)(qv << (2 * k4));
-                    }
-                    kd[blk * bw + j] = kb; vd[blk * bw + j] = vb;
-                }
-            }
-        }
-#elif FENG_KV_FP16
-        /* [layer][ctx][hidden]，与 fp32 同一布局，只是每值 2 字节。
-         * 不学 q2 的 [layer][head][ctx]：fp16 KV 只在手机/PC 上用，
-         * 定位是"精度参照"，越接近 fp32 路径越好验证。 */
-        uint16_t *kc = (uint16_t *)kv->k_cache + (size_t)l * kv->ctx * h;
-        uint16_t *vc = (uint16_t *)kv->v_cache + (size_t)l * kv->ctx * h;
-        for (int i = 0; i < h; i++) {
-            kc[(size_t)pos * h + i] = feng_f32_to_f16(k[i]);
-            vc[(size_t)pos * h + i] = feng_f32_to_f16(v[i]);
-        }
-#else
-        float *kc = (float *)kv->k_cache + (size_t)l * kv->ctx * h;
-        float *vc = (float *)kv->v_cache + (size_t)l * kv->ctx * h;
-        memcpy(kc + (size_t)pos * h, k, h * sizeof(float));
-        memcpy(vc + (size_t)pos * h, v, h * sizeof(float));
-#endif
-
-        memset(attn, 0, (size_t)nh * hd * sizeof(float));
-#if FENG_KV_Q2
-        {
-            q2_attn_ctx_t ac;
-            ac.kv = kv;
-            ac.q = q;
-            ac.attn = attn;
-            ac.l = l;
-            ac.pos = pos;
-            ac.nh = nh;
-            ac.hd = hd;
-            ac.qb = qb;
-            ac.nb = nb;
-            ac.bw = bw;
-            ac.scale = scale;
-            ac.scores = &g_scores[0][0];
-#if FENG_ATTN_PROF || FENG_ATTN_PARTS <= 1
-            q2_attn_range(&ac, 0, 1);       /* profiling 的计数器非原子，串行跑 */
-#else
-            feng_par_run(q2_attn_range, &ac, FENG_ATTN_PARTS);
-#endif
-        }
-#else
-        for (int hh = 0; hh < nh; hh++) {
-            const float *qh = q + hh * hd;
-            float *scores = g_scores[0];
-            float maxs = -1e30f;
-#if FENG_KV_INT8
-            for (int t = 0; t <= pos; t++) {
-                const int8_t *kh = kc + (size_t)t * h + hh * hd;
-                float s = 0.f;
-                for (int d = 0; d < hd; d++) s += qh[d] * (float)kh[d];
-                s *= f16_to_f32_local(ksc[(size_t)t * nh + hh]) * scale;
-                scores[t] = s;
-                if (s > maxs) maxs = s;
-            }
-#elif FENG_KV_Q2
-            const uint8_t *krow = (const uint8_t *)kv->k_cache
-                                  + ((size_t)l * nh + hh) * kv->ctx * qb;
-            const uint16_t *ksrow = kv->k_scale + ((size_t)l * nh + hh) * kv->ctx * nb;
-#if FENG_ATTN_PROF
-            const unsigned pc0 = (unsigned)esp_cpu_get_cycle_count();
-#endif
-#if FENG_Q2_LUT && FENG_Q2_PAIR
-            /* 一次算 2 个上下文 token：两条独立的累加链填满 FPU 流水线，
-             * qh 只加载一次、相邻 token 的 16B 数据同处一条 32B 缓存行。
-             * 每个 score 的累加顺序与单 token 版完全一致 -> 逐位一致。 */
-            {
-                int t = 0;
-                for (; t + 1 <= pos; t += 2) {
-                    const uint8_t *kh0 = krow + (size_t)t * qb;
-                    const uint8_t *kh1 = kh0 + qb;
-                    const uint16_t *ks0 = ksrow + (size_t)t * nb;
-                    const uint16_t *ks1 = ks0 + nb;
-                    float s0 = 0.f, s1 = 0.f;
-                    for (int blk = 0; blk < nb; blk++) {
-                        const float sk0 = f16_to_f32_local(ks0[blk]);
-                        const float sk1 = f16_to_f32_local(ks1[blk]);
-                        const uint8_t *b0 = kh0 + blk * bw, *b1 = kh1 + blk * bw;
-                        int d = blk * FENG_KV_Q2_BLOCK;
-                        for (int j = 0; j < bw; j++) {
-                            const float *l0 = g_q2_lut[b0[j]];
-                            const float *l1 = g_q2_lut[b1[j]];
-                            for (int k4 = 0; k4 < 4; k4++) {
-                                const float qd = qh[d++];
-                                s0 += qd * l0[k4] * sk0;
-                                s1 += qd * l1[k4] * sk1;
-                            }
-                        }
-                    }
-                    s0 *= scale;
-                    s1 *= scale;
-                    scores[t] = s0;
-                    scores[t + 1] = s1;
-                    if (s0 > maxs) maxs = s0;
-                    if (s1 > maxs) maxs = s1;
-                }
-                if (t <= pos) {                      /* 奇数长度：尾部单 token */
-                    const uint8_t *kh = krow + (size_t)t * qb;
-                    const uint16_t *ks = ksrow + (size_t)t * nb;
-                    float s = 0.f;
-                    for (int blk = 0; blk < nb; blk++) {
-                        const float sk = f16_to_f32_local(ks[blk]);
-                        const uint8_t *bb = kh + blk * bw;
-                        int d = blk * FENG_KV_Q2_BLOCK;
-                        for (int j = 0; j < bw; j++) {
-                            const float *lu = g_q2_lut[bb[j]];
-                            for (int k4 = 0; k4 < 4; k4++) s += qh[d++] * lu[k4] * sk;
-                        }
-                    }
-                    s *= scale;
-                    scores[t] = s;
-                    if (s > maxs) maxs = s;
-                }
-            }
-#else
-            for (int t = 0; t <= pos; t++) {
-                const uint8_t *kh = krow + (size_t)t * qb;
-                const uint16_t *ks = ksrow + (size_t)t * nb;
-                float s = 0.f;
-#if FENG_Q2_LUT
-                for (int blk = 0; blk < nb; blk++) {
-                    const float sk = f16_to_f32_local(ks[blk]);
-                    const uint8_t *bb = kh + blk * bw;
-                    int d = blk * FENG_KV_Q2_BLOCK;
-                    for (int j = 0; j < bw; j++) {
-                        const float *lu = g_q2_lut[bb[j]];
-                        for (int k4 = 0; k4 < 4; k4++) {
-                            s += qh[d++] * lu[k4] * sk;
-                        }
-                    }
-                }
-#else
-                for (int blk = 0; blk < nb; blk++) {
-                    const float sk = f16_to_f32_local(ks[blk]);
-                    for (int j = 0; j < bw; j++) {
-                        const uint8_t b = kh[blk * bw + j];
-                        for (int k4 = 0; k4 < 4; k4++) {
-                            const int qq = (b >> (2 * k4)) & 3;
-                            s += qh[blk * FENG_KV_Q2_BLOCK + j * 4 + k4]
-                                 * ((float)qq - 1.5f) * sk;
-                        }
-                    }
-                }
-#endif
-                s *= scale;
-                scores[t] = s;
-                if (s > maxs) maxs = s;
-            }
-#endif
-#if FENG_ATTN_PROF
-            {
-                const unsigned pc1 = (unsigned)esp_cpu_get_cycle_count();
-                g_prof_cycles[0] += (unsigned long long)(pc1 - pc0);
-            }
-#endif
-#elif FENG_KV_FP16
-            {
-                const uint16_t *krow = (const uint16_t *)kv->k_cache
-                                     + (size_t)l * kv->ctx * h + (size_t)hh * hd;
-                for (int t = 0; t <= pos; t++) {
-                    const uint16_t *kh = krow + (size_t)t * h;
-                    float s = 0.f;
-                    for (int d = 0; d < hd; d++) s += qh[d] * f16_to_f32_local(kh[d]);
-                    s *= scale;
-                    scores[t] = s;
-                    if (s > maxs) maxs = s;
-                }
-            }
-#else
-            for (int t = 0; t <= pos; t++) {
-                const float *kh = kc + (size_t)t * h + hh * hd;
-                float s = 0.f;
-                for (int d = 0; d < hd; d++) s += qh[d] * kh[d];
-                s *= scale;
-                scores[t] = s;
-                if (s > maxs) maxs = s;
-            }
-#endif
-            float sum = 0.f;
-#if FENG_ATTN_PROF
-            const unsigned ps0 = (unsigned)esp_cpu_get_cycle_count();
-#endif
-            for (int t = 0; t <= pos; t++) {
-#if FENG_FAST_EXP
-                scores[t] = fast_expf(scores[t] - maxs);
-#else
-                scores[t] = expf(scores[t] - maxs);
-#endif
-                sum += scores[t];
-            }
-            const float inv = 1.0f / sum;
-#if FENG_ATTN_PROF
-            g_prof_cycles[1] += (unsigned long long)((unsigned)esp_cpu_get_cycle_count() - ps0);
-#endif
-#if FENG_KV_INT8
-            float *pv = ws->scratch;      /* scaled attention probabilities（仅 int8 路径用） */
-            for (int t = 0; t <= pos; t++) {
-                pv[t] = scores[t] * f16_to_f32_local(vsc[(size_t)t * nh + hh]);
-            }
-            for (int d = 0; d < hd; d++) {
-                float acc = 0.f;
-                for (int t = 0; t <= pos; t++) {
-                    acc += pv[t] * (float)vc[(size_t)t * h + hh * hd + d];
-                }
-                attn[hh * hd + d] = acc * inv;
-            }
-#elif FENG_KV_Q2
-            /* 连续访问版：原实现对每个输出维度 d 都按 112B 跨步去 PSRAM 抓 1 个字节
-             * （缓存行利用率 1/32，长上下文时被放大成几十秒/轮）。改成 t 外层、
-             * 每个 (t,head) 的 16 个打包字节顺序读完再累加；每个 d 对 t 的求和顺序
-             * 与乘法分组 (scores[t]*bit)*sv 保持不变，结果逐位一致。 */
-            {
-                float vacc[FENG_MAX_HEAD_DIM];
-                for (int d = 0; d < hd; d++) vacc[d] = 0.f;
-#if FENG_ATTN_PROF
-                const unsigned pv0 = (unsigned)esp_cpu_get_cycle_count();
-#endif
-                const uint8_t *vrow = (const uint8_t *)kv->v_cache
-                                      + ((size_t)l * nh + hh) * kv->ctx * qb;
-                const uint16_t *vsrow = kv->v_scale + ((size_t)l * nh + hh) * kv->ctx * nb;
-#if FENG_Q2_LUT && FENG_Q2_PAIR
-                {
-                    int t = 0;
-                    for (; t + 1 <= pos; t += 2) {
-                        const uint8_t *vb0 = vrow + (size_t)t * qb;
-                        const uint8_t *vb1 = vb0 + qb;
-                        const uint16_t *vs0 = vsrow + (size_t)t * nb;
-                        const uint16_t *vs1 = vs0 + nb;
-                        const float st0 = scores[t], st1 = scores[t + 1];
-                        for (int blk = 0; blk < nb; blk++) {
-                            const float sv0 = f16_to_f32_local(vs0[blk]);
-                            const float sv1 = f16_to_f32_local(vs1[blk]);
-                            const uint8_t *b0 = vb0 + blk * bw, *b1 = vb1 + blk * bw;
-                            int d = blk * FENG_KV_Q2_BLOCK;
-#if FENG_Q2_VFOLD
-                            const float stv0 = st0 * sv0, stv1 = st1 * sv1;
-#endif
-                            for (int j = 0; j < bw; j++) {
-                                const float *l0 = g_q2_lut[b0[j]];
-                                const float *l1 = g_q2_lut[b1[j]];
-                                for (int k4 = 0; k4 < 4; k4++) {
-#if FENG_Q2_VFOLD
-                                    vacc[d] += stv0 * l0[k4];
-                                    vacc[d] += stv1 * l1[k4];
-#else
-                                    vacc[d] += (st0 * l0[k4]) * sv0;
-                                    vacc[d] += (st1 * l1[k4]) * sv1;
-#endif
-                                    d++;
-                                }
-                            }
-                        }
-                    }
-                    if (t <= pos) {                  /* 奇数长度：尾部单 token */
-                        const uint8_t *vb = vrow + (size_t)t * qb;
-                        const uint16_t *vs = vsrow + (size_t)t * nb;
-                        const float st = scores[t];
-                        for (int blk = 0; blk < nb; blk++) {
-                            const float sv = f16_to_f32_local(vs[blk]);
-                            const uint8_t *bb = vb + blk * bw;
-                            int d = blk * FENG_KV_Q2_BLOCK;
-#if FENG_Q2_VFOLD
-                            const float stv = st * sv;
-#endif
-                            for (int j = 0; j < bw; j++) {
-                                const float *lu = g_q2_lut[bb[j]];
-                                for (int k4 = 0; k4 < 4; k4++) {
-#if FENG_Q2_VFOLD
-                                    vacc[d++] += stv * lu[k4];
-#else
-                                    vacc[d++] += (st * lu[k4]) * sv;
-#endif
-                                }
-                            }
-                        }
-                    }
-                }
-#else
-                for (int t = 0; t <= pos; t++) {
-                    const uint8_t *vb = vrow + (size_t)t * qb;
-                    const uint16_t *vs = vsrow + (size_t)t * nb;
-                    const float st = scores[t];
-#if FENG_Q2_LUT
-                    for (int blk = 0; blk < nb; blk++) {
-                        const float sv = f16_to_f32_local(vs[blk]);
-                        const uint8_t *bb = vb + blk * bw;
-                        int d = blk * FENG_KV_Q2_BLOCK;
-                        for (int j = 0; j < bw; j++) {
-                            const float *lu = g_q2_lut[bb[j]];
-                            for (int k4 = 0; k4 < 4; k4++) {
-                                vacc[d++] += (st * lu[k4]) * sv;
-                            }
-                        }
-                    }
-#else
-                    for (int blk = 0; blk < nb; blk++) {
-                        const float sv = f16_to_f32_local(vs[blk]);
-                        for (int j = 0; j < bw; j++) {
-                            const uint8_t b = vb[blk * bw + j];
-                            for (int k4 = 0; k4 < 4; k4++) {
-                                const int d = blk * FENG_KV_Q2_BLOCK + j * 4 + k4;
-                                vacc[d] += (st * ((float)((b >> (2 * k4)) & 3) - 1.5f)) * sv;
-                            }
-                        }
-                    }
-#endif
-                }
-#endif
-                for (int d = 0; d < hd; d++) attn[hh * hd + d] = vacc[d] * inv;
-#if FENG_ATTN_PROF
-                g_prof_cycles[2] += (unsigned long long)((unsigned)esp_cpu_get_cycle_count() - pv0);
-#endif
-            }
-#elif FENG_KV_FP16
-            {
-                const uint16_t *vrow = (const uint16_t *)kv->v_cache
-                                     + (size_t)l * kv->ctx * h + (size_t)hh * hd;
-                for (int d = 0; d < hd; d++) {
-                    float acc = 0.f;
-                    for (int t = 0; t <= pos; t++) {
-                        acc += scores[t] * f16_to_f32_local(vrow[(size_t)t * h + d]);
-                    }
-                    attn[hh * hd + d] = acc * inv;
-                }
-            }
-#else
-            for (int d = 0; d < hd; d++) {
-                float acc = 0.f;
-                for (int t = 0; t <= pos; t++) {
-                    acc += scores[t] * vc[(size_t)t * h + hh * hd + d];
-                }
-                attn[hh * hd + d] = acc * inv;
-            }
-#endif
-        }
-#endif
+        kv_append_one(kv, k, v, l, pos, nh, hd, h);
+        attn_one(kv, ws, q, attn, l, pos, nh, hd, h);
         feng_gemv_par(L->wo, FENG_LAYER_DTYPE(L), attn, proj, h, h);
         for (int i = 0; i < h; i++) x[i] += proj[i];
 

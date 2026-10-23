@@ -28,10 +28,10 @@ I (91) boot:  4 tokdata          Unknown data     01 41 01000000 00080000
 I (98) boot: End of partition table
 I (101) esp_image: segment 0: paddr=00010020 vaddr=3c030020 size=0d104h ( 53508) map
 I (122) esp_image: segment 1: paddr=0001d12c vaddr=3fc98800 size=02eech ( 12012) load
-I (130) esp_image: segment 2: paddr=00020020 vaddr=42000020 size=23c14h (146452) map
-I (167) esp_image: segment 3: paddr=00043c3c vaddr=3fc9b6ec size=00658h (  1624) load
-I (168) esp_image: segment 4: paddr=0004429c vaddr=40378000 size=107d8h ( 67544) load
-I (190) esp_image: segment 5: paddr=00054a7c vaddr=50000000 size=00020h (    32) load
+I (130) esp_image: segment 2: paddr=00020020 vaddr=42000020 size=23bf0h (146416) map
+I (167) esp_image: segment 3: paddr=00043c18 vaddr=3fc9b6ec size=00658h (  1624) load
+I (168) esp_image: segment 4: paddr=00044278 vaddr=40378000 size=107d8h ( 67544) load
+I (190) esp_image: segment 5: paddr=00054a58 vaddr=50000000 size=00020h (    32) load
 I (202) boot: Loaded app from partition at offset 0x10000
 I (202) boot: Disabling RNG early entropy source...
 I (214) MSPI Timing: Enter flash timing tuning
@@ -58,14 +58,14 @@ I (697) cpu_start: Pro cpu start user code
 I (697) cpu_start: cpu freq: 240000000 Hz
 I (699) app_init: Application information:
 I (703) app_init: Project name:     feng_30m
-I (707) app_init: App version:      v4.0-2-g50ae0db-dirty
-I (712) app_init: Compile time:     Oct 22 2026 23:11:35
-I (717) app_init: ELF file SHA256:  91644be14...
+I (707) app_init: App version:      v4.0-3-gbbc24ae-dirty
+I (712) app_init: Compile time:     Oct 23 2026 08:53:50
+I (717) app_init: ELF file SHA256:  c7e7c0508...
 I (722) app_init: ESP-IDF:          v5.5.5-dirty
 I (726) efuse_init: Min chip rev:     v0.0
 I (730) efuse_init: Max chip rev:     v0.99 
 I (734) efuse_init: Chip rev:         v0.2
-I (738) heap_init: Initializing. RAM available for dynamic allocation:
+I (739) heap_init: Initializing. RAM available for dynamic allocation:
 I (744) heap_init: At 3FCB5CB0 len 00033A60 (206 KiB): RAM
 I (749) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
 I (754) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
@@ -95,9 +95,9 @@ I (2097) feng: PSRAM free after setup: 5503 KB
 I (2097) feng: [mem] kv/ws       internal  200867 B | psram  5635220 B (largest int 147456)
 I (2097) feng_smp: heap before workers: internal 200867 B (largest 147456), psram 5635220 B
 I (2097) feng_smp: GEMV workers up on core 0 + core 1
-I (2366) feng_smp: par n_out=896: part0 core0 rows[0,448) 6647us | part1 core1 rows[448,896) 6649us
-I (2373) feng_smp: par n_out=896: part0 core0 rows[0,448) 6644us | part1 core1 rows[448,896) 6637us
-I (2380) feng_smp: par n_out=896: part0 core0 rows[0,448) 6679us | part1 core1 rows[448,896) 6658us
+I (2366) feng_smp: par n_out=896: part0 core0 rows[0,448) 6648us | part1 core1 rows[448,896) 6649us
+I (2373) feng_smp: par n_out=896: part0 core0 rows[0,448) 6644us | part1 core1 rows[448,896) 6638us
+I (2380) feng_smp: par n_out=896: part0 core0 rows[0,448) 6684us | part1 core1 rows[448,896) 6662us
 I (2493) feng: gemv 896x448: 1-core 13092 us (16 MB/s) | 2-core 6697 us (32 MB/s) | speedup 1.95x
 
 === feng-30m on ESP32-S3 (serial chat) ===
@@ -114,9 +114,5 @@ you> [ 1] OK       12.4s  Q: 我叫小明，请记住。
      A: 记住了，你喜欢蓝色。
 [ 4] OK       12.3s  Q: 我最喜欢什么颜色？
      A: 你最喜欢蓝色，记住了是什么？
-[ 5] TIMEOUT 300.4s  Q: \reset
-     A: 
-[ 6] OK       13.7s  Q: 我叫什么名字？
-     A: 你叫 feng，由个人开发者 jiaheng 开发训练。
 
-=== 5 成功 / 1 失败 (共 6 轮) ===
+=== 4 成功 / 0 失败 (共 4 轮) ===

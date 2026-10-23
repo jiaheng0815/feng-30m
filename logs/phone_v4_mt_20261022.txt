@@ -65,4 +65,3 @@ SUMMARY mem12 9/12
       OK   轮4 期望含「feng」 答: 我叫 feng，由个人开发者 jiaheng 开发训练。
 
 SUMMARY seq 10/10
-rc=1
