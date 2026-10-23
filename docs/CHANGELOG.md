@@ -166,6 +166,8 @@ PC 端（i7-12700KF，15 核 OpenMP）同样持平（kv 套件 90.1s vs 89.7s）
 记录避免重复踩坑。真要再进一步，方向是批量**注意力**（K 个 query 共享一次
 KV 反量化），不是 GEMM。
 
+工具链修复（同日晚）：`pc/build_pc_chat.ps1` 的 `Invoke-Native` 从「管道原生 exe」改为 `System.Diagnostics.Process`（某些宿主对管道里的原生 exe 报「无法在管道中间运行文档」直接崩），补继承工作目录；单测调用同改。`tools/check_all.py`：优先选系统 Windows PowerShell（Store 的 pwsh 存根行为古怪，`-File` 后的开关参数传不进去）、MSVC 缺 vswhere 时自动加 `-MinGW` 重试、宿主派不出进程时明确跳过而非误报。固件因重构增至 **281,248 B**（无彩蛋 281,056 B），五个文档的体积数字已同步。`tools/check_all.py` 一键验收 **8/8 全绿**。
+
 顺带把 `feng_forward_ex` 里的 embedding 查表 / KV append / 注意力三块抽成了
 `emb_lookup` / `kv_append_one` / `attn_one` 三个 helper（core 与手机端同步），
 两条路径复用同一份内核——这是本轮唯一保留的结构改动，全部套件与真机复验通过。

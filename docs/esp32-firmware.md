@@ -5,7 +5,7 @@ tied embedding，29.43M 参数）量化成 Q4 后**在 ESP32-S3 上离线对话*
 
 > **当前固件（2026-10-18：引擎 v4.0；手机/ESP32 权重 4.0-embed）**
 > - 权重：**4.0-embed**（导出在 `../board/model_export_4.0-embed/`，Q4 权重 + q2 KV；测试版 `4.0-20261018H`）
-> - 引擎：**v4.0 / 严格 C23**（零堆、零全局构造；PC 侧仍 C++23 + CUDA），app 分区 **280,736 B**
+> - 引擎：**v4.0 / 严格 C23**（零堆、零全局构造；PC 侧仍 C++23 + CUDA），app 分区 **281,248 B**
 > - 配置：**q2 block8 KV / 2048 ctx**（`idf.py -DFENG_USE_Q2_KV=ON build`），KV 9.62 MB PSRAM
 > - 记忆：工具抽取的事实写 **NVS**，断电/重启不丢；`\reset` / `\mem clear` / 写满自动开新对话时清空
 > - 实测：矩阵 **27/27 + 4/4**、算术子集 **21/21**、tool **13/13**、记忆 **12/12**、
@@ -32,7 +32,7 @@ VDD_SPI 1.8 V（同系列 N16R8V / N32R8V 已 EOL）。
 ┌─ ESP32-S3-WROOM-2-N32R16V（32MB Octal flash + 16MB Octal PSRAM，1.8V） ──────────┐
 │  flash: 0x110000   model.bin      14.93 MB, Q4 block-64, mmap 直读（不占 RAM）   │
 │         0x1000000  tokenizer.bin  413 KB, 启动时读入 PSRAM                       │
-│         0x0010000  app            280,736 B（factory 分区 1 MB，余 75.1%）         │
+│         0x0010000  app            281,248 B（factory 分区 1 MB，余 73.2%）         │
 │  PSRAM: KV cache q2/block8 2048 ctx = 9.62 MB + 工作区/分词 ≈ 1.0 MB             │
 │  时钟 : CPU 240MHz ×2   flash OPI-DTR 120MHz   PSRAM OCT 120MHz                  │
 │  串口 : UART0 115200 8N1（`you> ` 提示符，`<< 内容 >>END` 流式回复）             │
@@ -157,7 +157,7 @@ idf.py -DFENG_USE_Q2_KV=ON build     # 发布配置：q2 / 2048 ctx；不带 -D 
 > 全组件 `-std=c++23 -fno-exceptions -fno-rtti -fno-threadsafe-statics`；
 > 非热点模块（tokenizer / tool / model / gbk / main）用 `-Os`，推理热点
 > （`feng_llm` / `feng_quant` / `feng_smp` / `feng_sample`）保持 `-O2`。
-> 当前 app **280,736 B**（关掉彩蛋 280,272 B、v3.20 的 C++23 版 304,192 B、C 版基线 307,392 B）；新增代码后请对比该体积。
+> 当前 app **281,248 B**（关掉彩蛋 281,056 B、v3.20 的 C++23 版 304,192 B、C 版基线 307,392 B）；新增代码后请对比该体积。
 
 ## 5. 烧录（COM20 = CH343；COM19 = 芯片原生 USB-JTAG，两个都能烧）
 
@@ -214,7 +214,7 @@ python scripts\esp32_enc_test.py COM20                       # 双编码自检
 | 内核 | Q4 查表（256 项浮点 LUT）+ 4 累加器 + 双核分半 + IRAM | 见 `feng_quant.c` / `feng_smp.c` |
 | 速度 | **2.33 tok/s** | 固件统计口径（含 prefill）；短上下文/短回复最佳值，逐 token 随上下文变化 |
 | 长上下文 forward | **1.58 s @2048 ctx**（单核 2.20 s，双核按 head 切分 1.39×） | `../logs/board_attn_par_20261018.txt` |
-| 体积 | **280,736 B** | 非热点 `-Os` + 热点 `-O2`；C23 核心 + C++23 驱动约定见根 `../AGENTS.md` |
+| 体积 | **281,248 B** | 非热点 `-Os` + 热点 `-O2`；C23 核心 + C++23 驱动约定见根 `../AGENTS.md` |
 
 ## 8. 已验证结果（v3.19-embed + q2/2048，2026-10-05 实机）
 
@@ -247,7 +247,7 @@ I (2228) feng: gemv 896x448: 1-core 13186 us | 2-core 6837 us | speedup 1.93x
 | 8 轮身份序列 | **8/8**（引擎记忆 tool） | `../logs/board_v3_16p3_identity_ctx_engmem.txt` |
 | 32 轮连续压测 | **32/32** | `../logs/board_v3_19b6_stress32.txt` |
 | 速度 | **2.26 / 4.62 / 8.05 tok/s**（ctx 19/38/54） | 见`CHANGELOG.md` v3.20 节 |
-| **2026-10-18 复测**（固件 280,736 B） | tool **13/13**、记忆 **12/12**、多轮 **10/10**、身份句逐字正确 | `../logs/board_tools_time_rand.txt`、`../logs/board_memory_24.txt` |
+| **2026-10-18 复测**（当时固件 280,736 B；2026-10-22 引擎加固后为 281,248 B） | tool **13/13**、记忆 **12/12**、多轮 **10/10**、身份句逐字正确 | `../logs/board_tools_time_rand.txt`、`../logs/board_memory_24.txt` |
 | **2026-10-18 4.0-embed 发布验收** | Q4 27/27 + 4/4、PPL 102.99、留出 200 85、长文 108/128；板端 tool 13/13、记忆 24/24、多轮 10/10 | `../logs/gate_hybrid.txt`、`../eval/ppl_hybrid_B_emb319.json` |
 
 历史记录：v3.11/v3.10/v3.7 q2 矩阵 27/27+4/4、v3.6 int8 1.85–1.86 tok/s、

@@ -40,12 +40,25 @@ try {
     )
 
     function Invoke-Native([string]$exe, [string[]]$argv) {
-        $prev = $ErrorActionPreference
-        $ErrorActionPreference = "Continue"     # 原生命令的 stderr 不中断脚本
-        & $exe @argv 2>&1 | ForEach-Object { Write-Host $_ }   # 转发编译器输出
-        $rc = $LASTEXITCODE
-        $ErrorActionPreference = $prev
-        return $rc
+        # 用 System.Diagnostics.Process 而不是 `& $exe | ForEach-Object`：
+        # 后者在某些非控制台宿主（CI/代理沙箱里的 PowerShell）会对原生 exe 报
+        # 「无法在管道中间运行文档」直接崩掉；Process.Start 是纯托管机制，
+        # 任何宿主里行为一致，输出/退出码也照拿。
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName = $exe
+        $psi.Arguments = (($argv | ForEach-Object { '"' + $_ + '"' }) -join ' ')
+        $psi.WorkingDirectory = (Get-Location).Path   # 继承脚本的 Push-Location
+        $psi.UseShellExecute = $false
+        $psi.CreateNoWindow = $true
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $p = [System.Diagnostics.Process]::Start($psi)
+        $stdout = $p.StandardOutput.ReadToEnd()
+        $stderr = $p.StandardError.ReadToEnd()
+        $p.WaitForExit()
+        if ($stdout) { Write-Host $stdout }
+        if ($stderr) { Write-Host $stderr }
+        return $p.ExitCode
     }
 
     if (-not $MinGW) {
@@ -199,8 +212,8 @@ try {
     # 再写相对路径 `pc\xxx.exe` 会变成 pc\pc\xxx.exe —— PowerShell 解析不成路径，
     # 转去加载名为 pc 的模块并报 "无法加载模块 'pc'"，构建成功也返回 exit 1。
     foreach ($t in "pc_calc_test", "pc_tools_test", "pc_mem_test", "pc_sample_test") {
-        & (Join-Path $PSScriptRoot "$t.exe") | Select-Object -Last 1
-        if ($LASTEXITCODE -ne 0) { throw "单测失败：$t（exit $LASTEXITCODE）" }
+        $rc = Invoke-Native (Join-Path $PSScriptRoot "$t.exe") @()
+        if ($rc -ne 0) { throw "单测失败：$t（exit $rc）" }
     }
 } finally {
     Pop-Location

@@ -24,11 +24,16 @@ ROOT = Path(__file__).resolve().parents[1]
 PC = ROOT / "pc"
 
 
+_last_output = ""   # run() 最近一次执行的输出，供调用方做失败重试判断
+
+
 def run(name, cmd, env=None):
+    global _last_output
     print(f"\n=== {name} ===", flush=True)
     r = subprocess.run(cmd, cwd=str(ROOT), env=env, capture_output=True, text=True,
                        encoding="utf-8", errors="replace")
     out = (r.stdout or "") + (r.stderr or "")
+    _last_output = out
     tail = "\n".join(out.strip().splitlines()[-6:])
     if tail:
         print(tail, flush=True)
@@ -104,11 +109,35 @@ def main() -> int:
         results.append(("check_md", run("文档结构/路径", [py, "tools/check_md.py"])))
         results.append(("check_docs", run("文档数字与产物一致性", [py, "tools/check_docs.py"])))
     if not args.skip_build:
-        ps = shutil.which("pwsh") or "powershell"
-        results.append(("build_pc", run(
-            "PC 引擎两趟构建（核心 C23 + 驱动 C++23） + tool 单测",
-            [ps, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
-             str(ROOT / "pc" / "build_pc_chat.ps1")])))
+        # 优先系统自带的 Windows PowerShell（Store 的 pwsh 存根在某些环境里
+        # 行为古怪）；脚本本身 PS5.1/PS7 都能跑。
+        ps = shutil.which("powershell") or shutil.which("pwsh")
+        # vswhere 只存在于「标准位置装了 VS/Build Tools」的机器；装在自定义盘符的
+        # 机器上 build_pc_chat.ps1 的 MSVC 路径会直接 throw。这里不预判，直接试，
+        # 报 vswhere 就自动加 -MinGW 重试——比探测环境变量可靠（子 shell 的
+        # 环境跟当前进程不一定一致）。
+        base_args = [ps, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                     str(ROOT / "pc" / "build_pc_chat.ps1")]
+        # 宿主探测：某些沙箱化的代理环境里 PowerShell 连子进程都派不出来
+        # （`& powershell -Command "exit 0"` 静默失败）。这种宿主下构建必然
+        # 失败但不是代码问题——明确跳过，别误报。
+        try:
+            probe = subprocess.run([ps, "-NoProfile", "-Command", "exit 0"],
+                                   capture_output=True, timeout=60)
+            host_ok = (probe.returncode == 0)
+        except Exception:
+            host_ok = False
+        if not host_ok:
+            print("\n[跳过构建] 当前宿主无法通过 PowerShell 派生进程（沙箱环境），"
+                  "build_pc 跳过；PC 构建请在本机 PowerShell 里跑 "
+                  "pc\\build_pc_chat.ps1（有 vswhere 自动 MSVC，没有则 -MinGW）")
+            skipped.append("build_pc")
+        else:
+            ok = run("PC 引擎两趟构建（核心 C23 + 驱动 C++23） + tool 单测", base_args)
+            if not ok and "vswhere" in _last_output:
+                print("\n[重试] MSVC 路径不可用（缺 vswhere），自动改用 -MinGW")
+                ok = run("PC 引擎两趟构建（-MinGW 重试）", base_args + ["-MinGW"])
+            results.append(("build_pc", ok))
     results.append(("phone_drift", run("手机端引擎与 core/ 漂移检查",
                                        [py, "phone/tools/check_drift.py"])))
 
